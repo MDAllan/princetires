@@ -1,0 +1,2275 @@
+{% comment %}
+  ╔══════════════════════════════════════════════════════════╗
+  ║        PRINCE TIRES — TIRE COLLECTION PAGE              ║
+  ║   File: sections/collection-tires-grid.liquid           ║
+  ║   Template: templates/collection.tires.json             ║
+  ╚══════════════════════════════════════════════════════════╝
+
+  SETUP NOTES FOR CURSOR:
+  1. Save this file as: sections/collection-tires-grid.liquid
+  2. Create: templates/collection.tires.json (see bottom of file)
+  3. In Shopify Admin, assign the "tires" template to each tire collection
+  4. Add product tags for filtering:
+       Tire size:     size_225-65R17
+       Season:        season_all-season | season_winter | season_summer | season_all-weather
+       Service type:  service_P | service_LT | service_ST
+       Category:      category_performance | category_touring | category_highway | category_mud-terrain
+       Studs:         stud_studdable | stud_pre-studded | stud_non-studdable
+{% endcomment %}
+
+{% paginate collection.products by section.settings.products_per_page %}
+
+<div id="pt-collection-{{ section.id }}" class="pt-col">
+
+  <!-- ══════════════════════════════════════
+       SMART TIRE SEARCH (Phase 3)
+  ═══════════════════════════════════════ -->
+  {%- render 'smart-tire-search' -%}
+
+  <!-- ══════════════════════════════════════
+       VEHICLE FINDER BAR
+  ═══════════════════════════════════════ -->
+  {% if section.settings.show_vehicle_finder %}
+  <div class="pt-vfinder" id="pt-vfinder-{{ section.id }}">
+    <div class="pt-vfinder__inner">
+      {% if section.settings.finder_heading != blank or section.settings.finder_subheading != blank %}
+        <div class="pt-vfinder__intro">
+          {% if section.settings.finder_heading != blank %}
+            <h2 class="pt-vfinder__heading">{{ section.settings.finder_heading }}</h2>
+          {% endif %}
+          {% if section.settings.finder_subheading != blank %}
+            <p class="pt-vfinder__subheading">{{ section.settings.finder_subheading }}</p>
+          {% endif %}
+        </div>
+      {% endif %}
+      <div class="pt-vfinder__tire-toolbar">
+        <div class="pt-vfinder__tabs" role="tablist" aria-label="Finder mode">
+          <button class="pt-vfinder__tab" type="button" data-vf-tab="vehicle" role="tab" aria-selected="false">
+            <span class="pt-vfinder__tab-circle" aria-hidden="true">
+              <img src="{{ '4-icons-1.svg' | asset_url }}" alt="" loading="lazy">
+            </span>
+            <span class="pt-vfinder__tab-label">By Vehicle</span>
+          </button>
+          <button class="pt-vfinder__tab is-active" type="button" data-vf-tab="tire-size" role="tab" aria-selected="true">
+            <span class="pt-vfinder__tab-circle" aria-hidden="true">
+              <img src="{{ 'tire-stock-1.svg' | asset_url }}" alt="" loading="lazy">
+            </span>
+            <span class="pt-vfinder__tab-label">By Tire Size</span>
+          </button>
+          <button class="pt-vfinder__tab" type="button" data-vf-tab="wheel-specs" role="tab" aria-selected="false">
+            <span class="pt-vfinder__tab-circle" aria-hidden="true">
+              <img src="{{ '4-icons-2.svg' | asset_url }}" alt="" loading="lazy">
+            </span>
+            <span class="pt-vfinder__tab-label">By Wheel Specs</span>
+          </button>
+        </div>
+
+        <div class="pt-vfinder__panel is-active" data-vf-panel="tire-size">
+          <div class="pt-vfinder__row pt-vfinder__row--single pt-vfinder__row--single-action">
+            <input
+              type="text"
+              class="pt-vf-sel pt-vf-size-input"
+              id="pt-vf-ts-input-{{ section.id }}"
+              placeholder="Quick search e.g. 205/55r16"
+              aria-label="Tire size"
+              autocomplete="off"
+            >
+            <button class="pt-vfinder__btn pt-vfinder__btn--search" type="button" data-vf-action="search">Search <span aria-hidden="true">→</span></button>
+            <button class="pt-vfinder__btn pt-vfinder__btn--ghost" type="button" data-vf-action="clear">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-vfinder__panel" data-vf-panel="vehicle">
+        <div class="pt-vfinder__subtabs" role="tablist" aria-label="Vehicle target">
+          <button class="pt-vfinder__subtab is-active" type="button" data-vf-vehicle-mode="tires" role="tab" aria-selected="true">Tires</button>
+          <button class="pt-vfinder__subtab" type="button" data-vf-vehicle-mode="wheels" role="tab" aria-selected="false">Wheels</button>
+        </div>
+        <div class="pt-vfinder__row pt-vfinder__row--vehicle">
+          <select class="pt-vf-sel" id="pt-vf-veh-year-{{ section.id }}">
+            <option value="">Year</option>
+          </select>
+          <select class="pt-vf-sel" id="pt-vf-veh-make-{{ section.id }}" disabled>
+            <option value="">Make</option>
+          </select>
+          <select class="pt-vf-sel" id="pt-vf-veh-model-{{ section.id }}" disabled>
+            <option value="">Model</option>
+          </select>
+          <select class="pt-vf-sel" id="pt-vf-veh-trim-{{ section.id }}" disabled>
+            <option value="">Trim</option>
+          </select>
+          <select class="pt-vf-sel" id="pt-vf-veh-size-{{ section.id }}" disabled>
+            <option value="">Tire Size</option>
+          </select>
+        </div>
+        <div class="pt-vfinder__chips-wrap pt-vfinder__chips-wrap--weather" data-vf-vehicle-chips-wrap>
+          <div class="pt-vfinder__chips" data-vf-chip-group="vehicle-tires">
+            <button type="button" class="pt-vfinder__chip" data-chip="all-season">
+              <span class="pt-vfinder__chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" focusable="false">
+                  <circle cx="6" cy="6" r="2.5"></circle>
+                  <path d="M6 1.2v1.4M6 9.4v1.4M1.2 6h1.4M9.4 6h1.4M2.6 2.6l1 1M8.4 8.4l1 1M9.4 2.6l-1 1M3.6 8.4l-1 1"></path>
+                  <path d="M8.8 11.8h4.1a1.9 1.9 0 0 0 0-3.8 2.7 2.7 0 0 0-5.1-.8 2.2 2.2 0 0 0-2.7 2.1 2.4 2.4 0 0 0 2.3 2.5h1.4"></path>
+                </svg>
+              </span>All-Season
+            </button>
+            <button type="button" class="pt-vfinder__chip" data-chip="all-weather">
+              <span class="pt-vfinder__chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" focusable="false">
+                  <path d="M3.1 10.8h7.1a2 2 0 0 0 .1-4 2.8 2.8 0 0 0-5.4-.8A2.2 2.2 0 0 0 2.6 8a2.7 2.7 0 0 0 .5 2.8z"></path>
+                  <path d="M6 12.4l.7 1.4M8.5 12.4l.7 1.4M11 12.4l.7 1.4"></path>
+                </svg>
+              </span>All-Weather
+            </button>
+            <button type="button" class="pt-vfinder__chip" data-chip="winter">
+              <span class="pt-vfinder__chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" focusable="false">
+                  <path d="M8 2.2v11.6M3 5.1l10 5.8M13 5.1L3 10.9M5.6 3.6L8 2.2l2.4 1.4M5.6 12.4L8 13.8l2.4-1.4M3 7.9l0-2.8M13 7.9l0-2.8"></path>
+                </svg>
+              </span>Winter
+            </button>
+            <button type="button" class="pt-vfinder__chip" data-chip="summer">
+              <span class="pt-vfinder__chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" focusable="false">
+                  <circle cx="8" cy="8" r="2.6"></circle>
+                  <path d="M8 1.4v2M8 12.6v2M1.4 8h2M12.6 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M12.9 3.1l-1.4 1.4M4.5 11.5l-1.4 1.4"></path>
+                </svg>
+              </span>Summer
+            </button>
+          </div>
+          <div class="pt-vfinder__chips is-hidden" data-vf-chip-group="vehicle-wheels">
+            <button type="button" class="pt-vfinder__chip" data-chip="chrome">Chrome</button>
+            <button type="button" class="pt-vfinder__chip" data-chip="gloss-black">Gloss Black</button>
+            <button type="button" class="pt-vfinder__chip" data-chip="matte-black">Matte Black</button>
+            <button type="button" class="pt-vfinder__chip" data-chip="gunmetal">Gunmetal</button>
+            <button type="button" class="pt-vfinder__chip" data-chip="bronze">Bronze</button>
+            <button type="button" class="pt-vfinder__chip" data-chip="silver">Silver</button>
+          </div>
+          <div class="pt-vfinder__actions">
+            <button class="pt-vfinder__btn pt-vfinder__btn--ghost" type="button" data-vf-action="clear">Clear</button>
+            <button class="pt-vfinder__btn pt-vfinder__btn--search" type="button" data-vf-action="search">Search <span aria-hidden="true">→</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-vfinder__panel" data-vf-panel="wheel-specs">
+        <div class="pt-vfinder__row">
+          <select class="pt-vf-sel" id="pt-vf-ws-diameter-{{ section.id }}">
+            <option value="">Diameter</option>
+          </select>
+          <select class="pt-vf-sel" id="pt-vf-ws-width-{{ section.id }}" disabled>
+            <option value="">Width</option>
+          </select>
+          <select class="pt-vf-sel" id="pt-vf-ws-bolt-{{ section.id }}" disabled>
+            <option value="">Bolt Pattern</option>
+          </select>
+          <select class="pt-vf-sel" id="pt-vf-ws-finish-{{ section.id }}" disabled>
+            <option value="">Finish</option>
+          </select>
+        </div>
+        <div class="pt-vfinder__actions">
+          <button class="pt-vfinder__btn pt-vfinder__btn--ghost" type="button" data-vf-action="clear">Clear</button>
+          <button class="pt-vfinder__btn pt-vfinder__btn--search" type="button" data-vf-action="search">Search <span aria-hidden="true">→</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══════════════════════════════════════
+       MAIN: FILTERS + GRID
+  ═══════════════════════════════════════ -->
+  <div class="pt-col__body">
+    {% assign active_filter_count = 0 %}
+    {% for filter in collection.filters %}
+      {% assign active_filter_count = active_filter_count | plus: filter.active_values.size %}
+      {% if filter.type == 'price_range' %}
+        {% if filter.min_value.value != blank or filter.max_value.value != blank %}
+          {% assign active_filter_count = active_filter_count | plus: 1 %}
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+
+    <!-- ── Filter Sidebar ─────────────────── -->
+    <aside class="pt-filters" id="pt-filters-{{ section.id }}" aria-label="Filters">
+
+      <div class="pt-filters__header">
+        <button
+          type="button"
+          class="pt-filters__close-mobile"
+          aria-label="Close filters"
+          onclick="ptToggleMobileFilters('{{ section.id }}')"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+        <span class="pt-filters__title">{{ section.settings.filter_panel_title | default: 'Filters' }}</span>
+        <button class="pt-filters__clear" onclick="ptClearFilters()" id="pt-clear-{{ section.id }}">{{ section.settings.filter_clear_label | default: 'Clear all' }}</button>
+      </div>
+
+      <form class="pt-filters__form" id="pt-filters-form-{{ section.id }}" method="get" action="{{ collection.url }}">
+        <input type="hidden" name="sort_by" value="{{ collection.sort_by | default: collection.default_sort_by }}">
+
+        <div class="pt-active-filters" id="pt-active-{{ section.id }}">
+          {% for filter in collection.filters %}
+            {% if filter.type == 'price_range' %}
+              {% if filter.min_value.value != blank or filter.max_value.value != blank %}
+                <a class="pt-active-chip" href="{{ filter.url_to_remove }}">
+                  {% if filter.min_value.value != blank %}{{ filter.min_value.value | money_without_trailing_zeros }}{% else %}$0{% endif %}
+                  –
+                  {% if filter.max_value.value != blank %}{{ filter.max_value.value | money_without_trailing_zeros }}{% else %}Any{% endif %}
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </a>
+              {% endif %}
+            {% else %}
+              {% for value in filter.active_values %}
+                <a class="pt-active-chip" href="{{ value.url_to_remove }}">
+                  {{ value.label }}
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </a>
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        {% for filter in collection.filters %}
+          {% assign group_id = 'ptfg-native-' | append: forloop.index %}
+          <div class="pt-filter-group" id="{{ group_id }}">
+            <button class="pt-filter-group__head" onclick="ptToggleGroup('{{ group_id }}'); return false;">
+              <span>{{ filter.label }}</span>
+              <svg class="pt-fg-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <div class="pt-filter-group__body">
+              {% case filter.type %}
+                {% when 'boolean', 'list' %}
+                  {% for value in filter.values %}
+                    {% assign value_is_disabled = false %}
+                    {% if value.count == 0 and value.active == false %}
+                      {% assign value_is_disabled = true %}
+                    {% endif %}
+                    <label class="pt-check-item{% if value_is_disabled %} is-disabled{% endif %}">
+                      <input
+                        type="checkbox"
+                        class="pt-check"
+                        name="{{ value.param_name }}"
+                        value="{{ value.value | escape }}"
+                        {% if value.active %}checked{% endif %}
+                        {% if value_is_disabled %}disabled{% endif %}
+                      >
+                      <span class="pt-check-box"></span>
+                      <span class="pt-check-label">{{ value.label }}</span>
+                      <span class="pt-check-count">{{ value.count }}</span>
+                    </label>
+                  {% endfor %}
+                {% when 'price_range' %}
+                  <div class="pt-price-range">
+                    <div class="pt-price-row">
+                      <div class="pt-field-sm">
+                        <span class="pt-label-sm">{{ section.settings.filter_price_min_label | default: 'Min $' }}</span>
+                        <input
+                          type="number"
+                          class="pt-filter-input"
+                          name="{{ filter.min_value.param_name }}"
+                          placeholder="{{ section.settings.filter_price_min_placeholder | default: '0' }}"
+                          min="0"
+                          {% if filter.min_value.value != blank %}value="{{ filter.min_value.value | money_without_currency | replace: ',', '' }}"{% endif %}
+                        >
+                      </div>
+                      <span class="pt-price-dash">—</span>
+                      <div class="pt-field-sm">
+                        <span class="pt-label-sm">{{ section.settings.filter_price_max_label | default: 'Max $' }}</span>
+                        <input
+                          type="number"
+                          class="pt-filter-input"
+                          name="{{ filter.max_value.param_name }}"
+                          placeholder="{{ section.settings.filter_price_max_placeholder | default: 'Any' }}"
+                          min="0"
+                          {% if filter.max_value.value != blank %}value="{{ filter.max_value.value | money_without_currency | replace: ',', '' }}"{% endif %}
+                        >
+                      </div>
+                    </div>
+                  </div>
+              {% endcase %}
+            </div>
+          </div>
+        {% else %}
+          <div class="pt-filter-group open" id="ptfg-native-empty">
+            <button class="pt-filter-group__head" onclick="return false;">
+              <span>No filters available</span>
+            </button>
+          </div>
+        {% endfor %}
+
+        <div class="pt-filters__actions">
+          <button class="pt-filters__apply" type="submit">Apply filters</button>
+        </div>
+      </form>
+
+    </aside><!-- /filters -->
+
+    <!-- ── Product Grid ───────────────────── -->
+    <div class="pt-grid-wrap">
+      <div class="pt-grid-topbar">
+        <div class="pt-grid-topbar__left">
+          <button
+            type="button"
+            class="pt-mobile-filter-btn"
+            id="pt-mobile-filter-btn-{{ section.id }}"
+            onclick="ptToggleMobileFilters('{{ section.id }}')"
+            aria-expanded="false"
+            aria-controls="pt-filters-{{ section.id }}"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>{{ section.settings.filter_panel_title | default: 'Filters' }}</span>
+            {% if active_filter_count > 0 %}
+              <span class="pt-mobile-filter-count">{{ active_filter_count }}</span>
+            {% endif %}
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Active filter chips ── -->
+      {% assign has_active = false %}
+      {% for filter in collection.filters %}
+        {% if filter.active_values.size > 0 %}{% assign has_active = true %}{% endif %}
+        {% if filter.type == 'price_range' %}
+          {% if filter.min_value.value or filter.max_value.value %}{% assign has_active = true %}{% endif %}
+        {% endif %}
+      {% endfor %}
+      {% if has_active %}
+        <div class="pt-active-chips" id="pt-active-filters-{{ section.id }}">
+          {% for filter in collection.filters %}
+            {% for value in filter.active_values %}
+              <a href="{{ value.url_to_remove }}" class="pt-chip-active">
+                {{ value.label }}
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </a>
+            {% endfor %}
+            {% if filter.type == 'price_range' %}
+              {% if filter.min_value.value or filter.max_value.value %}
+                <a href="{{ filter.url_to_remove }}" class="pt-chip-active">
+                  {% if filter.min_value.value %}{{ filter.min_value.value | money }}{% else %}$0{% endif %} – {% if filter.max_value.value %}{{ filter.max_value.value | money }}{% else %}Max{% endif %}
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </a>
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          <a href="{{ collection.url }}" class="pt-chip-active pt-chip-active--clear">
+            Clear all
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </a>
+        </div>
+      {% endif %}
+
+      <div class="pt-grid" id="pt-grid-{{ section.id }}">
+        {% for product in collection.products %}
+          {% assign tire_size    = '' %}
+          {% assign tire_season  = '' %}
+          {% assign season_label = '' %}
+          {% assign season_icon_url = '' %}
+          {% assign show_wholesale_price = false %}
+          {% assign wholesale_price = 0 %}
+          {% assign size_keys_csv = '' %}
+          {% assign season_meta_raw = product.metafields.custom.season_type.value | default: product.metafields.custom.season.value | default: product.metafields.specs.season.value | default: product.metafields.details.season.value | default: product.metafields.custom.season_type | default: product.metafields.custom.season | default: product.metafields.specs.season | default: product.metafields.details.season %}
+          {% for tag in product.tags %}
+            {% if tag contains 'size_' %}
+              {% assign tire_size = tag | remove: 'size_' | replace: '-', '/' %}
+            {% endif %}
+            {% if tire_season == '' %}
+              {% assign season_tag_norm = tag | downcase | strip | replace: '_', '-' | replace: ' ', '-' %}
+              {% if season_tag_norm contains 'all-weather' or season_tag_norm contains 'allweather' %}
+                {% assign tire_season = 'all-weather' %}
+              {% elsif season_tag_norm contains 'all-season' or season_tag_norm contains 'allseason' %}
+                {% assign tire_season = 'all-season' %}
+              {% elsif season_tag_norm contains 'winter' %}
+                {% assign tire_season = 'winter' %}
+              {% elsif season_tag_norm contains 'summer' %}
+                {% assign tire_season = 'summer' %}
+              {% endif %}
+            {% endif %}
+            {% assign tag_norm = tag | downcase | strip | replace: ' ', '' %}
+            {% assign size_key = '' %}
+            {% if tag_norm contains 'size_' %}
+              {% assign size_key = tag_norm | remove: 'size_' | replace: '/', '-' %}
+            {% elsif tag_norm contains '/' and tag_norm contains 'r' %}
+              {% assign size_key = tag_norm | replace: '/', '-' %}
+            {% endif %}
+            {% if size_key != blank %}
+              {% if size_keys_csv == '' %}
+                {% assign size_keys_csv = size_key %}
+              {% else %}
+                {% assign size_keys_csv = size_keys_csv | append: ',' | append: size_key %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% if tire_season == '' and season_meta_raw != blank %}
+            {% assign season_meta = season_meta_raw | downcase | strip | replace: '_', '-' | replace: ' ', '-' %}
+            {% if season_meta contains 'all-weather' or season_meta contains 'allweather' %}
+              {% assign tire_season = 'all-weather' %}
+            {% elsif season_meta contains 'all-season' or season_meta contains 'allseason' %}
+              {% assign tire_season = 'all-season' %}
+            {% elsif season_meta contains 'winter' %}
+              {% assign tire_season = 'winter' %}
+            {% elsif season_meta contains 'summer' %}
+              {% assign tire_season = 'summer' %}
+            {% endif %}
+          {% endif %}
+          {% case tire_season %}
+            {% when 'winter' %}
+              {% assign season_label = 'Winter' %}
+              {% if section.settings.icon_winter != blank %}
+                {% assign season_icon_url = section.settings.icon_winter | image_url: width: 64 %}
+              {% else %}
+                {% assign season_icon_url = 'pt-weather-cloud.svg' | asset_url %}
+              {% endif %}
+            {% when 'summer' %}
+              {% assign season_label = 'Summer' %}
+              {% if section.settings.icon_summer != blank %}
+                {% assign season_icon_url = section.settings.icon_summer | image_url: width: 64 %}
+              {% else %}
+                {% assign season_icon_url = 'pt-weather-sun-hot.svg' | asset_url %}
+              {% endif %}
+            {% when 'all-weather' %}
+              {% assign season_label = 'All-Weather' %}
+              {% if section.settings.icon_all_weather != blank %}
+                {% assign season_icon_url = section.settings.icon_all_weather | image_url: width: 64 %}
+              {% else %}
+                {% assign season_icon_url = 'pt-weather-cloud.svg' | asset_url %}
+              {% endif %}
+            {% when 'all-season' %}
+              {% assign season_label = 'All-Season' %}
+              {% if section.settings.icon_all_season != blank %}
+                {% assign season_icon_url = section.settings.icon_all_season | image_url: width: 64 %}
+              {% else %}
+                {% assign season_icon_url = 'pt-weather-partly-cloudy.svg' | asset_url %}
+              {% endif %}
+          {% endcase %}
+          {% capture wpd_discounted_prices %}{%- render 'wcp_discount', wcp_discount: product, wpd_is_render: 'yes' -%}{% endcapture %}
+          {% if wpd_discounted_prices contains '|' %}
+            {%- capture wholesale_price_raw -%}{%- render 'wcp_render_discount', wpd_discounted_prices: wpd_discounted_prices, price_variable: 'wcp_price' -%}{%- endcapture -%}
+            {% assign wholesale_price = wholesale_price_raw | strip | plus: 0 %}
+            {% if wholesale_price > 0 and wholesale_price < product.price %}
+              {% assign show_wholesale_price = true %}
+            {% endif %}
+          {% endif %}
+
+          <div class="pt-card{% if tire_season != '' %} pt-card--season-{{ tire_season }}{% endif %}" data-tags="{{ product.tags | join: ',' | downcase }}" data-price="{{ product.price }}" data-vendor="{{ product.vendor | handleize }}" data-size-keys="{{ size_keys_csv | escape }}">
+
+            {%- comment -%}── Season banner strip (colored top edge) ──{%- endcomment -%}
+            {% if tire_season != '' and season_label != '' %}
+              <div class="pt-card__season-banner pt-card__season-banner--{{ tire_season }}" aria-label="{{ season_label }} tire">
+                {% case tire_season %}
+                  {% when 'winter' %}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                  {% when 'all-weather' %}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><path d="M6 20.5A4 4 0 0 1 6 13h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  {% when 'all-season' %}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  {% when 'summer' %}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                {% endcase %}
+                <span>{{ season_label }}</span>
+              </div>
+            {% endif %}
+
+            <a href="{{ product.url | within: collection }}" class="pt-card__img-wrap">
+              {% if product.featured_image %}
+                <img
+                  src="{{ product.featured_image | image_url: width: 600 }}"
+                  alt="{{ product.featured_image.alt | default: product.title | escape }}"
+                  width="600"
+                  height="400"
+                  loading="lazy"
+                  class="pt-card__img"
+                />
+              {% else %}
+                <div class="pt-card__img-placeholder">
+                  <svg viewBox="0 0 80 80" fill="none" width="60" height="60">
+                    <circle cx="40" cy="40" r="36" stroke="#e5e5e5" stroke-width="3"/>
+                    <circle cx="40" cy="40" r="22" stroke="#e5e5e5" stroke-width="5"/>
+                    <circle cx="40" cy="40" r="8" fill="#e5e5e5"/>
+                  </svg>
+                </div>
+              {% endif %}
+
+              <div class="pt-card__badges">
+                {% if product.compare_at_price > product.price %}
+                  {% assign discount = product.compare_at_price | minus: product.price | times: 100 | divided_by: product.compare_at_price %}
+                  <span class="pt-badge pt-badge--sale">-{{ discount }}%</span>
+                {% endif %}
+                {% if product.tags contains 'new' %}
+                  <span class="pt-badge pt-badge--new">New</span>
+                {% endif %}
+              </div>
+            </a>
+
+            <div class="pt-card__body">
+              <div class="pt-card__top-row">
+                <span class="pt-card__brand">{{ product.vendor }}</span>
+                {% if tire_size != '' %}
+                  <span class="pt-card__size">{{ tire_size }}</span>
+                {% endif %}
+              </div>
+
+              <a href="{{ product.url | within: collection }}" class="pt-card__title">
+                {{ product.title | replace: product.vendor, '' | strip | truncate: 60 }}
+              </a>
+
+              <div class="pt-card__tag-row">
+                {% for tag in product.tags %}
+                  {% if tag contains 'service_' %}
+                    <span class="pt-tag">{{ tag | remove: 'service_' }}</span>
+                  {% endif %}
+                  {% if tag contains 'stud_' %}
+                    <span class="pt-tag pt-tag--stud">{{ tag | remove: 'stud_' | replace: '-', ' ' | capitalize }}</span>
+                  {% endif %}
+                {% endfor %}
+              </div>
+
+              <div class="pt-card__footer">
+                <div class="pt-card__price-row">
+                  <div class="pt-card__price-wrap">
+                    {% if product.compare_at_price > product.price %}
+                      <span class="pt-price pt-price--sale">{{ product.price | money }}</span>
+                      <span class="pt-price pt-price--compare">{{ product.compare_at_price | money }}</span>
+                    {% else %}
+                      <span class="pt-price">{{ product.price | money }}</span>
+                    {% endif %}
+                    <span class="pt-price-each">/ each</span>
+                  </div>
+                  {% if show_wholesale_price %}
+                    <div class="pt-card__wholesale-wrap">
+                      <span class="pt-price-wholesale-label">Wholesale</span>
+                      <span class="pt-price-wholesale">{{ wholesale_price | money }}</span>
+                    </div>
+                  {% endif %}
+                </div>
+
+                {%- comment -%}── Primary CTA: in stock = red, out of stock = silver (disabled look) ──{%- endcomment -%}
+                {% if product.available %}
+                  <a
+                    class="pt-btn-atc"
+                    href="{{ product.url | within: collection }}"
+                    aria-label="View {{ product.title | escape }}"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+                    <span class="pt-btn-atc__label">View</span>
+                  </a>
+                {% else %}
+                  <span class="pt-btn-atc pt-btn-atc--soldout" aria-label="Out of stock — {{ product.title | escape }}">View</span>
+                {% endif %}
+
+                <a href="{{ product.url | within: collection }}" class="pt-btn-details">
+                  View Details
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="pt-empty">
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" opacity=".2">
+              <circle cx="32" cy="32" r="28" stroke="#cc2222" stroke-width="2.5"/>
+              <circle cx="32" cy="32" r="16" stroke="#cc2222" stroke-width="5"/>
+              <circle cx="32" cy="32" r="6" fill="#cc2222"/>
+            </svg>
+            <p class="pt-empty__title">No tires found</p>
+            <p class="pt-empty__sub">Try adjusting your filters</p>
+            <button class="pt-empty__btn" onclick="ptClearFilters()">Clear Filters</button>
+          </div>
+        {% endfor %}
+      </div>
+
+      {% if paginate.pages > 1 %}
+        <div class="pt-pagination">
+          {% if paginate.previous %}
+            <a href="{{ paginate.previous.url }}" class="pt-page-btn pt-page-btn--prev">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Prev
+            </a>
+          {% endif %}
+          {% for part in paginate.parts %}
+            {% if part.is_link %}
+              <a href="{{ part.url }}" class="pt-page-num">{{ part.title }}</a>
+            {% elsif part.title == paginate.current_page %}
+              <span class="pt-page-num pt-page-num--active">{{ part.title }}</span>
+            {% else %}
+              <span class="pt-page-ellipsis">…</span>
+            {% endif %}
+          {% endfor %}
+          {% if paginate.next %}
+            <a href="{{ paginate.next.url }}" class="pt-page-btn pt-page-btn--next">
+              Next
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="pt-filter-overlay" id="pt-overlay-{{ section.id }}" onclick="ptToggleMobileFilters('{{ section.id }}')"></div>
+</div>
+
+{%- comment -%} Phase 2: Tire comparison tray (select up to 3 tires to compare) {%- endcomment -%}
+{%- render 'compare-tray' -%}
+
+{% endpaginate %}
+
+<style>
+/* Sprint 5: Collection tokens now reference global design-tokens.css */
+#pt-collection-{{ section.id }} {
+  --red: var(--brand, #cc2222);
+  --red-light: #fff0f0;
+  --red-mid: #ffd5d5;
+  --dark: var(--surface-raised, #111111);
+  --text: #1a1a1a;
+  --text-2: #555555;
+  --text-3: var(--text-muted, #999999);
+  --border: #e8e8e8;
+  --bg: #f8f8f8;
+  --white: #ffffff;
+  --panel-bg: var(--surface-raised, #1a1a1a);
+  --panel-bg-2: var(--surface-overlay, #222222);
+  --panel-border: var(--border-default, #2f2f2f);
+  --panel-text: var(--text-primary, #f0f0f0);
+  --panel-text-2: var(--text-secondary, #c7c7c7);
+  --panel-text-3: var(--text-muted, #8e8e8e);
+  --radius: var(--radius-md, 12px);
+  --card-border-red: rgba(204,34,34,0.38);
+  --card-border-red-hover: rgba(204,34,34,0.62);
+  --card-shadow: 0 14px 34px rgba(0,0,0,0.46), 0 4px 14px rgba(0,0,0,0.34);
+  --card-shadow-hover: 0 22px 52px rgba(0,0,0,0.62), 0 10px 26px rgba(0,0,0,0.46);
+}
+#pt-collection-{{ section.id }} * { box-sizing: border-box; font-family: var(--body-font-family); }
+#pt-collection-{{ section.id }} .pt-col__body,
+#pt-collection-{{ section.id }} .pt-vfinder,
+#pt-collection-{{ section.id }} .pt-grid-wrap {
+  width: 100%;
+}
+#pt-collection-{{ section.id }} {
+  font-family: var(--font-body, 'Inter', sans-serif);
+  background: var(--surface-base, #0e0e0e);
+  min-height: 60vh;
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: 0;
+  padding-right: 0;
+}
+.pt-col__header { background: var(--white); border-bottom: 1px solid var(--border); position: relative; }
+.pt-col__header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--red) 0%, #ff4444 50%, var(--red) 100%); }
+.pt-col__header-inner { max-width: 1440px; margin: 0 auto; padding: 24px 24px 20px; }
+@media (min-width: 1024px) { .pt-col__header-inner { padding: 28px 48px 24px; } }
+.pt-breadcrumb { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 12px; color: var(--text-3); }
+.pt-breadcrumb__link { color: var(--text-3); text-decoration: none; transition: color 0.15s; }
+.pt-breadcrumb__link:hover { color: var(--red); }
+.pt-breadcrumb__sep { color: var(--border); }
+.pt-breadcrumb__current { color: var(--text-2); font-weight: 500; }
+.pt-col__header-content { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pt-col__title { font-family: 'Space Grotesk', sans-serif; font-size: clamp(22px, 4vw, 34px); font-weight: 700; color: var(--dark); letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 6px; }
+.pt-col__desc { font-size: 14px; color: var(--text-2); margin: 0; max-width: 560px; }
+.pt-col__meta { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.pt-col__count { font-size: 13px; color: var(--text-3); font-weight: 500; white-space: nowrap; }
+.pt-sort-wrap { display: flex; align-items: center; gap: 8px; }
+.pt-sort-label { font-size: 12px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; }
+.pt-sort-select { appearance: none; background: var(--white); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; padding: 8px 28px 8px 12px; outline: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; transition: border-color 0.2s; }
+.pt-sort-select:focus { border-color: var(--red); }
+.pt-vfinder {
+  position: relative;
+  background: var(--white);
+  padding: 20px 24px;
+}
+.pt-vfinder::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #cc1a1a 40%, #ff3333 60%, transparent);
+}
+@media (min-width: 1024px) { .pt-vfinder { padding: 24px 48px; } }
+.pt-vfinder__inner { width: 100%; margin: 0 auto; margin-left: 10px; display: flex; flex-direction: column; gap: 14px; }
+.pt-vfinder__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  margin-bottom: 2px;
+}
+.pt-vfinder__heading {
+  margin: 0;
+  font-family: var(--body-font-family);
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.06;
+  color: var(--red);
+  text-transform: uppercase;
+}
+.pt-vfinder__subheading {
+  margin: 0;
+  font-family: var(--body-font-family);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.pt-vfinder__tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.pt-vfinder__tire-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+.pt-vfinder__tire-toolbar .pt-vfinder__tabs { flex: 0 0 auto; }
+.pt-vfinder__tire-toolbar > [data-vf-panel="tire-size"] {
+  flex: 1 1 auto;
+  margin: 0;
+}
+.pt-vfinder__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--red);
+  background: var(--red-light);
+  color: #111111;
+  border-radius: 999px;
+  padding: 5px 12px 5px 7px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.pt-vfinder__tab-circle {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.78);
+  border: 1px solid rgba(0,0,0,0.18);
+  overflow: visible;
+}
+.pt-vfinder__tab-circle img {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  right: -4px;
+  bottom: -4px;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.28));
+}
+.pt-vfinder__tab-label { white-space: nowrap; }
+.pt-vfinder__tab.is-active {
+  background: var(--red-light);
+  border-color: var(--red);
+  color: #111111;
+  box-shadow: 0 0 0 2px rgba(204,34,34,0.15) inset;
+}
+.pt-vfinder__panel {
+  display: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.pt-vfinder__panel.is-active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+.pt-vfinder__subtabs { display: inline-flex; gap: 8px; margin-bottom: 10px; }
+.pt-vfinder__subtab {
+  border: 1px solid rgba(255,255,255,0.1);
+  background: #111111;
+  color: rgba(255,255,255,0.65);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pt-vfinder__subtab.is-active {
+  background: rgba(200,20,20,0.12);
+  border-color: rgba(200,20,20,0.4);
+  color: #cc2222;
+}
+.pt-vfinder__row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.pt-vfinder__row--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pt-vfinder__row--single-action {
+  grid-template-columns: minmax(0, 360px) auto auto;
+  align-items: center;
+  justify-content: start;
+}
+.pt-vfinder__row--vehicle {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.pt-vfinder__row--vehicle .pt-vf-sel {
+  font-size: 12px;
+  padding: 5px 26px 5px 9px;
+  min-height: 30px;
+  color: var(--red);
+  border-color: rgba(204,34,34,0.65);
+  border-width: 1.5px;
+}
+.pt-vf-sel {
+  appearance: none;
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  color: #d0d0d0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 30px 10px 12px;
+  outline: none;
+  cursor: pointer;
+  min-width: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.pt-vf-sel:focus {
+  border-color: rgba(200,20,20,0.5);
+  box-shadow: 0 0 0 3px rgba(200,20,20,0.1);
+}
+.pt-vf-sel:disabled { opacity: 0.45; cursor: not-allowed; }
+.pt-vf-sel option { background: #1a1a1a; color: #fff; }
+.pt-vfinder__size-preview {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
+}
+.pt-vf-size-input {
+  width: 100%;
+  max-width: 380px;
+  text-transform: uppercase;
+}
+[data-vf-panel="tire-size"] .pt-vfinder__row--single-action .pt-vf-size-input {
+  max-width: 360px;
+  background: var(--red-light);
+  border-color: var(--red);
+  color: #111111;
+  font-weight: 700;
+  caret-color: #111111;
+}
+[data-vf-panel="tire-size"] .pt-vfinder__row--single-action .pt-vf-size-input::placeholder {
+  color: rgba(204,34,34,0.7);
+}
+[data-vf-panel="tire-size"] .pt-vfinder__row--single-action .pt-vfinder__btn--search {
+  min-width: 94px;
+  white-space: nowrap;
+}
+.pt-vfinder__chips-wrap { margin-top: 12px; }
+.pt-vfinder__chips-wrap--weather {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 8px;
+  z-index: 35;
+  background: #0a0a0a;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px;
+}
+.pt-vfinder__chips {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.pt-vfinder__chips::-webkit-scrollbar { display: none; }
+.pt-vfinder__chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: #1a1a1a;
+  color: rgba(255,255,255,0.65);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pt-vfinder__chip-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.pt-vfinder__chip-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pt-vfinder__chip.is-active {
+  border-color: #cc2222;
+  background: #cc2222;
+  color: #ffffff;
+}
+.pt-vfinder__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 0;
+}
+.pt-vfinder__btn {
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.pt-vfinder__btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.6);
+}
+.pt-vfinder__btn--ghost:hover {
+  border-color: rgba(255,255,255,0.9);
+  color: #fff;
+}
+.pt-vfinder__btn--search {
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, #cc1a1a, #991111);
+  box-shadow: 0 4px 20px rgba(200,20,20,0.35);
+}
+.pt-vfinder__btn--search:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(200,20,20,0.55);
+}
+.is-hidden { display: none !important; }
+@media (max-width: 899px) {
+  .pt-vfinder__tire-toolbar { display: block; }
+  .pt-vfinder__row { grid-template-columns: 1fr; }
+  .pt-vfinder__row--single-action { grid-template-columns: 1fr; }
+  .pt-vfinder__row--vehicle { gap: 8px; }
+  .pt-vfinder__row--vehicle .pt-vf-sel {
+    font-size: 11px;
+    padding: 4px 24px 4px 8px;
+    min-height: 27px;
+  }
+  .pt-vf-sel.is-mobile-hidden { display: none; }
+  .pt-vfinder__actions { justify-content: stretch; }
+  .pt-vfinder__btn { width: 100%; }
+  .pt-vfinder__heading { font-size: 24px; }
+  .pt-vfinder__subheading { font-size: 13px; }
+  .pt-vfinder__chips-wrap--weather {
+    display: block;
+    top: 6px;
+    padding: 8px;
+  }
+  .pt-vfinder__chips-wrap--weather .pt-vfinder__actions {
+    margin-top: 8px;
+  }
+}
+.pt-col__body { max-width: none; width: 100%; margin: 0; padding: 28px 24px; display: grid; grid-template-columns: 1fr; gap: 24px; background: var(--white); }
+@media (min-width: 900px) { .pt-col__body { grid-template-columns: 400px 1fr; padding: 32px 48px; align-items: start; } }
+.pt-grid-wrap {
+  margin-top: 14px;
+  margin-bottom: 14px;
+  padding-top: 0;
+  align-self: start;
+  width: 100%;
+}
+/* ── Filter Sidebar ── */
+.pt-filters {
+  margin-left: 20px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+  background: rgba(255,255,255,0.62);
+  border: 1.5px solid rgba(0,0,0,0.22);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: sticky;
+  top: 20px;
+  align-self: start;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.14);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+}
+@media (max-width: 899px) {
+  .pt-filters { position: fixed; top: 0; left: 0; bottom: 0; width: min(360px, 92vw); border-radius: 0; z-index: 1000; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); overflow-y: auto; border: none; box-shadow: 4px 0 40px rgba(0,0,0,0.2); }
+  .pt-filters { margin-left: 0; }
+  .pt-filters.open { transform: translateX(0); }
+  .pt-filter-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; display: none; backdrop-filter: blur(2px); }
+  .pt-filter-overlay.show { display: block; }
+}
+.pt-filters__close-mobile {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.85);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.pt-filters__close-mobile:hover { border-color: var(--red); color: var(--red); }
+@media (max-width: 899px) {
+  .pt-filters__close-mobile { display: inline-flex; }
+}
+.pt-filters__header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px 18px;
+  background: rgba(255,255,255,0.42);
+  border-bottom: 1px solid rgba(204,34,34,0.24);
+}
+@media (max-width: 899px) {
+  .pt-filters__title { flex: 1; min-width: 0; }
+}
+.pt-filters__title { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red); display: flex; align-items: center; gap: 7px; }
+.pt-filters__title::before { content: ''; display: block; width: 3px; height: 14px; background: var(--red); border-radius: 2px; }
+.pt-filters__clear { font-size: 10px; font-weight: 700; color: var(--red); background: rgba(255,255,255,0.56); border: 1px solid rgba(204,34,34,0.3); border-radius: 6px; cursor: pointer; padding: 4px 8px; letter-spacing: 0.06em; text-transform: uppercase; transition: all 0.15s; }
+.pt-filters__clear:hover { color: #fff; border-color: var(--red); background: var(--red); }
+.pt-filters__form { display: block; }
+.pt-active-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 18px 0; }
+.pt-active-filters:empty { display: none; }
+.pt-active-chip { display: inline-flex; align-items: center; gap: 5px; background: var(--red-light); border: 1px solid var(--red-mid); border-radius: 20px; padding: 3px 8px 3px 10px; font-size: 11px; font-weight: 600; color: var(--red); cursor: pointer; transition: all 0.15s; text-decoration: none; }
+.pt-active-chip:hover { background: var(--red-mid); }
+.pt-active-chip svg { opacity: 0.6; }
+.pt-filter-group { border-bottom: 1px solid rgba(0,0,0,0.08); }
+.pt-filter-group__head { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: var(--text); text-align: left; transition: color 0.15s; }
+.pt-filter-group__head:hover { color: var(--red); }
+.pt-fg-arrow { transition: transform 0.25s ease; flex-shrink: 0; color: var(--text-3); }
+.pt-filter-group.open .pt-fg-arrow { transform: rotate(180deg); }
+.pt-filter-group.open .pt-filter-group__head { color: var(--red); }
+.pt-filter-group__body { max-height: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1), padding 0.3s ease; padding: 0 18px; }
+.pt-filter-group.open .pt-filter-group__body { max-height: 520px; padding: 4px 18px 16px; overflow-y: auto; }
+.pt-size-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.pt-price-row { display: flex; align-items: flex-end; gap: 8px; }
+.pt-price-dash { font-size: 14px; color: var(--text-3); margin-bottom: 8px; }
+.pt-field-sm { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.pt-label-sm { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+.pt-filter-sel, .pt-filter-input { appearance: none; background: rgba(255,255,255,0.68); border: 1px solid rgba(0,0,0,0.14); border-radius: 8px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; padding: 7px 10px; width: 100%; outline: none; transition: border-color 0.2s; }
+.pt-filter-sel { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23aaa' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; padding-right: 24px; }
+.pt-filter-sel:focus, .pt-filter-input:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(200,20,20,0.06); }
+.pt-check-item { display: flex; align-items: center; gap: 9px; padding: 5px 0; cursor: pointer; }
+.pt-check { display: none; }
+.pt-check-box { width: 16px; height: 16px; border: 1.5px solid rgba(0,0,0,0.22); border-radius: 4px; background: rgba(255,255,255,0.72); flex-shrink: 0; transition: all 0.15s; position: relative; }
+.pt-check:checked + .pt-check-box { background: var(--red); border-color: var(--red); }
+.pt-check:checked + .pt-check-box::after { content: ''; position: absolute; top: 2px; left: 4px; width: 5px; height: 8px; border: 1.5px solid white; border-top: none; border-left: none; transform: rotate(45deg); }
+.pt-check-icon { font-size: 14px; }
+.pt-check-label { font-size: 12.5px; color: var(--text-2); font-weight: 500; }
+.pt-check-item:hover .pt-check-box { border-color: var(--red); }
+.pt-check-item.is-disabled { opacity: 0.45; cursor: not-allowed; }
+.pt-check-count { margin-left: auto; font-size: 11px; color: var(--text-3); }
+.pt-price-track { height: 3px; background: var(--border); border-radius: 2px; margin-top: 10px; position: relative; }
+.pt-price-fill { position: absolute; top: 0; bottom: 0; left: 0; right: 0; background: var(--red); border-radius: 2px; opacity: 0.5; }
+.pt-filters__actions { padding: 14px 18px 18px; border-top: 1px solid rgba(0,0,0,0.08); }
+.pt-filters__apply {
+  width: 100%; background: var(--red); border: none; border-radius: 10px;
+  color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 13px 12px; cursor: pointer;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 3px 10px rgba(204,18,18,0.3);
+}
+.pt-filters__apply:hover { background: #b81c1c; transform: translateY(-1px); box-shadow: 0 5px 16px rgba(204,18,18,0.4); }
+.pt-filters__apply:active { transform: translateY(0); }
+/* ── Grid Top Bar (mobile: opens filter drawer) ── */
+.pt-grid-topbar { display: none; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.pt-grid-topbar__left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 899px) { .pt-grid-topbar { display: flex; } }
+.pt-mobile-filter-btn {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.pt-mobile-filter-btn:hover { border-color: var(--red); color: var(--red); }
+@media (max-width: 899px) { .pt-mobile-filter-btn { display: inline-flex; } }
+.pt-mobile-filter-count { background: var(--red); color: white; font-size: 10px; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+.pt-grid-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.pt-grid-result-count { font-size: 13px; color: var(--text-3); font-weight: 600; }
+
+/* ── Active Filter Chips ── */
+.pt-active-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.pt-chip-active { display: inline-flex; align-items: center; gap: 5px; background: #fff0f0; border: 1px solid rgba(204,34,34,0.25); border-radius: 20px; color: var(--red); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; padding: 4px 10px; text-decoration: none; transition: all 0.15s; }
+.pt-chip-active:hover { background: var(--red); color: #fff; border-color: var(--red); }
+.pt-chip-active--clear { background: #f5f5f5; border-color: #ddd; color: var(--text-2); }
+.pt-chip-active--clear:hover { background: var(--dark); color: #fff; border-color: var(--dark); }
+.pt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; width: 100%; }
+@media (min-width: 640px) { .pt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } }
+@media (min-width: 900px) { .pt-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .pt-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* ── Product Card ── */
+.pt-card { background: var(--white); border: 1px solid var(--card-border-red); border-radius: 16px; overflow: hidden; box-shadow: var(--card-shadow); transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; display: flex; flex-direction: column; }
+.pt-card:hover { transform: translateY(-8px); box-shadow: var(--card-shadow-hover); border-color: var(--card-border-red-hover); }
+.pt-card.hidden { display: none; }
+.pt-card--season-winter {
+  border-color: rgba(26,110,245,0.45);
+}
+.pt-card--season-all-season {
+  border-color: rgba(224,117,0,0.45);
+}
+.pt-card--season-all-weather {
+  border-color: rgba(204,34,34,0.45);
+}
+.pt-card--season-summer {
+  border-color: rgba(212,170,0,0.45);
+}
+.pt-card--season-winter:hover { border-color: rgba(26,110,245,0.7); }
+.pt-card--season-all-season:hover { border-color: rgba(224,117,0,0.7); }
+.pt-card--season-all-weather:hover { border-color: rgba(204,34,34,0.7); }
+.pt-card--season-summer:hover { border-color: rgba(212,170,0,0.7); }
+
+/* ── Season Banner (colored strip at card top) ── */
+.pt-card__season-banner {
+  display: flex; align-items: center; gap: 3px;
+  padding: 5px 12px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  background: #d3d3d3;
+  color: #111111;
+}
+.pt-card__season-banner--winter {
+  background: #d3d3d3;
+  color: #1a6ef5;
+}
+.pt-card__season-banner--all-weather {
+  background: #d3d3d3;
+  color: #cc2222;
+}
+.pt-card__season-banner--all-season {
+  background: #d3d3d3;
+  color: #e07500;
+}
+.pt-card__season-banner--summer {
+  background: #d3d3d3;
+  color: #d4aa00;
+}
+@media (min-width: 900px) {
+  .pt-card__season-banner--all-season svg {
+    transform: translateY(1.5px);
+  }
+  .pt-card__season-banner--all-weather svg {
+    margin-right: -1px;
+  }
+}
+@media (max-width: 640px) {
+  .pt-card__season-banner {
+    justify-content: flex-end;
+    text-align: right;
+  }
+  .pt-card__season-banner--all-season svg,
+  .pt-card__season-banner--all-weather svg {
+    order: 2;
+    margin-left: 2px;
+    margin-right: 0;
+  }
+  .pt-card__season-banner--all-season span,
+  .pt-card__season-banner--all-weather span {
+    order: 1;
+  }
+}
+
+/* ── Card Image ── */
+.pt-card__img-wrap { display: block; position: relative; aspect-ratio: 4/3; background: #fafafa; overflow: hidden; text-decoration: none; }
+.pt-card__img-wrap::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: #e00b0b;
+  transform: scaleX(0); transform-origin: left center; transition: transform 0.3s ease;
+}
+.pt-card:hover .pt-card__img-wrap::after { transform: scaleX(1); }
+.pt-card__img { width: 100%; height: 100%; object-fit: contain; padding: 10px; transition: transform 0.4s ease; }
+.pt-card:hover .pt-card__img { transform: scale(1.04); }
+.pt-card__img-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.pt-card__badges { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 4px; }
+.pt-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 20px; font-family: 'Space Grotesk', sans-serif; }
+.pt-badge--sale { background: var(--red); color: #fff; }
+.pt-badge--new { background: #111; color: #fff; }
+
+/* ── Card Body ── */
+.pt-card__body { padding: 12px 13px 13px; display: flex; flex-direction: column; flex: 1; }
+.pt-card__top-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.pt-card__brand { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--red); }
+.pt-card__size { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; color: var(--white); background: var(--dark); padding: 2px 8px; border-radius: 20px; letter-spacing: 0.04em; }
+.pt-card__title { font-size: 13px; font-weight: 600; color: var(--dark); text-decoration: none; line-height: 1.4; margin-bottom: 8px; display: block; flex: 1; transition: color 0.15s; }
+.pt-card__title:hover { color: var(--red); }
+.pt-card__tag-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+.pt-tag { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: #f0f0f0; color: #666; }
+.pt-tag--stud { background: #fff3e0; color: #b06000; }
+
+/* ── Card Footer (price + ATC) ── */
+.pt-card__footer { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); padding-top: 12px; margin-top: auto; }
+.pt-card__price-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pt-card__price-wrap { display: flex; align-items: baseline; gap: 5px; }
+.pt-price { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; color: var(--dark); }
+.pt-price--sale { color: var(--red); }
+.pt-price--compare { font-size: 12px; font-weight: 500; color: var(--text-3); text-decoration: line-through; }
+.pt-price-each { font-size: 11px; color: var(--text-3); font-weight: 400; }
+.pt-card__wholesale-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.pt-price-wholesale-label { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.pt-price-wholesale { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; color: var(--red); }
+
+/* ── Add to Cart Button ── */
+.pt-btn-atc {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%;
+  background: var(--red); color: #fff;
+  font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  border: none; border-radius: 10px; padding: 11px 16px; cursor: pointer;
+  text-decoration: none; transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(204,18,18,0.25);
+}
+.pt-btn-atc:hover { background: #b81c1c; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(204,18,18,0.35); }
+.pt-btn-atc:active { transform: translateY(0); }
+/* Out of stock: silver / neutral — not the red in-stock CTA */
+.pt-btn-atc--soldout {
+  display: flex; align-items: center; justify-content: center;
+  background: #c8c8c8; color: #5a5a5a;
+  box-shadow: none; cursor: default; pointer-events: none;
+  user-select: none;
+}
+.pt-btn-atc--soldout:hover,
+.pt-btn-atc--soldout:active { background: #c8c8c8; color: #5a5a5a; transform: none; box-shadow: none; }
+.pt-btn-atc.pt-atc--loading { background: #b81c1c; pointer-events: none; opacity: 0.8; }
+.pt-btn-atc.pt-atc--added { background: #1a9c5a; box-shadow: 0 2px 8px rgba(26,156,90,0.3); pointer-events: none; }
+.pt-btn-atc.pt-atc--added .pt-btn-atc__label::before { content: '✓ '; }
+
+/* ── View Details link ── */
+.pt-btn-details {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  font-size: 11px; font-weight: 600; color: var(--text-3); text-decoration: none;
+  letter-spacing: 0.04em; transition: color 0.15s;
+}
+.pt-btn-details:hover { color: var(--red); }
+.pt-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 12px; text-align: center; }
+.pt-empty__title { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; color: var(--dark); margin: 0; }
+.pt-empty__sub { font-size: 14px; color: var(--text-3); margin: 0; }
+.pt-empty__btn { background: var(--red); border: none; border-radius: 9px; color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; padding: 10px 22px; cursor: pointer; margin-top: 8px; transition: background 0.2s; }
+.pt-empty__btn:hover { background: #b81c1c; }
+.pt-pagination { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 40px; flex-wrap: wrap; }
+.pt-page-btn, .pt-page-num { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 9px; font-size: 13px; font-weight: 600; text-decoration: none; color: var(--text); border: 1px solid var(--border); background: var(--white); transition: all 0.2s; }
+.pt-page-btn:hover, .pt-page-num:hover { border-color: var(--red); color: var(--red); }
+.pt-page-num--active { background: var(--red); border-color: var(--red); color: #fff !important; }
+.pt-page-ellipsis { padding: 8px 6px; color: var(--text-3); font-size: 14px; }
+</style>
+
+<script>
+(function(){
+  const SID = '{{ section.id }}';
+  const COLLECTION_BASE_URL = {{ routes.collections_url | append: '/' | append: collection.handle | json }};
+  const yearUrls = {
+    '2001': "{{ '2001 - tire by vehicle data base.json' | asset_url }}",
+    '2002': "{{ '2002 - tire by vehicle data base.json' | asset_url }}",
+    '2003': "{{ '2003 - tire by vehicle data base.json' | asset_url }}",
+    '2004': "{{ '2004 - tire by vehicle data base.json' | asset_url }}",
+    '2005': "{{ '2005 - tire by vehicle data base.json' | asset_url }}",
+    '2006': "{{ '2006 - tire by vehicle data base.json' | asset_url }}",
+    '2007': "{{ '2007 - tire by vehicle data base.json' | asset_url }}",
+    '2008': "{{ 'pt-vehicle-2008.json' | asset_url }}",
+    '2009': "{{ 'pt-vehicle-2009.json' | asset_url }}",
+    '2010': "{{ 'pt-vehicle-2010.json' | asset_url }}",
+    '2011': "{{ 'pt-vehicle-2011.json' | asset_url }}",
+    '2012': "{{ 'pt-vehicle-2012.json' | asset_url }}",
+    '2013': "{{ 'pt-vehicle-2013.json' | asset_url }}",
+    '2014': "{{ 'pt-vehicle-2014.json' | asset_url }}",
+    '2015': "{{ 'pt-vehicle-2015.json' | asset_url }}",
+    '2016': "{{ 'pt-vehicle-2016.json' | asset_url }}",
+    '2017': "{{ 'pt-vehicle-2017.json' | asset_url }}",
+    '2018': "{{ 'pt-vehicle-2018.json' | asset_url }}",
+    '2019': "{{ 'pt-vehicle-2019.json' | asset_url }}",
+    '2020': "{{ 'pt-vehicle-2020.json' | asset_url }}",
+    '2021': "{{ 'pt-vehicle-2021.json' | asset_url }}",
+    '2022': "{{ 'pt-vehicle-2022.json' | asset_url }}",
+    '2023': "{{ 'pt-vehicle-2023.json' | asset_url }}",
+    '2024': "{{ 'pt-vehicle-2024.json' | asset_url }}",
+    '2025': "{{ 'pt-vehicle-2025.json' | asset_url }}",
+    '2026': "{{ 'pt-vehicle-2026.json' | asset_url }}"
+  };
+  const availableVehicleYears = Object.keys(yearUrls).sort(function(a, b){ return Number(b) - Number(a); });
+  const vehicleYearCache = {};
+  const WIDTHS   = ['155','165','175','185','195','205','215','225','235','245','255','265','275','285','295','305','315'];
+  const PROFILES = ['30','35','40','45','50','55','60','65','70','75','80'];
+  const RIMS     = ['14','15','16','17','18','19','20','21','22','24'];
+  const BOLT_PATTERNS = ['4x100','4x108','4x114.3','5x100','5x108','5x110','5x112','5x114.3','5x120','5x127','5x130','6x135','6x139.7'];
+  const WHEEL_FINISHES = ['Chrome','Gloss Black','Matte Black','Gunmetal','Bronze','Silver'];
+  function pop(id,arr){ const s=document.getElementById(id);if(!s)return;arr.forEach(v=>s.add(new Option(v,v))); }
+  pop('ptf-sz-w-'+SID, WIDTHS); pop('ptf-sz-p-'+SID, PROFILES); pop('ptf-sz-r-'+SID, RIMS);
+  const finder = document.getElementById('pt-vfinder-' + SID);
+  const vfState = {
+    tab: 'tire-size',
+    vehicleMode: 'tires',
+    chips: {
+      'vehicle-tires': new Set(),
+      'vehicle-wheels': new Set(),
+      'tire-size': new Set()
+    }
+  };
+  function fillSelect(selectEl, values, placeholder) {
+    if (!selectEl) return;
+    selectEl.innerHTML = '';
+    selectEl.add(new Option(placeholder, ''));
+    values.forEach(function(v){ selectEl.add(new Option(v, v)); });
+  }
+  function resetSelect(selectEl, placeholder, disabled) {
+    if (!selectEl) return;
+    fillSelect(selectEl, [], placeholder);
+    selectEl.disabled = !!disabled;
+  }
+  function normalizeToken(value){
+    return String(value || '')
+      .toLowerCase()
+      .replace(/&amp;/g, 'and')
+      .replace(/&/g, 'and')
+      .replace(/[^a-z0-9]+/g, '')
+      .trim();
+  }
+  function getObjectByLooseKey(obj, key){
+    if (!obj || typeof obj !== 'object') return null;
+    if (Object.prototype.hasOwnProperty.call(obj, key)) return obj[key];
+    const wanted = normalizeToken(key);
+    const keys = Object.keys(obj);
+    for (let i = 0; i < keys.length; i++) {
+      if (normalizeToken(keys[i]) === wanted) return obj[keys[i]];
+    }
+    return null;
+  }
+  function normalizeSizeString(value){
+    return String(value || '').trim().toUpperCase();
+  }
+  function parseTireSizeInput(value){
+    const raw = String(value || '').trim().toUpperCase();
+    if (!raw) return null;
+    const compact = raw.replace(/\s+/g, '');
+
+    let match = compact.match(/^(\d{3})\/(\d{2})(?:Z?R)(\d{2})$/i);
+    if (match) {
+      return { width: match[1], profile: match[2], rim: match[3] };
+    }
+
+    match = compact.match(/^(\d{3})(\d{2})(\d{2})$/);
+    if (match) {
+      return { width: match[1], profile: match[2], rim: match[3] };
+    }
+
+    return null;
+  }
+  function extractTireSizeFromEntry(entry){
+    if (entry === null || entry === undefined) return '';
+    if (typeof entry === 'string' || typeof entry === 'number') return normalizeSizeString(entry);
+    if (typeof entry === 'object') {
+      if (entry.tireSize) return normalizeSizeString(entry.tireSize);
+      if (entry.size) return normalizeSizeString(entry.size);
+      if (entry.tire_size) return normalizeSizeString(entry.tire_size);
+      if (entry.section_width && entry.aspect_ratio && entry.rim_size) {
+        return normalizeSizeString(String(entry.section_width) + '/' + String(entry.aspect_ratio) + 'R' + String(entry.rim_size));
+      }
+    }
+    return '';
+  }
+  function getYearDataFromCache(year){
+    const key = String(year || '').trim();
+    return key ? (vehicleYearCache[key] || null) : null;
+  }
+  function getMakesForYear(year){
+    const yearData = getYearDataFromCache(year);
+    if (!yearData) return [];
+    if (Array.isArray(yearData.makes) && yearData.makes.length) {
+      return yearData.makes.slice().sort();
+    }
+    const models = yearData && yearData.models ? yearData.models : {};
+    return Object.keys(models || {}).sort();
+  }
+  function getModelsForSelection(year, make){
+    const yearData = getYearDataFromCache(year);
+    if (!yearData || !make) return [];
+    const models = yearData && yearData.models ? yearData.models : {};
+    const makeMap = getObjectByLooseKey(models, make) || {};
+    return Object.keys(makeMap || {}).sort();
+  }
+  function getTrimsForSelection(year, make, model){
+    const yearData = getYearDataFromCache(year);
+    if (!yearData || !make || !model) return [];
+    const models = yearData && yearData.models ? yearData.models : {};
+    const makeMap = getObjectByLooseKey(models, make) || {};
+    const modelMap = getObjectByLooseKey(makeMap, model) || {};
+    return Object.keys(modelMap || {}).sort();
+  }
+  function extractVehicleSizes(yearData, state){
+    const models = yearData && yearData.models ? yearData.models : {};
+    const makeMap = getObjectByLooseKey(models, state.make) || {};
+    const modelMap = getObjectByLooseKey(makeMap, state.model) || {};
+    const out = [];
+    const seen = {};
+    if (state.trim) {
+      let byTrim = getObjectByLooseKey(modelMap, state.trim) || [];
+      if (!Array.isArray(byTrim)) byTrim = [];
+      byTrim.forEach(function(item){
+        const normalized = extractTireSizeFromEntry(item);
+        if (!normalized || seen[normalized]) return;
+        seen[normalized] = true;
+        out.push(normalized);
+      });
+      if (out.length) return out;
+    }
+    Object.keys(modelMap || {}).forEach(function(trimKey){
+      const trimSizes = modelMap[trimKey];
+      if (!Array.isArray(trimSizes)) return;
+      trimSizes.forEach(function(item){
+        const normalized = extractTireSizeFromEntry(item);
+        if (!normalized || seen[normalized]) return;
+        seen[normalized] = true;
+        out.push(normalized);
+      });
+    });
+    return out;
+  }
+  function loadYearVehicleData(year){
+    const yearKey = String(year || '').trim();
+    if (!yearKey || !yearUrls[yearKey]) return Promise.resolve(null);
+    if (vehicleYearCache[yearKey]) return Promise.resolve(vehicleYearCache[yearKey]);
+    return fetch(yearUrls[yearKey], { credentials: 'same-origin' })
+      .then(function(res){ return (res && res.ok) ? res.json() : null; })
+      .then(function(data){
+        vehicleYearCache[yearKey] = data || null;
+        return vehicleYearCache[yearKey];
+      })
+      .catch(function(){ return null; });
+  }
+  if (finder) {
+    const tabs = finder.querySelectorAll('[data-vf-tab]');
+    const panels = finder.querySelectorAll('[data-vf-panel]');
+    const subtabs = finder.querySelectorAll('[data-vf-vehicle-mode]');
+    const vehicleChipsWrap = finder.querySelector('[data-vf-vehicle-chips-wrap]');
+    const vehicleChipTires = finder.querySelector('[data-vf-chip-group="vehicle-tires"]');
+    const vehicleChipWheels = finder.querySelector('[data-vf-chip-group="vehicle-wheels"]');
+    const vfVehYear = document.getElementById('pt-vf-veh-year-' + SID);
+    const vfVehMake = document.getElementById('pt-vf-veh-make-' + SID);
+    const vfVehModel = document.getElementById('pt-vf-veh-model-' + SID);
+    const vfVehTrim = document.getElementById('pt-vf-veh-trim-' + SID);
+    const vfVehSize = document.getElementById('pt-vf-veh-size-' + SID);
+    const vfTsInput = document.getElementById('pt-vf-ts-input-' + SID);
+    const vfSizePreview = document.getElementById('pt-vf-size-preview-' + SID);
+    const vfWsDiameter = document.getElementById('pt-vf-ws-diameter-' + SID);
+    const vfWsWidth = document.getElementById('pt-vf-ws-width-' + SID);
+    const vfWsBolt = document.getElementById('pt-vf-ws-bolt-' + SID);
+    const vfWsFinish = document.getElementById('pt-vf-ws-finish-' + SID);
+
+    if (vfVehYear) fillSelect(vfVehYear, availableVehicleYears, 'Year');
+    if (vfVehMake) resetSelect(vfVehMake, 'Make', true);
+    if (vfVehModel) resetSelect(vfVehModel, 'Model', true);
+    if (vfVehTrim) resetSelect(vfVehTrim, 'Trim', true);
+    if (vfVehSize) resetSelect(vfVehSize, 'Tire Size', true);
+
+    if (vfWsDiameter) fillSelect(vfWsDiameter, RIMS, 'Diameter');
+    if (vfWsWidth) resetSelect(vfWsWidth, 'Width', true);
+    if (vfWsBolt) resetSelect(vfWsBolt, 'Bolt Pattern', true);
+    if (vfWsFinish) resetSelect(vfWsFinish, 'Finish', true);
+
+    function updateSizePreview() {
+      if (!vfSizePreview) return;
+      const parsed = parseTireSizeInput(vfTsInput && vfTsInput.value ? vfTsInput.value : '');
+      if (!parsed) {
+        vfSizePreview.textContent = 'Enter your tire size';
+        return;
+      }
+      vfSizePreview.textContent = parsed.width + '/' + parsed.profile + 'R' + parsed.rim;
+    }
+    updateSizePreview();
+
+    function updateVehicleChipVisibility() {
+      if (vehicleChipsWrap) vehicleChipsWrap.classList.remove('is-hidden');
+    }
+    function getVehicleSizeOptions() {
+      if (!(vfVehYear && vfVehYear.value && vfVehMake && vfVehMake.value && vfVehModel && vfVehModel.value && vfVehTrim && vfVehTrim.value)) return [];
+      const yearData = getYearDataFromCache(vfVehYear.value);
+      if (!yearData) return [];
+      return extractVehicleSizes(yearData, {
+        make: vfVehMake.value,
+        model: vfVehModel.value,
+        trim: vfVehTrim.value
+      });
+    }
+    function refreshVehicleSizes() {
+      if (!vfVehSize) return;
+      const sizes = getVehicleSizeOptions();
+      fillSelect(vfVehSize, sizes, 'Tire Size');
+      if (!sizes.length) {
+        vfVehSize.disabled = true;
+        updateVehicleMobileProgressive();
+        return;
+      }
+      if (sizes.length === 1) {
+        vfVehSize.value = sizes[0];
+        vfVehSize.disabled = true;
+      } else {
+        vfVehSize.value = '';
+        vfVehSize.disabled = false;
+      }
+      updateVehicleMobileProgressive();
+    }
+    function updateVehicleMobileProgressive() {
+      const isMobile = window.matchMedia('(max-width: 899px)').matches;
+      [vfVehYear, vfVehMake, vfVehModel, vfVehTrim, vfVehSize].forEach(function(el){
+        if (el) el.classList.remove('is-mobile-hidden');
+      });
+      if (!isMobile) return;
+      if (vfVehMake) vfVehMake.classList.toggle('is-mobile-hidden', !(vfVehYear && vfVehYear.value));
+      if (vfVehModel) vfVehModel.classList.toggle('is-mobile-hidden', !(vfVehMake && vfVehMake.value));
+      if (vfVehTrim) vfVehTrim.classList.toggle('is-mobile-hidden', !(vfVehModel && vfVehModel.value));
+      const sizes = getVehicleSizeOptions();
+      const showSize = !!(vfVehTrim && vfVehTrim.value && sizes.length > 1);
+      if (vfVehSize) vfVehSize.classList.toggle('is-mobile-hidden', !showSize);
+    }
+    updateVehicleChipVisibility();
+    updateVehicleMobileProgressive();
+
+    if (vfVehYear) vfVehYear.addEventListener('change', function(){
+      if (vfVehMake) resetSelect(vfVehMake, 'Make', true);
+      resetSelect(vfVehModel, 'Model', true);
+      resetSelect(vfVehTrim, 'Trim', true);
+      resetSelect(vfVehSize, 'Tire Size', true);
+      updateVehicleChipVisibility();
+      updateVehicleMobileProgressive();
+      if (!vfVehYear.value) return;
+      loadYearVehicleData(vfVehYear.value).then(function(){
+        const makes = getMakesForYear(vfVehYear.value);
+        fillSelect(vfVehMake, makes, 'Make');
+        vfVehMake.disabled = !makes.length;
+        updateVehicleMobileProgressive();
+      });
+    });
+    if (vfVehMake) vfVehMake.addEventListener('change', function(){
+      fillSelect(vfVehModel, getModelsForSelection(vfVehYear && vfVehYear.value, vfVehMake.value), 'Model');
+      vfVehModel.disabled = !vfVehMake.value || !vfVehModel.options || vfVehModel.options.length <= 1;
+      resetSelect(vfVehTrim, 'Trim', true);
+      resetSelect(vfVehSize, 'Tire Size', true);
+      updateVehicleChipVisibility();
+      updateVehicleMobileProgressive();
+    });
+    if (vfVehModel) vfVehModel.addEventListener('change', function(){
+      fillSelect(vfVehTrim, getTrimsForSelection(vfVehYear && vfVehYear.value, vfVehMake && vfVehMake.value, vfVehModel.value), 'Trim');
+      vfVehTrim.disabled = !vfVehModel.value || !vfVehTrim.options || vfVehTrim.options.length <= 1;
+      resetSelect(vfVehSize, 'Tire Size', true);
+      updateVehicleChipVisibility();
+      updateVehicleMobileProgressive();
+    });
+    if (vfVehTrim) vfVehTrim.addEventListener('change', function(){
+      refreshVehicleSizes();
+      updateVehicleChipVisibility();
+      updateVehicleMobileProgressive();
+    });
+    window.addEventListener('resize', updateVehicleMobileProgressive);
+
+    if (vfTsInput) {
+      vfTsInput.addEventListener('input', updateSizePreview);
+      vfTsInput.addEventListener('keydown', function(e){
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        if (!parseTireSizeInput(vfTsInput.value || '')) {
+          alert('Please enter a valid tire size (2055516, 205/55R16, or 205/55ZR16).');
+          return;
+        }
+        window.ptSearch('tire-size');
+      });
+    }
+
+    if (vfWsDiameter) vfWsDiameter.addEventListener('change', function(){
+      fillSelect(vfWsWidth, ['6','6.5','7','7.5','8','8.5','9','9.5','10'], 'Width');
+      vfWsWidth.disabled = !vfWsDiameter.value;
+      resetSelect(vfWsBolt, 'Bolt Pattern', true);
+      resetSelect(vfWsFinish, 'Finish', true);
+    });
+    if (vfWsWidth) vfWsWidth.addEventListener('change', function(){
+      fillSelect(vfWsBolt, BOLT_PATTERNS, 'Bolt Pattern');
+      vfWsBolt.disabled = !vfWsWidth.value;
+      resetSelect(vfWsFinish, 'Finish', true);
+    });
+    if (vfWsBolt) vfWsBolt.addEventListener('change', function(){
+      fillSelect(vfWsFinish, WHEEL_FINISHES, 'Finish');
+      vfWsFinish.disabled = !vfWsBolt.value;
+    });
+
+    tabs.forEach(function(tabBtn){
+      tabBtn.addEventListener('click', function(){
+        const tab = tabBtn.getAttribute('data-vf-tab');
+        vfState.tab = tab;
+        tabs.forEach(function(btn){ btn.classList.toggle('is-active', btn === tabBtn); btn.setAttribute('aria-selected', btn === tabBtn ? 'true' : 'false'); });
+        panels.forEach(function(panel){ panel.classList.toggle('is-active', panel.getAttribute('data-vf-panel') === tab); });
+      });
+    });
+    subtabs.forEach(function(subBtn){
+      subBtn.addEventListener('click', function(){
+        const mode = subBtn.getAttribute('data-vf-vehicle-mode');
+        vfState.vehicleMode = mode;
+        subtabs.forEach(function(btn){ btn.classList.toggle('is-active', btn === subBtn); btn.setAttribute('aria-selected', btn === subBtn ? 'true' : 'false'); });
+        if (vehicleChipTires) vehicleChipTires.classList.toggle('is-hidden', mode !== 'tires');
+        if (vehicleChipWheels) vehicleChipWheels.classList.toggle('is-hidden', mode !== 'wheels');
+      });
+    });
+    finder.querySelectorAll('.pt-vfinder__chip').forEach(function(chipBtn){
+      chipBtn.addEventListener('click', function(){
+        let groupKey = '';
+        const chipGroup = chipBtn.closest('[data-vf-chip-group]');
+        if (chipGroup) groupKey = chipGroup.getAttribute('data-vf-chip-group');
+        if (!groupKey) return;
+        const val = chipBtn.getAttribute('data-chip');
+        if (!vfState.chips[groupKey]) vfState.chips[groupKey] = new Set();
+        if (vfState.chips[groupKey].has(val)) {
+          vfState.chips[groupKey].delete(val);
+          chipBtn.classList.remove('is-active');
+        } else {
+          vfState.chips[groupKey].add(val);
+          chipBtn.classList.add('is-active');
+        }
+      });
+    });
+    finder.querySelectorAll('[data-vf-action="clear"]').forEach(function(clearBtn){
+      clearBtn.addEventListener('click', function(){
+        const panel = clearBtn.closest('[data-vf-panel]');
+        if (!panel) return;
+        const panelType = panel.getAttribute('data-vf-panel');
+        if (panelType === 'vehicle') {
+          if (vfVehYear) vfVehYear.value = '';
+          if (vfVehMake) resetSelect(vfVehMake, 'Make', true);
+          if (vfVehModel) resetSelect(vfVehModel, 'Model', true);
+          if (vfVehTrim) resetSelect(vfVehTrim, 'Trim', true);
+          if (vfVehSize) resetSelect(vfVehSize, 'Tire Size', true);
+          ['vehicle-tires','vehicle-wheels'].forEach(function(key){ if (vfState.chips[key]) vfState.chips[key].clear(); });
+          panel.querySelectorAll('.pt-vfinder__chip').forEach(function(ch){ ch.classList.remove('is-active'); });
+          updateVehicleChipVisibility();
+          updateVehicleMobileProgressive();
+        } else if (panelType === 'tire-size') {
+          if (vfTsInput) vfTsInput.value = '';
+          if (vfState.chips['tire-size']) vfState.chips['tire-size'].clear();
+          panel.querySelectorAll('.pt-vfinder__chip').forEach(function(ch){ ch.classList.remove('is-active'); });
+          updateSizePreview();
+        } else if (panelType === 'wheel-specs') {
+          if (vfWsDiameter) vfWsDiameter.value = '';
+          if (vfWsWidth) resetSelect(vfWsWidth, 'Width', true);
+          if (vfWsBolt) resetSelect(vfWsBolt, 'Bolt Pattern', true);
+          if (vfWsFinish) resetSelect(vfWsFinish, 'Finish', true);
+        }
+      });
+    });
+    function normalizeSlug(value) {
+      return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+    function mapChipToTag(chipValue) {
+      const chip = normalizeSlug(chipValue);
+      if (!chip) return '';
+      if (chip === 'all-season' || chip === 'all-weather' || chip === 'winter' || chip === 'summer') return 'season_' + chip;
+      if (chip === 'lt') return 'service_LT';
+      if (chip === 'st') return 'service_ST';
+      if (chip === 'studdable' || chip === 'pre-studded') return 'stud_' + chip;
+      return 'category_' + chip;
+    }
+    function getChipMetafieldValues(chipValue){
+      const chip = normalizeSlug(chipValue);
+      if (!chip) return [];
+      if (chip === 'all-season') return ['all-season', 'all season', 'allseason', 'All-Season'];
+      if (chip === 'all-weather') return ['all-weather', 'all weather', 'allweather', 'All-Weather'];
+      if (chip === 'winter') return ['winter', 'Winter'];
+      if (chip === 'summer') return ['summer', 'Summer'];
+      if (chip === 'lt') return ['lt', 'LT', 'light truck'];
+      if (chip === 'st') return ['st', 'ST', 'special trailer'];
+      if (chip === 'studdable') return ['studdable', 'Studdable'];
+      if (chip === 'pre-studded') return ['pre-studded', 'pre studded', 'Pre-Studded'];
+      return [chipValue];
+    }
+    function getChipMetafieldKeys(chipValue){
+      const chip = normalizeSlug(chipValue);
+      if (!chip) return [];
+      if (chip === 'lt' || chip === 'st') {
+        return ['custom.service_type', 'custom.service', 'specs.service_type', 'details.service_type'];
+      }
+      if (chip === 'studdable' || chip === 'pre-studded') {
+        return ['custom.stud_type', 'specs.stud_type', 'details.stud_type'];
+      }
+      return ['custom.season_type', 'custom.season', 'specs.season', 'details.season'];
+    }
+    /* ── Map seasonality chip value → product_type filter values ── */
+    function getSeasonProductTypes(chip) {
+      const c = normalizeSlug(chip);
+      if (c === 'winter')      return ['Winter Tires', 'Winter'];
+      if (c === 'all-season')  return ['All-Season', 'All-season'];
+      if (c === 'all-weather') return ['All-Weather'];
+      if (c === 'summer')      return ['Summer'];
+      return [];
+    }
+    function isSeasonChip(chip) {
+      const c = normalizeSlug(chip);
+      return c === 'winter' || c === 'all-season' || c === 'all-weather' || c === 'summer';
+    }
+
+    window.ptSearch = function(panelType){
+      const url = new URL(COLLECTION_BASE_URL, window.location.origin);
+      url.searchParams.set('sort_by', 'manual');
+
+      if (panelType === 'vehicle') {
+        const vehicleSize = vfVehSize && vfVehSize.value ? vfVehSize.value : '';
+        /* Parse vehicleSize (e.g. "205/55R16") into 3 metafield params */
+        if (vehicleSize) {
+          const vParsed = parseTireSizeInput(vehicleSize);
+          if (vParsed) {
+            url.searchParams.append('filter.p.m.custom.tire_width',   vParsed.width);
+            url.searchParams.append('filter.p.m.custom.tire_profile', vParsed.profile);
+            url.searchParams.append('filter.p.m.custom.rim_diameter', vParsed.rim);
+          }
+        }
+        /* Seasonality chips → product_type filters */
+        const vChipKey = vfState.vehicleMode === 'wheels' ? 'vehicle-wheels' : 'vehicle-tires';
+        Array.from(vfState.chips[vChipKey] || []).forEach(function(chip){
+          if (isSeasonChip(chip)) {
+            getSeasonProductTypes(chip).forEach(function(pt){
+              url.searchParams.append('filter.p.product_type', pt);
+            });
+          }
+        });
+
+      } else if (panelType === 'tire-size') {
+        const parsed = parseTireSizeInput(vfTsInput && vfTsInput.value ? vfTsInput.value : '');
+        if (!parsed) return;
+        /* 3 separate metafield filters */
+        url.searchParams.append('filter.p.m.custom.tire_width',   parsed.width);
+        url.searchParams.append('filter.p.m.custom.tire_profile', parsed.profile);
+        url.searchParams.append('filter.p.m.custom.rim_diameter', parsed.rim);
+        /* Seasonality chips → product_type filters */
+        Array.from(vfState.chips['tire-size'] || []).forEach(function(chip){
+          if (isSeasonChip(chip)) {
+            getSeasonProductTypes(chip).forEach(function(pt){
+              url.searchParams.append('filter.p.product_type', pt);
+            });
+          }
+        });
+
+      } else if (panelType === 'wheel-specs') {
+        const diameter = vfWsDiameter.value;
+        const width    = vfWsWidth.value;
+        const bolt     = vfWsBolt.value;
+        const finish   = vfWsFinish.value;
+        if (diameter) url.searchParams.append('filter.p.tag', 'diameter_' + normalizeSlug(diameter));
+        if (width)    url.searchParams.append('filter.p.tag', 'width_'    + normalizeSlug(width));
+        if (bolt)     url.searchParams.append('filter.p.tag', 'bolt_'     + normalizeSlug(bolt));
+        if (finish)   url.searchParams.append('filter.p.tag', 'finish_'   + normalizeSlug(finish));
+      }
+
+      window.location.href = url.toString();
+    };
+    finder.querySelectorAll('[data-vf-action="search"]').forEach(function(searchBtn){
+      searchBtn.addEventListener('click', function(){
+        const panel = searchBtn.closest('[data-vf-panel]');
+        if (!panel) return;
+        const panelType = panel.getAttribute('data-vf-panel');
+        if (panelType === 'vehicle') {
+          if (!(vfVehYear && vfVehYear.value && vfVehMake && vfVehMake.value && vfVehModel && vfVehModel.value && vfVehTrim && vfVehTrim.value)) {
+            alert('Please complete Year, Make, Model, and Trim.');
+            return;
+          }
+          const vehicleSizes = getVehicleSizeOptions();
+          if (vehicleSizes.length > 1 && !(vfVehSize && vfVehSize.value)) {
+            alert('Please choose a Tire Size.');
+            return;
+          }
+          if (vehicleSizes.length === 1 && vfVehSize && !vfVehSize.value) {
+            vfVehSize.value = vehicleSizes[0];
+          }
+        } else if (panelType === 'tire-size') {
+          if (!parseTireSizeInput(vfTsInput && vfTsInput.value ? vfTsInput.value : '')) {
+            alert('Please enter a valid tire size (2055516, 205/55R16, or 205/55ZR16).');
+            return;
+          }
+        } else {
+          if (!(vfWsDiameter && vfWsDiameter.value && vfWsWidth && vfWsWidth.value && vfWsBolt && vfWsBolt.value && vfWsFinish && vfWsFinish.value)) {
+            alert('Please complete Diameter, Width, Bolt Pattern, and Finish.');
+            return;
+          }
+        }
+        window.ptSearch(panelType);
+      });
+    });
+  }
+  const filterState = { tags:[], minPrice:null, maxPrice:null, sizeKey:null };
+  function applyFilters(){
+    const cards = document.querySelectorAll(`#pt-grid-${SID} .pt-card`); let visible = 0;
+    cards.forEach(card=>{
+      const cardTags = card.dataset.tags.split(',').map(t=>t.trim()); const cardPrice = parseInt(card.dataset.price)||0; const cardVendor = card.dataset.vendor;
+      const cardSizeKeys = (card.dataset.sizeKeys || '').split(',').map(t=>t.trim()).filter(Boolean);
+      let show = true;
+      for (const ft of filterState.tags) {
+        const ftLower = String(ft).toLowerCase();
+        if (ftLower.startsWith('vendor_')) {
+          if (cardVendor !== ftLower.replace('vendor_', '')) show = false;
+        } else if (!cardTags.includes(ftLower)) {
+          show = false;
+        }
+      }
+      if(filterState.minPrice !== null && cardPrice < filterState.minPrice * 100) show=false;
+      if(filterState.maxPrice !== null && cardPrice > filterState.maxPrice * 100) show=false;
+      if(filterState.sizeKey && !cardSizeKeys.includes(filterState.sizeKey)) show=false;
+      card.classList.toggle('hidden', !show); if(show) visible++;
+    });
+    const countEl = document.getElementById('pt-result-count-'+SID); if(countEl) countEl.textContent = visible + ' product' + (visible!==1?'s':'');
+    renderActiveChips(); updateFilterCount();
+  }
+  function renderActiveChips(){
+    const container=document.getElementById('pt-active-'+SID); if(!container)return; const chips=[];
+    if(filterState.sizeKey){
+      const sizeLabel = filterState.sizeKey.replace('-', '/').replace('r', 'R');
+      chips.push(`<div class="pt-active-chip" onclick="ptClearSize()">${sizeLabel}<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>`);
+    }
+    filterState.tags.forEach(t=>{ const label=t.replace(/_/g,' ').replace(/^\w+\s/,'').replace(/-/g,' '); chips.push(`<div class="pt-active-chip" onclick="ptRemoveFilter('${t}')">${label.charAt(0).toUpperCase()+label.slice(1)}<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>`); });
+    if(filterState.minPrice||filterState.maxPrice){ const label='$'+(filterState.minPrice||0)+' – $'+(filterState.maxPrice||'∞'); chips.push(`<div class="pt-active-chip" onclick="ptClearPrice()">${label}<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>`); }
+    container.innerHTML = chips.join(''); container.classList.toggle('has-filters', chips.length>0);
+  }
+  function updateFilterCount(){ const count=filterState.tags.length+(filterState.minPrice||filterState.maxPrice?1:0); const badge=document.getElementById('pt-filter-count-'+SID); if(badge){ badge.textContent=count; badge.style.display=count>0?'flex':'none'; } }
+  window.ptTagFilter = function(checkbox){ const val=String(checkbox.value || '').toLowerCase(); if(checkbox.checked){ if(!filterState.tags.includes(val)) filterState.tags.push(val); } else { filterState.tags = filterState.tags.filter(t=>t!==val); } applyFilters(); };
+  window.ptSizeFilter = function(sid){ const w=document.getElementById('ptf-sz-w-'+sid)?.value; const p=document.getElementById('ptf-sz-p-'+sid)?.value; const r=document.getElementById('ptf-sz-r-'+sid)?.value; if(w&&p&&r){ filterState.sizeKey = (w + '-' + p + 'r' + r).toLowerCase(); } else { filterState.sizeKey = null; } applyFilters(); };
+  window.ptClearSize = function(){ filterState.sizeKey=null; const w=document.getElementById('ptf-sz-w-'+SID); const p=document.getElementById('ptf-sz-p-'+SID); const r=document.getElementById('ptf-sz-r-'+SID); if(w)w.value=''; if(p)p.value=''; if(r)r.value=''; applyFilters(); };
+  window.ptPriceFilter = function(sid){ filterState.minPrice = parseFloat(document.getElementById('ptf-price-min-'+sid)?.value)||null; filterState.maxPrice = parseFloat(document.getElementById('ptf-price-max-'+sid)?.value)||null; applyFilters(); };
+  window.ptRemoveFilter = function(tag){ filterState.tags=filterState.tags.filter(t=>t!==tag); document.querySelectorAll(`#pt-filters-${SID} .pt-check`).forEach(cb=>{ if(cb.value===tag) cb.checked=false; }); applyFilters(); };
+  window.ptClearPrice = function(){ filterState.minPrice=null; filterState.maxPrice=null; const mn=document.getElementById('ptf-price-min-'+SID); const mx=document.getElementById('ptf-price-max-'+SID); if(mn)mn.value=''; if(mx)mx.value=''; applyFilters(); };
+
+  (function initializeFilterFromURL(){
+    var params = new URLSearchParams(window.location.search);
+    var w = params.get('filter.p.m.custom.tire_width');
+    var p = params.get('filter.p.m.custom.tire_profile');
+    var r = params.get('filter.p.m.custom.rim_diameter');
+    if (w && p && r) {
+      filterState.sizeKey = (w + '-' + p + 'r' + r).toLowerCase();
+      applyFilters();
+      var sizeInputW = document.getElementById('ptf-sz-w-'+SID);
+      var sizeInputP = document.getElementById('ptf-sz-p-'+SID);
+      var sizeInputR = document.getElementById('ptf-sz-r-'+SID);
+      if (sizeInputW) sizeInputW.value = w;
+      if (sizeInputP) sizeInputP.value = p;
+      if (sizeInputR) sizeInputR.value = r;
+    }
+  })();
+
+  window.ptClearFilters = function(){ window.location.href = new URL(COLLECTION_BASE_URL, window.location.origin).toString(); };
+  window.ptToggleGroup = function(id){ const el=document.getElementById(id); if(el) el.classList.toggle('open'); };
+  const nativeFilterForm = document.getElementById('pt-filters-form-' + SID);
+  if (nativeFilterForm) {
+    nativeFilterForm.addEventListener('change', function(e){
+      const target = e.target;
+      if (!target) return;
+      if (target.matches('input[type="checkbox"], input[type="radio"], select')) {
+        nativeFilterForm.submit();
+      }
+    });
+  }
+  const DEFAULT_OPEN_GROUPS = {{ section.settings.filter_default_open_groups | default: 'ptfg-size,ptfg-season' | json }};
+  let openedGroups = 0;
+  DEFAULT_OPEN_GROUPS.split(',').map(function(id){ return id.trim(); }).filter(Boolean).forEach(function(id){
+    const el=document.getElementById(id);
+    if(el) {
+      el.classList.add('open');
+      openedGroups += 1;
+    }
+  });
+  if (openedGroups === 0) {
+    document.querySelectorAll('#pt-filters-' + SID + ' .pt-filter-group').forEach(function(el, idx){
+      if (idx < 2) el.classList.add('open');
+    });
+  }
+  window.ptToggleMobileFilters = function(sid){
+    var filters = document.getElementById('pt-filters-' + sid);
+    var overlay = document.getElementById('pt-overlay-' + sid);
+    var btn = document.getElementById('pt-mobile-filter-btn-' + sid);
+    if (filters) filters.classList.toggle('open');
+    if (overlay) overlay.classList.toggle('show');
+    var open = filters && filters.classList.contains('open');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (document.body) document.body.style.overflow = open ? 'hidden' : '';
+  };
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    var f = document.getElementById('pt-filters-' + SID);
+    if (f && f.classList.contains('open')) window.ptToggleMobileFilters(SID);
+  });
+  window.ptApplySort = function(val){ const url = new URL(window.location.href); url.searchParams.set('sort_by', val); window.location.href = url.toString(); };
+})();
+</script>
+
+<script>
+/* ── Add to Cart – AJAX handler for .pt-btn-atc ── */
+(function(){
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.pt-btn-atc[data-variant-id]');
+    if (!btn) return;
+    e.preventDefault();
+    if (btn.classList.contains('pt-atc--loading') || btn.classList.contains('pt-atc--added')) return;
+
+    var variantId = btn.getAttribute('data-variant-id');
+    var productUrl = btn.getAttribute('data-product-url') || '';
+    var label = btn.querySelector('.pt-btn-atc__label');
+
+    btn.classList.add('pt-atc--loading');
+    if (label) label.textContent = 'Adding…';
+
+    fetch('/cart/add.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ id: variantId, quantity: 1 })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      btn.classList.remove('pt-atc--loading');
+      if (data.id) {
+        btn.classList.add('pt-atc--added');
+        if (label) label.textContent = 'Added!';
+        /* Trigger cart drawer / bubble refresh if theme supports it */
+        document.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
+        document.dispatchEvent(new CustomEvent('theme:cart:open', { bubbles: true }));
+        /* Fallback: restore button after 2.5 s */
+        setTimeout(function(){
+          btn.classList.remove('pt-atc--added');
+          if (label) label.textContent = 'Add to Cart';
+        }, 2500);
+      } else {
+        if (label) label.textContent = 'Add to Cart';
+        window.location.href = productUrl;
+      }
+    })
+    .catch(function(){
+      btn.classList.remove('pt-atc--loading');
+      if (label) label.textContent = 'Add to Cart';
+      window.location.href = productUrl;
+    });
+  });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Tire Collection Grid",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_vehicle_finder",
+      "label": "Show Vehicle Finder bar",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "finder_heading",
+      "label": "Finder heading",
+      "default": "Find Your Perfect Fit"
+    },
+    {
+      "type": "textarea",
+      "id": "finder_subheading",
+      "label": "Finder subheading",
+      "default": "Search by vehicle, tire size, or wheel specs."
+    },
+    {
+      "type": "header",
+      "content": "Season Icons"
+    },
+    {
+      "type": "image_picker",
+      "id": "icon_all_season",
+      "label": "All-Season icon (SVG)"
+    },
+    {
+      "type": "image_picker",
+      "id": "icon_all_weather",
+      "label": "All-Weather icon (SVG)"
+    },
+    {
+      "type": "image_picker",
+      "id": "icon_winter",
+      "label": "Winter icon (SVG)"
+    },
+    {
+      "type": "image_picker",
+      "id": "icon_summer",
+      "label": "Summer icon (SVG)"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_sort",
+      "label": "Show sort dropdown",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "vehicle_search_url",
+      "label": "Vehicle search URL",
+      "default": "/pages/rapid-search-results"
+    },
+    {
+      "type": "text",
+      "id": "search_results_url",
+      "label": "Search results URL",
+      "info": "Used by Search by Vehicle redirect.",
+      "default": "/pages/rapid-search-results"
+    },
+    {
+      "type": "header",
+      "content": "Filter panel settings"
+    },
+    {
+      "type": "text",
+      "id": "filter_panel_title",
+      "label": "Filter panel title",
+      "default": "Filters"
+    },
+    {
+      "type": "text",
+      "id": "filter_clear_label",
+      "label": "Clear button label",
+      "default": "Clear all"
+    },
+    {
+      "type": "text",
+      "id": "filter_default_open_groups",
+      "label": "Default open groups (IDs, comma separated)",
+      "info": "Use IDs: ptfg-size, ptfg-season, ptfg-brand, ptfg-price, ptfg-service, ptfg-cat, ptfg-stud",
+      "default": "ptfg-size,ptfg-season"
+    },
+    {
+      "type": "header",
+      "content": "Size filter"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filter_size",
+      "label": "Show size filter",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "filter_title_size",
+      "label": "Size group title",
+      "default": "Tire Size"
+    },
+    {
+      "type": "text",
+      "id": "filter_size_width_label",
+      "label": "Width label",
+      "default": "Width"
+    },
+    {
+      "type": "text",
+      "id": "filter_size_profile_label",
+      "label": "Profile label",
+      "default": "Profile"
+    },
+    {
+      "type": "text",
+      "id": "filter_size_rim_label",
+      "label": "Rim label",
+      "default": "Rim"
+    },
+    {
+      "type": "text",
+      "id": "filter_size_any_label",
+      "label": "Any option label",
+      "default": "Any"
+    },
+    {
+      "type": "header",
+      "content": "Season filter"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filter_season",
+      "label": "Show season filter",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "filter_title_season",
+      "label": "Season group title",
+      "default": "Season"
+    },
+    {
+      "type": "textarea",
+      "id": "filter_options_season",
+      "label": "Season options (one per line: Label|tag)",
+      "default": "All-Season|season_all-season\nWinter|season_winter\nSummer|season_summer\nAll-Weather|season_all-weather"
+    },
+    {
+      "type": "header",
+      "content": "Brand filter"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filter_brand",
+      "label": "Show brand filter",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "filter_title_brand",
+      "label": "Brand group title",
+      "default": "Brand"
+    },
+    {
+      "type": "header",
+      "content": "Price filter"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filter_price",
+      "label": "Show price filter",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "filter_title_price",
+      "label": "Price group title",
+      "default": "Price Range"
+    },
+    {
+      "type": "text",
+      "id": "filter_price_min_label",
+      "label": "Min price label",
+      "default": "Min $"
+    },
+    {
+      "type": "text",
+      "id": "filter_price_max_label",
+      "label": "Max price label",
+      "default": "Max $"
+    },
+    {
+      "type": "text",
+      "id": "filter_price_min_placeholder",
+      "label": "Min price placeholder",
+      "default": "0"
+    },
+    {
+      "type": "text",
+      "id": "filter_price_max_placeholder",
+      "label": "Max price placeholder",
+      "default": "Any"
+    },
+    {
+      "type": "header",
+      "content": "Service filter"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filter_service",
+      "label": "Show service filter",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "filter_title_service",
+      "label": "Service group title",
+      "default": "Service Type"
+    },
+    {
+      "type": "textarea",
+      "id": "filter_options_service",
+      "label": "Service options (one per line: Label|tag)",
+      "default": "P - Passenger|service_p\nLT - Light Truck|service_lt\nST - Special Trailer|service_st"
+    },
+    {
+      "type": "header",
+      "content": "Category filter"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filter_category",
+      "label": "Show category filter",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "filter_title_category",
+      "label": "Category group title",
+      "default": "Category"
+    },
+    {
+      "type": "textarea",
+      "id": "filter_options_category",
+      "label": "Category options (one per line: Label|tag)",
+      "default": "Performance|category_performance\nTouring|category_touring\nHighway|category_highway\nMud-Terrain|category_mud-terrain\nAll-Terrain|category_all-terrain"
+    },
+    {
+      "type": "header",
+      "content": "Stud filter"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filter_stud",
+      "label": "Show stud filter",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "filter_title_stud",
+      "label": "Stud group title",
+      "default": "Stud Option"
+    },
+    {
+      "type": "textarea",
+      "id": "filter_options_stud",
+      "label": "Stud options (one per line: Label|tag)",
+      "default": "Studdable|stud_studdable\nPre-Studded|stud_pre-studded\nNon-Studdable|stud_non-studdable"
+    },
+    {
+      "type": "range",
+      "id": "products_per_page",
+      "label": "Products per page",
+      "min": 4,
+      "max": 24,
+      "step": 2,
+      "default": 8
+    }
+  ],
+  "presets": [
+    {
+      "name": "Tire Collection Grid"
+    }
+  ]
+}
+{% endschema %}

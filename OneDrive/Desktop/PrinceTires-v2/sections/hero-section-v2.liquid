@@ -1,0 +1,1460 @@
+{%- assign sample_vehicle_url = 'pt-vehicle-2008.json' | asset_url -%}
+{% comment %}
+  PRINCE TIRES — HERO SECTION V2 (MINIMAL CENTERED)
+  Matches prototype: black bg, centered headline, search bar, pill CTAs
+  Smart search autocomplete with popular searches, live results, mode detection
+  AI-powered smart search for vehicle lookups and tire size detection
+  Season pills (winter / all-season / all-weather) for size & vehicle results
+{% endcomment %}
+
+{%- liquid
+  assign bg_color     = section.settings.bg_color     | default: '#000000'
+  assign accent_color = section.settings.accent_color | default: '#B91C1C'
+  assign text_color   = section.settings.text_color   | default: '#FFFFFF'
+  assign muted_color  = section.settings.muted_color  | default: '#6B7280'
+  assign sid          = section.id
+-%}
+
+<section
+  id="hero-{{ sid }}"
+  class="pt-hero"
+  role="banner"
+  {{ section.shopify_attributes }}
+  style="
+    --hero-bg: {{ bg_color }};
+    --hero-accent: {{ accent_color }};
+    --hero-text: {{ text_color }};
+    --hero-muted: {{ muted_color }};
+  "
+>
+  {%- comment -%} Decorative red glow — top-right {%- endcomment -%}
+  <div class="pt-hero__glow" aria-hidden="true"></div>
+
+  {%- comment -%} Bottom fade for smooth section transition {%- endcomment -%}
+  <div class="pt-hero__fade" aria-hidden="true"></div>
+
+  <div class="pt-hero__inner">
+
+    {%- comment -%} ── Headline ────────────────────────────── {%- endcomment -%}
+    <h1 class="pt-hero__headline pt-hero__anim" style="--delay: 0.1s">
+      {{ section.settings.headline_line1 | default: "Calgary's Trusted" }}<br>
+      <em>{{ section.settings.headline_accent | default: "Tire Shop" }}</em>
+    </h1>
+
+    <p class="pt-hero__sub pt-hero__anim" style="--delay: 0.2s">
+      {{ section.settings.subtitle | default: "The right tires the right price" }}
+    </p>
+
+    {%- comment -%} ── Smart Search label ───────────────────── {%- endcomment -%}
+    <div class="pt-hero__smart-label pt-hero__anim" style="--delay: 0.25s">
+      <span class="pt-hero__smart-dot" aria-hidden="true"></span>
+      <span class="pt-hero__smart-text">Powered by <strong>Smart Search</strong></span>
+    </div>
+
+    {%- comment -%} ── Search bar ──────────────────────────── {%- endcomment -%}
+    <div class="pt-hero__search-wrap pt-hero__anim" style="--delay: 0.3s">
+      <form
+        action="{{ section.settings.search_url | default: '/pages/tires-1' }}"
+        method="get"
+        class="pt-hero__search-form"
+        role="search"
+        aria-label="Search tires"
+        data-search-form
+      >
+        <input
+          type="text"
+          name="q"
+          class="pt-hero__search-input"
+          placeholder="{{ section.settings.search_placeholder | default: 'e.g. 2025 Toyota RAV4 or 225/65R17' }}"
+          autocomplete="off"
+          aria-label="Search by vehicle or tire size"
+          data-search-input
+        >
+        <button type="submit" class="pt-hero__search-go" aria-label="Search tires">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
+      </form>
+
+      {%- comment -%} ── Search dropdown / autocomplete ─────── {%- endcomment -%}
+      <div class="pt-hero__search-dropdown" data-search-dropdown>
+        <div class="pt-hero__ai-result" data-ai-result style="display:none"></div>
+        <div class="pt-hero__search-popular" data-search-popular style="display:none"></div>
+        <div class="pt-hero__search-results" data-search-results style="display:none">
+          <p class="pt-hero__search-dropdown-label" data-search-results-label>Results</p>
+          <div class="pt-hero__search-items" data-search-items></div>
+          <a href="#" class="pt-hero__search-view-all" data-search-view-all>View all results &rarr;</a>
+        </div>
+        <div class="pt-hero__search-mode" data-search-mode style="display:none">
+          <div class="pt-hero__search-mode-icon" data-search-mode-icon></div>
+          <div class="pt-hero__search-mode-text" data-search-mode-text></div>
+        </div>
+      </div>
+    </div>
+
+    {%- comment -%} ── Action pills ────────────────────────── {%- endcomment -%}
+    <div class="pt-hero__actions pt-hero__anim" style="--delay: 0.45s">
+      {%- if section.settings.action_1_text != blank -%}
+        <a href="{{ section.settings.shop_tires_url | default: '/collections/all' }}" class="pt-hero__action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+          <span class="pt-hero__action-label-full">{{ section.settings.action_1_text }}</span>
+          <span class="pt-hero__action-label-short">Tires</span>
+        </a>
+      {%- endif -%}
+
+      {%- if section.settings.action_2_text != blank -%}
+        <a href="{{ section.settings.shop_wheels_url | default: '/collections/wheels' }}" class="pt-hero__action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1"/></svg>
+          <span class="pt-hero__action-label-full">{{ section.settings.action_2_text }}</span>
+          <span class="pt-hero__action-label-short">Wheels</span>
+        </a>
+      {%- endif -%}
+
+      {%- if section.settings.action_3_text != blank -%}
+        <a href="tel:{{ section.settings.phone_number | default: '4034524283' }}" class="pt-hero__action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          <span class="pt-hero__action-label-full">{{ section.settings.action_3_text }}</span>
+          <span class="pt-hero__action-label-short">Book</span>
+        </a>
+      {%- endif -%}
+    </div>
+
+  </div>
+</section>
+
+<style>
+  /* ── Hero container ─────────────────────────────────────── */
+  #hero-{{ sid }} {
+    position: relative;
+    min-height: 100vh;
+    background: var(--hero-bg);
+    overflow: clip;
+    display: flex;
+    align-items: center;
+    padding: 120px 0 120px;
+  }
+
+  /* ── Decorative glow ────────────────────────────────────── */
+  #hero-{{ sid }} .pt-hero__glow {
+    position: absolute;
+    top: -200px;
+    right: -100px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(185,28,28,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  /* ── Bottom fade for smooth section transition ──────────── */
+  #hero-{{ sid }} .pt-hero__fade {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to bottom, transparent, var(--hero-bg));
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ── Inner content ──────────────────────────────────────── */
+  #hero-{{ sid }} .pt-hero__inner {
+    position: relative;
+    z-index: 2;
+    max-width: 680px;
+    margin: 0;
+    padding: 0 56px;
+    text-align: left;
+    width: 100%;
+  }
+
+  /* ── Headline ───────────────────────────────────────────── */
+  #hero-{{ sid }} .pt-hero__headline {
+    font-size: clamp(32px, 4.5vw, 52px);
+    font-weight: 800;
+    line-height: 1.08;
+    color: var(--hero-text);
+    letter-spacing: -0.04em;
+    margin: 0 0 16px;
+  }
+
+  #hero-{{ sid }} .pt-hero__headline em {
+    font-style: normal;
+    color: var(--hero-accent);
+  }
+
+  /* ── Subtitle ───────────────────────────────────────────── */
+  #hero-{{ sid }} .pt-hero__sub {
+    font-size: 15px;
+    color: var(--hero-muted);
+    max-width: 400px;
+    margin: 0 0 40px;
+    line-height: 1.6;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  /* ── Smart Search label ──────────────────────────────────── */
+  #hero-{{ sid }} .pt-hero__smart-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    padding: 5px 14px 5px 10px;
+    background: rgba(185,28,28,0.08);
+    border: 1px solid rgba(185,28,28,0.2);
+    border-radius: 999px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  #hero-{{ sid }} .pt-hero__smart-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #B91C1C;
+    box-shadow: 0 0 6px rgba(185,28,28,0.6);
+    animation: ptSmartPulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes ptSmartPulse {
+    0%, 100% { box-shadow: 0 0 4px rgba(185,28,28,0.4); opacity: 1; }
+    50% { box-shadow: 0 0 10px rgba(185,28,28,0.8); opacity: 0.7; }
+  }
+
+  #hero-{{ sid }} .pt-hero__smart-text {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.45);
+    font-weight: 400;
+  }
+
+  #hero-{{ sid }} .pt-hero__smart-text strong {
+    color: rgba(255,255,255,0.7);
+    font-weight: 600;
+  }
+
+  /* ── Mobile/desktop label toggling ─────────────────────── */
+  #hero-{{ sid }} .pt-hero__action-label-short { display: none; }
+  #hero-{{ sid }} .pt-hero__action-label-full  { display: inline; }
+
+  /* ── Search bar ─────────────────────────────────────────── */
+  #hero-{{ sid }} .pt-hero__search-wrap {
+    position: relative;
+    max-width: 520px;
+    margin: 0 0 28px;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-form {
+    position: relative;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-input {
+    width: 100%;
+    padding: 18px 60px 18px 22px;
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    color: var(--hero-text);
+    font-size: 16px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-input::placeholder {
+    color: var(--hero-muted);
+  }
+
+  #hero-{{ sid }} .pt-hero__search-input:focus {
+    border-color: var(--hero-accent);
+    box-shadow: 0 0 0 3px rgba(185,28,28,0.15);
+  }
+
+  #hero-{{ sid }} .pt-hero__search-go {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    background: var(--hero-accent);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.15s;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-go:hover {
+    background: #a01818;
+    transform: translateY(-50%) scale(1.05);
+  }
+
+  #hero-{{ sid }} .pt-hero__search-go:active {
+    transform: translateY(-50%) scale(0.97);
+  }
+
+  #hero-{{ sid }} .pt-hero__search-go svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* ── Search dropdown / autocomplete ─────────────────────── */
+  #hero-{{ sid }} .pt-hero__search-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: rgba(20,20,20,0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 16px;
+    z-index: 50;
+    display: none;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-dropdown.is-open {
+    display: block;
+    animation: ptDropdownIn 0.2s ease-out;
+  }
+  /* Hide action pills when dropdown is open */
+  #hero-{{ sid }} .pt-hero__search-wrap.has-dropdown ~ .pt-hero__actions {
+    display: none !important;
+  }
+
+  @keyframes ptDropdownIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  #hero-{{ sid }} .pt-hero__search-dropdown-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.35);
+    margin: 0 0 10px;
+  }
+
+  /* Pills */
+  #hero-{{ sid }} .pt-hero__search-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-pill {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    color: rgba(255,255,255,0.8);
+    font-size: 12px;
+    padding: 7px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-pill:hover {
+    background: rgba(185,28,28,0.15);
+    border-color: rgba(185,28,28,0.4);
+    color: #fff;
+  }
+
+  /* Result items */
+  #hero-{{ sid }} .pt-hero__search-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-item:hover {
+    background: rgba(255,255,255,0.06);
+  }
+
+  #hero-{{ sid }} .pt-hero__search-item-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-item-info {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-item-brand {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #B91C1C;
+    margin: 0 0 2px;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-item-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-item-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: #B91C1C;
+    flex-shrink: 0;
+  }
+
+  /* View all link */
+  #hero-{{ sid }} .pt-hero__search-view-all {
+    display: block;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #B91C1C;
+    text-decoration: none;
+    padding: 10px 0 2px;
+    transition: opacity 0.2s;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-view-all:hover {
+    opacity: 0.8;
+  }
+
+  /* Mode badge */
+  #hero-{{ sid }} .pt-hero__search-mode {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(185,28,28,0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 10px;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-mode-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  #hero-{{ sid }} .pt-hero__search-mode-text {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.4;
+  }
+
+  /* ── AI Result styles ──────────────────────────────────── */
+  #hero-{{ sid }} .pt-hero__ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-badge--vehicle {
+    background: #065f46;
+    color: #10b981;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-badge--size {
+    background: #1e3a5f;
+    color: #3b82f6;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-badge--loading {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.5);
+    animation: ptAiPulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes ptAiPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-info {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    margin: 0 0 10px;
+    line-height: 1.4;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.35);
+    margin: 0 0 6px;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-sizes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* ── AI Size Row (replaces ai-size-card) ───────────────── */
+  #hero-{{ sid }} .pt-hero__ai-size-row {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: left;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-size-row__trims {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    margin: 0 0 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-size-row__size {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 8px;
+  }
+
+  /* ── Season pills row ──────────────────────────────────── */
+  #hero-{{ sid }} .pt-hero__ai-size-row__seasons {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-season-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-season-pill:active {
+    transform: scale(0.96);
+  }
+
+  /* Winter — blue */
+  #hero-{{ sid }} .pt-hero__ai-size-link {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #B91C1C;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  #hero-{{ sid }} .pt-hero__ai-size-link:hover {
+    color: #ef4444;
+  }
+  #hero-{{ sid }} .pt-hero__ai-season-pill--all {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.7);
+    border-color: rgba(255,255,255,0.15);
+  }
+  #hero-{{ sid }} .pt-hero__ai-season-pill--all:hover {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border-color: rgba(255,255,255,0.3);
+  }
+  #hero-{{ sid }} .pt-hero__ai-season-pill--winter {
+    background: rgba(59,130,246,0.12);
+    border: 1px solid rgba(59,130,246,0.3);
+    color: #60a5fa;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-season-pill--winter:hover {
+    background: rgba(59,130,246,0.25);
+    border-color: rgba(59,130,246,0.6);
+    color: #93bbfd;
+  }
+
+  /* All-Season — green */
+  #hero-{{ sid }} .pt-hero__ai-season-pill--allseason {
+    background: rgba(16,185,129,0.12);
+    border: 1px solid rgba(16,185,129,0.3);
+    color: #34d399;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-season-pill--allseason:hover {
+    background: rgba(16,185,129,0.25);
+    border-color: rgba(16,185,129,0.6);
+    color: #6ee7b7;
+  }
+
+  /* All-Weather — purple */
+  #hero-{{ sid }} .pt-hero__ai-season-pill--allweather {
+    background: rgba(139,92,246,0.12);
+    border: 1px solid rgba(139,92,246,0.3);
+    color: #a78bfa;
+  }
+
+  #hero-{{ sid }} .pt-hero__ai-season-pill--allweather:hover {
+    background: rgba(139,92,246,0.25);
+    border-color: rgba(139,92,246,0.6);
+    color: #c4b5fd;
+  }
+
+  /* ── Action pills ───────────────────────────────────────── */
+  #hero-{{ sid }} .pt-hero__actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  #hero-{{ sid }} .pt-hero__action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255,255,255,0.04);
+    text-decoration: none;
+    letter-spacing: 0.01em;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #hero-{{ sid }} .pt-hero__action:hover {
+    border-color: var(--hero-accent);
+    color: #fff;
+    background: rgba(185,28,28,0.1);
+    transform: translateY(-1px);
+  }
+
+  #hero-{{ sid }} .pt-hero__action:active {
+    transform: translateY(0);
+  }
+
+  #hero-{{ sid }} .pt-hero__action svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.8;
+    flex-shrink: 0;
+  }
+
+  #hero-{{ sid }} .pt-hero__action:hover svg {
+    opacity: 1;
+  }
+
+  /* ── Fade-up animation ──────────────────────────────────── */
+  #hero-{{ sid }} .pt-hero__anim {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: ptHeroFadeUp 0.6s ease-out both;
+    animation-delay: var(--delay, 0s);
+  }
+
+  @keyframes ptHeroFadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Responsive ─────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    #hero-{{ sid }} {
+      min-height: 100svh;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #hero-{{ sid }} .pt-hero__inner {
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    #hero-{{ sid }} .pt-hero__headline {
+      font-size: 30px;
+    }
+    #hero-{{ sid }} .pt-hero__sub {
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    #hero-{{ sid }} .pt-hero__search-input {
+      padding: 16px 56px 16px 18px;
+      font-size: 15px;
+    }
+
+    /* ── Compact inline action pills on mobile ──────────── */
+    #hero-{{ sid }} .pt-hero__actions {
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+    #hero-{{ sid }} .pt-hero__action {
+      padding: 7px 14px;
+      font-size: 12px;
+      min-width: unset;
+      gap: 5px;
+      border-color: rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.03);
+    }
+    #hero-{{ sid }} .pt-hero__action svg {
+      width: 13px;
+      height: 13px;
+    }
+    #hero-{{ sid }} .pt-hero__action-label-full  { display: none; }
+    #hero-{{ sid }} .pt-hero__action-label-short { display: inline; }
+
+    /* Dropdown mobile tweaks */
+    #hero-{{ sid }} .pt-hero__search-dropdown {
+      max-height: 340px;
+      padding: 12px;
+    }
+    #hero-{{ sid }} .pt-hero__search-pills {
+      gap: 6px;
+    }
+    #hero-{{ sid }} .pt-hero__search-pill {
+      font-size: 11px;
+      padding: 6px 11px;
+    }
+    #hero-{{ sid }} .pt-hero__search-item-img {
+      width: 38px;
+      height: 38px;
+    }
+    #hero-{{ sid }} .pt-hero__ai-season-pill {
+      font-size: 10px;
+      padding: 4px 10px;
+    }
+    /* Smart label tweak */
+    #hero-{{ sid }} .pt-hero__smart-label {
+      margin-bottom: 10px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    #hero-{{ sid }} .pt-hero__headline {
+      font-size: 22px;
+    }
+    #hero-{{ sid }} .pt-hero__action {
+      padding: 6px 12px;
+      font-size: 11px;
+    }
+  }
+</style>
+
+<script>
+(function() {
+  var wrap = document.querySelector('#hero-{{ sid }} .pt-hero__search-wrap');
+  if (!wrap) return;
+
+  var input        = wrap.querySelector('[data-search-input]');
+  var dropdown     = wrap.querySelector('[data-search-dropdown]');
+  var popularDiv   = wrap.querySelector('[data-search-popular]');
+  var resultsDiv   = wrap.querySelector('[data-search-results]');
+  var itemsDiv     = wrap.querySelector('[data-search-items]');
+  var viewAllLink  = wrap.querySelector('[data-search-view-all]');
+  var modeDiv      = wrap.querySelector('[data-search-mode]');
+  var modeIcon     = wrap.querySelector('[data-search-mode-icon]');
+  var modeText     = wrap.querySelector('[data-search-mode-text]');
+  var resultsLabel = wrap.querySelector('[data-search-results-label]');
+  var form         = wrap.querySelector('[data-search-form]');
+  var aiResultDiv  = wrap.querySelector('[data-ai-result]');
+
+  /* Collection page URL — where we redirect with filter params */
+  var COLLECTION_URL = '{{ section.settings.shop_tires_url | default: "/collections/all" }}';
+  var SMART_SEARCH_API = 'https://prince-tires-booking.princetires111.workers.dev/smart-search';
+  var baseVehicleUrl = {{ sample_vehicle_url | json }};
+  var vehicleCache = {};
+  var searchAbort = null;
+  var debounceTimer = null;
+
+  /* ─────────────────────────────────────────────────────────
+     TIER 1: TIRE SIZE PARSER
+     Handles every real-world format customers type
+  ───────────────────────────────────────────────────────── */
+  function parseTireSize(raw) {
+    if (!raw) return null;
+
+    /* Strip leading type prefixes: P, LT, ST, T */
+    var s = raw.replace(/^\s*(P|LT|ST|T)/i, '').trim();
+
+    /* Normalise separators: allow / - or space between numbers */
+    /* Try: 225/65R17, 225-65-17, 225 65 17, 225/65/17, 22565r17, 225 65r17 */
+    var patterns = [
+      /* standard / and optional R: 225/65R17 or 225/65/17 */
+      /^(\d{3})[\/\-](\d{2})[\/\-]?[Rr]?(\d{2})$/,
+      /* no separator at all: 22565R17 or 22565r17 */
+      /^(\d{3})(\d{2})[Rr](\d{2})$/,
+      /* three numbers with spaces: 225 65 17 or 225 65r17 */
+      /^(\d{3})\s+(\d{2})\s*[Rr]?\s*(\d{2})$/
+    ];
+
+    for (var i = 0; i < patterns.length; i++) {
+      var m = s.match(patterns[i]);
+      if (m) {
+        return { width: m[1], aspect: m[2], diameter: m[3],
+                 normalized: m[1] + '/' + m[2] + 'R' + m[3] };
+      }
+    }
+
+    /* Also try to FIND a tire size embedded in a longer string
+       e.g. "tires 225/65r17 winter" or "need 225 65 17 all season" */
+    var embedded = raw.match(/\b(P|LT|ST)?(\d{3})[\/\-\s](\d{2})[\/\-\s]?[Rr]?(\d{2})\b/);
+    if (embedded) {
+      return { width: embedded[2], aspect: embedded[3], diameter: embedded[4],
+               normalized: embedded[2] + '/' + embedded[3] + 'R' + embedded[4] };
+    }
+
+    return null;
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     TIER 2: VEHICLE PARSER
+     Handles year anywhere, nicknames, partial models
+  ───────────────────────────────────────────────────────── */
+  var makeAliases = {
+    'chevy': 'Chevrolet', 'chev': 'Chevrolet',
+    'vw': 'Volkswagen', 'volkswagon': 'Volkswagen',
+    'benz': 'Mercedes-Benz', 'mercedes': 'Mercedes-Benz',
+    'ram': 'RAM', 'dodge ram': 'RAM',
+    'land rover': 'Land Rover', 'landrover': 'Land Rover',
+    'gmc': 'GMC', 'bmw': 'BMW', 'kia': 'Kia',
+    'jeep': 'Jeep', 'ford': 'Ford', 'honda': 'Honda',
+    'toyota': 'Toyota', 'nissan': 'Nissan', 'hyundai': 'Hyundai',
+    'subaru': 'Subaru', 'mazda': 'Mazda', 'audi': 'Audi',
+    'lexus': 'Lexus', 'acura': 'Acura', 'infiniti': 'Infiniti',
+    'mitsubishi': 'Mitsubishi', 'volvo': 'Volvo', 'porsche': 'Porsche',
+    'tesla': 'Tesla', 'lincoln': 'Lincoln', 'cadillac': 'Cadillac',
+    'buick': 'Buick', 'chrysler': 'Chrysler', 'dodge': 'Dodge'
+  };
+
+  function parseVehicle(raw) {
+    if (!raw) return null;
+    var q = raw.toLowerCase().trim();
+
+    /* Strip noise words */
+    q = q.replace(/\b(tires?|wheels?|rims?|for|my|a|the|need|looking|fit|size|what|fits)\b/g, ' ')
+          .replace(/\s+/g, ' ').trim();
+
+    /* Extract year — 4-digit first, then 2-digit (19 → 2019, 20-26 → 202x) */
+    var year = null;
+    var yearMatch = q.match(/\b(19[8-9]\d|20[0-2]\d)\b/);
+    if (yearMatch) {
+      year = yearMatch[1];
+      q = q.replace(yearMatch[0], '').trim();
+    } else {
+      /* 2-digit short year: '24 civic → 2024 civic */
+      var shortYear = q.match(/\b'?(\d{2})\b/);
+      if (shortYear) {
+        var yr = parseInt(shortYear[1]);
+        if (yr >= 8 && yr <= 26) {
+          year = (yr <= 26 ? '20' : '19') + (yr < 10 ? '0' + yr : yr);
+          q = q.replace(shortYear[0], '').trim();
+        }
+      }
+    }
+
+    if (!year) return null; /* need a year to look up OEM sizes */
+
+    /* Identify make from aliases */
+    var foundMake = null;
+    var foundMakeRaw = null;
+    var makeKeys = Object.keys(makeAliases);
+    /* Sort by length desc so "land rover" matches before "land" */
+    makeKeys.sort(function(a, b) { return b.length - a.length; });
+    for (var i = 0; i < makeKeys.length; i++) {
+      if (q.indexOf(makeKeys[i]) !== -1) {
+        foundMake = makeAliases[makeKeys[i]];
+        foundMakeRaw = makeKeys[i];
+        q = q.replace(foundMakeRaw, '').replace(/\s+/g, ' ').trim();
+        break;
+      }
+    }
+    if (!foundMake) return null;
+
+    /* Remaining text is the model */
+    var model = q.trim().replace(/\s+/g, ' ');
+    if (!model) return null;
+
+    /* Title-case the model */
+    model = model.split(' ').map(function(w) {
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    }).join(' ');
+
+    return { year: year, make: foundMake, model: model,
+             label: year + ' ' + foundMake + ' ' + model };
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     TIER 3: KEYWORD / SEASON / BRAND DETECTION
+  ───────────────────────────────────────────────────────── */
+  var seasonKeywords = {
+    'winter': 'winter', 'snow': 'winter', 'ice': 'winter',
+    'all season': 'all-season', 'all-season': 'all-season', 'allseason': 'all-season', 'as': 'all-season',
+    'all weather': 'all-weather', 'all-weather': 'all-weather', 'allweather': 'all-weather',
+    'summer': 'summer', 'performance': 'summer'
+  };
+  var brands = ['michelin','bridgestone','goodyear','continental','pirelli','hankook',
+                'toyo','falken','kumho','nexen','nokian','cooper','firestone',
+                'bfgoodrich','yokohama','dunlop','general','nitto','maxxis'];
+
+  function detectKeyword(q) {
+    var lower = q.toLowerCase().trim();
+    /* Wheels/rims */
+    if (/\b(rims?|wheels?)\b/.test(lower)) {
+      return { type: 'wheels' };
+    }
+    /* Season */
+    var seasonKeys = Object.keys(seasonKeywords);
+    for (var i = 0; i < seasonKeys.length; i++) {
+      if (lower.indexOf(seasonKeys[i]) !== -1) {
+        return { type: 'season', season: seasonKeywords[seasonKeys[i]] };
+      }
+    }
+    /* Brand */
+    for (var j = 0; j < brands.length; j++) {
+      if (lower.indexOf(brands[j]) !== -1) {
+        return { type: 'brand', brand: brands[j] };
+      }
+    }
+    return null;
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     MASTER PARSE — runs all tiers in order
+  ───────────────────────────────────────────────────────── */
+  function parseInput(raw) {
+    if (!raw || !raw.trim()) return null;
+    var tireSize = parseTireSize(raw);
+    if (tireSize) return { type: 'tire-size', data: tireSize };
+    var vehicle = parseVehicle(raw);
+    if (vehicle) return { type: 'vehicle', data: vehicle };
+    var keyword = detectKeyword(raw);
+    if (keyword) return { type: keyword.type, data: keyword };
+    return { type: 'general', data: { query: raw.trim() } };
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     REDIRECT — builds proper collection URL with filters
+  ───────────────────────────────────────────────────────── */
+  function buildRedirectUrl(parsed) {
+    if (!parsed) return COLLECTION_URL;
+    var base = COLLECTION_URL;
+
+    if (parsed.type === 'tire-size') {
+      return base + '?size=' + encodeURIComponent(parsed.data.normalized);
+    }
+    if (parsed.type === 'season') {
+      return base + '?season=' + encodeURIComponent(parsed.data.season);
+    }
+    if (parsed.type === 'brand') {
+      return base + '?q=' + encodeURIComponent(parsed.data.brand);
+    }
+    if (parsed.type === 'wheels') {
+      return '{{ section.settings.shop_wheels_url | default: "/collections/wheels" }}';
+    }
+    if (parsed.type === 'vehicle') {
+      return base + '?vehicle=' + encodeURIComponent(parsed.data.label);
+    }
+    /* general fallback */
+    return base + '?q=' + encodeURIComponent(parsed.data.query);
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     VEHICLE JSON LOOKUP
+  ───────────────────────────────────────────────────────── */
+  function vehicleUrlForYear(year) {
+    return baseVehicleUrl.replace('pt-vehicle-2008', 'pt-vehicle-' + year);
+  }
+  function normalizeKey(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  function getLooseKey(obj, key) {
+    if (!obj) return null;
+    if (obj[key]) return obj[key];
+    var wanted = normalizeKey(key);
+    var keys = Object.keys(obj);
+    for (var i = 0; i < keys.length; i++) {
+      if (normalizeKey(keys[i]) === wanted) return obj[keys[i]];
+    }
+    /* partial match: key starts with wanted */
+    for (var j = 0; j < keys.length; j++) {
+      if (normalizeKey(keys[j]).indexOf(wanted) === 0 || wanted.indexOf(normalizeKey(keys[j])) === 0) {
+        return obj[keys[j]];
+      }
+    }
+    return null;
+  }
+  function fetchVehicleData(year) {
+    if (vehicleCache[year]) return Promise.resolve(vehicleCache[year]);
+    return fetch(vehicleUrlForYear(year))
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) { vehicleCache[year] = data; return data; })
+      .catch(function() { return null; });
+  }
+  function lookupOemSizes(data, make, model) {
+    if (!data || !data.models) return [];
+    var makeData = getLooseKey(data.models, make);
+    if (!makeData) return [];
+    var modelData = getLooseKey(makeData, model);
+    if (!modelData) return [];
+    var sizeMap = {};
+    if (Array.isArray(modelData)) {
+      modelData.forEach(function(s) {
+        var size = String(s).trim();
+        if (size) sizeMap[size] = ['All Trims'];
+      });
+    } else {
+      Object.keys(modelData).forEach(function(trim) {
+        var sizes = modelData[trim];
+        if (!Array.isArray(sizes)) return;
+        sizes.forEach(function(s) {
+          var size = (typeof s === 'string' ? s : (s.tireSize || s.size || '')).trim();
+          if (!size) return;
+          if (!sizeMap[size]) sizeMap[size] = [];
+          sizeMap[size].push(trim);
+        });
+      });
+    }
+    return Object.keys(sizeMap).map(function(size) {
+      return { size: size, trims: sizeMap[size] };
+    });
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     UI HELPERS
+  ───────────────────────────────────────────────────────── */
+  function openDropdown() {
+    dropdown.classList.add('is-open');
+    wrap.classList.add('has-dropdown');
+  }
+  function closeDropdown() {
+    dropdown.classList.remove('is-open');
+    wrap.classList.remove('has-dropdown');
+  }
+
+  function buildFilterQuery(size, vehicle) {
+    var params = new URLSearchParams();
+    var parsed = parseTireSizeInput(size);
+    if (parsed) {
+      params.set('filter.p.m.custom.tire_width', parsed.width);
+      params.set('filter.p.m.custom.tire_profile', parsed.profile);
+      params.set('filter.p.m.custom.rim_diameter', parsed.rim);
+    } else {
+      params.set('size', size);
+    }
+    if (vehicle) {
+      if (vehicle.year) params.set('vehicle_year', vehicle.year);
+      if (vehicle.make) params.set('vehicle_make', vehicle.make);
+      if (vehicle.model) params.set('vehicle_model', vehicle.model);
+      if (vehicle.trim) params.set('vehicle_trim', vehicle.trim);
+      if (vehicle.year && vehicle.make && vehicle.model && vehicle.trim) {
+        params.set('vehicle', vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model + ' ' + vehicle.trim);
+      }
+    }
+    return params.toString();
+  }
+
+  function buildSizeRow(size, trims, vehicle) {
+    var enc = encodeURIComponent(size);
+    var trimText = (trims || []).join(', ');
+    if (trimText.length > 80) trimText = trimText.substring(0, 77) + '...';
+    var filterQuery = buildFilterQuery(size, vehicle);
+    var baseUrl = COLLECTION_URL + '?' + filterQuery;
+    return '<div class="pt-hero__ai-size-row" style="cursor:pointer" onclick="window.location=\'' + baseUrl + '\'">'
+      + (trimText ? '<div class="pt-hero__ai-size-row__trims">' + trimText + '</div>' : '')
+      + '<div class="pt-hero__ai-size-row__size">' + size + '</div>'
+      + '<div class="pt-hero__ai-size-row__seasons">'
+      + '<a href="' + baseUrl + '&filter.p.product_type=Winter+Tires" class="pt-hero__ai-season-pill pt-hero__ai-season-pill--winter">❄ Winter</a>'
+      + '<a href="' + baseUrl + '&filter.p.product_type=All-Season+Tires" class="pt-hero__ai-season-pill pt-hero__ai-season-pill--allseason">🌿 All-Season</a>'
+      + '<a href="' + baseUrl + '&filter.p.product_type=All-Weather+Tires" class="pt-hero__ai-season-pill pt-hero__ai-season-pill--allweather">⛅ All-Weather</a>'
+      + '</div>'
+      + '</div>';
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     SMART SEARCH API CALL (with local-first fallback)
+  ───────────────────────────────────────────────────────── */
+  function doSmartSearch(q) {
+    if (searchAbort) searchAbort.abort();
+    searchAbort = new AbortController();
+
+    /* Run local parser first — if confident, show instantly */
+    var local = parseInput(q);
+    if (local && local.type === 'tire-size') {
+      showTireSizeResult(local.data.normalized, []);
+      return;
+    }
+    if (local && local.type === 'vehicle') {
+      /* local vehicle — fetch JSON directly */
+      showVehicleLoading(local.data.label);
+      fetchVehicleData(local.data.year).then(function(yearData) {
+        var sizes = lookupOemSizes(yearData, local.data.make, local.data.model);
+        showVehicleResult(local.data, sizes);
+      });
+      return;
+    }
+    if (local && local.type === 'season') {
+      showKeywordResult('\uD83C\uDF19 Season filter', 'Tap to browse ' + local.data.season + ' tires', COLLECTION_URL + '?season=' + local.data.season);
+      return;
+    }
+    if (local && local.type === 'brand') {
+      showKeywordResult('\uD83C\uDFF7\uFE0F Brand', 'Browse ' + local.data.brand + ' tires', COLLECTION_URL + '?q=' + encodeURIComponent(local.data.brand));
+      return;
+    }
+    if (local && local.type === 'wheels') {
+      showKeywordResult('\u26AA Wheels & Rims', 'Shop our full wheels collection', '{{ section.settings.shop_wheels_url | default: "/collections/wheels" }}');
+      return;
+    }
+
+    /* Fallback: hit the smart search API for ambiguous queries */
+    aiResultDiv.style.display = '';
+    aiResultDiv.innerHTML = '<div class="pt-hero__ai-badge pt-hero__ai-badge--loading">\uD83D\uDD0D Searching\u2026</div>';
+    popularDiv.style.display = 'none';
+    resultsDiv.style.display = 'none';
+
+    fetch(SMART_SEARCH_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q }),
+      signal: searchAbort.signal
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.intent === 'vehicle' && data.vehicle && data.vehicle.year) {
+        showVehicleLoading(data.vehicle.year + ' ' + data.vehicle.make + ' ' + data.vehicle.model);
+        fetchVehicleData(data.vehicle.year).then(function(yearData) {
+          var sizes = lookupOemSizes(yearData, data.vehicle.make, data.vehicle.model);
+          showVehicleResult(data.vehicle, sizes);
+        });
+      } else if (data.intent === 'size' && data.size) {
+        showTireSizeResult(data.size.formatted, []);
+      } else {
+        aiResultDiv.style.display = 'none';
+        fetchShopifyResults(q);
+      }
+    })
+    .catch(function(err) {
+      if (err.name === 'AbortError') return;
+      aiResultDiv.style.display = 'none';
+      fetchShopifyResults(q);
+    });
+  }
+
+  function showVehicleLoading(label) {
+    aiResultDiv.style.display = '';
+    aiResultDiv.innerHTML = '<div class="pt-hero__ai-badge pt-hero__ai-badge--loading">\uD83D\uDE97 ' + label + ' \u2014 loading sizes\u2026</div>';
+    popularDiv.style.display = 'none';
+    resultsDiv.style.display = 'none';
+  }
+
+  function showVehicleResult(vehicle, oemSizes) {
+    var label = vehicle.year + ' ' + vehicle.make + ' ' + (vehicle.model || '');
+    if (vehicle.trim) {
+      label += ' ' + vehicle.trim;
+    }
+    var allSizes = oemSizes.map(function(s) { return s.size; }).join(', ') || 'not found';
+    var trimPrompt = '';
+    if (!vehicle.trim && oemSizes.some(function(item){ return Array.isArray(item.trims) && item.trims.length > 1; })) {
+      trimPrompt = '<p style="color: #ffe4e1; margin: 8px 0 6px; font-size: 13px;">Please select your trim to confirm fitment before choosing a size. Then pick the size row.</p>';
+    }
+    var html = '<div class="pt-hero__ai-badge pt-hero__ai-badge--vehicle">\uD83D\uDE97 Vehicle found</div>';
+    html += '<p class="pt-hero__ai-info">\u2014 ' + label + ' \u2014 OEM sizes: ' + allSizes + '</p>';
+    if (trimPrompt) html += trimPrompt;
+    if (oemSizes.length > 0) {
+      html += '<p class="pt-hero__ai-label">SELECT YOUR SIZE</p>';
+      html += '<div class="pt-hero__ai-sizes">';
+      oemSizes.forEach(function(item) {
+        html += buildSizeRow(item.size, item.trims, vehicle);
+      });
+      html += '</div>';
+    } else {
+      html += '<a href="' + COLLECTION_URL + '?vehicle=' + encodeURIComponent(label) + '" class="pt-hero__ai-size-link">Browse tires for ' + label + ' \u2192</a>';
+    }
+    aiResultDiv.innerHTML = html;
+    aiResultDiv.style.display = '';
+    popularDiv.style.display = 'none';
+    resultsDiv.style.display = 'none';
+  }
+
+  function showTireSizeResult(size, trims) {
+    var html = '<div class="pt-hero__ai-badge pt-hero__ai-badge--size">\uD83D\uDCD0 Tire size detected</div>';
+    html += '<p class="pt-hero__ai-info">Size: ' + size + '</p>';
+    html += '<div class="pt-hero__ai-sizes">' + buildSizeRow(size, trims) + '</div>';
+    aiResultDiv.innerHTML = html;
+    aiResultDiv.style.display = '';
+    popularDiv.style.display = 'none';
+    resultsDiv.style.display = 'none';
+  }
+
+  function showKeywordResult(badge, info, href) {
+    var html = '<div class="pt-hero__ai-badge pt-hero__ai-badge--vehicle">' + badge + '</div>';
+    html += '<p class="pt-hero__ai-info">' + info + '</p>';
+    html += '<a href="' + href + '" class="pt-hero__ai-size-link">Browse now \u2192</a>';
+    aiResultDiv.innerHTML = html;
+    aiResultDiv.style.display = '';
+    popularDiv.style.display = 'none';
+    resultsDiv.style.display = 'none';
+  }
+
+  function fetchShopifyResults(q) {
+    var url = '/search/suggest.json?q=' + encodeURIComponent(q) + '&resources[type]=product&resources[limit]=6';
+    fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var products = (data.resources && data.resources.results && data.resources.results.products) || [];
+        if (!products.length) { resultsDiv.style.display = 'none'; return; }
+        resultsLabel.textContent = products.length + ' result' + (products.length !== 1 ? 's' : '');
+        itemsDiv.innerHTML = '';
+        products.forEach(function(p) {
+          var img = (p.image || p.featured_image || {}).url || '';
+          var price = p.price ? ('$' + (parseFloat(p.price) / 100).toFixed(2)) : '';
+          var a = document.createElement('a');
+          a.href = p.url;
+          a.className = 'pt-hero__search-item';
+          a.innerHTML =
+            (img ? '<img class="pt-hero__search-item-img" src="' + img + '" alt="" loading="lazy">' : '<div class="pt-hero__search-item-img"></div>') +
+            '<div class="pt-hero__search-item-info">' +
+              (p.vendor ? '<p class="pt-hero__search-item-brand">' + p.vendor + '</p>' : '') +
+              '<p class="pt-hero__search-item-title">' + (p.title || '') + '</p>' +
+            '</div>' +
+            (price ? '<span class="pt-hero__search-item-price">' + price + '</span>' : '');
+          itemsDiv.appendChild(a);
+        });
+        viewAllLink.href = '/search?q=' + encodeURIComponent(q) + '&type=product';
+        resultsDiv.style.display = '';
+      })
+      .catch(function() { resultsDiv.style.display = 'none'; });
+  }
+
+  /* ── Event listeners ──────────────────────────────────── */
+  input.addEventListener('input', function() {
+    var q = input.value.trim();
+    clearTimeout(debounceTimer);
+    var local = parseInput(q);
+    if (local && modeDiv) {
+      var icons = { 'tire-size': '\uD83D\uDCD0', 'vehicle': '\uD83D\uDE97', 'season': '\u2744\uFE0F', 'brand': '\uD83C\uDFF7\uFE0F', 'wheels': '\u26AA' };
+      modeIcon.textContent = icons[local.type] || '\uD83D\uDD0D';
+      modeText.textContent = local.type === 'tire-size' ? 'Tire size: ' + local.data.normalized
+        : local.type === 'vehicle' ? 'Vehicle: ' + local.data.label
+        : local.type === 'season' ? 'Season: ' + local.data.season
+        : local.type === 'brand' ? 'Brand: ' + local.data.brand
+        : local.type === 'wheels' ? 'Wheels & Rims' : 'Searching\u2026';
+      modeDiv.style.display = '';
+    } else if (modeDiv) {
+      modeDiv.style.display = 'none';
+    }
+
+    if (q.length < 2) {
+      if (popularDiv) popularDiv.style.display = '';
+      if (resultsDiv) resultsDiv.style.display = 'none';
+      if (aiResultDiv) aiResultDiv.style.display = 'none';
+      openDropdown(); return;
+    }
+    if (popularDiv) popularDiv.style.display = 'none';
+    debounceTimer = setTimeout(function() { doSmartSearch(q); }, 350);
+    openDropdown();
+  });
+
+  input.addEventListener('focus', function() {
+    openDropdown();
+    if (!input.value.trim()) {
+      if (popularDiv) popularDiv.style.display = '';
+      if (resultsDiv) resultsDiv.style.display = 'none';
+      if (aiResultDiv) aiResultDiv.style.display = 'none';
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!wrap.contains(e.target)) closeDropdown();
+  });
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { closeDropdown(); input.blur(); }
+  });
+
+  /* Pill clicks */
+  wrap.querySelectorAll('[data-search-suggest]').forEach(function(pill) {
+    pill.addEventListener('click', function() {
+      input.value = pill.getAttribute('data-search-suggest');
+      input.dispatchEvent(new Event('input'));
+      input.focus();
+    });
+  });
+
+  /* Form submit — smart redirect using master parser */
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var q = input.value.trim();
+    if (!q) return;
+    var parsed = parseInput(q);
+    window.location.href = buildRedirectUrl(parsed);
+    closeDropdown();
+  });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Hero Section v2",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "text",
+      "id": "headline_line1",
+      "label": "Headline Line 1",
+      "default": "Calgary's Trusted"
+    },
+    {
+      "type": "text",
+      "id": "headline_accent",
+      "label": "Headline Accent Word (red)",
+      "default": "Tire Shop"
+    },
+    {
+      "type": "text",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "The right tires the right price"
+    },
+    {
+      "type": "header",
+      "content": "Search"
+    },
+    {
+      "type": "text",
+      "id": "search_placeholder",
+      "label": "Search Placeholder",
+      "default": "e.g. 2025 Toyota RAV4 or 225/65R17"
+    },
+    {
+      "type": "url",
+      "id": "search_url",
+      "label": "Search Results Page URL",
+      "info": "Where the search form submits to. Default: /pages/tires-1"
+    },
+    {
+      "type": "header",
+      "content": "Action Buttons"
+    },
+    {
+      "type": "text",
+      "id": "action_1_text",
+      "label": "Button 1 Text",
+      "default": "Shop All Tires"
+    },
+    {
+      "type": "url",
+      "id": "shop_tires_url",
+      "label": "Button 1 URL"
+    },
+    {
+      "type": "text",
+      "id": "action_2_text",
+      "label": "Button 2 Text",
+      "default": "Shop Wheels"
+    },
+    {
+      "type": "url",
+      "id": "shop_wheels_url",
+      "label": "Button 2 URL"
+    },
+    {
+      "type": "text",
+      "id": "action_3_text",
+      "label": "Button 3 Text",
+      "default": "Call Us"
+    },
+    {
+      "type": "text",
+      "id": "phone_number",
+      "label": "Phone Number (digits only)",
+      "default": "4034524283",
+      "info": "Used for tel: link on Button 3"
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent (red)",
+      "default": "#B91C1C"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Headline text",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "color",
+      "id": "muted_color",
+      "label": "Subtitle / placeholder text",
+      "default": "#6B7280"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Hero Section v2"
+    }
+  ]
+}
+{% endschema %}
