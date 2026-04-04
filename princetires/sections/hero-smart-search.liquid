@@ -1,0 +1,753 @@
+<div
+  class="hero-smart-search"
+  style="
+    --hero-bg: {{ section.settings.background_color }};
+    --hero-accent: {{ section.settings.accent_color }};
+    --hero-text: {{ section.settings.text_color }};
+    --hero-subtitle-opacity: {{ section.settings.subtitle_opacity | divided_by: 100.0 }};
+  "
+>
+  <div class="hero-smart-search__container">
+    <div class="hero-smart-search__content">
+      {%- if section.settings.heading != blank -%}
+        <h1 class="hero-smart-search__heading aeo-speakable-title">
+          {{ section.settings.heading }}
+          {%- if section.settings.heading_accent != blank -%}
+            <span class="hero-smart-search__accent">{{ section.settings.heading_accent }}</span>
+          {%- endif -%}
+        </h1>
+      {%- endif -%}
+
+      {%- if section.settings.subtitle != blank -%}
+        <p class="hero-smart-search__subtitle aeo-speakable-summary">
+          {{ section.settings.subtitle }}
+        </p>
+      {%- endif -%}
+
+      <div class="hero-smart-search__search-wrapper">
+        <div class="hero-smart-search__badge">
+          <span class="hero-smart-search__badge-dot"></span>
+          {{ 'sections.hero_smart_search.powered_by' | t }}
+          <strong>{{ 'sections.hero_smart_search.smart_search' | t }}</strong>
+        </div>
+
+        <div class="hero-smart-search__search" data-smart-search>
+          <div class="hero-smart-search__input-wrapper">
+            <input
+              type="text"
+              class="hero-smart-search__input"
+              data-smart-search-input
+              placeholder="{{ section.settings.search_placeholder | escape }}"
+              autocomplete="off"
+              aria-label="{{ 'sections.hero_smart_search.search_label' | t }}"
+              aria-expanded="false"
+              aria-controls="smart-search-results"
+              role="combobox"
+            >
+            <button
+              class="hero-smart-search__submit"
+              data-smart-search-submit
+              aria-label="{{ 'sections.hero_smart_search.search_submit' | t }}"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="hero-smart-search__results" id="smart-search-results" data-smart-search-results hidden>
+            <ul class="hero-smart-search__results-list" role="listbox" data-smart-search-list></ul>
+          </div>
+        </div>
+      </div>
+
+      {%- if section.blocks.size > 0 -%}
+        <div class="hero-smart-search__actions">
+          {%- for block in section.blocks -%}
+            {%- if block.settings.label != blank -%}
+              <a
+                href="{{ block.settings.link | default: '#' }}"
+                class="hero-smart-search__btn"
+                {{ block.shopify_attributes }}
+                {%- if block.settings.link == blank %} role="button"{% endif -%}
+                {%- if block.settings.phone != blank %} href="tel:{{ block.settings.phone | remove: ' ' | remove: '-' | remove: '(' | remove: ')' }}"{% endif -%}
+              >
+                {%- case block.settings.icon -%}
+                  {%- when 'tire' -%}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+                      <circle cx="12" cy="12" r="6" stroke="currentColor" stroke-width="1.5"/>
+                      <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                    </svg>
+                  {%- when 'wheel' -%}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/>
+                      <path d="M12 2V9M12 15V22M2 12H9M15 12H22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                  {%- when 'phone' -%}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M22 16.92V19.92C22 20.48 21.56 20.93 21 20.97C20.66 21 20.33 21.01 20 21.01C10.61 21.01 3 13.4 3 3.97C3 3.64 3.01 3.31 3.03 2.97C3.07 2.41 3.52 1.97 4.08 1.97H7.08C7.56 1.97 7.97 2.33 8.03 2.81C8.09 3.33 8.2 3.84 8.37 4.33C8.52 4.76 8.41 5.24 8.08 5.57L6.62 7.03C8.06 9.78 10.22 11.94 12.97 13.38L14.43 11.92C14.76 11.59 15.24 11.48 15.67 11.63C16.16 11.8 16.67 11.91 17.19 11.97C17.67 12.03 18.03 12.44 18.03 12.92V16.92H22Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  {%- when 'calendar' -%}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                      <path d="M16 2V6M8 2V6M3 10H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                  {%- else -%}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                {%- endcase -%}
+                {{ block.settings.label | escape }}
+              </a>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+  .hero-smart-search {
+    background-color: var(--hero-bg, #1a1a1a);
+    color: var(--hero-text, #ffffff);
+    padding: 6rem 2rem 4rem;
+    min-height: 50vh;
+    display: flex;
+    align-items: center;
+  }
+
+  .hero-smart-search__container {
+    width: 100%;
+    max-width: 72rem;
+    margin: 0 auto;
+  }
+
+  .hero-smart-search__heading {
+    font-size: clamp(3.2rem, 6vw, 5.6rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 0 0 1.2rem;
+    letter-spacing: -0.02em;
+    color: var(--hero-text, #ffffff);
+  }
+
+  .hero-smart-search__accent {
+    color: var(--hero-accent, #c0392b);
+    display: block;
+  }
+
+  .hero-smart-search__subtitle {
+    font-size: 1.6rem;
+    margin: 0 0 3.2rem;
+    opacity: var(--hero-subtitle-opacity, 0.6);
+    color: var(--hero-text, #ffffff);
+  }
+
+  .hero-smart-search__search-wrapper {
+    margin-bottom: 2.4rem;
+    max-width: 56rem;
+  }
+
+  .hero-smart-search__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.2rem;
+    padding: 0.5rem 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 2rem;
+    margin-bottom: 1.2rem;
+    opacity: 0.8;
+    color: var(--hero-text, #ffffff);
+  }
+
+  .hero-smart-search__badge-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--hero-accent, #c0392b);
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .hero-smart-search__search {
+    position: relative;
+  }
+
+  .hero-smart-search__input-wrapper {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1.2rem;
+    overflow: hidden;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .hero-smart-search__input-wrapper:focus-within {
+    border-color: var(--hero-accent, #c0392b);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .hero-smart-search__input {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 1.6rem 2rem;
+    font-size: 1.6rem;
+    color: var(--hero-text, #ffffff);
+    outline: none;
+    font-family: inherit;
+  }
+
+  .hero-smart-search__input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .hero-smart-search__submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4.8rem;
+    height: 4.8rem;
+    margin: 0.4rem;
+    background: var(--hero-accent, #c0392b);
+    color: #ffffff;
+    border: none;
+    border-radius: 0.8rem;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .hero-smart-search__submit:hover {
+    opacity: 0.85;
+  }
+
+  .hero-smart-search__results {
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    left: 0;
+    right: 0;
+    background: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1.2rem;
+    max-height: 32rem;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 1.2rem 3.2rem rgba(0, 0, 0, 0.4);
+  }
+
+  .hero-smart-search__results[hidden] {
+    display: none;
+  }
+
+  .hero-smart-search__results-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.6rem;
+  }
+
+  .hero-smart-search__result-item {
+    padding: 1.2rem 1.4rem;
+    border-radius: 0.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    font-size: 1.4rem;
+    transition: background 0.15s ease;
+    color: var(--hero-text, #ffffff);
+  }
+
+  .hero-smart-search__result-item:hover,
+  .hero-smart-search__result-item[aria-selected="true"] {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .hero-smart-search__result-icon {
+    width: 3.2rem;
+    height: 3.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.6rem;
+    background: rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+  }
+
+  .hero-smart-search__result-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .hero-smart-search__result-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hero-smart-search__result-meta {
+    font-size: 1.2rem;
+    opacity: 0.5;
+    margin-top: 0.2rem;
+  }
+
+  .hero-smart-search__result-tag {
+    font-size: 1.1rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.4rem;
+    background: rgba(255, 255, 255, 0.08);
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+
+  .hero-smart-search__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .hero-smart-search__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 3rem;
+    color: var(--hero-text, #ffffff);
+    text-decoration: none;
+    font-size: 1.4rem;
+    font-weight: 500;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    background: transparent;
+  }
+
+  .hero-smart-search__btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: var(--hero-text, #ffffff);
+  }
+
+  @media screen and (max-width: 749px) {
+    .hero-smart-search {
+      padding: 4rem 1.6rem 3rem;
+      min-height: auto;
+    }
+
+    .hero-smart-search__heading {
+      font-size: 3.2rem;
+    }
+
+    .hero-smart-search__actions {
+      gap: 0.8rem;
+    }
+
+    .hero-smart-search__btn {
+      padding: 0.8rem 1.4rem;
+      font-size: 1.3rem;
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  class SmartTireSearch {
+    constructor(container) {
+      this.container = container;
+      this.input = container.querySelector('[data-smart-search-input]');
+      this.results = container.querySelector('[data-smart-search-results]');
+      this.list = container.querySelector('[data-smart-search-list]');
+      this.submit = container.querySelector('[data-smart-search-submit]');
+      this.selectedIndex = -1;
+      this.items = [];
+      this.debounceTimer = null;
+
+      this.tireSizeRegex = /^(\d{3})\/?(\d{2,3})?\/?[Rr]?(\d{2})?$/;
+      this.vehicleDb = this.buildVehicleDatabase();
+
+      this.bindEvents();
+    }
+
+    buildVehicleDatabase() {
+      return [
+        { year: '2025', make: 'Toyota', model: 'RAV4', sizes: ['225/65R17', '235/55R19'] },
+        { year: '2025', make: 'Toyota', model: 'Camry', sizes: ['215/55R17', '235/45R18'] },
+        { year: '2025', make: 'Toyota', model: 'Corolla', sizes: ['205/55R16', '225/40R18'] },
+        { year: '2025', make: 'Toyota', model: 'Highlander', sizes: ['235/65R18', '245/55R20'] },
+        { year: '2025', make: 'Toyota', model: '4Runner', sizes: ['265/70R17', '265/60R20'] },
+        { year: '2025', make: 'Toyota', model: 'Tacoma', sizes: ['245/75R16', '265/70R17'] },
+        { year: '2025', make: 'Toyota', model: 'Tundra', sizes: ['275/65R18', '275/55R20'] },
+        { year: '2025', make: 'Honda', model: 'CR-V', sizes: ['235/60R18', '235/55R19'] },
+        { year: '2025', make: 'Honda', model: 'Civic', sizes: ['215/55R16', '235/40R18'] },
+        { year: '2025', make: 'Honda', model: 'Accord', sizes: ['225/50R17', '235/45R18'] },
+        { year: '2025', make: 'Honda', model: 'Pilot', sizes: ['245/60R18', '245/50R20'] },
+        { year: '2025', make: 'Honda', model: 'HR-V', sizes: ['215/60R17', '225/50R18'] },
+        { year: '2025', make: 'Ford', model: 'F-150', sizes: ['265/70R17', '275/60R20'] },
+        { year: '2025', make: 'Ford', model: 'Explorer', sizes: ['255/65R18', '255/55R20'] },
+        { year: '2025', make: 'Ford', model: 'Escape', sizes: ['225/65R17', '235/55R18'] },
+        { year: '2025', make: 'Ford', model: 'Bronco', sizes: ['255/70R18', '275/65R18'] },
+        { year: '2025', make: 'Ford', model: 'Maverick', sizes: ['225/65R17', '235/55R18'] },
+        { year: '2025', make: 'Chevrolet', model: 'Silverado', sizes: ['265/70R17', '275/60R20'] },
+        { year: '2025', make: 'Chevrolet', model: 'Equinox', sizes: ['225/65R17', '235/55R18'] },
+        { year: '2025', make: 'Chevrolet', model: 'Traverse', sizes: ['245/60R18', '255/55R20'] },
+        { year: '2025', make: 'Chevrolet', model: 'Tahoe', sizes: ['275/60R20', '285/45R22'] },
+        { year: '2024', make: 'Hyundai', model: 'Tucson', sizes: ['235/60R18', '235/55R19'] },
+        { year: '2024', make: 'Hyundai', model: 'Santa Fe', sizes: ['235/65R17', '245/50R20'] },
+        { year: '2024', make: 'Hyundai', model: 'Elantra', sizes: ['205/55R16', '225/45R17'] },
+        { year: '2025', make: 'Kia', model: 'Sportage', sizes: ['235/60R18', '235/55R19'] },
+        { year: '2025', make: 'Kia', model: 'Sorento', sizes: ['235/65R17', '245/50R20'] },
+        { year: '2025', make: 'Kia', model: 'Forte', sizes: ['205/55R16', '225/45R17'] },
+        { year: '2025', make: 'Nissan', model: 'Rogue', sizes: ['225/65R17', '235/55R19'] },
+        { year: '2025', make: 'Nissan', model: 'Pathfinder', sizes: ['255/60R18', '255/55R20'] },
+        { year: '2025', make: 'Nissan', model: 'Altima', sizes: ['215/55R17', '235/45R19'] },
+        { year: '2025', make: 'Subaru', model: 'Outback', sizes: ['225/65R17', '225/60R18'] },
+        { year: '2025', make: 'Subaru', model: 'Forester', sizes: ['225/60R17', '225/55R18'] },
+        { year: '2025', make: 'Subaru', model: 'Crosstrek', sizes: ['225/60R17', '225/55R18'] },
+        { year: '2025', make: 'Volkswagen', model: 'Tiguan', sizes: ['215/65R17', '235/55R18'] },
+        { year: '2025', make: 'Volkswagen', model: 'Jetta', sizes: ['205/60R16', '225/45R17'] },
+        { year: '2025', make: 'Jeep', model: 'Grand Cherokee', sizes: ['265/60R18', '275/45R21'] },
+        { year: '2025', make: 'Jeep', model: 'Wrangler', sizes: ['245/75R17', '255/70R18'] },
+        { year: '2025', make: 'Mazda', model: 'CX-5', sizes: ['225/65R17', '225/55R19'] },
+        { year: '2025', make: 'Mazda', model: 'CX-50', sizes: ['225/65R17', '225/55R19'] },
+        { year: '2025', make: 'Mazda', model: 'Mazda3', sizes: ['205/60R16', '215/45R18'] },
+        { year: '2025', make: 'GMC', model: 'Sierra', sizes: ['265/70R17', '275/60R20'] },
+        { year: '2025', make: 'GMC', model: 'Terrain', sizes: ['225/65R17', '235/55R18'] },
+        { year: '2025', make: 'RAM', model: '1500', sizes: ['275/65R18', '275/55R20'] },
+        { year: '2025', make: 'Tesla', model: 'Model Y', sizes: ['255/45R19', '255/40R20'] },
+        { year: '2025', make: 'Tesla', model: 'Model 3', sizes: ['235/45R18', '235/40R19'] },
+        { year: '2025', make: 'BMW', model: 'X3', sizes: ['245/50R19', '245/45R20'] },
+        { year: '2025', make: 'Mercedes-Benz', model: 'GLC', sizes: ['235/60R18', '255/45R20'] },
+        { year: '2025', make: 'Audi', model: 'Q5', sizes: ['235/60R18', '255/45R20'] },
+      ];
+    }
+
+    bindEvents() {
+      this.input.addEventListener('input', () => this.onInput());
+      this.input.addEventListener('keydown', (e) => this.onKeydown(e));
+      this.submit.addEventListener('click', () => this.onSubmit());
+      this.input.addEventListener('focus', () => {
+        if (this.input.value.length >= 2) this.search(this.input.value);
+      });
+      document.addEventListener('click', (e) => {
+        if (!this.container.querySelector('[data-smart-search]').contains(e.target)) {
+          this.hideResults();
+        }
+      });
+    }
+
+    onInput() {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = setTimeout(() => {
+        const query = this.input.value.trim();
+        if (query.length < 2) {
+          this.hideResults();
+          return;
+        }
+        this.search(query);
+      }, 200);
+    }
+
+    search(query) {
+      const results = [];
+      const q = query.toLowerCase();
+
+      const tireMatch = query.match(this.tireSizeRegex);
+      if (tireMatch) {
+        const width = tireMatch[1];
+        const aspect = tireMatch[2] || '';
+        const rim = tireMatch[3] || '';
+        let sizeStr = width;
+        if (aspect) sizeStr += '/' + aspect;
+        if (rim) sizeStr += 'R' + rim;
+
+        results.push({
+          type: 'size',
+          title: sizeStr,
+          meta: 'Search tires by size',
+          url: '/collections/all?q=' + encodeURIComponent(sizeStr),
+        });
+
+        this.vehicleDb.forEach((v) => {
+          v.sizes.forEach((s) => {
+            if (s.startsWith(width)) {
+              results.push({
+                type: 'vehicle',
+                title: v.year + ' ' + v.make + ' ' + v.model,
+                meta: 'Fits: ' + v.sizes.join(', '),
+                url: '/collections/all?q=' + encodeURIComponent(s),
+              });
+            }
+          });
+        });
+      } else {
+        const seen = new Set();
+        this.vehicleDb.forEach((v) => {
+          const full = (v.year + ' ' + v.make + ' ' + v.model).toLowerCase();
+          const make = v.make.toLowerCase();
+          const model = v.model.toLowerCase();
+
+          if (full.includes(q) || make.includes(q) || model.includes(q)) {
+            const key = v.make + ' ' + v.model;
+            if (!seen.has(key)) {
+              seen.add(key);
+              results.push({
+                type: 'vehicle',
+                title: v.year + ' ' + v.make + ' ' + v.model,
+                meta: 'Fits: ' + v.sizes.join(', '),
+                sizes: v.sizes,
+                url: '/collections/all?q=' + encodeURIComponent(v.sizes[0]),
+              });
+            }
+          }
+        });
+
+        const uniqueSizes = new Set();
+        results.forEach((r) => {
+          if (r.sizes) r.sizes.forEach((s) => uniqueSizes.add(s));
+        });
+        uniqueSizes.forEach((size) => {
+          results.push({
+            type: 'size',
+            title: size,
+            meta: 'Tire size',
+            url: '/collections/all?q=' + encodeURIComponent(size),
+          });
+        });
+      }
+
+      this.renderResults(results.slice(0, 8));
+    }
+
+    renderResults(results) {
+      if (results.length === 0) {
+        this.hideResults();
+        return;
+      }
+
+      this.list.innerHTML = results
+        .map(
+          (r, i) => `
+        <li class="hero-smart-search__result-item" role="option" data-index="${i}" data-url="${r.url}">
+          <span class="hero-smart-search__result-icon">
+            ${r.type === 'size' ? this.tireIcon() : this.vehicleIcon()}
+          </span>
+          <span class="hero-smart-search__result-info">
+            <span class="hero-smart-search__result-title">${this.escapeHtml(r.title)}</span>
+            <span class="hero-smart-search__result-meta">${this.escapeHtml(r.meta)}</span>
+          </span>
+          <span class="hero-smart-search__result-tag">${r.type === 'size' ? 'Size' : 'Vehicle'}</span>
+        </li>
+      `
+        )
+        .join('');
+
+      this.items = this.list.querySelectorAll('.hero-smart-search__result-item');
+      this.items.forEach((item) => {
+        item.addEventListener('click', () => this.selectResult(item));
+      });
+
+      this.selectedIndex = -1;
+      this.results.hidden = false;
+      this.input.setAttribute('aria-expanded', 'true');
+    }
+
+    hideResults() {
+      this.results.hidden = true;
+      this.input.setAttribute('aria-expanded', 'false');
+      this.selectedIndex = -1;
+    }
+
+    onKeydown(e) {
+      if (!this.items.length) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.selectedIndex = Math.min(this.selectedIndex + 1, this.items.length - 1);
+        this.highlightItem();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
+        this.highlightItem();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (this.selectedIndex >= 0) {
+          this.selectResult(this.items[this.selectedIndex]);
+        } else {
+          this.onSubmit();
+        }
+      } else if (e.key === 'Escape') {
+        this.hideResults();
+      }
+    }
+
+    highlightItem() {
+      this.items.forEach((item, i) => {
+        item.setAttribute('aria-selected', i === this.selectedIndex ? 'true' : 'false');
+      });
+      if (this.selectedIndex >= 0) {
+        this.items[this.selectedIndex].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    selectResult(item) {
+      const url = item.dataset.url;
+      if (url) window.location.href = url;
+    }
+
+    onSubmit() {
+      const query = this.input.value.trim();
+      if (query) {
+        window.location.href = '/search?q=' + encodeURIComponent(query);
+      }
+    }
+
+    tireIcon() {
+      return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="6" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>';
+    }
+
+    vehicleIcon() {
+      return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 17h14M7.5 17V13L6 9H18L16.5 13V17M9 21H7V19H9V21ZM17 21H15V19H17V21ZM3 13H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    }
+
+    escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  }
+
+  document.querySelectorAll('[data-smart-search]').forEach((el) => {
+    new SmartTireSearch(el.closest('.hero-smart-search'));
+  });
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:sections.hero_smart_search.name",
+  "tag": "section",
+  "class": "section-hero-smart-search",
+  "settings": [
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "t:sections.hero_smart_search.settings.heading.label",
+      "default": "Calgary's Trusted"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading_accent",
+      "label": "t:sections.hero_smart_search.settings.heading_accent.label",
+      "default": "Tire Shop"
+    },
+    {
+      "type": "text",
+      "id": "subtitle",
+      "label": "t:sections.hero_smart_search.settings.subtitle.label",
+      "default": "The right tires at the right price"
+    },
+    {
+      "type": "text",
+      "id": "search_placeholder",
+      "label": "t:sections.hero_smart_search.settings.search_placeholder.label",
+      "default": "e.g. 2025 Toyota RAV4 or 225/65R17"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "t:sections.hero_smart_search.settings.background_color.label",
+      "default": "#1a1a1a"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "t:sections.hero_smart_search.settings.accent_color.label",
+      "default": "#c0392b"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "t:sections.hero_smart_search.settings.text_color.label",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "subtitle_opacity",
+      "label": "t:sections.hero_smart_search.settings.subtitle_opacity.label",
+      "min": 20,
+      "max": 100,
+      "step": 5,
+      "default": 60,
+      "unit": "%"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "action_button",
+      "name": "t:sections.hero_smart_search.blocks.action_button.name",
+      "settings": [
+        {
+          "type": "text",
+          "id": "label",
+          "label": "t:sections.hero_smart_search.blocks.action_button.settings.label.label",
+          "default": "Shop All Tires"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "t:sections.hero_smart_search.blocks.action_button.settings.link.label"
+        },
+        {
+          "type": "text",
+          "id": "phone",
+          "label": "t:sections.hero_smart_search.blocks.action_button.settings.phone.label",
+          "info": "t:sections.hero_smart_search.blocks.action_button.settings.phone.info"
+        },
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "t:sections.hero_smart_search.blocks.action_button.settings.icon.label",
+          "options": [
+            { "value": "tire", "label": "t:sections.hero_smart_search.blocks.action_button.settings.icon.options.tire" },
+            { "value": "wheel", "label": "t:sections.hero_smart_search.blocks.action_button.settings.icon.options.wheel" },
+            { "value": "phone", "label": "t:sections.hero_smart_search.blocks.action_button.settings.icon.options.phone" },
+            { "value": "calendar", "label": "t:sections.hero_smart_search.blocks.action_button.settings.icon.options.calendar" },
+            { "value": "arrow", "label": "t:sections.hero_smart_search.blocks.action_button.settings.icon.options.arrow" }
+          ],
+          "default": "tire"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:sections.hero_smart_search.name",
+      "blocks": [
+        {
+          "type": "action_button",
+          "settings": {
+            "label": "Shop All Tires",
+            "icon": "tire"
+          }
+        },
+        {
+          "type": "action_button",
+          "settings": {
+            "label": "Shop Wheels",
+            "icon": "wheel"
+          }
+        },
+        {
+          "type": "action_button",
+          "settings": {
+            "label": "Call Us",
+            "icon": "phone"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

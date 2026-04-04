@@ -1,0 +1,209 @@
+{%- if section.blocks.size > 0 -%}
+  <div class="faq-section page-width section-{{ section.id }}-padding">
+    {%- if section.settings.heading != blank -%}
+      <h2 class="faq-section__heading aeo-speakable-title {{ section.settings.heading_size }}">
+        {{ section.settings.heading }}
+      </h2>
+    {%- endif -%}
+
+    {%- if section.settings.description != blank -%}
+      <div class="faq-section__description rte aeo-speakable-summary">
+        {{ section.settings.description }}
+      </div>
+    {%- endif -%}
+
+    <div class="faq-section__items">
+      {%- for block in section.blocks -%}
+        <details
+          class="faq-section__item"
+          {{ block.shopify_attributes }}
+          {% if forloop.first and section.settings.open_first %}open{% endif %}
+        >
+          <summary class="faq-section__question">
+            <span>{{ block.settings.question }}</span>
+            <span class="faq-section__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path class="faq-section__icon-line" d="M10 4V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </span>
+          </summary>
+          <div class="faq-section__answer rte">
+            {{ block.settings.answer }}
+          </div>
+        </details>
+      {%- endfor -%}
+    </div>
+  </div>
+
+  {%- comment -%}
+    FAQ structured data — automatically generated from section blocks.
+    No metafields needed.
+  {%- endcomment -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {%- for block in section.blocks -%}
+        {%- if block.settings.question != blank -%}
+          {%- if forloop.first == false -%},{%- endif -%}
+          {
+            "@type": "Question",
+            "name": {{ block.settings.question | json }},
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": {{ block.settings.answer | strip_html | json }}
+            }
+          }
+        {%- endif -%}
+      {%- endfor -%}
+    ]
+  }
+  </script>
+{%- endif -%}
+
+{% stylesheet %}
+  .faq-section {
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+
+  .faq-section__heading {
+    margin-bottom: 0.8rem;
+  }
+
+  .faq-section__description {
+    margin-bottom: 2.4rem;
+    opacity: 0.75;
+  }
+
+  .faq-section__items {
+    border-top: 1px solid rgba(var(--color-foreground), 0.1);
+  }
+
+  .faq-section__item {
+    border-bottom: 1px solid rgba(var(--color-foreground), 0.1);
+  }
+
+  .faq-section__question {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.6rem 0;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1.6rem;
+    list-style: none;
+    gap: 1.6rem;
+  }
+
+  .faq-section__question::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-section__icon {
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+  }
+
+  .faq-section__icon-line {
+    transition: opacity 0.3s ease;
+  }
+
+  .faq-section__item[open] .faq-section__icon {
+    transform: rotate(45deg);
+  }
+
+  .faq-section__answer {
+    padding: 0 0 1.6rem;
+    opacity: 0.75;
+    line-height: 1.6;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:sections.faq.name",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "t:sections.faq.settings.heading.label",
+      "default": "Frequently asked questions"
+    },
+    {
+      "type": "select",
+      "id": "heading_size",
+      "label": "t:sections.faq.settings.heading_size.label",
+      "options": [
+        { "value": "h2", "label": "t:sections.faq.settings.heading_size.options.small" },
+        { "value": "h1", "label": "t:sections.faq.settings.heading_size.options.medium" },
+        { "value": "h0", "label": "t:sections.faq.settings.heading_size.options.large" }
+      ],
+      "default": "h1"
+    },
+    {
+      "type": "richtext",
+      "id": "description",
+      "label": "t:sections.faq.settings.description.label"
+    },
+    {
+      "type": "checkbox",
+      "id": "open_first",
+      "label": "t:sections.faq.settings.open_first.label",
+      "default": false
+    }
+  ],
+  "blocks": [
+    {
+      "type": "faq_item",
+      "name": "t:sections.faq.blocks.faq_item.name",
+      "settings": [
+        {
+          "type": "text",
+          "id": "question",
+          "label": "t:sections.faq.blocks.faq_item.settings.question.label",
+          "default": "What services do you offer?"
+        },
+        {
+          "type": "richtext",
+          "id": "answer",
+          "label": "t:sections.faq.blocks.faq_item.settings.answer.label",
+          "default": "<p>We offer a wide range of tire services including tire installation, balancing, rotation, alignment, and flat repair.</p>"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:sections.faq.name",
+      "blocks": [
+        {
+          "type": "faq_item",
+          "settings": {
+            "question": "What services do you offer?",
+            "answer": "<p>We offer a wide range of tire services including tire installation, balancing, rotation, alignment, and flat repair.</p>"
+          }
+        },
+        {
+          "type": "faq_item",
+          "settings": {
+            "question": "Do I need an appointment?",
+            "answer": "<p>Walk-ins are welcome, but we recommend booking an appointment to guarantee your preferred time slot.</p>"
+          }
+        },
+        {
+          "type": "faq_item",
+          "settings": {
+            "question": "How long does a tire installation take?",
+            "answer": "<p>A standard tire installation typically takes 30-45 minutes for a full set of four tires.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

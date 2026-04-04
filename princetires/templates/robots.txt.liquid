@@ -1,0 +1,64 @@
+{% comment %}
+  Robots.txt controls which pages search engines and AI crawlers can access.
+  Shopify automatically generates a default robots.txt — this template
+  lets you customize it.
+{% endcomment %}
+
+{% for group in robots.default_groups %}
+  {{- group.user_agent -}}
+
+  {% for rule in group.rules %}
+    {{- rule -}}
+  {% endfor %}
+
+  {% if group.sitemap %}
+    {{- group.sitemap -}}
+  {% endif %}
+{% endfor %}
+
+{% comment %}
+  Additional rules for AI crawlers — allow them to index product and
+  collection pages for AI-powered search visibility.
+{% endcomment %}
+User-agent: GPTBot
+Allow: /collections/
+Allow: /products/
+Allow: /pages/
+Allow: /blogs/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /account
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /collections/
+Allow: /products/
+Allow: /pages/
+Allow: /blogs/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /account
+
+User-agent: PerplexityBot
+Allow: /collections/
+Allow: /products/
+Allow: /pages/
+Allow: /blogs/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /account
+
+User-agent: Amazonbot
+Allow: /collections/
+Allow: /products/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /account
+
+Sitemap: {{ shop.url }}/sitemap.xml

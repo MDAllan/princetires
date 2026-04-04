@@ -32,66 +32,7 @@
   <link rel="alternate" hreflang="x-default" href="{{ canonical_url }}">
 {%- endif -%}
 
-{%- if request.page_type == 'product' -%}
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    "name": {{ product.title | json }},
-    "url": {{ request.origin | append: product.url | json }},
-    "description": {{ product.description | strip_html | truncate: 500 | json }},
-    {%- if product.featured_image -%}
-      "image": {{ product.featured_image | image_url: width: 1200 | prepend: 'https:' | json }},
-    {%- endif -%}
-    {%- if product.vendor != blank -%}
-      "brand": {
-        "@type": "Brand",
-        "name": {{ product.vendor | json }}
-      },
-    {%- endif -%}
-    {%- if product.variants.first.sku != blank -%}
-      "sku": {{ product.variants.first.sku | json }},
-    {%- endif -%}
-    "offers": {
-      "@type": "AggregateOffer",
-      "priceCurrency": {{ cart.currency.iso_code | json }},
-      "lowPrice": {{ product.price_min | money_without_currency | strip_html | json }},
-      "highPrice": {{ product.price_max | money_without_currency | strip_html | json }},
-      "offerCount": {{ product.variants.size | json }},
-      "availability": "https://schema.org/{% if product.available %}InStock{% else %}OutOfStock{% endif %}",
-      "url": {{ request.origin | append: product.url | json }}
-    }
-  }
-  </script>
-{%- endif -%}
-
-{%- if request.page_type == 'article' -%}
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    "headline": {{ article.title | json }},
-    "url": {{ request.origin | append: article.url | json }},
-    "description": {{ article.excerpt_or_content | strip_html | truncate: 500 | json }},
-    "datePublished": {{ article.published_at | date: '%Y-%m-%dT%H:%M:%S%z' | json }},
-    "dateModified": {{ article.updated_at | date: '%Y-%m-%dT%H:%M:%S%z' | json }},
-    {%- if article.image -%}
-      "image": {{ article.image | image_url: width: 1200 | prepend: 'https:' | json }},
-    {%- endif -%}
-    "author": {
-      "@type": "Person",
-      "name": {{ article.author | json }}
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": {{ shop.name | json }}
-      {%- if shop.brand.logo -%}
-        ,"logo": {
-          "@type": "ImageObject",
-          "url": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }}
-        }
-      {%- endif -%}
-    }
-  }
-  </script>
-{%- endif -%}
+{%- comment -%}
+  Product and Article JSON-LD are handled by geo-meta.liquid
+  to avoid duplicate structured data.
+{%- endcomment -%}

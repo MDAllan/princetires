@@ -1,0 +1,291 @@
+{%- if section.blocks.size > 0 -%}
+  <div class="product-reviews page-width section-{{ section.id }}-padding">
+    <div class="product-reviews__header">
+      {%- if section.settings.heading != blank -%}
+        <h2 class="product-reviews__heading {{ section.settings.heading_size }}">
+          {{ section.settings.heading }}
+        </h2>
+      {%- endif -%}
+
+      <div class="product-reviews__summary" aria-label="{{ 'sections.product_reviews.rating_summary' | t }}">
+        {%- assign total_rating = 0 -%}
+        {%- assign review_count = section.blocks.size -%}
+        {%- for block in section.blocks -%}
+          {%- assign total_rating = total_rating | plus: block.settings.rating -%}
+        {%- endfor -%}
+        {%- assign avg_rating = total_rating | times: 10 | divided_by: review_count | times: 1.0 | divided_by: 10 -%}
+
+        <div class="product-reviews__stars" aria-hidden="true">
+          {%- for i in (1..5) -%}
+            {%- if i <= avg_rating -%}
+              <span class="product-reviews__star product-reviews__star--filled">&#9733;</span>
+            {%- else -%}
+              <span class="product-reviews__star">&#9733;</span>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+        <span class="product-reviews__avg">{{ avg_rating }}</span>
+        <span class="product-reviews__count">
+          ({{ 'sections.product_reviews.review_count' | t: count: review_count }})
+        </span>
+      </div>
+    </div>
+
+    <div class="product-reviews__list">
+      {%- for block in section.blocks -%}
+        <div class="product-reviews__item" {{ block.shopify_attributes }}>
+          <div class="product-reviews__item-header">
+            <div class="product-reviews__item-stars" aria-label="{{ 'sections.product_reviews.star_rating' | t: rating: block.settings.rating }}">
+              {%- for i in (1..5) -%}
+                {%- if i <= block.settings.rating -%}
+                  <span class="product-reviews__star product-reviews__star--filled">&#9733;</span>
+                {%- else -%}
+                  <span class="product-reviews__star">&#9733;</span>
+                {%- endif -%}
+              {%- endfor -%}
+            </div>
+            <span class="product-reviews__author">{{ block.settings.author | escape }}</span>
+            {%- if block.settings.date != blank -%}
+              <span class="product-reviews__date">{{ block.settings.date }}</span>
+            {%- endif -%}
+          </div>
+          {%- if block.settings.title != blank -%}
+            <h3 class="product-reviews__item-title">{{ block.settings.title | escape }}</h3>
+          {%- endif -%}
+          <div class="product-reviews__item-body rte">
+            {{ block.settings.content }}
+          </div>
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+
+  {%- comment -%}
+    Review structured data — automatically generated from section blocks.
+  {%- endcomment -%}
+  {%- if product -%}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": {{ product.title | json }},
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": {{ avg_rating | json }},
+        "reviewCount": {{ review_count | json }},
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "review": [
+        {%- for block in section.blocks -%}
+          {%- if forloop.first == false -%},{%- endif -%}
+          {
+            "@type": "Review",
+            "author": {
+              "@type": "Person",
+              "name": {{ block.settings.author | default: 'Anonymous' | json }}
+            },
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": {{ block.settings.rating | json }},
+              "bestRating": "5",
+              "worstRating": "1"
+            }
+            {%- if block.settings.title != blank -%}
+              ,"name": {{ block.settings.title | json }}
+            {%- endif -%}
+            {%- if block.settings.content != blank -%}
+              ,"reviewBody": {{ block.settings.content | strip_html | json }}
+            {%- endif -%}
+            {%- if block.settings.date != blank -%}
+              ,"datePublished": {{ block.settings.date | json }}
+            {%- endif -%}
+          }
+        {%- endfor -%}
+      ]
+    }
+    </script>
+  {%- endif -%}
+{%- endif -%}
+
+{% stylesheet %}
+  .product-reviews {
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+
+  .product-reviews__header {
+    margin-bottom: 2.4rem;
+  }
+
+  .product-reviews__heading {
+    margin-bottom: 0.8rem;
+  }
+
+  .product-reviews__summary {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 1.4rem;
+  }
+
+  .product-reviews__star {
+    color: rgba(var(--color-foreground), 0.2);
+    font-size: 1.8rem;
+  }
+
+  .product-reviews__star--filled {
+    color: #f5a623;
+  }
+
+  .product-reviews__avg {
+    font-weight: 700;
+  }
+
+  .product-reviews__count {
+    opacity: 0.6;
+  }
+
+  .product-reviews__list {
+    display: grid;
+    gap: 2rem;
+  }
+
+  .product-reviews__item {
+    padding: 2rem;
+    border: 1px solid rgba(var(--color-foreground), 0.1);
+    border-radius: 0.8rem;
+  }
+
+  .product-reviews__item-header {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    margin-bottom: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .product-reviews__author {
+    font-weight: 600;
+  }
+
+  .product-reviews__date {
+    opacity: 0.5;
+    font-size: 1.3rem;
+  }
+
+  .product-reviews__item-title {
+    font-size: 1.6rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .product-reviews__item-body {
+    opacity: 0.75;
+    line-height: 1.6;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:sections.product_reviews.name",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "t:sections.product_reviews.settings.heading.label",
+      "default": "Customer reviews"
+    },
+    {
+      "type": "select",
+      "id": "heading_size",
+      "label": "t:sections.product_reviews.settings.heading_size.label",
+      "options": [
+        { "value": "h2", "label": "t:sections.product_reviews.settings.heading_size.options.small" },
+        { "value": "h1", "label": "t:sections.product_reviews.settings.heading_size.options.medium" },
+        { "value": "h0", "label": "t:sections.product_reviews.settings.heading_size.options.large" }
+      ],
+      "default": "h1"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "review",
+      "name": "t:sections.product_reviews.blocks.review.name",
+      "settings": [
+        {
+          "type": "range",
+          "id": "rating",
+          "label": "t:sections.product_reviews.blocks.review.settings.rating.label",
+          "min": 1,
+          "max": 5,
+          "step": 1,
+          "default": 5
+        },
+        {
+          "type": "text",
+          "id": "author",
+          "label": "t:sections.product_reviews.blocks.review.settings.author.label",
+          "default": "Customer"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "t:sections.product_reviews.blocks.review.settings.title.label",
+          "default": "Great product!"
+        },
+        {
+          "type": "richtext",
+          "id": "content",
+          "label": "t:sections.product_reviews.blocks.review.settings.content.label",
+          "default": "<p>Really happy with my purchase. Great quality and fast service.</p>"
+        },
+        {
+          "type": "text",
+          "id": "date",
+          "label": "t:sections.product_reviews.blocks.review.settings.date.label",
+          "default": "2025-01-15"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:sections.product_reviews.name",
+      "blocks": [
+        {
+          "type": "review",
+          "settings": {
+            "rating": 5,
+            "author": "Ahmed M.",
+            "title": "Best tire shop in town",
+            "content": "<p>Quick service, great prices, and the staff really knows their stuff. Highly recommend!</p>",
+            "date": "2025-03-10"
+          }
+        },
+        {
+          "type": "review",
+          "settings": {
+            "rating": 5,
+            "author": "Sarah K.",
+            "title": "Excellent service",
+            "content": "<p>Got all four tires changed in under an hour. Very professional and fair pricing.</p>",
+            "date": "2025-02-22"
+          }
+        },
+        {
+          "type": "review",
+          "settings": {
+            "rating": 4,
+            "author": "Mike R.",
+            "title": "Good selection",
+            "content": "<p>They had exactly what I needed in stock. Will definitely come back.</p>",
+            "date": "2025-01-15"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}
