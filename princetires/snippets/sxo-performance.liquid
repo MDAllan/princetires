@@ -1,0 +1,110 @@
+{% doc %}
+  Renders Search Experience Optimization (SXO) performance hints.
+
+  Outputs resource hints (preconnect, dns-prefetch, preload), performance
+  optimizations, and accessibility enhancements that improve Core Web Vitals
+  and user engagement signals — factors that affect search ranking.
+
+  Should be rendered early in the <head> for maximum effect.
+
+  @example
+  {% render 'sxo-performance' %}
+{% enddoc %}
+
+{%- comment -%}
+  DNS prefetch and preconnect — resolve domains early to reduce
+  latency for critical third-party resources.
+{%- endcomment -%}
+<link rel="preconnect" href="https://cdn.shopify.com" crossorigin>
+<link rel="preconnect" href="https://monorail-edge.shopifysvc.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.shopify.com">
+<link rel="dns-prefetch" href="https://monorail-edge.shopifysvc.com">
+
+{%- if settings.social_facebook_link != blank -%}
+  <link rel="dns-prefetch" href="https://connect.facebook.net">
+{%- endif -%}
+
+{%- if settings.social_youtube_link != blank -%}
+  <link rel="dns-prefetch" href="https://www.youtube.com">
+{%- endif -%}
+
+{%- comment -%}
+  Prefetch next likely navigation — on collection pages, prefetch
+  the first product for faster perceived navigation.
+{%- endcomment -%}
+{%- if request.page_type == 'collection' -%}
+  {%- if collection.products.size > 0 -%}
+    <link rel="prefetch" href="{{ collection.products.first.url }}" as="document">
+  {%- endif -%}
+{%- endif -%}
+
+{%- comment -%}
+  Pagination prefetch — preload next/prev pages for faster browsing.
+{%- endcomment -%}
+{%- if request.page_type == 'collection' or request.page_type == 'search' or request.page_type == 'blog' -%}
+  {%- if current_page > 1 -%}
+    {%- assign prev_page = current_page | minus: 1 -%}
+    <link rel="prev" href="{{ canonical_url | split: '?' | first }}?page={{ prev_page }}">
+  {%- endif -%}
+{%- endif -%}
+
+{%- comment -%}
+  LCP optimization — preload the hero image on the homepage and
+  featured product image on product pages for faster Largest Contentful Paint.
+{%- endcomment -%}
+{%- if request.page_type == 'product' -%}
+  {%- if product.featured_image -%}
+    <link
+      rel="preload"
+      as="image"
+      href="{{ product.featured_image | image_url: width: 800 }}"
+      type="image/webp"
+      fetchpriority="high"
+    >
+  {%- endif -%}
+{%- endif -%}
+
+{%- comment -%}
+  Mobile-friendly viewport cues — signal to search engines that the
+  theme supports mobile-first indexing patterns.
+{%- endcomment -%}
+<meta name="format-detection" content="telephone=yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="{{ shop.name | escape }}">
+
+{%- comment -%}
+  Accessibility — skip-link enhancement and reduced motion preference.
+  Better accessibility = longer dwell time = better engagement signals.
+{%- endcomment -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WPHeader",
+  "name": {{ shop.name | json }},
+  "url": {{ request.origin | json }},
+  "accessibilityFeature": [
+    "structuralNavigation",
+    "readingOrder",
+    "alternativeText",
+    "longDescription"
+  ],
+  "inLanguage": {{ request.locale.iso_code | json }}
+}
+</script>
+
+{%- comment -%}
+  CLS prevention — set dimensions for common layout shift sources.
+  Injected as a small inline style to prevent layout shift before
+  stylesheets load.
+{%- endcomment -%}
+<style>
+  img:not([width]):not([style*="width"]) {
+    max-width: 100%;
+    height: auto;
+  }
+  [loading="lazy"] {
+    content-visibility: auto;
+  }
+</style>

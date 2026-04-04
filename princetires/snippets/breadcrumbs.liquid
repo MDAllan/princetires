@@ -1,0 +1,132 @@
+{% doc %}
+  Renders breadcrumb navigation with Schema.org BreadcrumbList structured data.
+
+  Automatically generates breadcrumbs based on the current page type.
+  Supports product, collection, blog, article, page, and search templates.
+
+  @example
+  {% render 'breadcrumbs' %}
+{% enddoc %}
+
+{%- liquid
+  assign breadcrumbs = ''
+  assign position = 1
+
+  case request.page_type
+    when 'product'
+      if product.collections.size > 0
+        assign collection_item = product.collections.first
+        assign breadcrumbs = breadcrumbs | append: '|' | append: collection_item.title | append: '::' | append: collection_item.url
+        assign position = position | plus: 1
+      endif
+      assign breadcrumbs = breadcrumbs | append: '|' | append: product.title | append: '::'
+      assign position = position | plus: 1
+
+    when 'collection'
+      assign breadcrumbs = breadcrumbs | append: '|' | append: collection.title | append: '::'
+      assign position = position | plus: 1
+
+    when 'article'
+      assign breadcrumbs = breadcrumbs | append: '|' | append: blog.title | append: '::' | append: blog.url
+      assign position = position | plus: 1
+      assign breadcrumbs = breadcrumbs | append: '|' | append: article.title | append: '::'
+      assign position = position | plus: 1
+
+    when 'blog'
+      assign breadcrumbs = breadcrumbs | append: '|' | append: blog.title | append: '::'
+      assign position = position | plus: 1
+
+    when 'page'
+      assign breadcrumbs = breadcrumbs | append: '|' | append: page.title | append: '::'
+      assign position = position | plus: 1
+
+    when 'search'
+      assign breadcrumbs = breadcrumbs | append: '|' | append: 'templates.search.title' | append: '::'
+      assign position = position | plus: 1
+
+    when 'cart'
+      assign breadcrumbs = breadcrumbs | append: '|' | append: 'sections.cart.title' | append: '::'
+      assign position = position | plus: 1
+  endcase
+
+  assign crumb_items = breadcrumbs | remove_first: '|' | split: '|'
+-%}
+
+{%- if crumb_items.size > 0 -%}
+  <nav class="breadcrumbs" aria-label="{{ 'general.breadcrumbs.label' | t }}">
+    <ol class="breadcrumbs__list" itemscope itemtype="https://schema.org/BreadcrumbList">
+      <li class="breadcrumbs__item" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <a class="breadcrumbs__link" href="/" itemprop="item">
+          <span itemprop="name">{{ 'general.breadcrumbs.home' | t }}</span>
+        </a>
+        <meta itemprop="position" content="1">
+      </li>
+
+      {%- for crumb in crumb_items -%}
+        {%- liquid
+          assign crumb_parts = crumb | split: '::'
+          assign crumb_name = crumb_parts[0]
+          assign crumb_url = crumb_parts[1]
+          assign crumb_position = forloop.index | plus: 1
+
+          if crumb_name == 'templates.search.title'
+            assign crumb_name = 'templates.search.title' | t
+          elsif crumb_name == 'sections.cart.title'
+            assign crumb_name = 'sections.cart.title' | t
+          endif
+        -%}
+
+        <li class="breadcrumbs__item" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+          {%- if crumb_url != blank and forloop.last == false -%}
+            <a class="breadcrumbs__link" href="{{ crumb_url }}" itemprop="item">
+              <span itemprop="name">{{ crumb_name | escape }}</span>
+            </a>
+          {%- else -%}
+            <span class="breadcrumbs__current" itemprop="name" aria-current="page">
+              {{ crumb_name | escape }}
+            </span>
+          {%- endif -%}
+          <meta itemprop="position" content="{{ crumb_position }}">
+        </li>
+      {%- endfor -%}
+    </ol>
+  </nav>
+{%- endif -%}
+
+{% stylesheet %}
+  .breadcrumbs {
+    padding: 1.2rem 0;
+    font-size: 1.3rem;
+  }
+
+  .breadcrumbs__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0.4rem;
+  }
+
+  .breadcrumbs__item:not(:last-child)::after {
+    content: '/';
+    margin-left: 0.4rem;
+    opacity: 0.5;
+  }
+
+  .breadcrumbs__link {
+    color: rgba(var(--color-foreground), 0.75);
+    text-decoration: none;
+  }
+
+  .breadcrumbs__link:hover {
+    color: rgb(var(--color-foreground));
+    text-decoration: underline;
+  }
+
+  .breadcrumbs__current {
+    color: rgb(var(--color-foreground));
+    font-weight: 600;
+  }
+{% endstylesheet %}

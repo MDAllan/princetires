@@ -1,0 +1,192 @@
+{% doc %}
+  Renders Generative Engine Optimization (GEO) and AI Optimization (AIO) structured data.
+
+  Outputs entity-rich markup, content summaries, and citation-friendly signals
+  that help AI-powered search engines (Google SGE/AI Overviews, Bing Copilot,
+  ChatGPT, Perplexity) understand, cite, and surface this content.
+
+  @example
+  {% render 'geo-meta' %}
+{% enddoc %}
+
+{%- comment -%}
+  Organization entity — establishes the business as a known entity
+  in the knowledge graph. Helps AI engines build entity relationships.
+{%- endcomment -%}
+{%- if request.page_type == 'index' -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": {{ shop.name | json }},
+    "url": {{ request.origin | json }},
+    {%- if shop.brand.logo -%}
+      "logo": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }},
+    {%- endif -%}
+    {%- if shop.phone != blank -%}
+      "telephone": {{ shop.phone | json }},
+    {%- endif -%}
+    {%- if shop.email != blank -%}
+      "email": {{ shop.email | json }},
+    {%- endif -%}
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": {{ shop.address.street | json }},
+      "addressLocality": {{ shop.address.city | json }},
+      "addressRegion": {{ shop.address.province_code | json }},
+      "postalCode": {{ shop.address.zip | json }},
+      "addressCountry": {{ shop.address.country_code | json }}
+    },
+    "sameAs": [
+      {%- liquid
+        assign social_links = ''
+        if settings.social_facebook_link != blank
+          assign social_links = social_links | append: settings.social_facebook_link | append: '|'
+        endif
+        if settings.social_instagram_link != blank
+          assign social_links = social_links | append: settings.social_instagram_link | append: '|'
+        endif
+        if settings.social_twitter_link != blank
+          assign social_links = social_links | append: settings.social_twitter_link | append: '|'
+        endif
+        if settings.social_youtube_link != blank
+          assign social_links = social_links | append: settings.social_youtube_link | append: '|'
+        endif
+        if settings.social_tiktok_link != blank
+          assign social_links = social_links | append: settings.social_tiktok_link | append: '|'
+        endif
+        assign social_links = social_links | split: '|' | compact
+      -%}
+      {%- for link in social_links -%}
+        {{ link | json }}{% unless forloop.last %},{% endunless %}
+      {%- endfor -%}
+    ]
+  }
+  </script>
+{%- endif -%}
+
+{%- comment -%}
+  Product entity enrichment — provides AI engines with detailed
+  product attributes, categories, and service context so they can
+  recommend products in conversational answers.
+{%- endcomment -%}
+{%- if request.page_type == 'product' -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": {{ product.title | json }},
+    "url": {{ request.origin | append: product.url | json }},
+    "description": {{ product.description | strip_html | truncate: 1000 | json }},
+    {%- if product.featured_image -%}
+      "image": [
+        {%- for image in product.images limit: 5 -%}
+          {{ image | image_url: width: 1200 | prepend: 'https:' | json }}{% unless forloop.last %},{% endunless %}
+        {%- endfor -%}
+      ],
+    {%- endif -%}
+    {%- if product.vendor != blank -%}
+      "brand": {
+        "@type": "Brand",
+        "name": {{ product.vendor | json }}
+      },
+    {%- endif -%}
+    {%- if product.type != blank -%}
+      "category": {{ product.type | json }},
+    {%- endif -%}
+    {%- if product.variants.first.sku != blank -%}
+      "sku": {{ product.variants.first.sku | json }},
+    {%- endif -%}
+    {%- if product.variants.first.barcode != blank -%}
+      "gtin": {{ product.variants.first.barcode | json }},
+    {%- endif -%}
+    {%- if product.variants.first.weight > 0 -%}
+      "weight": {
+        "@type": "QuantitativeValue",
+        "value": {{ product.variants.first.weight | json }},
+        "unitCode": {{ product.variants.first.weight_unit | json }}
+      },
+    {%- endif -%}
+    "offers": {
+      "@type": "AggregateOffer",
+      "priceCurrency": {{ cart.currency.iso_code | json }},
+      "lowPrice": {{ product.price_min | money_without_currency | strip_html | json }},
+      "highPrice": {{ product.price_max | money_without_currency | strip_html | json }},
+      "offerCount": {{ product.variants.size | json }},
+      "availability": "https://schema.org/{% if product.available %}InStock{% else %}OutOfStock{% endif %}",
+      "seller": {
+        "@type": "Organization",
+        "name": {{ shop.name | json }}
+      }
+    },
+    "isRelatedTo": [
+      {%- for collection in product.collections limit: 3 -%}
+        {
+          "@type": "CollectionPage",
+          "name": {{ collection.title | json }},
+          "url": {{ request.origin | append: collection.url | json }}
+        }{% unless forloop.last %},{% endunless %}
+      {%- endfor -%}
+    ]
+  }
+  </script>
+
+  {%- comment -%}
+    AI-friendly summary meta tag — a concise, citation-ready description
+    that generative engines can pull directly into AI overviews.
+  {%- endcomment -%}
+  {%- capture ai_summary -%}
+    {{ product.title }} by {{ product.vendor }}. {{ product.description | strip_html | truncate: 200 }}
+    {%- if product.price_min == product.price_max -%}
+      {{ ' ' }}Price: {{ product.price | money }}.
+    {%- else -%}
+      {{ ' ' }}Price range: {{ product.price_min | money }} - {{ product.price_max | money }}.
+    {%- endif -%}
+    {%- if product.available %} In stock.{% else %} Out of stock.{% endif -%}
+  {%- endcapture -%}
+  <meta name="summary" content="{{ ai_summary | strip_newlines | strip | escape }}">
+{%- endif -%}
+
+{%- comment -%}
+  Collection entity — helps AI engines understand product groupings
+  and recommend collection pages in conversational results.
+{%- endcomment -%}
+{%- if request.page_type == 'collection' -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": {{ collection.title | json }},
+    "url": {{ request.origin | append: collection.url | json }},
+    "description": {{ collection.description | strip_html | truncate: 500 | default: collection.title | json }},
+    "numberOfItems": {{ collection.products_count | json }},
+    "provider": {
+      "@type": "Organization",
+      "name": {{ shop.name | json }}
+    }
+  }
+  </script>
+  <meta name="summary" content="{{ collection.title | escape }} — {{ collection.description | strip_html | truncate: 200 | escape }} Browse {{ collection.products_count }} products at {{ shop.name | escape }}.">
+{%- endif -%}
+
+{%- comment -%}
+  Article entity enrichment — helps AI engines cite blog content
+  in generated answers with proper attribution.
+{%- endcomment -%}
+{%- if request.page_type == 'article' -%}
+  {%- capture article_summary -%}
+    {{ article.title }} — {{ article.excerpt_or_content | strip_html | truncate: 250 }} Published by {{ article.author }} on {{ article.published_at | date: '%B %d, %Y' }}.
+  {%- endcapture -%}
+  <meta name="summary" content="{{ article_summary | strip_newlines | strip | escape }}">
+  <meta name="citation_title" content="{{ article.title | escape }}">
+  <meta name="citation_author" content="{{ article.author | escape }}">
+  <meta name="citation_publication_date" content="{{ article.published_at | date: '%Y/%m/%d' }}">
+  <meta name="citation_publisher" content="{{ shop.name | escape }}">
+{%- endif -%}
+
+{%- comment -%}
+  Homepage summary for AI overviews.
+{%- endcomment -%}
+{%- if request.page_type == 'index' -%}
+  <meta name="summary" content="{{ shop.name | escape }} — {{ shop.description | strip_html | truncate: 300 | escape }}">
+{%- endif -%}

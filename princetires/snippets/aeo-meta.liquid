@@ -1,0 +1,157 @@
+{% doc %}
+  Renders Answer Engine Optimization (AEO) structured data.
+
+  Outputs JSON-LD for FAQ pages, Speakable markup for voice assistants,
+  and Q&A structured data to target featured snippets, answer boxes,
+  and voice search results (Google Assistant, Alexa, Siri).
+
+  @example
+  {% render 'aeo-meta' %}
+{% enddoc %}
+
+{%- comment -%}
+  Speakable markup — tells voice assistants which parts of the page
+  are most suitable for text-to-speech. Applied to page title and description.
+{%- endcomment -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": {{ page_title | json }},
+  "url": {{ canonical_url | json }},
+  "description": {{ page_description | default: shop.description | escape | json }},
+  "speakable": {
+    "@type": "SpeakableSpecification",
+    "cssSelector": [
+      ".aeo-speakable-title",
+      ".aeo-speakable-summary"
+    ]
+  },
+  "mainEntity": {
+    "@type": "WebSite",
+    "name": {{ shop.name | json }},
+    "url": {{ request.origin | json }}
+  }
+}
+</script>
+
+{%- comment -%}
+  FAQ structured data for product pages — uses product metafields.
+  Set up a metafield namespace "faq" with keys like "q1", "a1", "q2", "a2", etc.
+  Or use the product description if it contains FAQ-style content.
+{%- endcomment -%}
+{%- if request.page_type == 'product' -%}
+  {%- if product.metafields.faq.q1 != blank -%}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {%- assign faq_index = 1 -%}
+        {%- assign has_previous = false -%}
+        {%- for i in (1..10) -%}
+          {%- assign q_key = 'q' | append: i -%}
+          {%- assign a_key = 'a' | append: i -%}
+          {%- assign question = product.metafields.faq[q_key] -%}
+          {%- assign answer = product.metafields.faq[a_key] -%}
+          {%- if question != blank -%}
+            {%- if has_previous -%},{%- endif -%}
+            {
+              "@type": "Question",
+              "name": {{ question | json }},
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": {{ answer | default: '' | json }}
+              }
+            }
+            {%- assign has_previous = true -%}
+          {%- endif -%}
+        {%- endfor -%}
+      ]
+    }
+    </script>
+  {%- endif -%}
+{%- endif -%}
+
+{%- comment -%}
+  FAQ structured data for regular pages — uses page metafields.
+  Same namespace "faq" with q1/a1, q2/a2 keys.
+{%- endcomment -%}
+{%- if request.page_type == 'page' -%}
+  {%- if page.metafields.faq.q1 != blank -%}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {%- assign has_previous = false -%}
+        {%- for i in (1..10) -%}
+          {%- assign q_key = 'q' | append: i -%}
+          {%- assign a_key = 'a' | append: i -%}
+          {%- assign question = page.metafields.faq[q_key] -%}
+          {%- assign answer = page.metafields.faq[a_key] -%}
+          {%- if question != blank -%}
+            {%- if has_previous -%},{%- endif -%}
+            {
+              "@type": "Question",
+              "name": {{ question | json }},
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": {{ answer | default: '' | json }}
+              }
+            }
+            {%- assign has_previous = true -%}
+          {%- endif -%}
+        {%- endfor -%}
+      ]
+    }
+    </script>
+  {%- endif -%}
+{%- endif -%}
+
+{%- comment -%}
+  HowTo structured data for articles tagged with "how-to".
+  Uses the article body content split by h2/h3 headings as steps.
+{%- endcomment -%}
+{%- if request.page_type == 'article' -%}
+  {%- if article.tags contains 'how-to' -%}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": {{ article.title | json }},
+      "description": {{ article.excerpt_or_content | strip_html | truncate: 300 | json }},
+      {%- if article.image -%}
+        "image": {{ article.image | image_url: width: 1200 | prepend: 'https:' | json }},
+      {%- endif -%}
+      "datePublished": {{ article.published_at | date: '%Y-%m-%dT%H:%M:%S%z' | json }},
+      "author": {
+        "@type": "Person",
+        "name": {{ article.author | json }}
+      }
+    }
+    </script>
+  {%- endif -%}
+{%- endif -%}
+
+{%- comment -%}
+  SearchAction — enables sitelinks searchbox in Google results.
+{%- endcomment -%}
+{%- if request.page_type == 'index' -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": {{ shop.name | json }},
+    "url": {{ request.origin | json }},
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": {{ request.origin | append: '/search?q={search_term_string}' | json }}
+      },
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+{%- endif -%}

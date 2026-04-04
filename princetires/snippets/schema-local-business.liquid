@@ -1,0 +1,67 @@
+{% doc %}
+  Renders JSON-LD structured data for a local tire business (Schema.org LocalBusiness).
+
+  Uses shop information and theme settings to output structured data that helps
+  search engines display rich results for the business (address, hours, contact info).
+
+  @example
+  {% render 'schema-local-business' %}
+{% enddoc %}
+
+{%- liquid
+  assign business_name = shop.name
+  assign business_url = request.origin
+  assign business_phone = shop.phone
+  assign business_description = shop.description | default: shop.name
+-%}
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "AutoRepair",
+  "name": {{ business_name | json }},
+  "url": {{ business_url | json }},
+  {%- if business_phone != blank -%}
+    "telephone": {{ business_phone | json }},
+  {%- endif -%}
+  "description": {{ business_description | strip_html | json }},
+  {%- if shop.brand.logo -%}
+    "logo": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }},
+    "image": {{ shop.brand.logo | image_url: width: 1200 | prepend: 'https:' | json }},
+  {%- endif -%}
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": {{ shop.address.street | json }},
+    "addressLocality": {{ shop.address.city | json }},
+    "addressRegion": {{ shop.address.province_code | json }},
+    "postalCode": {{ shop.address.zip | json }},
+    "addressCountry": {{ shop.address.country_code | json }}
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": {{ shop.latitude | json }},
+    "longitude": {{ shop.longitude | json }}
+  },
+  "priceRange": "$$",
+  "currenciesAccepted": {{ cart.currency.iso_code | json }},
+  "paymentAccepted": "Cash, Credit Card, Debit Card",
+  "additionalType": "https://schema.org/TireShop",
+  "sameAs": [
+    {%- if settings.social_facebook_link != blank -%}
+      {{ settings.social_facebook_link | json }},
+    {%- endif -%}
+    {%- if settings.social_instagram_link != blank -%}
+      {{ settings.social_instagram_link | json }},
+    {%- endif -%}
+    {%- if settings.social_twitter_link != blank -%}
+      {{ settings.social_twitter_link | json }},
+    {%- endif -%}
+    {%- if settings.social_youtube_link != blank -%}
+      {{ settings.social_youtube_link | json }},
+    {%- endif -%}
+    {%- if settings.social_tiktok_link != blank -%}
+      {{ settings.social_tiktok_link | json }}
+    {%- endif -%}
+  ]
+}
+</script>
