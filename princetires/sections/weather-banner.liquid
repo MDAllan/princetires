@@ -1,0 +1,296 @@
+<div class="weather-banner" data-weather-banner hidden>
+  <div class="weather-banner__container">
+    <div class="weather-banner__icon" data-weather-icon>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><path d="M8 16h.01M8 20h.01M12 18h.01M12 22h.01M16 16h.01M16 20h.01"/></svg>
+    </div>
+
+    <div class="weather-banner__content">
+      <p class="weather-banner__text">
+        <span class="weather-banner__temp" data-weather-temp>...</span>
+        <span class="weather-banner__message" data-weather-message>{{ section.settings.fallback_message }}</span>
+      </p>
+    </div>
+
+    <a href="{{ section.settings.cta_link | default: '/collections/winter-tires' }}" class="weather-banner__cta" data-weather-cta>
+      {{ section.settings.cta_label }}
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+</div>
+
+<script data-weather-config type="application/json">
+{
+  "lat": {{ section.settings.latitude | json }},
+  "lon": {{ section.settings.longitude | json }},
+  "winterMsg": {{ section.settings.winter_message | json }},
+  "coldMsg": {{ section.settings.cold_message | json }},
+  "rainMsg": {{ section.settings.rain_message | json }},
+  "hotMsg": {{ section.settings.hot_message | json }},
+  "defaultMsg": {{ section.settings.default_message | json }},
+  "winterCta": {{ section.settings.winter_cta | json }},
+  "defaultCta": {{ section.settings.cta_label | json }}
+}
+</script>
+
+{% stylesheet %}
+  .weather-banner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    padding: 1.4rem 2rem;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .weather-banner[hidden] {
+    display: none;
+  }
+
+  .weather-banner__container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.4rem;
+  }
+
+  .weather-banner__icon {
+    color: #60a5fa;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .weather-banner__icon--snow { color: #93c5fd; }
+  .weather-banner__icon--rain { color: #60a5fa; }
+  .weather-banner__icon--cold { color: #7dd3fc; }
+  .weather-banner__icon--hot { color: #fbbf24; }
+  .weather-banner__icon--clear { color: #34d399; }
+
+  .weather-banner__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .weather-banner__text {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    color: #e2e8f0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .weather-banner__temp {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: #fff;
+  }
+
+  .weather-banner__message {
+    color: #94a3b8;
+  }
+
+  .weather-banner__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #fff;
+    background: #dc2626;
+    padding: 0.5rem 1.4rem;
+    border-radius: 4px;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+
+  .weather-banner__cta:hover {
+    background: #b91c1c;
+    color: #fff;
+  }
+
+  @media (max-width: 768px) {
+    .weather-banner__container {
+      padding: 0;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+    .weather-banner__icon {
+      display: none;
+    }
+    .weather-banner__text {
+      font-size: 1.3rem;
+      justify-content: center;
+      text-align: center;
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function() {
+    var banner = document.querySelector('[data-weather-banner]');
+    if (!banner) return;
+
+    var configEl = document.querySelector('[data-weather-config]');
+    if (!configEl) return;
+    var config = JSON.parse(configEl.textContent);
+
+    var lat = config.lat || 51.0447;
+    var lon = config.lon || -114.0719;
+
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&current=temperature_2m,weather_code&timezone=America/Edmonton')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.current) return;
+
+        var temp = Math.round(data.current.temperature_2m);
+        var code = data.current.weather_code;
+        var icon = banner.querySelector('[data-weather-icon]');
+        var tempEl = banner.querySelector('[data-weather-temp]');
+        var msgEl = banner.querySelector('[data-weather-message]');
+        var ctaEl = banner.querySelector('[data-weather-cta]');
+
+        tempEl.textContent = "It's " + temp + '°C in Calgary right now.';
+
+        var message = config.defaultMsg;
+        var iconClass = 'clear';
+        var ctaText = config.defaultCta;
+
+        if (code >= 71 || temp <= -10) {
+          message = config.winterMsg;
+          iconClass = 'snow';
+          ctaText = config.winterCta || config.defaultCta;
+          icon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><path d="M8 16h.01M8 20h.01M12 18h.01M12 22h.01M16 16h.01M16 20h.01"/></svg>';
+        } else if (temp <= 7) {
+          message = config.coldMsg;
+          iconClass = 'cold';
+          ctaText = config.winterCta || config.defaultCta;
+          icon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2v20M2 12h20M12 6l-4-2M12 6l4-2M12 18l-4 2M12 18l4 2M6 12l-2-4M6 12l-2 4M18 12l2-4M18 12l2 4"/></svg>';
+        } else if (code >= 51 && code <= 67) {
+          message = config.rainMsg;
+          iconClass = 'rain';
+          icon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M20 16.2A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"/><path d="M16 14v6M8 14v6M12 16v6"/></svg>';
+        } else if (temp >= 30) {
+          message = config.hotMsg;
+          iconClass = 'hot';
+          icon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
+        } else {
+          iconClass = 'clear';
+          icon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
+        }
+
+        icon.className = 'weather-banner__icon weather-banner__icon--' + iconClass;
+        msgEl.textContent = message;
+        if (ctaEl) ctaEl.textContent = ctaText;
+
+        banner.hidden = false;
+      })
+      .catch(function() {
+        banner.hidden = false;
+        banner.querySelector('[data-weather-temp]').textContent = '';
+      });
+  })();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Weather banner",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Location"
+    },
+    {
+      "type": "text",
+      "id": "latitude",
+      "label": "Latitude",
+      "default": "51.0447",
+      "info": "Calgary default: 51.0447"
+    },
+    {
+      "type": "text",
+      "id": "longitude",
+      "label": "Longitude",
+      "default": "-114.0719",
+      "info": "Calgary default: -114.0719"
+    },
+    {
+      "type": "header",
+      "content": "Messages"
+    },
+    {
+      "type": "text",
+      "id": "winter_message",
+      "label": "Snow / extreme cold message",
+      "default": "Are your tires winter-ready?"
+    },
+    {
+      "type": "text",
+      "id": "cold_message",
+      "label": "Cold weather message (below 7°C)",
+      "default": "Time to think about winter tires."
+    },
+    {
+      "type": "text",
+      "id": "rain_message",
+      "label": "Rain message",
+      "default": "Wet roads ahead — check your tread depth."
+    },
+    {
+      "type": "text",
+      "id": "hot_message",
+      "label": "Hot weather message",
+      "default": "Hot pavement wears tires faster. Book an inspection."
+    },
+    {
+      "type": "text",
+      "id": "default_message",
+      "label": "Default message",
+      "default": "Great driving weather — perfect time for fresh tires."
+    },
+    {
+      "type": "text",
+      "id": "fallback_message",
+      "label": "Fallback (no weather data)",
+      "default": "Calgary's trusted tire shop — find your perfect fit."
+    },
+    {
+      "type": "header",
+      "content": "CTA"
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "Button label",
+      "default": "Shop tires"
+    },
+    {
+      "type": "text",
+      "id": "winter_cta",
+      "label": "Winter CTA label",
+      "default": "Shop winter tires"
+    },
+    {
+      "type": "url",
+      "id": "cta_link",
+      "label": "Button link"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Weather banner"
+    }
+  ]
+}
+{% endschema %}

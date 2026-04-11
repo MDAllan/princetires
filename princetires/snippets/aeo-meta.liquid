@@ -79,7 +79,8 @@
       "@type": "SearchAction",
       "target": {
         "@type": "EntryPoint",
-        "urlTemplate": {{ request.origin | append: '/search?q={search_term_string}' | json }}
+        {%- capture search_url_template -%}{{ request.origin }}/search?q={% raw %}{search_term_string}{% endraw %}{%- endcapture -%}
+        "urlTemplate": {{ search_url_template | json }}
       },
       "query-input": "required name=search_term_string"
     }

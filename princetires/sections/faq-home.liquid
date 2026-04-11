@@ -1,0 +1,314 @@
+<div class="faq-home">
+  <div class="faq-home__container">
+
+    <div class="faq-home__top">
+      <div class="faq-home__header">
+        <span class="faq-home__eyebrow">{{ section.settings.eyebrow }}</span>
+        <h2 class="faq-home__heading">{{ section.settings.heading }}</h2>
+      </div>
+
+      {%- if section.settings.cta_label != blank -%}
+        <a href="{{ section.settings.cta_link | default: '#' }}" class="faq-home__cta">
+          {{ section.settings.cta_label }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      {%- endif -%}
+    </div>
+
+    <div class="faq-home__grid">
+      {%- for block in section.blocks -%}
+        <details class="faq-home__card" {{ block.shopify_attributes }}>
+          <summary class="faq-home__question">
+            <span class="faq-home__q-text">{{ block.settings.question }}</span>
+            <span class="faq-home__q-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </span>
+          </summary>
+          <div class="faq-home__answer">
+            {{ block.settings.answer }}
+          </div>
+        </details>
+      {%- endfor -%}
+    </div>
+
+  </div>
+</div>
+
+{%- if section.blocks.size > 0 -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {%- for block in section.blocks -%}
+        {%- if forloop.first == false -%},{%- endif -%}
+        {
+          "@type": "Question",
+          "name": {{ block.settings.question | json }},
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": {{ block.settings.answer | strip_html | json }}
+          }
+        }
+      {%- endfor -%}
+    ]
+  }
+  </script>
+{%- endif -%}
+
+{% stylesheet %}
+  .faq-home {
+    background: #fff;
+    padding: 7rem 0;
+  }
+
+  .faq-home__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+  }
+
+  .faq-home__top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 4rem;
+  }
+
+  .faq-home__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .faq-home__eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #dc2626;
+    letter-spacing: 0.02em;
+  }
+
+  .faq-home__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0;
+    line-height: 1.1;
+  }
+
+  .faq-home__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #dc2626;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: gap 0.2s;
+  }
+
+  .faq-home__cta:hover {
+    gap: 0.8rem;
+  }
+
+  /* ── Wrapper ── */
+  .faq-home__grid {
+    background: #f7f7f7;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* ── Card ── */
+  .faq-home__card {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .faq-home__card:last-child {
+    border-bottom: none;
+  }
+
+  .faq-home__question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.6rem;
+    padding: 1.4rem 2.4rem;
+    cursor: pointer;
+    list-style: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: #222;
+    transition: color 0.2s, background 0.15s;
+  }
+
+  .faq-home__question::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-home__question:hover {
+    color: #dc2626;
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  .faq-home__q-text {
+    flex: 1;
+    line-height: 1.4;
+  }
+
+  .faq-home__q-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #9ca3af;
+    transition: transform 0.3s ease, color 0.2s;
+  }
+
+  .faq-home__card[open] .faq-home__q-icon {
+    transform: rotate(180deg);
+    color: #dc2626;
+  }
+
+  .faq-home__card[open] .faq-home__question {
+    color: #dc2626;
+  }
+
+  .faq-home__answer {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 300;
+    color: #6b7280;
+    line-height: 1.65;
+    padding: 0 2.4rem 1.6rem;
+  }
+
+  @media (max-width: 768px) {
+    .faq-home__container {
+      padding: 0 2rem;
+    }
+    .faq-home__top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1.2rem;
+    }
+    .faq-home__heading {
+      font-size: 2.4rem;
+    }
+    .faq-home__question {
+      padding: 1.2rem 1.6rem;
+    }
+    .faq-home__answer {
+      padding: 0 1.6rem 1.4rem;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "FAQ",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "FAQ"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Frequently asked questions"
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "CTA label",
+      "default": "Contact us"
+    },
+    {
+      "type": "url",
+      "id": "cta_link",
+      "label": "CTA link"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "question",
+      "name": "Question",
+      "settings": [
+        {
+          "type": "text",
+          "id": "question",
+          "label": "Question",
+          "default": "What services do you offer?"
+        },
+        {
+          "type": "richtext",
+          "id": "answer",
+          "label": "Answer",
+          "default": "<p>We offer a wide range of tire services including installation, balancing, rotation, and flat repair.</p>"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "FAQ",
+      "blocks": [
+        {
+          "type": "question",
+          "settings": {
+            "question": "What tire brands does Prince Tires carry?",
+            "answer": "<p>Prince Tires stocks a wide range of trusted tire brands to fit every budget. We carry premium names like Michelin, Bridgestone, Goodyear, Toyo, Cooper, Falken, and Continental, alongside high-quality affordable brands including Firemax, Linglong, Farroad, Yeada, and Fortune. Whether you need winter tires, all-season tires, or summer performance tires, we'll match you with the right brand for your vehicle and driving habits.</p>"
+          }
+        },
+        {
+          "type": "question",
+          "settings": {
+            "question": "Where is Prince Tires located in Calgary?",
+            "answer": "<p>Prince Tires is located at 111 42 Ave SW, Calgary, AB. We've been serving Calgary drivers from our shop for over 10 years, and we're easy to reach from Macleod Trail and surrounding neighbourhoods. If you need directions or want to book an appointment, call us at (403) 452-4283 or email princetires111@gmail.com.</p>"
+          }
+        },
+        {
+          "type": "question",
+          "settings": {
+            "question": "What tire services does Prince Tires offer?",
+            "answer": "<p>We handle everything tire-related so you can get back on the road quickly. Our services include new tire sales and installation, tire balancing, tire rotation, flat tire repair, and TPMS (tire pressure monitoring system) service. Every installation is done by experienced technicians who've been fitting tires for Calgary's roads and weather conditions for over a decade.</p>"
+          }
+        },
+        {
+          "type": "question",
+          "settings": {
+            "question": "Does Prince Tires sell winter tires for Calgary weather?",
+            "answer": "<p>Yes — winter tires are one of our specialties. Calgary's icy roads and heavy snowfall demand proper winter rubber, and we carry winter tire options from brands like Michelin, Bridgestone, Goodyear, and Continental, as well as budget-friendly choices from Firemax and Linglong. We can help you choose the right winter tire for your vehicle and get them installed and balanced the same day in most cases.</p>"
+          }
+        },
+        {
+          "type": "question",
+          "settings": {
+            "question": "How much do tires cost at Prince Tires in Calgary?",
+            "answer": "<p>Tire prices at Prince Tires vary depending on the brand, size, and type of tire you need. We carry options at every price point — from affordable brands like Yeada, Fortune, and Firemax starting at competitive prices, to premium tires from Michelin, Bridgestone, and Goodyear. Contact us at (403) 452-4283 for a free quote based on your vehicle's exact tire size, and we'll find the best tire for your budget.</p>"
+          }
+        },
+        {
+          "type": "question",
+          "settings": {
+            "question": "Why should I choose Prince Tires over other tire shops in Calgary?",
+            "answer": "<p>Prince Tires has been one of Calgary's most recognized tire specialists for over 10 years. What started as a two-bay shop on Macleod Trail has grown into a go-to destination for drivers across the city. We combine a huge selection of tire brands at every price point with fast, professional installation and honest pricing. Our team focuses exclusively on tires, which means you're getting advice and service from true specialists — not a general mechanic who does tires on the side.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

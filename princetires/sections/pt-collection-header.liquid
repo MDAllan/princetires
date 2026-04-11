@@ -1,0 +1,133 @@
+<div class="ptc">
+  <div class="ptc__container">
+
+    <div class="ptc__top">
+      <div class="ptc__header">
+        <span class="ptc__eyebrow">{{ section.settings.eyebrow | default: 'Browse' }}</span>
+        <h1 class="ptc__heading">{{ collection.title | escape }}</h1>
+        {%- if collection.description != blank and section.settings.show_description -%}
+          <p class="ptc__desc">{{ collection.description | strip_html | truncate: 160 }}</p>
+        {%- endif -%}
+      </div>
+      <div class="ptc__count">
+        <span class="ptc__count-num">{{ collection.products_count }}</span>
+        <span class="ptc__count-label">products</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% stylesheet %}
+  .breadcrumbs { display: none; }
+
+  .ptc {
+    background: #fff;
+    padding: 4rem 0 0;
+  }
+
+  .ptc__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 12rem;
+  }
+
+  .ptc__top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 2.4rem;
+  }
+
+  .ptc__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .ptc__eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #dc2626;
+    letter-spacing: 0.02em;
+  }
+
+  .ptc__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0;
+    line-height: 1.1;
+  }
+
+  .ptc__desc {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 300;
+    color: #6b7280;
+    margin: 0;
+    max-width: 50rem;
+  }
+
+  .ptc__count {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  .ptc__count-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 600;
+    color: #111;
+  }
+
+  .ptc__count-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 300;
+    color: #9ca3af;
+  }
+
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .ptc__container {
+      padding: 0 2rem;
+    }
+    .ptc__top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .ptc__heading {
+      font-size: 2.4rem;
+    }
+  }
+{% endstylesheet %}
+
+
+{% schema %}
+{
+  "name": "Collection header",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "Browse"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_description",
+      "label": "Show collection description",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

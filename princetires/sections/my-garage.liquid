@@ -1,0 +1,452 @@
+{{ 'customer.css' | asset_url | stylesheet_tag }}
+
+{%- if customer -%}
+  <script src="{{ 'my-garage.js' | asset_url }}" defer="defer"></script>
+
+  <script data-garage-config type="application/json">
+    {
+      "customerId": {{ customer.id | json }},
+      "minYear": {{ settings.smart_search_min_year | default: 2001 }},
+      "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
+      "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
+      "maxVehicles": 10
+    }
+  </script>
+
+  <my-garage class="customer garage section-{{ section.id }}-padding" data-garage>
+    <div class="garage__header">
+      <h1>{{ 'sections.my_garage.title' | t }}</h1>
+      <p class="garage__subtitle">{{ 'sections.my_garage.subtitle' | t }}</p>
+    </div>
+
+    {%- comment -%} Add Vehicle Toggle + Form {%- endcomment -%}
+    <div class="garage__add-section">
+      <button type="button" class="garage__add-btn" data-garage-toggle-add
+              aria-expanded="false" aria-controls="garage-add-form">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        {{ 'sections.my_garage.add_vehicle' | t }}
+      </button>
+
+      <p class="garage__max-msg" data-garage-max hidden>
+        {{ 'sections.my_garage.max_reached' | t: max: 10 }}
+      </p>
+
+      <div id="garage-add-form" class="garage__add-form" hidden>
+        <h2>{{ 'sections.my_garage.add_vehicle' | t }}</h2>
+        <div class="garage__selects">
+          <div class="garage__field">
+            <label for="garage-year">{{ 'sections.my_garage.year' | t }}</label>
+            <select id="garage-year" data-garage-year>
+              <option value="">{{ 'sections.my_garage.select_year' | t }}</option>
+            </select>
+          </div>
+          <div class="garage__field">
+            <label for="garage-make">{{ 'sections.my_garage.make' | t }}</label>
+            <select id="garage-make" data-garage-make data-placeholder="{{ 'sections.my_garage.select_make' | t }}" disabled>
+              <option value="">{{ 'sections.my_garage.select_make' | t }}</option>
+            </select>
+          </div>
+          <div class="garage__field">
+            <label for="garage-model">{{ 'sections.my_garage.model' | t }}</label>
+            <select id="garage-model" data-garage-model data-placeholder="{{ 'sections.my_garage.select_model' | t }}" disabled>
+              <option value="">{{ 'sections.my_garage.select_model' | t }}</option>
+            </select>
+          </div>
+          <div class="garage__field">
+            <label for="garage-trim">{{ 'sections.my_garage.trim' | t }}</label>
+            <select id="garage-trim" data-garage-trim data-placeholder="{{ 'sections.my_garage.select_trim' | t }}" disabled>
+              <option value="">{{ 'sections.my_garage.select_trim' | t }}</option>
+            </select>
+          </div>
+        </div>
+
+        <p class="garage__size-preview" data-garage-size-preview hidden></p>
+
+        <div class="garage__form-actions">
+          <button type="button" class="garage__save-btn" data-garage-save disabled>
+            {{ 'sections.my_garage.save_vehicle' | t }}
+          </button>
+          <button type="button" class="garage__cancel-btn" data-garage-cancel>
+            {{ 'sections.my_garage.cancel' | t }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {%- comment -%} Empty State {%- endcomment -%}
+    <div class="garage__empty" data-garage-empty hidden>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="garage__empty-icon">
+        <path d="M5 17h14M7.5 17V13L6 9H18L16.5 13V17M9 21H7V19H9V21ZM17 21H15V19H17V21ZM3 13H21"/>
+      </svg>
+      <p>{{ 'sections.my_garage.empty' | t }}</p>
+    </div>
+
+    {%- comment -%} Vehicle Cards {%- endcomment -%}
+    <ul class="garage__vehicles" role="list" data-garage-list></ul>
+  </my-garage>
+
+{%- else -%}
+  <div class="customer garage garage--guest section-{{ section.id }}-padding">
+    <div class="garage__header">
+      <h1>{{ 'sections.my_garage.title' | t }}</h1>
+      <p>{{ 'sections.my_garage.login_required' | t }}</p>
+      <a href="{{ routes.account_login_url }}" class="garage__login-btn">
+        {{ 'sections.my_garage.login' | t }}
+      </a>
+    </div>
+  </div>
+{%- endif -%}
+
+{%- style -%}
+  .section-{{ section.id }}-padding {
+    padding-top: {{ section.settings.padding_top | times: 0.75 | round: 0 }}px;
+    padding-bottom: {{ section.settings.padding_bottom | times: 0.75 | round: 0 }}px;
+  }
+  @media screen and (min-width: 750px) {
+    .section-{{ section.id }}-padding {
+      padding-top: {{ section.settings.padding_top }}px;
+      padding-bottom: {{ section.settings.padding_bottom }}px;
+    }
+  }
+{%- endstyle -%}
+
+{% stylesheet %}
+  .garage {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    color: #e5e5e5;
+  }
+  .garage__header {
+    margin-bottom: 2rem;
+  }
+  .garage__header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.5rem;
+  }
+  .garage__subtitle {
+    color: #9ca3af;
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  /* Add Vehicle Section */
+  .garage__add-section {
+    margin-bottom: 2rem;
+  }
+  .garage__add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .garage__add-btn:hover {
+    background: #b91c1c;
+  }
+  .garage__add-btn:disabled {
+    background: #374151;
+    cursor: not-allowed;
+  }
+  .garage__max-msg {
+    color: #f59e0b;
+    font-size: 0.875rem;
+    margin-top: 0.75rem;
+  }
+  .garage__add-form {
+    background: #111;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+  }
+  .garage__add-form h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 1.25rem;
+  }
+  .garage__selects {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .garage__field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.375rem;
+  }
+  .garage__field select {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #e5e5e5;
+    font-size: 0.875rem;
+    appearance: auto;
+  }
+  .garage__field select:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .garage__size-preview {
+    color: #10b981;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin: 0.75rem 0;
+  }
+  .garage__form-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  .garage__save-btn {
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    padding: 0.625rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .garage__save-btn:hover {
+    background: #b91c1c;
+  }
+  .garage__save-btn:disabled {
+    background: #374151;
+    cursor: not-allowed;
+  }
+  .garage__cancel-btn {
+    background: transparent;
+    color: #9ca3af;
+    border: 1px solid #333;
+    padding: 0.625rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .garage__cancel-btn:hover {
+    color: #fff;
+    border-color: #555;
+  }
+
+  /* Empty State */
+  .garage__empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6b7280;
+  }
+  .garage__empty-icon {
+    margin-bottom: 1rem;
+    opacity: 0.4;
+  }
+  .garage__empty p {
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  /* Vehicle Cards Grid */
+  .garage__vehicles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .garage__card {
+    background: #111;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 1.25rem;
+    transition: border-color 0.2s;
+  }
+  .garage__card:hover {
+    border-color: #444;
+  }
+  .garage__card--default {
+    border-left: 4px solid #dc2626;
+  }
+  .garage__card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    min-height: 1.5rem;
+  }
+  .garage__badge {
+    background: #dc2626;
+    color: #fff;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .garage__nickname {
+    color: #9ca3af;
+    font-size: 0.8125rem;
+    font-style: italic;
+  }
+  .garage__card-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.25rem;
+  }
+  .garage__card-detail {
+    color: #9ca3af;
+    font-size: 0.8125rem;
+    margin: 0 0 0.125rem;
+  }
+  .garage__card-size {
+    color: #10b981;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin: 0 0 1rem;
+  }
+  .garage__card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .garage__action {
+    padding: 0.375rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+    border: none;
+  }
+  .garage__action--shop {
+    background: #dc2626;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+  }
+  .garage__action--shop:hover {
+    background: #b91c1c;
+    color: #fff;
+  }
+  .garage__action--default {
+    background: transparent;
+    color: #60a5fa;
+    border: 1px solid #1e3a5f;
+  }
+  .garage__action--default:hover {
+    background: #1e3a5f;
+    color: #93c5fd;
+  }
+  .garage__action--nickname {
+    background: transparent;
+    color: #9ca3af;
+    border: 1px solid #333;
+  }
+  .garage__action--nickname:hover {
+    color: #fff;
+    border-color: #555;
+  }
+  .garage__action--remove {
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid #7f1d1d33;
+  }
+  .garage__action--remove:hover {
+    background: #7f1d1d33;
+    color: #fca5a5;
+  }
+
+  /* Guest State */
+  .garage--guest {
+    text-align: center;
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+  }
+  .garage__login-btn {
+    display: inline-block;
+    background: #dc2626;
+    color: #fff;
+    text-decoration: none;
+    padding: 0.75rem 2rem;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    transition: background 0.2s;
+  }
+  .garage__login-btn:hover {
+    background: #b91c1c;
+    color: #fff;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .garage__selects {
+      grid-template-columns: 1fr;
+    }
+    .garage__vehicles {
+      grid-template-columns: 1fr;
+    }
+    .garage__card-actions {
+      flex-direction: column;
+    }
+    .garage__action {
+      text-align: center;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:sections.my_garage.name",
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:sections.all.padding.section_padding_heading"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "t:sections.all.padding.padding_top",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "t:sections.all.padding.padding_bottom",
+      "default": 36
+    }
+  ]
+}
+{% endschema %}

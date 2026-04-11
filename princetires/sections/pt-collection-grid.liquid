@@ -1,0 +1,1932 @@
+{%- comment -%} Smart search config for collection page {%- endcomment -%}
+<script data-smart-search-config type="application/json">
+{
+  "geminiKey": {{ settings.gemini_api_key | json }},
+  "minYear": {{ settings.smart_search_min_year | default: 2001 }},
+  "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
+  "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }}
+}
+</script>
+
+{%- paginate collection.products by section.settings.products_per_page -%}
+<div class="ptg" style="--ptg-img-pad: {{ section.settings.image_padding }}rem; --ptg-img-ratio: {{ section.settings.image_ratio }};">
+
+  <div class="ptg__container">
+    <div class="ptg__layout">
+
+      {%- comment -%} ── Sidebar Filters ── {%- endcomment -%}
+      <div class="ptg__sidebar-backdrop" data-filter-backdrop></div>
+      <aside class="ptg__sidebar" data-sidebar>
+        <div class="ptg__sidebar-mobile-head">
+          <span class="ptg__sidebar-mobile-title">Filters</span>
+          <button class="ptg__sidebar-close" data-close-filters>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        {%- comment -%} Tire Size Display — populated by JS from URL params {%- endcomment -%}
+        <div class="ptg__size-display" data-size-display>
+          <span class="ptg__size-display-label">Tire size</span>
+          <div class="ptg__size-display-row">
+            <input type="text" class="ptg__size-display-input" value="" placeholder="e.g. 225/65R17" data-size-edit>
+            <a href="{{ collection.url }}" class="ptg__size-display-clear" title="Clear size" data-size-clear-link hidden>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="ptg__sidebar-head">
+          <span class="ptg__sidebar-title">Filters</span>
+        </div>
+
+        <div class="ptg__active-filters" data-active-filters-sidebar hidden></div>
+
+        {%- comment -%} Price Range Slider {%- endcomment -%}
+        <div class="ptg__filter ptg__filter--open">
+          <span class="ptg__filter-label ptg__filter-label--static">Price range</span>
+          <div class="ptg__price-slider">
+            <div class="ptg__price-values">
+              <span data-price-min-display>${{ active_price_min | default: '0' }}</span>
+              <span data-price-max-display>${{ active_price_max | default: '500' }}</span>
+            </div>
+            <div class="ptg__price-track">
+              <input type="range" min="0" max="500" value="{{ active_price_min | default: 0 }}" step="10" class="ptg__price-range ptg__price-range--min" data-price-min>
+              <input type="range" min="0" max="500" value="{{ active_price_max | default: 500 }}" step="10" class="ptg__price-range ptg__price-range--max" data-price-max>
+            </div>
+          </div>
+        </div>
+
+        {%- comment -%} Season Icons {%- endcomment -%}
+        <div class="ptg__filter ptg__filter--open">
+          <span class="ptg__filter-label ptg__filter-label--static">Season</span>
+          <div class="ptg__season-icons">
+            <button type="button" class="ptg__season-icon" data-meta-filter="seasonality" data-meta-value="All-Season" title="All-Season" style="--sc: #16a34a">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+              <span class="ptg__season-tooltip">All-Season</span>
+            </button>
+            <button type="button" class="ptg__season-icon" data-meta-filter="seasonality" data-meta-value="All-Weather" title="All-Weather" style="--sc: #F5820B">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              <span class="ptg__season-tooltip">All-Weather</span>
+            </button>
+            <button type="button" class="ptg__season-icon" data-meta-filter="seasonality" data-meta-value="Winter" title="Winter" style="--sc: #2563eb">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z"/></svg>
+              <span class="ptg__season-tooltip">Winter</span>
+            </button>
+            <button type="button" class="ptg__season-icon" data-meta-filter="seasonality" data-meta-value="Summer" title="Summer" style="--sc: #eab308">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+              <span class="ptg__season-tooltip">Summer</span>
+            </button>
+          </div>
+        </div>
+
+        {%- comment -%} Tire Type {%- endcomment -%}
+        <details class="ptg__filter">
+          <summary class="ptg__filter-label">
+            Tire type
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="ptg__filter-options">
+            <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.service_type" data-filter-value="P">
+              <span class="ptg__filter-check"></span>
+              Passenger <span class="ptg__filter-symbol">(P)</span>
+            </a>
+            <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.service_type" data-filter-value="LT">
+              <span class="ptg__filter-check"></span>
+              Light Truck <span class="ptg__filter-symbol">(LT)</span>
+            </a>
+            <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.service_type" data-filter-value="ST">
+              <span class="ptg__filter-check"></span>
+              Trailer <span class="ptg__filter-symbol">(C)</span>
+            </a>
+          </div>
+        </details>
+
+        {%- comment -%} Brand — scrollable {%- endcomment -%}
+        <details class="ptg__filter" open>
+          <summary class="ptg__filter-label">
+            Brand
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="ptg__filter-options ptg__filter-options--scroll">
+            {%- assign brand_list = 'BFGoodrich,Bridgestone,CARLSTAR,Continental,Cooper,Falken,Farroad,Firemax,Firestone,Fortune,General,Goodyear,Haida,Kumho,Linglong,Michelin,Mickey Thompson,Pirelli,Radar,Rotalla,Toyo,Uniroyal,Yeada,Yokohama' | split: ',' -%}
+            {%- for brand in brand_list -%}
+              <a href="#" class="ptg__filter-link" data-filter-key="filter.p.vendor" data-filter-value="{{ brand }}">
+                <span class="ptg__filter-check"></span>
+                {{ brand }}
+              </a>
+            {%- endfor -%}
+          </div>
+        </details>
+
+        {%- comment -%} Product Type {%- endcomment -%}
+        <details class="ptg__filter">
+          <summary class="ptg__filter-label">
+            Product type
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="ptg__filter-options">
+            {%- assign ptypes = 'Heavy Duty,Performance,All-Terrain,Mud-Terrain,Highway Terrain' | split: ',' -%}
+            {%- for pt in ptypes -%}
+              <a href="#" class="ptg__filter-link" data-filter-key="filter.p.product_type" data-filter-value="{{ pt }}">
+                <span class="ptg__filter-check"></span>
+                {{ pt }}
+              </a>
+            {%- endfor -%}
+          </div>
+        </details>
+
+        {%- comment -%} Rim Diameter {%- endcomment -%}
+        <details class="ptg__filter">
+          <summary class="ptg__filter-label">
+            Rim diameter
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="ptg__filter-options ptg__filter-options--wrap">
+            {%- assign rims = '13,14,15,16,17,18,19,20,22,24' | split: ',' -%}
+            {%- for r in rims -%}
+              <a href="{{ collection.url }}?filter.p.m.custom.rim_diameter={{ r }}{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}" class="ptg__filter-pill">{{ r }}"</a>
+            {%- endfor -%}
+          </div>
+        </details>
+
+        {%- comment -%} Availability {%- endcomment -%}
+        <details class="ptg__filter">
+          <summary class="ptg__filter-label">
+            Availability
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="ptg__filter-options">
+            <a href="{{ collection.url }}?filter.v.availability=1{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}" class="ptg__filter-link">In stock</a>
+            <a href="{{ collection.url }}?filter.v.availability=0{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}" class="ptg__filter-link">Out of stock</a>
+          </div>
+        </details>
+
+        {%- comment -%} Stud Option — only shows for Winter or LT All-Terrain {%- endcomment -%}
+        {%- liquid
+          assign show_stud = false
+          if active_season == 'Winter'
+            assign show_stud = true
+          endif
+          if active_type == 'LT'
+            assign show_stud = true
+          endif
+        -%}
+        {%- if show_stud -%}
+          <details class="ptg__filter" open>
+            <summary class="ptg__filter-label">
+              Stud option
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <div class="ptg__filter-options">
+              <a href="{{ collection.url }}?filter.p.m.custom.stud_option=Studdable{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}{% if active_type != blank %}&filter.p.m.custom.service_type={{ active_type | url_encode }}{% endif %}" class="ptg__filter-link">Studdable</a>
+              <a href="{{ collection.url }}?filter.p.m.custom.stud_option=Non-Studdable{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}{% if active_type != blank %}&filter.p.m.custom.service_type={{ active_type | url_encode }}{% endif %}" class="ptg__filter-link">Non-studdable</a>
+            </div>
+          </details>
+        {%- endif -%}
+
+        {%- comment -%} Run Flat {%- endcomment -%}
+        <details class="ptg__filter">
+          <summary class="ptg__filter-label">
+            Run flat
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="ptg__filter-options">
+            <a href="{{ collection.url }}?filter.p.m.custom.run_flat=Yes{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}" class="ptg__filter-link">Run flat only</a>
+          </div>
+        </details>
+
+      </aside>
+
+      {%- comment -%} ── Product Grid ── {%- endcomment -%}
+      <div class="ptg__main">
+
+        <button class="ptg__mobile-filter-btn" data-open-filters>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+          Filters
+        </button>
+
+        <div class="ptg__toolbar">
+          <div class="ptg__search" data-ptg-smart-search>
+            <svg class="ptg__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg>
+            <input type="text" class="ptg__search-input" placeholder="Search by vehicle or tire size..." data-ptg-search autocomplete="off">
+            <span class="ptg__search-badge">
+              <span class="ptg__search-dot"></span>
+              Powered by <strong>Smart Search</strong>
+            </span>
+            <div class="ptg__search-results" data-ptg-results hidden>
+              <div class="ptg__search-loading" data-ptg-loading hidden>
+                <span class="ptg__search-spinner"></span>
+                AI is finding your vehicle...
+              </div>
+              <ul class="ptg__search-list" data-ptg-list></ul>
+            </div>
+          </div>
+          <div class="ptg__sort">
+            <label for="ptg-sort" class="ptg__sort-label">Sort by</label>
+            <div class="ptg__sort-wrap">
+              {%- assign sort_by = collection.sort_by | default: collection.default_sort_by -%}
+              <select id="ptg-sort" class="ptg__sort-select" data-ptg-sort>
+                <option value="manual" {% if sort_by == 'manual' %}selected{% endif %}>Featured</option>
+                <option value="best-selling" {% if sort_by == 'best-selling' %}selected{% endif %}>Best selling</option>
+                <option value="price-ascending" {% if sort_by == 'price-ascending' %}selected{% endif %}>Price: Low to High</option>
+                <option value="price-descending" {% if sort_by == 'price-descending' %}selected{% endif %}>Price: High to Low</option>
+              </select>
+              <svg class="ptg__sort-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+        </div>
+
+        {%- if collection.products.size > 0 -%}
+          <div class="ptg__grid">
+            {%- for product in collection.products -%}
+              {%- liquid
+                assign season_tag = ''
+                assign season_color = '#6b7280'
+                for tag in product.tags
+                  assign tag_down = tag | downcase
+                  if tag_down contains 'winter'
+                    assign season_tag = 'Winter'
+                    assign season_color = '#2563eb'
+                  elsif tag_down contains 'all-season' or tag_down contains 'all season'
+                    assign season_tag = 'All-Season'
+                    assign season_color = '#16a34a'
+                  elsif tag_down contains 'all-weather' or tag_down contains 'all weather'
+                    assign season_tag = 'All-Weather'
+                    assign season_color = '#F5820B'
+                  elsif tag_down contains 'summer'
+                    assign season_tag = 'Summer'
+                    assign season_color = '#eab308'
+                  endif
+                endfor
+                if season_tag == blank
+                  assign type_down = product.type | downcase
+                  if type_down contains 'winter'
+                    assign season_tag = 'Winter'
+                    assign season_color = '#2563eb'
+                  elsif type_down contains 'passenger'
+                    assign season_tag = 'All-Season'
+                    assign season_color = '#16a34a'
+                  elsif type_down contains 'trailer'
+                    assign season_tag = 'Trailer'
+                    assign season_color = '#6b7280'
+                  endif
+                endif
+              -%}
+              {%- liquid
+                assign tire_size_display = product.metafields.custom.tire_size | default: ''
+                assign card_title = product.title
+                if tire_size_display != blank
+                  assign card_title = product.title | remove: tire_size_display | strip | remove_first: ' '
+                endif
+              -%}
+              <a href="{{ product.url }}" class="ptg__card" data-vendor="{{ product.vendor | handleize }}" data-season="{{ season_tag | handleize }}" data-type="{{ product.type | downcase }}" data-price="{{ product.price | money_without_currency | strip_html | strip }}" data-tire-size="{{ tire_size_display }}" data-product-title="{{ card_title | escape }}">
+                <div class="ptg__card-img">
+                  {%- if product.featured_image -%}
+                    {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'ptg__img', loading: 'lazy' }}
+                  {%- else -%}
+                    <div class="ptg__card-ph">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                    </div>
+                  {%- endif -%}
+                  {%- if product.compare_at_price > product.price -%}
+                    <span class="ptg__card-sale">Sale</span>
+                  {%- endif -%}
+                  <div class="ptg__card-img-bottom">
+                    <span class="ptg__card-stars">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="#F5820B"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      4.5
+                    </span>
+                    {%- if season_tag != blank -%}
+                      <span class="ptg__card-season" style="background: {{ season_color }}">{{ season_tag }}</span>
+                    {%- endif -%}
+                  </div>
+                </div>
+                <div class="ptg__card-body">
+                  <span class="ptg__card-vendor ptg__card-vendor--{{ product.vendor | handleize }}">{{ product.vendor | escape }}</span>
+                  <h3 class="ptg__card-title">{{ card_title | escape }}</h3>
+                  <div class="ptg__card-tags">
+                    {%- if tire_size_display != blank -%}
+                      <span class="ptg__card-size-tag">{{ tire_size_display }}</span>
+                    {%- endif -%}
+                    <span class="ptg__card-type-tag">{{ product.type | escape }}</span>
+                  </div>
+                  <div class="ptg__card-price">
+                    {%- if product.compare_at_price > product.price -%}
+                      <span class="ptg__price-sale">${{ product.price | money_without_currency }}</span>
+                      <span class="ptg__price-was">${{ product.compare_at_price | money_without_currency }}</span>
+                    {%- else -%}
+                      <span>${{ product.price | money_without_currency }}</span>
+                    {%- endif -%}
+                    <span class="ptg__price-per">/tire</span>
+                  </div>
+                  <div class="ptg__card-actions">
+                    <button type="button" class="ptg__card-book" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ product.metafields.custom.tire_size | default: '' }}" onclick="event.preventDefault();event.stopPropagation();openBookingModal(this)">Book Installation</button>
+                    <span class="ptg__card-cart">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                    </span>
+                  </div>
+                </div>
+              </a>
+            {%- endfor -%}
+          </div>
+
+          {%- if paginate.pages > 1 -%}
+            <div class="ptg__pages">
+              {%- if paginate.previous -%}
+                <a href="{{ paginate.previous.url }}" class="ptg__page-btn">← Prev</a>
+              {%- endif -%}
+              {%- for part in paginate.parts -%}
+                {%- if part.is_link -%}
+                  <a href="{{ part.url }}" class="ptg__page-num">{{ part.title }}</a>
+                {%- else -%}
+                  {%- if part.title == paginate.current_page -%}
+                    <span class="ptg__page-num ptg__page-num--on">{{ part.title }}</span>
+                  {%- else -%}
+                    <span class="ptg__page-num">{{ part.title }}</span>
+                  {%- endif -%}
+                {%- endif -%}
+              {%- endfor -%}
+              {%- if paginate.next -%}
+                <a href="{{ paginate.next.url }}" class="ptg__page-btn">Next →</a>
+              {%- endif -%}
+            </div>
+          {%- endif -%}
+
+        {%- else -%}
+          <div class="ptg__empty">
+            <p>No products found.</p>
+            <a href="/collections/tires">Browse all tires →</a>
+          </div>
+        {%- endif -%}
+      </div>
+
+    </div>
+  </div>
+</div>
+{%- endpaginate -%}
+
+{% stylesheet %}
+  .ptg {
+    background: #fff;
+    padding: 0 0 5rem;
+  }
+
+  .ptg__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 12rem;
+  }
+
+  .ptg__layout {
+    display: grid;
+    grid-template-columns: 24rem 1fr;
+    gap: 3rem;
+    align-items: start;
+  }
+
+  /* ══ Sidebar ══ */
+  .ptg__sidebar {
+    position: sticky;
+    top: 8rem;
+    max-height: calc(100vh - 9rem);
+    overflow-y: auto;
+    padding: 2rem 1rem 2rem 0;
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+    scroll-behavior: smooth;
+  }
+
+  .ptg__sidebar::-webkit-scrollbar { width: 3px; }
+  .ptg__sidebar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 3px; }
+  .ptg__sidebar::-webkit-scrollbar-track { background: transparent; }
+
+  /* ── Grid transition ── */
+  .ptg__grid {
+    animation: ptg-fade-in 0.3s ease-out;
+  }
+
+  @keyframes ptg-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .ptg__size-display {
+    margin-bottom: 1.6rem;
+    padding-bottom: 1.6rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .ptg__size-display-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 300;
+    color: #9ca3af;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .ptg__size-display-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .ptg__size-display-input {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #111;
+    letter-spacing: 0.02em;
+    border: none;
+    background: transparent;
+    outline: none;
+    padding: 0;
+    width: auto;
+    max-width: 16rem;
+    cursor: text;
+    border-bottom: 1.5px dashed transparent;
+    transition: border-color 0.2s;
+  }
+
+  .ptg__size-display-input:hover {
+    border-bottom-color: #e5e7eb;
+  }
+
+  .ptg__size-display-input:focus {
+    border-bottom-color: #F5820B;
+  }
+
+  .ptg__size-display-input::placeholder {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    color: #d1d5db;
+    letter-spacing: 0;
+  }
+
+  .ptg__size-display-clear {
+    display: flex;
+    align-items: center;
+    color: #d1d5db;
+    transition: color 0.15s;
+  }
+
+  .ptg__size-display-clear:hover {
+    color: #dc2626;
+  }
+
+  .ptg__sidebar-head {
+    margin-bottom: 1.2rem;
+  }
+
+  .ptg__sidebar-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #111;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .ptg__filter {
+    margin-bottom: 0.4rem;
+  }
+
+  .ptg__filter-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 0;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #111;
+    list-style: none;
+  }
+
+  .ptg__filter-label::-webkit-details-marker { display: none; }
+
+  .ptg__filter-label svg {
+    color: #9ca3af;
+    transition: transform 0.2s;
+  }
+
+  .ptg__filter[open] .ptg__filter-label svg {
+    transform: rotate(180deg);
+  }
+
+  .ptg__filter-options {
+    padding: 0 0 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .ptg__filter--open {
+    padding-bottom: 1rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .ptg__filter-label--static {
+    display: block;
+    padding: 1.2rem 0 0.8rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #111;
+  }
+
+  /* ── Price Slider ── */
+  .ptg__price-slider {
+    padding: 0 0.2rem;
+  }
+
+  .ptg__price-values {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.6rem;
+  }
+
+  .ptg__price-track {
+    position: relative;
+    height: 28px;
+    display: flex;
+    align-items: center;
+  }
+
+  .ptg__price-range {
+    position: absolute;
+    width: 100%;
+    height: 4px;
+    appearance: none;
+    background: transparent;
+    pointer-events: none;
+    outline: none;
+  }
+
+  .ptg__price-range::-webkit-slider-runnable-track {
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+  }
+
+  .ptg__price-range::-webkit-slider-runnable-track {
+    background: linear-gradient(to right, #F5820B, #F5820B) !important;
+  }
+
+  .ptg__price-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #F5820B;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 1px 6px rgba(245,130,11,0.3);
+    cursor: pointer;
+    pointer-events: all;
+    margin-top: -7px;
+  }
+
+  .ptg__price-range::-moz-range-track {
+    background: #F5820B !important;
+  }
+
+  .ptg__price-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #F5820B;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 1px 6px rgba(245,130,11,0.3);
+    cursor: pointer;
+    pointer-events: all;
+  }
+
+  /* ── Scrollable brands ── */
+  .ptg__filter-options--scroll {
+    max-height: 18rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+  }
+
+  .ptg__filter-options--scroll::-webkit-scrollbar { width: 3px; }
+  .ptg__filter-options--scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 3px; }
+  .ptg__filter-options--scroll::-webkit-scrollbar-track { background: transparent; }
+
+  /* ── Season Icons ── */
+  .ptg__season-icons {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.4rem 0;
+  }
+
+  .ptg__season-icon {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--sc) 10%, transparent);
+    color: var(--sc);
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .ptg__season-icon:hover {
+    background: var(--sc);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--sc) 30%, transparent);
+  }
+
+  .ptg__season-tooltip {
+    position: absolute;
+    bottom: calc(100% + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    padding: 0.3rem 0.7rem;
+    border-radius: 3px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+
+  .ptg__season-icon:hover .ptg__season-tooltip {
+    opacity: 1;
+  }
+
+  .ptg__filter-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: #9ca3af;
+    text-decoration: none;
+    border: none;
+    background: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+    text-align: left;
+    width: 100%;
+  }
+
+  .ptg__filter-link:hover {
+    color: #111;
+    background: #fafafa;
+  }
+
+  .ptg__filter-link--active {
+    color: #111;
+    font-weight: 500;
+  }
+
+  /* ── Checkmark ── */
+  .ptg__filter-check {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 3px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .ptg__filter-link--active .ptg__filter-check {
+    background: #F5820B;
+    border-color: #F5820B;
+  }
+
+  .ptg__filter-link--active .ptg__filter-check::after {
+    content: '';
+    width: 4px;
+    height: 8px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-top: -2px;
+  }
+
+  .ptg__filter-symbol {
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: #d1d5db;
+  }
+
+  .ptg__filter-link--active .ptg__filter-symbol {
+    color: #F5820B;
+  }
+
+  /* ── Season active frame ── */
+  .ptg__season-icon--active {
+    outline: 2px solid #F5820B;
+    outline-offset: 2px;
+    border-radius: 8px;
+    background: var(--sc) !important;
+    color: #fff !important;
+  }
+
+  .ptg__filter-cnt {
+    color: #d1d5db;
+    font-size: 1.1rem;
+  }
+
+  .ptg__filter-input {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    outline: none;
+    background: #f7f7f7;
+    margin-bottom: 0.6rem;
+  }
+
+  .ptg__filter-input:focus {
+    border-color: #dc2626;
+    background: #fff;
+  }
+
+  .ptg__filter-sizes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .ptg__filter-sizes .ptg__filter-link {
+    padding: 0.4rem 0.8rem;
+    background: #f7f7f7;
+    border-radius: 4px;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #374151;
+  }
+
+  .ptg__filter-sizes .ptg__filter-link:hover {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+
+  .ptg__filter-options--wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .ptg__filter-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem 0.7rem;
+    background: #f7f7f7;
+    border-radius: 4px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #374151;
+    text-decoration: none;
+    transition: all 0.15s;
+    min-width: 3.6rem;
+    text-align: center;
+  }
+
+  .ptg__filter-pill:hover {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+
+  /* ══ Main ══ */
+  .ptg__main {
+    min-width: 0;
+  }
+
+  /* ── Active Filters ── */
+  .ptg__active-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    padding: 0 0 1rem;
+  }
+
+  .ptg__active-filters[hidden] { display: none; }
+
+  .ptg__active-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.7rem;
+    background: none;
+    color: #dc2626;
+    border: none;
+    border-radius: 99px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 400;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    background: #fef2f2;
+  }
+
+  .ptg__active-tag:hover {
+    opacity: 0.7;
+  }
+
+  .ptg__active-clear {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 300;
+    color: #9ca3af;
+    border: none;
+    background: none;
+    cursor: pointer;
+    margin-left: 0.2rem;
+  }
+
+  .ptg__active-clear:hover { color: #dc2626; }
+
+  .ptg__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0;
+    margin-bottom: 1.6rem;
+  }
+
+  .ptg__results {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: #9ca3af;
+  }
+
+  .ptg__results-count { font-weight: 500; color: #111; }
+
+  .ptg__search {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    max-width: 36rem;
+  }
+
+  .ptg__search-icon {
+    position: absolute;
+    left: 1rem;
+    color: #9ca3af;
+    pointer-events: none;
+  }
+
+  .ptg__search-input {
+    width: 100%;
+    padding: 0.6rem 1rem 0.6rem 2.8rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: #111;
+    background: #fafafa;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .ptg__search-input::placeholder {
+    color: #c0c0c0;
+  }
+
+  .ptg__search-input:focus {
+    border-color: #F5820B;
+    background: #fff;
+  }
+
+  .ptg__search-badge {
+    position: absolute;
+    right: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 300;
+    color: #c0c0c0;
+    pointer-events: none;
+  }
+
+  .ptg__search-dot {
+    width: 5px;
+    height: 5px;
+    background: #F5820B;
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(245,130,11,0.4);
+  }
+
+  .ptg__search-input:focus ~ .ptg__search-badge {
+    opacity: 0;
+  }
+
+  .ptg__search-results {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    z-index: 50;
+    max-height: 28rem;
+    overflow-y: auto;
+  }
+
+  .ptg__search-results[hidden] { display: none; }
+
+  .ptg__search-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1rem 1.2rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: #9ca3af;
+  }
+
+  .ptg__search-loading[hidden] { display: none; }
+
+  .ptg__search-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #F5820B;
+    border-radius: 50%;
+    animation: ptg-spin 0.6s linear infinite;
+  }
+
+  @keyframes ptg-spin { to { transform: rotate(360deg); } }
+
+  .ptg__search-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.4rem;
+  }
+
+  .ptg__search-item {
+    padding: 0.8rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    color: #374151;
+    transition: background 0.15s;
+  }
+
+  .ptg__search-item:hover {
+    background: #f7f7f7;
+  }
+
+  .ptg__search-item-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: #f7f7f7;
+    color: #9ca3af;
+    flex-shrink: 0;
+  }
+
+  .ptg__search-item-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ptg__search-item-title {
+    font-weight: 500;
+    color: #111;
+  }
+
+  .ptg__search-item-meta {
+    font-size: 1.05rem;
+    font-weight: 300;
+    color: #9ca3af;
+  }
+
+  .ptg__search-item-tag {
+    font-size: 0.95rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    background: #f0f0f0;
+    color: #6b7280;
+    flex-shrink: 0;
+  }
+
+  .ptg__sort { display: flex; align-items: center; gap: 0.6rem; }
+
+  .ptg__sort-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    color: #6b7280;
+  }
+
+  .ptg__sort-wrap { position: relative; }
+
+  .ptg__sort-select {
+    appearance: none;
+    background: #f7f7f7;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 0.5rem 2.8rem 0.5rem 1rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    color: #374151;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .ptg__sort-select:focus { border-color: #dc2626; }
+
+  .ptg__sort-icon { position: absolute; right: 0.8rem; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
+
+  /* ══ Grid ══ */
+  .ptg__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.6rem;
+  }
+
+  .ptg__card {
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    max-width: 100%;
+  }
+
+  .ptg__card-img {
+    aspect-ratio: var(--ptg-img-ratio, 1);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: calc(var(--ptg-img-pad, 1.2rem) + 1.6rem) var(--ptg-img-pad, 1.2rem) 0.8rem;
+    position: relative;
+  }
+
+  .ptg__img {
+    width: 85%;
+    height: 85%;
+    object-fit: contain;
+    max-height: 180px;
+    margin: auto;
+  }
+
+  .ptg__card-ph { display: flex; align-items: center; justify-content: center; }
+
+  .ptg__card-sale {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
+    background: #dc2626;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+
+  .ptg__card-img-bottom {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .ptg__card-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(4px);
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+  }
+
+  .ptg__card-season {
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.2rem 0.6rem;
+    border-radius: 3px;
+    letter-spacing: 0.02em;
+  }
+
+  .ptg__card-body {
+    padding: 1.2rem 1.4rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1;
+  }
+
+  .ptg__card-vendor {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #8b1a1a;
+  }
+
+  .ptg__card-vendor--michelin { color: #00205b; }
+  .ptg__card-vendor--bridgestone { color: #cc0000; }
+  .ptg__card-vendor--continental { color: #f0a000; }
+  .ptg__card-vendor--goodyear { color: #003da5; }
+  .ptg__card-vendor--toyo { color: #e60012; }
+  .ptg__card-vendor--yokohama { color: #e60012; }
+  .ptg__card-vendor--cooper { color: #003366; }
+  .ptg__card-vendor--kumho { color: #d41920; }
+  .ptg__card-vendor--bfgoodrich { color: #cc0000; }
+  .ptg__card-vendor--firestone { color: #c41230; }
+  .ptg__card-vendor--general { color: #333333; }
+  .ptg__card-vendor--pirelli { color: #ffcc00; }
+  .ptg__card-vendor--radar { color: #0066cc; }
+  .ptg__card-vendor--falken { color: #005ca9; }
+
+  .ptg__card-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+
+  .ptg__card-tags {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+  }
+
+  .ptg__card-size-tag {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #111;
+    background: none;
+    padding: 0;
+    letter-spacing: 0.01em;
+  }
+
+  .ptg__card-type-tag {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 300;
+    color: #9ca3af;
+  }
+
+  .ptg__card-price {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111;
+    margin-top: auto;
+    padding-top: 0.8rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+  }
+
+  .ptg__price-sale { color: #dc2626; }
+  .ptg__price-was { font-size: 1.05rem; font-weight: 300; color: #9ca3af; text-decoration: line-through; }
+  .ptg__price-per { font-size: 1rem; font-weight: 300; color: #9ca3af; }
+
+  .ptg__card-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.8rem;
+  }
+
+  .ptg__card-book {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: transparent;
+    color: #dc2626;
+    border: 1px solid #e5e7eb;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .ptg__card-book:hover {
+    background: #dc2626;
+    color: #fff;
+    border-color: #dc2626;
+  }
+
+  .ptg__card-cart {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: #dc2626;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .ptg__card-cart:hover {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  /* ══ Pagination ══ */
+  .ptg__pages {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 3rem;
+  }
+
+  .ptg__page-btn {
+    padding: 0.6rem 1.2rem;
+    background: #f7f7f7;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    color: #374151;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+
+  .ptg__page-btn:hover { border-color: #dc2626; color: #dc2626; }
+
+  .ptg__page-num {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    color: #374151;
+    text-decoration: none;
+  }
+
+  a.ptg__page-num:hover { background: #f7f7f7; color: #dc2626; }
+
+  .ptg__page-num--on { background: #dc2626; color: #fff; font-weight: 600; }
+
+  .ptg__empty {
+    text-align: center;
+    padding: 5rem 0;
+    font-family: 'Outfit', sans-serif;
+    color: #6b7280;
+    font-size: 1.3rem;
+  }
+
+  .ptg__empty a { color: #dc2626; text-decoration: none; display: inline-block; margin-top: 0.8rem; }
+
+  /* ══ Responsive ══ */
+  /* ── Mobile filter button (hidden on desktop) ── */
+  .ptg__mobile-filter-btn {
+    display: none;
+  }
+
+  .ptg__sidebar-backdrop {
+    display: none;
+  }
+
+  .ptg__sidebar-mobile-head {
+    display: none;
+  }
+
+  @media (max-width: 989px) {
+    .ptg__container { padding: 0 4rem; }
+    .ptg__layout { grid-template-columns: 20rem 1fr; gap: 2rem; }
+    .ptg__grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (max-width: 768px) {
+    .ptg__container { padding: 0 1.6rem; }
+    .ptg__layout { grid-template-columns: 1fr; }
+    .ptg__grid { grid-template-columns: repeat(2, 1fr); gap: 0.8rem; }
+
+    /* ── Mobile filter button ── */
+    .ptg__mobile-filter-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.7rem 1.4rem;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: #111;
+      cursor: pointer;
+      margin-bottom: 1rem;
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* ── Sidebar as drawer ── */
+    .ptg__sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: min(320px, 85vw);
+      background: #fff;
+      z-index: 500;
+      transform: translateX(-100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 0 1.6rem 2rem;
+      overflow-y: auto;
+      box-shadow: none;
+      max-height: 100vh;
+    }
+
+    .ptg__sidebar.is-open {
+      transform: translateX(0);
+      box-shadow: 8px 0 40px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ── Mobile header inside drawer ── */
+    .ptg__sidebar-mobile-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.4rem 0;
+      border-bottom: 1px solid #f0f0f0;
+      margin-bottom: 1.2rem;
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 1;
+    }
+
+    .ptg__sidebar-mobile-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: #111;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .ptg__sidebar-close {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f7f7f7;
+      border: none;
+      border-radius: 6px;
+      color: #6b7280;
+      cursor: pointer;
+    }
+
+    .ptg__sidebar-close:hover {
+      color: #111;
+    }
+
+    /* ── Backdrop ── */
+    .ptg__sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 490;
+      backdrop-filter: blur(2px);
+    }
+
+    .ptg__sidebar-backdrop.is-open {
+      display: block;
+    }
+
+    /* ── Hide desktop sidebar head on mobile ── */
+    .ptg__sidebar-head {
+      display: none;
+    }
+  }
+{% endstylesheet %}
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var activeFiltersBar = document.querySelector('[data-active-filters-sidebar]');
+  var params = new URLSearchParams(window.location.search);
+  var baseUrl = window.location.pathname;
+
+  function isFilterActive(key, value) {
+    var found = false;
+    params.forEach(function(v, k) { if (k === key && v === value) found = true; });
+    return found;
+  }
+
+  function toggleFilter(key, value) {
+    var newParams = new URLSearchParams();
+    var removed = false;
+    params.forEach(function(v, k) {
+      if (k === key && v === value) { removed = true; }
+      else { newParams.append(k, v); }
+    });
+    if (!removed) newParams.append(key, value);
+    var qs = newParams.toString();
+    window.location.href = baseUrl + (qs ? '?' + qs : '');
+  }
+
+  // Universal filter links (brands, product types, etc.)
+  document.querySelectorAll('[data-filter-key]').forEach(function(el) {
+    var key = el.dataset.filterKey;
+    var val = el.dataset.filterValue;
+    if (isFilterActive(key, val)) el.classList.add('ptg__filter-link--active');
+    el.addEventListener('click', function(e) {
+      e.preventDefault();
+      toggleFilter(key, val);
+    });
+  });
+
+  // Season icons
+  document.querySelectorAll('[data-meta-filter]').forEach(function(el) {
+    var key = 'filter.p.m.custom.' + el.dataset.metaFilter;
+    var val = el.dataset.metaValue;
+    if (isFilterActive(key, val)) {
+      el.classList.add('ptg__season-icon--active');
+    }
+    el.addEventListener('click', function(e) {
+      e.preventDefault();
+      toggleFilter(key, val);
+    });
+  });
+
+  // Active filter bubbles
+  var activeFilters = [];
+  params.forEach(function(v, k) {
+    if (k.startsWith('filter.') && !k.includes('price') && !k.includes('tire_size')) {
+      activeFilters.push({ key: k, value: v });
+    }
+  });
+
+  if (activeFilters.length > 0 && activeFiltersBar) {
+    var html = '';
+    activeFilters.forEach(function(f) {
+      html += '<button type="button" class="ptg__active-tag" data-rk="' + f.key + '" data-rv="' + f.value + '">' +
+        f.value +
+        '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+      '</button>';
+    });
+    html += '<button type="button" class="ptg__active-clear" data-clear-all>Clear all</button>';
+    activeFiltersBar.innerHTML = html;
+    activeFiltersBar.hidden = false;
+
+    activeFiltersBar.querySelectorAll('[data-rk]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        toggleFilter(this.dataset.rk, this.dataset.rv);
+      });
+    });
+    var clearAll = activeFiltersBar.querySelector('[data-clear-all]');
+    if (clearAll) clearAll.addEventListener('click', function() {
+      // Preserve tire_size when clearing other filters
+      var tireSize = params.get('filter.p.m.custom.tire_size');
+      if (tireSize) {
+        window.location.href = baseUrl + '?filter.p.m.custom.tire_size=' + encodeURIComponent(tireSize);
+      } else {
+        window.location.href = baseUrl;
+      }
+    });
+  }
+
+  // Editable tire size — populated from URL via JS
+  var sizeDisplay = document.querySelector('[data-size-display]');
+  var sizeEdit = document.querySelector('[data-size-edit]');
+  var sizeClearLink = document.querySelector('[data-size-clear-link]');
+  var activeTireSize = params.get('filter.p.m.custom.tire_size');
+
+  if (activeTireSize && sizeEdit) {
+    sizeEdit.value = activeTireSize;
+    // Show X button when size is active
+    if (sizeClearLink) {
+      sizeClearLink.hidden = false;
+      var clearParams = new URLSearchParams();
+      params.forEach(function(v, k) {
+        if (!k.includes('tire_size')) clearParams.append(k, v);
+      });
+      var qs = clearParams.toString();
+      sizeClearLink.href = baseUrl + (qs ? '?' + qs : '');
+    }
+  }
+
+  if (sizeEdit) {
+    sizeEdit.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var val = this.value.trim();
+        if (!val) {
+          if (sizeClearLink) window.location.href = sizeClearLink.href;
+          return;
+        }
+        var m = val.match(/(\d{2,3})\/?(\d{2,3})[Rr](\d{2})/);
+        if (!m) return;
+        var sizeStr = m[1] + '/' + m[2] + 'R' + m[3];
+        var newParams = new URLSearchParams();
+        params.forEach(function(v, k) {
+          if (!k.includes('tire_size')) newParams.append(k, v);
+        });
+        newParams.set('filter.p.m.custom.tire_size', sizeStr);
+        window.location.href = baseUrl + '?' + newParams.toString();
+      }
+    });
+  }
+
+  // Price slider
+  var minSlider = document.querySelector('[data-price-min]');
+  var maxSlider = document.querySelector('[data-price-max]');
+  var minDisplay = document.querySelector('[data-price-min-display]');
+  var maxDisplay = document.querySelector('[data-price-max-display]');
+  if (minSlider && maxSlider) {
+    var priceTimer = null;
+    function updatePrice() {
+      var mn = parseInt(minSlider.value);
+      var mx = parseInt(maxSlider.value);
+      if (mn > mx) { minSlider.value = mx; mn = mx; }
+      if (mx < mn) { maxSlider.value = mn; mx = mn; }
+      minDisplay.textContent = '$' + mn;
+      maxDisplay.textContent = '$' + mx;
+    }
+    function applyPrice() {
+      clearTimeout(priceTimer);
+      priceTimer = setTimeout(function() {
+        var mn = parseInt(minSlider.value);
+        var mx = parseInt(maxSlider.value);
+        var newParams = new URLSearchParams();
+        params.forEach(function(v, k) {
+          if (!k.includes('price')) newParams.append(k, v);
+        });
+        newParams.set('filter.price.min', mn);
+        newParams.set('filter.price.max', mx);
+        window.location.href = baseUrl + '?' + newParams.toString();
+      }, 800);
+    }
+    minSlider.addEventListener('input', updatePrice);
+    maxSlider.addEventListener('input', updatePrice);
+    minSlider.addEventListener('change', applyPrice);
+    maxSlider.addEventListener('change', applyPrice);
+  }
+
+
+  // Collection smart search — same logic as hero, with trim dropdown + intent parsing
+  (function() {
+    var wrap = document.querySelector('[data-ptg-smart-search]');
+    if (!wrap) return;
+    var input = wrap.querySelector('[data-ptg-search]');
+    var results = wrap.querySelector('[data-ptg-results]');
+    var loading = wrap.querySelector('[data-ptg-loading]');
+    var list = wrap.querySelector('[data-ptg-list]');
+    var configEl = document.querySelector('[data-smart-search-config]');
+    var config = configEl ? JSON.parse(configEl.textContent) : {};
+    var tireSizeRegex = /[Pp]?[LlTtSs]?[Tt]?(\d{3})\/?(\d{2,3})?[Rr]?(\d{2}\.?\d?)/;
+    var vehicleCache = {};
+    var debounceTimer = null;
+    var brands = ['michelin','bridgestone','goodyear','continental','toyo','pirelli','falken','kumho','yokohama','firestone','cooper','bfgoodrich','bf goodrich','general','uniroyal','hankook','nitto','mickey thompson','firemax','linglong','farroad','yeada','fortune','radar','rotalla','haida','carlstar'];
+
+    function parseIntent(query) {
+      var q = query.toLowerCase();
+      var intent = { season: null, brand: null };
+      if (q.includes('winter') || q.includes('snow') || q.includes('ice')) intent.season = 'Winter';
+      else if (q.includes('all-season') || q.includes('all season')) intent.season = 'All-Season';
+      else if (q.includes('all-weather') || q.includes('all weather')) intent.season = 'All-Weather';
+      else if (q.includes('summer') || q.includes('performance')) intent.season = 'Summer';
+      for (var i = 0; i < brands.length; i++) {
+        if (q.includes(brands[i])) {
+          intent.brand = brands[i].split(' ').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
+          if (intent.brand === 'Bfgoodrich' || intent.brand === 'Bf Goodrich') intent.brand = 'BFGoodrich';
+          break;
+        }
+      }
+      return intent;
+    }
+
+    function buildUrl(p) {
+      var base = '/collections/tires';
+      var urlP = new URLSearchParams();
+      if (p.tireSize) urlP.set('filter.p.m.custom.tire_size', p.tireSize);
+      if (p.brand) urlP.set('filter.p.vendor', p.brand);
+      if (p.season) urlP.set('filter.p.m.custom.seasonality', p.season);
+      var qs = urlP.toString();
+      return qs ? base + '?' + qs : base;
+    }
+
+    function extractSize(q) {
+      var m = q.match(/[Pp]?(\d{3})\/?(\d{2,3})[Rr](\d{2})/);
+      return m ? m[1] + '/' + m[2] + 'R' + m[3] : null;
+    }
+
+    input.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function() {
+        var q = input.value.trim();
+        if (q.length < 2) { results.hidden = true; return; }
+        search(q);
+      }, 300);
+    });
+
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var q = this.value.trim();
+        if (!q) return;
+        var size = extractSize(q);
+        var intent = parseIntent(q);
+        if (size || intent.brand || intent.season) {
+          window.location.href = buildUrl({ tireSize: size, brand: intent.brand, season: intent.season });
+        } else {
+          window.location.href = '/search?q=' + encodeURIComponent(q) + '&type=product';
+        }
+      } else if (e.key === 'Escape') {
+        results.hidden = true;
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!wrap.contains(e.target)) results.hidden = true;
+    });
+
+    function search(query) {
+      var sizeMatch = query.match(tireSizeRegex);
+      if (sizeMatch && sizeMatch[1]) {
+        var size = extractSize(query);
+        var intent = parseIntent(query);
+        if (size) {
+          var label = size + (intent.brand ? ' by ' + intent.brand : '');
+          var meta = 'Filter collection' + (intent.season ? ' · ' + intent.season : '');
+          renderResults([{ type: 'size', title: label, meta: meta, url: buildUrl({ tireSize: size, brand: intent.brand, season: intent.season }) }]);
+        }
+        return;
+      }
+      searchVehicle(query);
+    }
+
+    async function searchVehicle(query) {
+      results.hidden = false;
+      loading.hidden = false;
+      list.innerHTML = '';
+      var intent = parseIntent(query);
+
+      try {
+        var vehicle = tryDirectParse(query);
+        if (!vehicle && config.geminiKey) vehicle = await callGemini(query);
+
+        if (vehicle && vehicle.year && vehicle.make) {
+          var trims = await lookupTrims(vehicle);
+          var vLabel = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+
+          if (trims.length > 0) {
+            renderTrimResults(vLabel, trims, intent);
+          } else {
+            renderResults([{ type: 'vehicle', title: vLabel, meta: 'Browse all tires', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+          }
+        } else if (intent.brand || intent.season) {
+          renderResults([{ type: 'search', title: (intent.brand || '') + (intent.season ? ' ' + intent.season : '') + ' tires', meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+        } else {
+          renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
+        }
+      } catch(e) {
+        renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
+      }
+    }
+
+    function tryDirectParse(q) {
+      var m = q.trim().match(/^['\u2018\u2019]?(\d{2,4})\s+([A-Za-z-]+)\s+(.+)$/);
+      if (m) {
+        var yr = m[1]; if (yr.length === 2) yr = (parseInt(yr) > 50 ? '19' : '20') + yr;
+        return { year: parseInt(yr), make: m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase(), model: m[3].trim().split(/\s+/)[0] };
+      }
+      return null;
+    }
+
+    async function callGemini(query) {
+      try {
+        var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + config.geminiKey, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'Extract vehicle from: "' + query + '". Return ONLY JSON: {"year":NUMBER,"make":"STRING","model":"STRING","trim":null}. If not a vehicle return {"year":null,"make":null,"model":null,"trim":null}' }] }], generationConfig: { temperature: 0, maxOutputTokens: 100 } })
+        });
+        if (!r.ok) return null;
+        var d = await r.json();
+        var txt = (d.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json\n?/g, '').replace(/```/g, '').trim();
+        var v = JSON.parse(txt);
+        return (v.year && v.make) ? v : null;
+      } catch(e) { return null; }
+    }
+
+    async function lookupTrims(vehicle) {
+      var year = vehicle.year;
+      if (!vehicleCache[year]) {
+        try {
+          var url = config.assetUrlBase + 'pt-vehicle-' + year + '.json';
+          var r = await fetch(url);
+          if (r.ok) vehicleCache[year] = await r.json();
+        } catch(e) {}
+      }
+      var data = vehicleCache[year];
+      if (!data || !data.models) return [];
+      var makeData = data.models[vehicle.make];
+      if (!makeData) {
+        var ml = vehicle.make.toLowerCase();
+        for (var k in data.models) { if (k.toLowerCase() === ml) { makeData = data.models[k]; break; } }
+      }
+      if (!makeData) return [];
+      var modelData = makeData[vehicle.model];
+      if (!modelData) {
+        var mdl = vehicle.model.toLowerCase();
+        for (var k in makeData) { if (k.toLowerCase() === mdl) { modelData = makeData[k]; break; } }
+      }
+      if (!modelData) return [];
+      var trims = [];
+      for (var t in modelData) {
+        if (Array.isArray(modelData[t]) && modelData[t].length > 0) trims.push({ trim: t, size: modelData[t][0] });
+      }
+      return trims;
+    }
+
+    function renderTrimResults(vLabel, trims, intent) {
+      loading.hidden = true;
+      var seasonBadge = intent.season ? ' <span style="font-size:0.85rem;color:#F5820B;background:rgba(245,130,11,0.1);padding:0.1rem 0.4rem;border-radius:3px;margin-left:0.3rem">' + esc(intent.season) + '</span>' : '';
+      var brandBadge = intent.brand ? ' <span style="font-size:0.85rem;color:#F5820B;background:rgba(245,130,11,0.1);padding:0.1rem 0.4rem;border-radius:3px;margin-left:0.3rem">' + esc(intent.brand) + '</span>' : '';
+
+      var html = '<li style="padding:0.8rem 1rem;border-bottom:1px solid #f0f0f0">' +
+        '<div style="font-weight:600;color:#111;font-size:1.2rem">' + esc(vLabel) + seasonBadge + brandBadge + '</div>' +
+        '<div style="font-size:0.95rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-top:0.2rem">Choose your trim</div>' +
+      '</li>';
+
+      html += trims.map(function(t) {
+        var url = buildUrl({ tireSize: t.size, brand: intent.brand, season: intent.season });
+        return '<li class="ptg__search-item" data-url="' + url + '" style="display:flex;justify-content:space-between;padding:0.7rem 1rem;cursor:pointer">' +
+          '<span style="font-weight:500;color:#374151">' + esc(t.trim) + '</span>' +
+          '<span style="color:#F5820B;font-size:1.1rem">' + esc(t.size) + '</span>' +
+        '</li>';
+      }).join('');
+
+      list.innerHTML = html;
+      results.hidden = false;
+      list.querySelectorAll('.ptg__search-item').forEach(function(item) {
+        item.addEventListener('click', function() { window.location.href = this.dataset.url; });
+      });
+    }
+
+    function renderResults(items) {
+      loading.hidden = true;
+      if (!items.length) { results.hidden = true; return; }
+      list.innerHTML = items.map(function(r) {
+        return '<li class="ptg__search-item" data-url="' + r.url + '">' +
+          '<span class="ptg__search-item-info"><span class="ptg__search-item-title">' + esc(r.title) + '</span><span class="ptg__search-item-meta">' + esc(r.meta) + '</span></span>' +
+        '</li>';
+      }).join('');
+      results.hidden = false;
+      list.querySelectorAll('.ptg__search-item').forEach(function(item) {
+        item.addEventListener('click', function() { window.location.href = this.dataset.url; });
+      });
+    }
+
+    function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+  })();
+
+  // Mobile filter drawer
+  var openBtn = document.querySelector('[data-open-filters]');
+  var closeBtn = document.querySelector('[data-close-filters]');
+  var sidebar = document.querySelector('[data-sidebar]');
+  var backdrop = document.querySelector('[data-filter-backdrop]');
+
+  function openFilters() {
+    if (sidebar) sidebar.classList.add('is-open');
+    if (backdrop) backdrop.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeFilters() {
+    if (sidebar) sidebar.classList.remove('is-open');
+    if (backdrop) backdrop.classList.remove('is-open');
+    document.body.style.overflow = '';
+  }
+
+  if (openBtn) openBtn.addEventListener('click', openFilters);
+  if (closeBtn) closeBtn.addEventListener('click', closeFilters);
+  if (backdrop) backdrop.addEventListener('click', closeFilters);
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeFilters();
+  });
+
+  // Sort
+  var sortSelect = document.querySelector('[data-ptg-sort]');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', function() {
+      var url = new URL(window.location.href);
+      url.searchParams.set('sort_by', this.value);
+      window.location.href = url.toString();
+    });
+  }
+});
+</script>
+
+{% schema %}
+{
+  "name": "Product grid",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "range",
+      "id": "products_per_page",
+      "label": "Products per page",
+      "min": 8,
+      "max": 48,
+      "step": 4,
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "image_padding",
+      "label": "Image padding",
+      "min": 0,
+      "max": 4,
+      "step": 0.2,
+      "default": 1.2,
+      "unit": "rem",
+      "info": "Padding around tire images (top, left, right)"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "label": "Image ratio",
+      "options": [
+        { "value": "0.8", "label": "Short (4:5)" },
+        { "value": "1", "label": "Square (1:1)" },
+        { "value": "1.2", "label": "Tall (5:6)" }
+      ],
+      "default": "1"
+    }
+  ]
+}
+{% endschema %}

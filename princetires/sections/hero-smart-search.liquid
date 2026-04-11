@@ -10,10 +10,10 @@
   <div class="hero-smart-search__container">
     <div class="hero-smart-search__content">
       {%- if section.settings.heading != blank -%}
-        <h1 class="hero-smart-search__heading aeo-speakable-title">
-          {{ section.settings.heading }}
+        <h1 class="hero-smart-search__heading aeo-speakable-title" data-hero-heading>
+          <span class="hero-smart-search__heading-left" data-hero-left>{{ section.settings.heading }}</span>
           {%- if section.settings.heading_accent != blank -%}
-            <span class="hero-smart-search__accent">{{ section.settings.heading_accent }}</span>
+            <span class="hero-smart-search__heading-right" data-hero-right>{{ section.settings.heading_accent }}</span>
           {%- endif -%}
         </h1>
       {%- endif -%}
@@ -56,6 +56,10 @@
           </div>
 
           <div class="hero-smart-search__results" id="smart-search-results" data-smart-search-results hidden>
+            <div class="hero-smart-search__loading" data-smart-search-loading hidden>
+              <span class="hero-smart-search__spinner"></span>
+              <span>{{ 'sections.hero_smart_search.ai_thinking' | t }}</span>
+            </div>
             <ul class="hero-smart-search__results-list" role="listbox" data-smart-search-list></ul>
           </div>
         </div>
@@ -66,11 +70,9 @@
           {%- for block in section.blocks -%}
             {%- if block.settings.label != blank -%}
               <a
-                href="{{ block.settings.link | default: '#' }}"
+                href="{% if block.settings.phone != blank %}tel:{{ block.settings.phone | remove: ' ' | remove: '-' | remove: '(' | remove: ')' }}{% elsif block.settings.link != blank %}{{ block.settings.link }}{% else %}#{% endif %}"
                 class="hero-smart-search__btn"
                 {{ block.shopify_attributes }}
-                {%- if block.settings.link == blank %} role="button"{% endif -%}
-                {%- if block.settings.phone != blank %} href="tel:{{ block.settings.phone | remove: ' ' | remove: '-' | remove: '(' | remove: ')' }}"{% endif -%}
               >
                 {%- case block.settings.icon -%}
                   {%- when 'tire' -%}
@@ -109,67 +111,136 @@
   </div>
 </div>
 
+{%- comment -%}
+  Config block — passes Liquid values to JavaScript since
+  Liquid can't render inside {% javascript %} tags.
+{%- endcomment -%}
+<script data-smart-search-config type="application/json">
+  {
+    "geminiKey": {{ settings.gemini_api_key | json }},
+    "minYear": {{ settings.smart_search_min_year | default: 2001 }},
+    "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
+    "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }}
+  }
+</script>
+
 {% stylesheet %}
   .hero-smart-search {
-    background-color: var(--hero-bg, #1a1a1a);
+    background-color: var(--hero-bg, #000000);
     color: var(--hero-text, #ffffff);
-    padding: 6rem 2rem 4rem;
-    min-height: 50vh;
+    padding: 14rem 2rem 10rem;
+    min-height: 85vh;
     display: flex;
     align-items: center;
+    width: 100%;
   }
 
   .hero-smart-search__container {
     width: 100%;
-    max-width: 72rem;
+    max-width: 80rem;
     margin: 0 auto;
   }
 
-  .hero-smart-search__heading {
-    font-size: clamp(3.2rem, 6vw, 5.6rem);
-    font-weight: 800;
-    line-height: 1.1;
-    margin: 0 0 1.2rem;
-    letter-spacing: -0.02em;
-    color: var(--hero-text, #ffffff);
+  .hero-smart-search__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
 
-  .hero-smart-search__accent {
-    color: var(--hero-accent, #c0392b);
-    display: block;
+  .hero-smart-search__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(3rem, 4.5vw, 4.2rem);
+    font-weight: 600;
+    line-height: 1.1;
+    margin: 0 0 1rem;
+    letter-spacing: 0.06em;
+    color: var(--hero-text, #ffffff);
+    text-transform: uppercase;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3em;
+    overflow: hidden;
   }
+
+  .hero-smart-search__heading-left,
+  .hero-smart-search__heading-right {
+    display: inline-block;
+    opacity: 0;
+    animation: hero-fallback 0s 2.5s forwards;
+  }
+
+  .hero-smart-search__heading-left {
+    transform: translateX(-120%);
+  }
+
+  .hero-smart-search__heading-right {
+    color: var(--hero-accent, #DC2626);
+    transform: translateX(120%);
+  }
+
+  @keyframes hero-fallback {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .hero-smart-search__heading-left.is-animated {
+    animation: hero-slide-left 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .hero-smart-search__heading-right.is-animated {
+    animation: hero-slide-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.08s forwards;
+  }
+
+  @keyframes hero-slide-left {
+    0% { transform: translateX(-120%); opacity: 0; filter: blur(8px); }
+    60% { filter: blur(2px); }
+    100% { transform: translateX(0); opacity: 1; filter: blur(0); }
+  }
+
+  @keyframes hero-slide-right {
+    0% { transform: translateX(120%); opacity: 0; filter: blur(8px); }
+    60% { filter: blur(2px); }
+    100% { transform: translateX(0); opacity: 1; filter: blur(0); }
+  }
+
 
   .hero-smart-search__subtitle {
-    font-size: 1.6rem;
-    margin: 0 0 3.2rem;
-    opacity: var(--hero-subtitle-opacity, 0.6);
-    color: var(--hero-text, #ffffff);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.5rem;
+    margin: 0 0 4rem;
+    color: #6B7280;
+    font-weight: 300;
+    letter-spacing: 0.04em;
   }
 
   .hero-smart-search__search-wrapper {
     margin-bottom: 2.4rem;
-    max-width: 56rem;
+    width: 100%;
+    max-width: 48rem;
   }
 
   .hero-smart-search__badge {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 1.2rem;
-    padding: 0.5rem 1.2rem;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 1.1rem;
+    padding: 0.4rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 2rem;
     margin-bottom: 1.2rem;
-    opacity: 0.8;
-    color: var(--hero-text, #ffffff);
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
   }
 
   .hero-smart-search__badge-dot {
-    width: 8px;
-    height: 8px;
-    background: var(--hero-accent, #c0392b);
+    width: 7px;
+    height: 7px;
+    background: #F5820B;
     border-radius: 50%;
     display: inline-block;
+    box-shadow: 0 0 6px rgba(245, 130, 11, 0.5);
   }
 
   .hero-smart-search__search {
@@ -179,44 +250,78 @@
   .hero-smart-search__input-wrapper {
     display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 1.2rem;
-    overflow: hidden;
-    transition: border-color 0.2s ease, background 0.2s ease;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    overflow: visible;
+    transition: border-color 0.2s ease;
+    position: relative;
+    isolation: isolate;
   }
 
-  .hero-smart-search__input-wrapper:focus-within {
-    border-color: var(--hero-accent, #c0392b);
-    background: rgba(255, 255, 255, 0.1);
+  @keyframes hero-search-fade-in {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-smart-search__input-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #525252, #525252, #dc2626, #F5820B, #525252, #525252);
+    background-size: 300% 100%;
+    z-index: -1;
+    animation: hero-border-shimmer 4s ease-in-out infinite;
+  }
+
+  .hero-smart-search__input-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0px;
+    border-radius: 2px;
+    background: #000;
+    z-index: -1;
+  }
+
+  @keyframes hero-border-shimmer {
+    0% { background-position: 100% 0; }
+    50% { background-position: 0% 0; }
+    100% { background-position: 100% 0; }
+  }
+
+  .hero-smart-search__input-wrapper:focus-within::before {
+    background: linear-gradient(90deg, #dc2626, #F5820B, #dc2626, #F5820B, #dc2626);
+    background-size: 300% 100%;
   }
 
   .hero-smart-search__input {
     flex: 1;
     background: none;
     border: none;
-    padding: 1.6rem 2rem;
-    font-size: 1.6rem;
+    padding: 1.4rem 2rem;
+    font-size: 1.4rem;
     color: var(--hero-text, #ffffff);
     outline: none;
-    font-family: inherit;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 300;
   }
 
   .hero-smart-search__input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+    color: #6B7280;
   }
 
   .hero-smart-search__submit {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 4.8rem;
-    height: 4.8rem;
-    margin: 0.4rem;
-    background: var(--hero-accent, #c0392b);
+    width: 4.4rem;
+    height: 4.4rem;
+    margin: 0.3rem;
+    background: var(--hero-accent, #DC2626);
     color: #ffffff;
     border: none;
-    border-radius: 0.8rem;
+    border-radius: 3px;
     cursor: pointer;
     transition: opacity 0.2s ease;
     flex-shrink: 0;
@@ -233,7 +338,7 @@
     right: 0;
     background: #2a2a2a;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 1.2rem;
+    border-radius: 3px;
     max-height: 32rem;
     overflow-y: auto;
     z-index: 100;
@@ -250,9 +355,36 @@
     padding: 0.6rem;
   }
 
+  .hero-smart-search__loading {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.4rem 1.6rem;
+    font-size: 1.3rem;
+    opacity: 0.7;
+    color: var(--hero-text, #ffffff);
+  }
+
+  .hero-smart-search__loading[hidden] {
+    display: none;
+  }
+
+  .hero-smart-search__spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--hero-accent, #c0392b);
+    border-radius: 50%;
+    animation: smart-search-spin 0.6s linear infinite;
+  }
+
+  @keyframes smart-search-spin {
+    to { transform: rotate(360deg); }
+  }
+
   .hero-smart-search__result-item {
     padding: 1.2rem 1.4rem;
-    border-radius: 0.8rem;
+    border-radius: 3px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -305,55 +437,142 @@
     flex-shrink: 0;
   }
 
+  .hero-smart-search__error {
+    padding: 1.2rem 1.6rem;
+    font-size: 1.3rem;
+    opacity: 0.6;
+    color: var(--hero-text, #ffffff);
+  }
+
+  /* ── Trim results ── */
+  .hero-smart-search__trim-header {
+    padding: 1.2rem 1.4rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .hero-smart-search__trim-vehicle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .hero-smart-search__trim-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+  }
+
+  .hero-smart-search__trim-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.4rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  }
+
+  .hero-smart-search__trim-row:last-child {
+    border-bottom: none;
+  }
+
+  .hero-smart-search__trim-row:hover,
+  .hero-smart-search__trim-row[aria-selected="true"] {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .hero-smart-search__trim-name {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #e5e7eb;
+  }
+
+  .hero-smart-search__trim-size {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: #F5820B;
+    letter-spacing: 0.02em;
+  }
+
+  .hero-smart-search__intent-badge {
+    display: inline-block;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #F5820B;
+    background: rgba(245, 130, 11, 0.1);
+    padding: 0.1rem 0.5rem;
+    border-radius: 3px;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+
   .hero-smart-search__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.8rem;
+    justify-content: center;
   }
 
   .hero-smart-search__btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.8rem;
-    padding: 1rem 2rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 3rem;
-    color: var(--hero-text, #ffffff);
+    gap: 0.6rem;
+    padding: 0.7rem 1.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    color: rgba(255, 255, 255, 0.8);
     text-decoration: none;
-    font-size: 1.4rem;
+    font-size: 1.1rem;
     font-weight: 500;
-    transition: background 0.2s ease, border-color 0.2s ease;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     background: transparent;
+    font-family: 'Outfit', sans-serif;
   }
 
   .hero-smart-search__btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.35);
-    color: var(--hero-text, #ffffff);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
   }
 
   @media screen and (max-width: 749px) {
     .hero-smart-search {
-      padding: 4rem 1.6rem 3rem;
+      padding: 5rem 1.6rem 3rem;
       min-height: auto;
     }
 
     .hero-smart-search__heading {
-      font-size: 3.2rem;
+      font-size: 2.8rem;
+    }
+
+    .hero-smart-search__subtitle {
+      font-size: 1.3rem;
     }
 
     .hero-smart-search__actions {
-      gap: 0.8rem;
+      gap: 0.6rem;
     }
 
     .hero-smart-search__btn {
-      padding: 0.8rem 1.4rem;
-      font-size: 1.3rem;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
     }
   }
 {% endstylesheet %}
 
-{% javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
   class SmartTireSearch {
     constructor(container) {
       this.container = container;
@@ -361,67 +580,57 @@
       this.results = container.querySelector('[data-smart-search-results]');
       this.list = container.querySelector('[data-smart-search-list]');
       this.submit = container.querySelector('[data-smart-search-submit]');
+      this.loading = container.querySelector('[data-smart-search-loading]');
       this.selectedIndex = -1;
       this.items = [];
       this.debounceTimer = null;
+      this.vehicleCache = {};
+      this.geminiCache = {};
+      this.abortController = null;
 
-      this.tireSizeRegex = /^(\d{3})\/?(\d{2,3})?\/?[Rr]?(\d{2})?$/;
-      this.vehicleDb = this.buildVehicleDatabase();
+      const configEl = document.querySelector('[data-smart-search-config]');
+      this.config = configEl ? JSON.parse(configEl.textContent) : {};
+
+      this.tireSizeRegex = /[Pp]?[LlTtSs]?[Tt]?(\d{3})\/?(\d{2,3})?[Rr]?(\d{2}\.?\d?)/;
+      this.brands = ['michelin','bridgestone','goodyear','continental','toyo','pirelli','falken','kumho','yokohama','firestone','cooper','bfgoodrich','bf goodrich','general','uniroyal','hankook','nitto','mickey thompson','firemax','linglong','farroad','yeada','fortune','radar','rotalla','haida','carlstar'];
 
       this.bindEvents();
     }
 
-    buildVehicleDatabase() {
-      return [
-        { year: '2025', make: 'Toyota', model: 'RAV4', sizes: ['225/65R17', '235/55R19'] },
-        { year: '2025', make: 'Toyota', model: 'Camry', sizes: ['215/55R17', '235/45R18'] },
-        { year: '2025', make: 'Toyota', model: 'Corolla', sizes: ['205/55R16', '225/40R18'] },
-        { year: '2025', make: 'Toyota', model: 'Highlander', sizes: ['235/65R18', '245/55R20'] },
-        { year: '2025', make: 'Toyota', model: '4Runner', sizes: ['265/70R17', '265/60R20'] },
-        { year: '2025', make: 'Toyota', model: 'Tacoma', sizes: ['245/75R16', '265/70R17'] },
-        { year: '2025', make: 'Toyota', model: 'Tundra', sizes: ['275/65R18', '275/55R20'] },
-        { year: '2025', make: 'Honda', model: 'CR-V', sizes: ['235/60R18', '235/55R19'] },
-        { year: '2025', make: 'Honda', model: 'Civic', sizes: ['215/55R16', '235/40R18'] },
-        { year: '2025', make: 'Honda', model: 'Accord', sizes: ['225/50R17', '235/45R18'] },
-        { year: '2025', make: 'Honda', model: 'Pilot', sizes: ['245/60R18', '245/50R20'] },
-        { year: '2025', make: 'Honda', model: 'HR-V', sizes: ['215/60R17', '225/50R18'] },
-        { year: '2025', make: 'Ford', model: 'F-150', sizes: ['265/70R17', '275/60R20'] },
-        { year: '2025', make: 'Ford', model: 'Explorer', sizes: ['255/65R18', '255/55R20'] },
-        { year: '2025', make: 'Ford', model: 'Escape', sizes: ['225/65R17', '235/55R18'] },
-        { year: '2025', make: 'Ford', model: 'Bronco', sizes: ['255/70R18', '275/65R18'] },
-        { year: '2025', make: 'Ford', model: 'Maverick', sizes: ['225/65R17', '235/55R18'] },
-        { year: '2025', make: 'Chevrolet', model: 'Silverado', sizes: ['265/70R17', '275/60R20'] },
-        { year: '2025', make: 'Chevrolet', model: 'Equinox', sizes: ['225/65R17', '235/55R18'] },
-        { year: '2025', make: 'Chevrolet', model: 'Traverse', sizes: ['245/60R18', '255/55R20'] },
-        { year: '2025', make: 'Chevrolet', model: 'Tahoe', sizes: ['275/60R20', '285/45R22'] },
-        { year: '2024', make: 'Hyundai', model: 'Tucson', sizes: ['235/60R18', '235/55R19'] },
-        { year: '2024', make: 'Hyundai', model: 'Santa Fe', sizes: ['235/65R17', '245/50R20'] },
-        { year: '2024', make: 'Hyundai', model: 'Elantra', sizes: ['205/55R16', '225/45R17'] },
-        { year: '2025', make: 'Kia', model: 'Sportage', sizes: ['235/60R18', '235/55R19'] },
-        { year: '2025', make: 'Kia', model: 'Sorento', sizes: ['235/65R17', '245/50R20'] },
-        { year: '2025', make: 'Kia', model: 'Forte', sizes: ['205/55R16', '225/45R17'] },
-        { year: '2025', make: 'Nissan', model: 'Rogue', sizes: ['225/65R17', '235/55R19'] },
-        { year: '2025', make: 'Nissan', model: 'Pathfinder', sizes: ['255/60R18', '255/55R20'] },
-        { year: '2025', make: 'Nissan', model: 'Altima', sizes: ['215/55R17', '235/45R19'] },
-        { year: '2025', make: 'Subaru', model: 'Outback', sizes: ['225/65R17', '225/60R18'] },
-        { year: '2025', make: 'Subaru', model: 'Forester', sizes: ['225/60R17', '225/55R18'] },
-        { year: '2025', make: 'Subaru', model: 'Crosstrek', sizes: ['225/60R17', '225/55R18'] },
-        { year: '2025', make: 'Volkswagen', model: 'Tiguan', sizes: ['215/65R17', '235/55R18'] },
-        { year: '2025', make: 'Volkswagen', model: 'Jetta', sizes: ['205/60R16', '225/45R17'] },
-        { year: '2025', make: 'Jeep', model: 'Grand Cherokee', sizes: ['265/60R18', '275/45R21'] },
-        { year: '2025', make: 'Jeep', model: 'Wrangler', sizes: ['245/75R17', '255/70R18'] },
-        { year: '2025', make: 'Mazda', model: 'CX-5', sizes: ['225/65R17', '225/55R19'] },
-        { year: '2025', make: 'Mazda', model: 'CX-50', sizes: ['225/65R17', '225/55R19'] },
-        { year: '2025', make: 'Mazda', model: 'Mazda3', sizes: ['205/60R16', '215/45R18'] },
-        { year: '2025', make: 'GMC', model: 'Sierra', sizes: ['265/70R17', '275/60R20'] },
-        { year: '2025', make: 'GMC', model: 'Terrain', sizes: ['225/65R17', '235/55R18'] },
-        { year: '2025', make: 'RAM', model: '1500', sizes: ['275/65R18', '275/55R20'] },
-        { year: '2025', make: 'Tesla', model: 'Model Y', sizes: ['255/45R19', '255/40R20'] },
-        { year: '2025', make: 'Tesla', model: 'Model 3', sizes: ['235/45R18', '235/40R19'] },
-        { year: '2025', make: 'BMW', model: 'X3', sizes: ['245/50R19', '245/45R20'] },
-        { year: '2025', make: 'Mercedes-Benz', model: 'GLC', sizes: ['235/60R18', '255/45R20'] },
-        { year: '2025', make: 'Audi', model: 'Q5', sizes: ['235/60R18', '255/45R20'] },
-      ];
+    parseSearchIntent(query) {
+      const q = query.toLowerCase();
+      const intent = { season: null, brand: null };
+
+      if (q.includes('winter') || q.includes('snow') || q.includes('ice')) intent.season = 'Winter';
+      else if (q.includes('all-season') || q.includes('all season') || q.includes('allseason')) intent.season = 'All-Season';
+      else if (q.includes('all-weather') || q.includes('all weather')) intent.season = 'All-Weather';
+      else if (q.includes('summer') || q.includes('performance')) intent.season = 'Summer';
+
+      for (const brand of this.brands) {
+        if (q.includes(brand)) {
+          intent.brand = brand.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          if (intent.brand === 'Bfgoodrich' || intent.brand === 'Bf Goodrich') intent.brand = 'BFGoodrich';
+          if (intent.brand === 'Mickey Thompson') intent.brand = 'Mickey Thompson';
+          break;
+        }
+      }
+      return intent;
+    }
+
+    extractTireSize(query) {
+      const m = query.match(/[Pp]?(\d{3})\/?(\d{2,3})[Rr](\d{2})/);
+      if (m) return m[1] + '/' + m[2] + 'R' + m[3];
+      return null;
+    }
+
+    buildCollectionUrl(params) {
+      const base = '/collections/tires';
+      const urlParams = new URLSearchParams();
+      if (params.tireSize) urlParams.set('filter.p.m.custom.tire_size', params.tireSize);
+      if (params.brand) urlParams.set('filter.p.vendor', params.brand);
+      if (params.season) urlParams.set('filter.p.m.custom.seasonality', params.season);
+      const qs = urlParams.toString();
+      return qs ? base + '?' + qs : base;
     }
 
     bindEvents() {
@@ -429,7 +638,7 @@
       this.input.addEventListener('keydown', (e) => this.onKeydown(e));
       this.submit.addEventListener('click', () => this.onSubmit());
       this.input.addEventListener('focus', () => {
-        if (this.input.value.length >= 2) this.search(this.input.value);
+        if (this.input.value.trim().length >= 2) this.search(this.input.value.trim());
       });
       document.addEventListener('click', (e) => {
         if (!this.container.querySelector('[data-smart-search]').contains(e.target)) {
@@ -447,105 +656,385 @@
           return;
         }
         this.search(query);
-      }, 200);
+      }, 300);
     }
 
-    search(query) {
-      const results = [];
-      const q = query.toLowerCase();
+    async search(query) {
+      if (this.abortController) this.abortController.abort();
+      this.abortController = new AbortController();
 
       const tireMatch = query.match(this.tireSizeRegex);
-      if (tireMatch) {
-        const width = tireMatch[1];
-        const aspect = tireMatch[2] || '';
-        const rim = tireMatch[3] || '';
-        let sizeStr = width;
-        if (aspect) sizeStr += '/' + aspect;
-        if (rim) sizeStr += 'R' + rim;
+      if (tireMatch && tireMatch[1]) {
+        this.handleTireSizeMatch(tireMatch, query);
+        return;
+      }
 
-        results.push({
-          type: 'size',
-          title: sizeStr,
-          meta: 'Search tires by size',
-          url: '/collections/all?q=' + encodeURIComponent(sizeStr),
-        });
+      await this.handleVehicleQuery(query);
+    }
 
-        this.vehicleDb.forEach((v) => {
-          v.sizes.forEach((s) => {
-            if (s.startsWith(width)) {
-              results.push({
-                type: 'vehicle',
-                title: v.year + ' ' + v.make + ' ' + v.model,
-                meta: 'Fits: ' + v.sizes.join(', '),
-                url: '/collections/all?q=' + encodeURIComponent(s),
-              });
-            }
-          });
-        });
-      } else {
-        const seen = new Set();
-        this.vehicleDb.forEach((v) => {
-          const full = (v.year + ' ' + v.make + ' ' + v.model).toLowerCase();
-          const make = v.make.toLowerCase();
-          const model = v.model.toLowerCase();
+    handleTireSizeMatch(match, query) {
+      const width = match[1];
+      const aspect = match[2] || '';
+      const rim = match[3] || '';
+      let sizeStr = width;
+      if (aspect) sizeStr += '/' + aspect;
+      if (rim) sizeStr += 'R' + rim;
 
-          if (full.includes(q) || make.includes(q) || model.includes(q)) {
-            const key = v.make + ' ' + v.model;
-            if (!seen.has(key)) {
-              seen.add(key);
-              results.push({
-                type: 'vehicle',
-                title: v.year + ' ' + v.make + ' ' + v.model,
-                meta: 'Fits: ' + v.sizes.join(', '),
-                sizes: v.sizes,
-                url: '/collections/all?q=' + encodeURIComponent(v.sizes[0]),
-              });
-            }
+      const intent = this.parseSearchIntent(query);
+      const intentLabel = intent.season ? ' · ' + intent.season : '';
+
+      const results = [{
+        type: 'size',
+        title: sizeStr + (intent.brand ? ' by ' + intent.brand : ''),
+        meta: 'Filter collection' + intentLabel,
+        url: this.buildCollectionUrl({ tireSize: sizeStr, brand: intent.brand, season: intent.season }),
+      }];
+
+      if (width && aspect && !rim) {
+        const commonRims = ['15', '16', '17', '18', '19', '20'];
+        commonRims.forEach(r => {
+          const full = width + '/' + aspect + 'R' + r;
+          if (full !== sizeStr) {
+            results.push({
+              type: 'size',
+              title: full,
+              meta: 'Filter collection' + intentLabel,
+              url: this.buildCollectionUrl({ tireSize: full, brand: intent.brand, season: intent.season }),
+            });
           }
-        });
-
-        const uniqueSizes = new Set();
-        results.forEach((r) => {
-          if (r.sizes) r.sizes.forEach((s) => uniqueSizes.add(s));
-        });
-        uniqueSizes.forEach((size) => {
-          results.push({
-            type: 'size',
-            title: size,
-            meta: 'Tire size',
-            url: '/collections/all?q=' + encodeURIComponent(size),
-          });
         });
       }
 
-      this.renderResults(results.slice(0, 8));
+      this.renderResults(results.slice(0, 6));
+    }
+
+    async handleVehicleQuery(query) {
+      this.showLoading();
+      const intent = this.parseSearchIntent(query);
+
+      try {
+        const vehicle = await this.recognizeVehicle(query);
+
+        if (!vehicle || !vehicle.year) {
+          // Try brand-only or season-only search
+          if (intent.brand || intent.season) {
+            this.renderResults([{
+              type: 'search',
+              title: (intent.brand || '') + (intent.season ? ' ' + intent.season : '') + ' tires',
+              meta: 'Filter collection',
+              url: this.buildCollectionUrl({ brand: intent.brand, season: intent.season }),
+            }]);
+          } else {
+            this.renderResults([{
+              type: 'search',
+              title: 'Search for "' + query + '"',
+              meta: 'Browse all products',
+              url: '/search?q=' + encodeURIComponent(query),
+            }]);
+          }
+          return;
+        }
+
+        const trims = await this.lookupVehicleTrims(vehicle);
+        const vLabel = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+
+        if (trims && trims.length > 0) {
+          this.renderTrimResults(vLabel, trims, intent);
+        } else {
+          this.renderResults([{
+            type: 'vehicle',
+            title: vLabel,
+            meta: 'Browse all tires',
+            url: this.buildCollectionUrl({ brand: intent.brand, season: intent.season }),
+          }]);
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        if (intent.brand || intent.season) {
+          this.renderResults([{
+            type: 'search',
+            title: (intent.brand || '') + (intent.season ? ' ' + intent.season : '') + ' tires',
+            meta: 'Filter collection',
+            url: this.buildCollectionUrl({ brand: intent.brand, season: intent.season }),
+          }]);
+        } else {
+          this.renderResults([{
+            type: 'search',
+            title: 'Search for "' + query + '"',
+            meta: 'Browse all products',
+            url: '/search?q=' + encodeURIComponent(query),
+          }]);
+        }
+      }
+    }
+
+    async recognizeVehicle(query) {
+      if (this.geminiCache[query]) return this.geminiCache[query];
+
+      const directParse = this.tryDirectParse(query);
+      if (directParse) {
+        this.geminiCache[query] = directParse;
+        return directParse;
+      }
+
+      if (!this.config.geminiKey) {
+        return null;
+      }
+
+      try {
+        const response = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + this.config.geminiKey,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: this.abortController.signal,
+            body: JSON.stringify({
+              contents: [{
+                parts: [{
+                  text: 'Extract vehicle info from this search query: "' + query + '"\n\nReturn ONLY a JSON object with these fields:\n- year (number, 4 digits, guess most recent if not specified)\n- make (string, full brand name e.g. "Honda" not "honda")\n- model (string, official model name)\n- trim (string or null)\n\nExamples:\n"2020 Honda Civic" -> {"year":2020,"make":"Honda","model":"Civic","trim":null}\n"\'19 Civic" -> {"year":2019,"make":"Honda","model":"Civic","trim":null}\n"F-150" -> {"year":2025,"make":"Ford","model":"F-150","trim":null}\n"corolla le" -> {"year":2025,"make":"Toyota","model":"Corolla","trim":"LE"}\n"rav4" -> {"year":2025,"make":"Toyota","model":"RAV4","trim":null}\n\nIf the input is not a vehicle at all, return {"year":null,"make":null,"model":null,"trim":null}\n\nReturn ONLY the JSON, no markdown, no explanation.'
+                }]
+              }],
+              generationConfig: {
+                temperature: 0,
+                maxOutputTokens: 100,
+              }
+            })
+          }
+        );
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const jsonStr = text.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+        const vehicle = JSON.parse(jsonStr);
+
+        if (vehicle.year && vehicle.make && vehicle.model) {
+          this.geminiCache[query] = vehicle;
+          return vehicle;
+        }
+        return null;
+      } catch (err) {
+        if (err.name === 'AbortError') throw err;
+        return null;
+      }
+    }
+
+    tryDirectParse(query) {
+      const q = query.trim();
+
+      const fullMatch = q.match(/^['\u2018\u2019]?(\d{2,4})\s+([A-Za-z-]+)\s+(.+)$/);
+      if (fullMatch) {
+        let year = fullMatch[1];
+        if (year.length === 2) year = (parseInt(year) > 50 ? '19' : '20') + year;
+        const parts = fullMatch[3].trim().split(/\s+/);
+        const model = parts[0];
+        const trim = parts.length > 1 ? parts.slice(1).join(' ') : null;
+        return { year: parseInt(year), make: this.capitalizeMake(fullMatch[2]), model: model, trim: trim };
+      }
+
+      const yearModelMatch = q.match(/^['\u2018\u2019]?(\d{2,4})\s+(.+)$/);
+      if (yearModelMatch) {
+        let year = yearModelMatch[1];
+        if (year.length === 2) year = (parseInt(year) > 50 ? '19' : '20') + year;
+        return { year: parseInt(year), make: null, model: yearModelMatch[2].trim(), trim: null };
+      }
+
+      return null;
+    }
+
+    capitalizeMake(make) {
+      return make.charAt(0).toUpperCase() + make.slice(1).toLowerCase();
+    }
+
+    async loadVehicleData(year) {
+      if (this.vehicleCache[year]) return this.vehicleCache[year];
+
+      const numYear = parseInt(year);
+      if (numYear < this.config.minYear || numYear > this.config.maxYear) return null;
+
+      try {
+        const url = this.config.assetUrlBase + 'pt-vehicle-' + year + '.json';
+        const resp = await fetch(url, { signal: this.abortController.signal });
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        this.vehicleCache[year] = data;
+        return data;
+      } catch (err) {
+        if (err.name === 'AbortError') throw err;
+        return null;
+      }
+    }
+
+    async lookupVehicleSizes(vehicle) {
+      const data = await this.loadVehicleData(vehicle.year);
+      if (!data || !data.models) return [];
+
+      let makeData = null;
+      if (vehicle.make) {
+        makeData = data.models[vehicle.make];
+        if (!makeData) {
+          const makeLower = vehicle.make.toLowerCase();
+          for (const [key, val] of Object.entries(data.models)) {
+            if (key.toLowerCase() === makeLower) {
+              makeData = val;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!makeData && vehicle.model) {
+        for (const [mk, models] of Object.entries(data.models)) {
+          for (const modelName of Object.keys(models)) {
+            if (modelName.toLowerCase() === vehicle.model.toLowerCase()) {
+              makeData = models;
+              vehicle.make = mk;
+              break;
+            }
+          }
+          if (makeData) break;
+        }
+      }
+
+      if (!makeData) return [];
+
+      let modelData = makeData[vehicle.model];
+      if (!modelData) {
+        const modelLower = vehicle.model.toLowerCase();
+        for (const [key, val] of Object.entries(makeData)) {
+          if (key.toLowerCase() === modelLower) {
+            modelData = val;
+            break;
+          }
+        }
+      }
+
+      if (!modelData) return [];
+
+      if (vehicle.trim) {
+        const trimLower = vehicle.trim.toLowerCase();
+        for (const [trimName, sizes] of Object.entries(modelData)) {
+          if (trimName.toLowerCase() === trimLower || trimName.toLowerCase().includes(trimLower)) {
+            return Array.isArray(sizes) ? sizes : [];
+          }
+        }
+      }
+
+      const allSizes = new Set();
+      for (const sizes of Object.values(modelData)) {
+        if (Array.isArray(sizes)) {
+          sizes.forEach(s => allSizes.add(s));
+        }
+      }
+      return [...allSizes];
+    }
+
+    async lookupVehicleTrims(vehicle) {
+      const data = await this.loadVehicleData(vehicle.year);
+      if (!data || !data.models) return [];
+
+      let makeData = data.models[vehicle.make];
+      if (!makeData) {
+        const ml = vehicle.make.toLowerCase();
+        for (const [k, v] of Object.entries(data.models)) {
+          if (k.toLowerCase() === ml) { makeData = v; break; }
+        }
+      }
+      if (!makeData && vehicle.model) {
+        for (const [mk, models] of Object.entries(data.models)) {
+          for (const mn of Object.keys(models)) {
+            if (mn.toLowerCase() === vehicle.model.toLowerCase()) {
+              makeData = models; vehicle.make = mk; break;
+            }
+          }
+          if (makeData) break;
+        }
+      }
+      if (!makeData) return [];
+
+      let modelData = makeData[vehicle.model];
+      if (!modelData) {
+        const ml = vehicle.model.toLowerCase();
+        for (const [k, v] of Object.entries(makeData)) {
+          if (k.toLowerCase() === ml) { modelData = v; break; }
+        }
+      }
+      if (!modelData) return [];
+
+      const trims = [];
+      for (const [trimName, sizes] of Object.entries(modelData)) {
+        if (Array.isArray(sizes) && sizes.length > 0) {
+          trims.push({ trim: trimName, size: sizes[0] });
+        }
+      }
+      return trims;
+    }
+
+    renderTrimResults(vehicleLabel, trims, intent) {
+      this.loading.hidden = true;
+      intent = intent || {};
+
+      const seasonBadge = intent.season ? ' <span class="hero-smart-search__intent-badge">' + this.escapeHtml(intent.season) + '</span>' : '';
+      const brandBadge = intent.brand ? ' <span class="hero-smart-search__intent-badge">' + this.escapeHtml(intent.brand) + '</span>' : '';
+
+      let html = '<li class="hero-smart-search__trim-header">' +
+        '<span class="hero-smart-search__trim-vehicle">' + this.escapeHtml(vehicleLabel) + seasonBadge + brandBadge + '</span>' +
+        '<span class="hero-smart-search__trim-label">Choose your trim</span>' +
+      '</li>';
+
+      html += trims.map((t, i) => {
+        const url = this.buildCollectionUrl({ tireSize: t.size, brand: intent.brand, season: intent.season });
+        return '<li class="hero-smart-search__trim-row" role="option" data-index="' + i + '" data-url="' + this.escapeAttr(url) + '">' +
+          '<span class="hero-smart-search__trim-name">' + this.escapeHtml(t.trim) + '</span>' +
+          '<span class="hero-smart-search__trim-size">' + this.escapeHtml(t.size) + '</span>' +
+        '</li>';
+      }).join('');
+
+      this.list.innerHTML = html;
+
+      this.items = this.list.querySelectorAll('.hero-smart-search__trim-row');
+      this.items.forEach(item => {
+        item.addEventListener('click', () => this.selectResult(item));
+      });
+
+      this.selectedIndex = -1;
+      this.results.hidden = false;
+      this.input.setAttribute('aria-expanded', 'true');
+    }
+
+    showLoading() {
+      this.results.hidden = false;
+      this.loading.hidden = false;
+      this.list.innerHTML = '';
+      this.input.setAttribute('aria-expanded', 'true');
     }
 
     renderResults(results) {
+      this.loading.hidden = true;
+
       if (results.length === 0) {
         this.hideResults();
         return;
       }
 
-      this.list.innerHTML = results
-        .map(
-          (r, i) => `
-        <li class="hero-smart-search__result-item" role="option" data-index="${i}" data-url="${r.url}">
-          <span class="hero-smart-search__result-icon">
-            ${r.type === 'size' ? this.tireIcon() : this.vehicleIcon()}
-          </span>
-          <span class="hero-smart-search__result-info">
-            <span class="hero-smart-search__result-title">${this.escapeHtml(r.title)}</span>
-            <span class="hero-smart-search__result-meta">${this.escapeHtml(r.meta)}</span>
-          </span>
-          <span class="hero-smart-search__result-tag">${r.type === 'size' ? 'Size' : 'Vehicle'}</span>
-        </li>
-      `
-        )
-        .join('');
+      this.list.innerHTML = results.map((r, i) =>
+        '<li class="hero-smart-search__result-item" role="option" data-index="' + i + '" data-url="' + this.escapeAttr(r.url) + '">' +
+          '<span class="hero-smart-search__result-icon">' +
+            (r.type === 'size' ? this.tireIcon() : r.type === 'vehicle' ? this.vehicleIcon() : this.searchIcon()) +
+          '</span>' +
+          '<span class="hero-smart-search__result-info">' +
+            '<span class="hero-smart-search__result-title">' + this.escapeHtml(r.title) + '</span>' +
+            '<span class="hero-smart-search__result-meta">' + this.escapeHtml(r.meta) + '</span>' +
+          '</span>' +
+          '<span class="hero-smart-search__result-tag">' +
+            (r.type === 'size' ? 'Size' : r.type === 'vehicle' ? 'Vehicle' : 'Search') +
+          '</span>' +
+        '</li>'
+      ).join('');
 
       this.items = this.list.querySelectorAll('.hero-smart-search__result-item');
-      this.items.forEach((item) => {
+      this.items.forEach(item => {
         item.addEventListener('click', () => this.selectResult(item));
       });
 
@@ -556,24 +1045,25 @@
 
     hideResults() {
       this.results.hidden = true;
+      this.loading.hidden = true;
       this.input.setAttribute('aria-expanded', 'false');
       this.selectedIndex = -1;
     }
 
     onKeydown(e) {
-      if (!this.items.length) return;
-
       if (e.key === 'ArrowDown') {
         e.preventDefault();
+        if (!this.items.length) return;
         this.selectedIndex = Math.min(this.selectedIndex + 1, this.items.length - 1);
         this.highlightItem();
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
+        if (!this.items.length) return;
         this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
         this.highlightItem();
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (this.selectedIndex >= 0) {
+        if (this.selectedIndex >= 0 && this.items[this.selectedIndex]) {
           this.selectResult(this.items[this.selectedIndex]);
         } else {
           this.onSubmit();
@@ -599,7 +1089,18 @@
 
     onSubmit() {
       const query = this.input.value.trim();
-      if (query) {
+      if (!query) return;
+
+      const tireSize = this.extractTireSize(query);
+      const intent = this.parseSearchIntent(query);
+
+      if (tireSize || intent.brand || intent.season) {
+        window.location.href = this.buildCollectionUrl({
+          tireSize: tireSize,
+          brand: intent.brand,
+          season: intent.season,
+        });
+      } else {
         window.location.href = '/search?q=' + encodeURIComponent(query);
       }
     }
@@ -612,17 +1113,87 @@
       return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 17h14M7.5 17V13L6 9H18L16.5 13V17M9 21H7V19H9V21ZM17 21H15V19H17V21ZM3 13H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     }
 
+    searchIcon() {
+      return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M16 16L21 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+    }
+
     escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     }
+
+    escapeAttr(text) {
+      return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
   }
 
-  document.querySelectorAll('[data-smart-search]').forEach((el) => {
+  document.querySelectorAll('[data-smart-search]').forEach(el => {
     new SmartTireSearch(el.closest('.hero-smart-search'));
   });
-{% endjavascript %}
+
+  /* Pre-fill placeholder from garage default vehicle */
+  (function() {
+    {%- if customer -%}
+      var customerId = {{ customer.id | json }};
+      try {
+        var raw = localStorage.getItem('pt-garage-' + customerId);
+        var vehicles = raw ? JSON.parse(raw) : [];
+        var defaultVehicle = vehicles.find(function(v) { return v.isDefault; });
+        if (defaultVehicle) {
+          var input = document.querySelector('[data-smart-search-input]');
+          if (input) {
+            var label = defaultVehicle.year + ' ' + defaultVehicle.make + ' ' + defaultVehicle.model;
+            if (defaultVehicle.trim) label += ' ' + defaultVehicle.trim;
+            input.setAttribute('placeholder', label + ' (' + defaultVehicle.tireSize + ')');
+          }
+        }
+      } catch(e) {}
+
+      if (typeof subscribe === 'function' && typeof PUB_SUB_EVENTS !== 'undefined') {
+        subscribe(PUB_SUB_EVENTS.garageUpdate, function(data) {
+          var def = (data.vehicles || []).find(function(v) { return v.isDefault; });
+          var input = document.querySelector('[data-smart-search-input]');
+          if (input && def) {
+            var label = def.year + ' ' + def.make + ' ' + def.model;
+            if (def.trim) label += ' ' + def.trim;
+            input.setAttribute('placeholder', label + ' (' + def.tireSize + ')');
+          }
+        });
+      }
+    {%- endif -%}
+  })();
+
+  (function() {
+    var heading = document.querySelector('[data-hero-heading]');
+    if (!heading) return;
+
+    var left = heading.querySelector('[data-hero-left]');
+    var right = heading.querySelector('[data-hero-right]');
+    var searchWrap = document.querySelector('.hero-smart-search__input-wrapper');
+
+    function trigger() {
+      if (left) left.classList.add('is-animated');
+      if (right) right.classList.add('is-animated');
+      if (searchWrap) searchWrap.classList.add('is-animated');
+    }
+
+    if ('IntersectionObserver' in window) {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            setTimeout(trigger, 200);
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.3 });
+      observer.observe(heading);
+    } else {
+      setTimeout(trigger, 300);
+    }
+  })();
+});
+</script>
 
 {% schema %}
 {
@@ -658,13 +1229,13 @@
       "type": "color",
       "id": "background_color",
       "label": "t:sections.hero_smart_search.settings.background_color.label",
-      "default": "#1a1a1a"
+      "default": "#000000"
     },
     {
       "type": "color",
       "id": "accent_color",
       "label": "t:sections.hero_smart_search.settings.accent_color.label",
-      "default": "#c0392b"
+      "default": "#DC2626"
     },
     {
       "type": "color",

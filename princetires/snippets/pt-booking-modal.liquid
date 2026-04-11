@@ -1,0 +1,268 @@
+{% doc %}
+  3-step installation booking popup for Prince Tires.
+  Triggered by clicking "Book Installation" on product/collection cards.
+  Include once in layout/theme.liquid before </body>.
+
+  @example
+  {% render 'pt-booking-modal' %}
+{% enddoc %}
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js" defer></script>
+
+<div class="bk-overlay" id="bk-overlay" hidden>
+  <div class="bk-modal" id="bk-modal">
+
+    <div class="bk-stepper" id="bk-stepper">
+      <div class="bk-step" data-step="1"><div class="bk-step-circle bk-step-circle--active">1</div><span class="bk-step-label">Tire Info</span></div>
+      <div class="bk-step-line" data-line="1"></div>
+      <div class="bk-step" data-step="2"><div class="bk-step-circle">2</div><span class="bk-step-label">Schedule</span></div>
+      <div class="bk-step-line" data-line="2"></div>
+      <div class="bk-step" data-step="3"><div class="bk-step-circle">3</div><span class="bk-step-label">Contact</span></div>
+    </div>
+
+    <button class="bk-close" onclick="closeBookingModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+
+    {%- comment -%} Step 1 {%- endcomment -%}
+    <div class="bk-page" id="bk-page-1">
+      <h2 class="bk-page-title">Tire & Vehicle Info</h2>
+      <p class="bk-page-sub">Tell us about your vehicle and installation needs</p>
+
+      <div class="bk-product-pill">
+        <div class="bk-product-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <div class="bk-product-info"><div class="bk-product-name" id="bk-tire-name-display">Tire</div><p class="bk-product-sub">Auto-filled from your selection</p></div>
+        <span class="bk-product-size" id="bk-tire-size-display">Size</span>
+      </div>
+
+      <h3 class="bk-section-title">VEHICLE TYPE</h3>
+      <div class="bk-vehicle-scroll"><div class="bk-vehicle-grid" id="bk-vehicles"></div></div>
+
+      <h3 class="bk-section-title">QUANTITY</h3>
+      <div class="bk-qty-grid" id="bk-qty-grid"></div>
+
+      <h3 class="bk-section-title">ADD-ON SERVICES <span class="bk-section-hint">(optional)</span></h3>
+      <div class="bk-addons">
+        <label class="bk-addon" id="bk-addon-tpms"><input type="checkbox" id="bk-tpms"><div class="bk-addon-text"><strong>TPMS Sensor Replacement</strong><span class="bk-addon-desc">Tire pressure monitoring sensor</span></div><span class="bk-addon-price">$75 / tire</span></label>
+        <label class="bk-addon bk-addon--active" id="bk-addon-disposal"><input type="checkbox" id="bk-disposal" checked><div class="bk-addon-text"><strong>Tire Disposal</strong><span class="bk-addon-desc">Eco-friendly recycling of your old tires</span></div><span class="bk-addon-price">$5 / tire</span></label>
+      </div>
+
+      <div class="bk-price-box" id="bk-price-box"></div>
+      <button class="bk-next-btn" onclick="bkGoTo(2)">Choose date & time &rarr;</button>
+    </div>
+
+    {%- comment -%} Step 2 {%- endcomment -%}
+    <div class="bk-page" id="bk-page-2" hidden>
+      <h3 class="bk-section-title">Pick a date</h3>
+      <div class="bk-week-nav"><button class="bk-week-arrow" id="bk-prev-week">&#8249;</button><span class="bk-week-label" id="bk-week-label"></span><button class="bk-week-arrow" id="bk-next-week">&#8250;</button></div>
+      <div class="bk-day-strip" id="bk-day-strip"></div>
+      <h3 class="bk-section-title">Pick a time</h3>
+      <div class="bk-time-grid" id="bk-time-grid"></div>
+      <div class="bk-nav-row"><button class="bk-back-btn" onclick="bkGoTo(1)">Back</button><button class="bk-next-btn" onclick="bkGoTo(3)" id="bk-next-2" disabled>Contact info &rarr;</button></div>
+    </div>
+
+    {%- comment -%} Step 3 {%- endcomment -%}
+    <div class="bk-page" id="bk-page-3" hidden>
+      <h3 class="bk-section-title">Order summary</h3>
+      <div class="bk-summary" id="bk-summary"></div>
+      <h3 class="bk-section-title">Your details</h3>
+      <div class="bk-form">
+        <div class="bk-form-row"><div class="bk-field"><label>Full Name</label><input type="text" id="bk-name" placeholder="John Smith"></div><div class="bk-field"><label>Phone</label><input type="tel" id="bk-phone" placeholder="(403) 555-0123"></div></div>
+        <div class="bk-field"><label>Email Address</label><input type="email" id="bk-email" placeholder="john@email.com"></div>
+        <div class="bk-field"><label>Notes (optional)</label><textarea id="bk-notes" rows="3" placeholder="Any special requests..."></textarea></div>
+      </div>
+      <div class="bk-nav-row"><button class="bk-back-btn" onclick="bkGoTo(2)">Back</button><button class="bk-confirm-btn" onclick="bkSubmit()">Confirm Booking</button></div>
+    </div>
+
+    {%- comment -%} Confirmation {%- endcomment -%}
+    <div class="bk-page" id="bk-page-done" hidden>
+      <h2 class="bk-done-title">You're all booked!</h2>
+      <p class="bk-done-sub">We'll see you at Prince Tires. A confirmation is on its way to your email.</p>
+      <div class="bk-done-card" id="bk-done-card"></div>
+      <div class="bk-done-actions"><button class="bk-cal-btn" onclick="bkDownloadICS()">Add to My Calendar</button><button class="bk-done-btn" onclick="closeBookingModal()">Done</button></div>
+    </div>
+  </div>
+</div>
+
+<style>
+.bk-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(3px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
+.bk-overlay[hidden]{display:none}
+.bk-modal{position:relative;background:#fff;border-radius:20px;max-width:460px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.18);animation:bk-up .3s ease-out;font-family:'Outfit',sans-serif;padding:1.8rem 2rem;margin-bottom:2rem}
+.bk-modal::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#dc2626,#F5820B);border-radius:20px 20px 0 0}
+@keyframes bk-up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.bk-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:#9ca3af;cursor:pointer;padding:4px}.bk-close:hover{color:#111}
+.bk-stepper{display:flex;align-items:center;justify-content:center;margin-bottom:2rem;padding-top:.5rem;transition:opacity .3s}
+.bk-step{display:flex;flex-direction:column;align-items:center;gap:.3rem}
+.bk-step-circle{width:32px;height:32px;border-radius:50%;border:2px solid #d1d5db;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:600;color:#9ca3af}
+.bk-step-circle--active{background:#16a34a;border-color:#16a34a;color:#fff;box-shadow:0 0 0 4px rgba(22,163,74,.15)}
+.bk-step-circle--done{background:#16a34a;border-color:#16a34a;color:#fff}
+.bk-step-label{font-size:.85rem;color:#9ca3af}.bk-step-label--active{color:#16a34a}
+.bk-step-line{width:56px;height:2px;background:#d1d5db;margin:0 .5rem;margin-bottom:1.2rem}.bk-step-line--done{background:#16a34a}
+.bk-page-title{font-size:1.3rem;font-weight:700;color:#111;margin:0 0 .2rem}
+.bk-page-sub{font-size:.9rem;color:#9ca3af;margin:0 0 1.2rem}
+.bk-product-pill{display:flex;align-items:center;gap:.8rem;padding:1rem 1.2rem;background:#f9fafb;border-radius:10px;margin-bottom:1.4rem}
+.bk-product-icon{flex-shrink:0;width:40px;height:40px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.bk-product-info{flex:1;min-width:0}
+.bk-product-name{font-weight:600;color:#111;font-size:1.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-product-sub{font-size:.8rem;color:#9ca3af;margin:.1rem 0 0}
+.bk-product-size{font-size:.95rem;font-weight:600;color:#16a34a;border:1.5px solid #86efac;padding:.3rem .7rem;border-radius:6px;flex-shrink:0;background:#f0fdf4}
+.bk-section-title{font-size:.85rem;font-weight:600;color:#374151;margin:1.4rem 0 .7rem;text-transform:uppercase;letter-spacing:.06em}
+.bk-section-hint{font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;font-style:italic}
+.bk-vehicle-scroll{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:0 -.5rem;padding:0 .5rem}.bk-vehicle-scroll::-webkit-scrollbar{display:none}
+.bk-vehicle-grid{display:flex;gap:.6rem}
+.bk-vehicle-card{min-width:80px;max-width:80px;padding:.8rem .4rem;border:1px solid #e5e7eb;border-radius:12px;text-align:center;cursor:pointer;flex-shrink:0;transition:all .15s;background:#fff}
+.bk-vehicle-card:hover{border-color:#F5820B}
+.bk-vehicle-card--active{border:1.5px solid #F5820B}.bk-vehicle-card--active .bk-vehicle-name,.bk-vehicle-card--active .bk-vehicle-price{color:#F5820B}
+.bk-vehicle-icon{height:24px;margin-bottom:.3rem;display:flex;align-items:center;justify-content:center;color:#9ca3af}
+.bk-vehicle-card--active .bk-vehicle-icon{color:#F5820B}
+.bk-vehicle-name{font-size:.75rem;font-weight:500;color:#374151;white-space:nowrap}
+.bk-vehicle-price{font-size:.7rem;color:#9ca3af;margin-top:.2rem}
+.bk-qty-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem}
+.bk-qty-btn{padding:.7rem;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:500;color:#374151;cursor:pointer;text-align:center;transition:all .15s}
+.bk-qty-btn--active{border-color:#F5820B;color:#F5820B}
+.bk-qty-input{width:100%;border:none;background:transparent;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:500;text-align:center;outline:none;color:#374151;padding:0}.bk-qty-input::placeholder{color:#9ca3af}.bk-qty-btn--active .bk-qty-input{color:#F5820B}
+.bk-addons{display:flex;flex-direction:column;gap:.5rem}
+.bk-addon{display:flex;align-items:center;gap:.6rem;padding:.9rem 1rem;border:1.5px solid #e5e7eb;border-radius:10px;cursor:pointer;font-size:1rem;color:#374151;transition:all .15s}
+.bk-addon--active{border-color:#F5820B}.bk-addon input{accent-color:#F5820B;flex-shrink:0}
+.bk-addon-text{flex:1;display:flex;flex-direction:column;gap:.1rem}
+.bk-addon-text strong{font-size:.95rem;font-weight:600;color:#111}
+.bk-addon-desc{font-size:.8rem;color:#9ca3af;font-weight:400}
+.bk-addon-price{flex-shrink:0;color:#374151;font-size:.95rem;font-weight:600}
+.bk-price-box{background:#f9fafb;border-radius:10px;padding:1rem 1.2rem;margin-top:1.2rem;font-size:.95rem}
+.bk-price-row{display:flex;justify-content:space-between;padding:.3rem 0;color:#374151}
+.bk-price-row--total{font-weight:700;color:#111;border-top:1px solid #e5e7eb;padding-top:.6rem;margin-top:.3rem}
+.bk-price-row--total .bk-price-val{color:#16a34a}
+.bk-price-note{text-align:center;font-size:.8rem;color:#9ca3af;margin-top:.6rem}
+.bk-next-btn{width:100%;padding:11px 20px;border:1.5px solid #fca5a5;background:#fef2f2;color:#dc2626;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:600;border-radius:10px;cursor:pointer;margin-top:1.2rem;transition:all .15s}
+.bk-next-btn:hover{background:#fee2e2;border-color:#f87171}.bk-next-btn:disabled{opacity:.4;cursor:not-allowed}
+.bk-back-btn{padding:11px 20px;border:1.5px solid #e5e7eb;background:#fff;color:#374151;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:500;border-radius:10px;cursor:pointer;transition:all .15s}
+.bk-back-btn:hover{border-color:#d1d5db;background:#f9fafb}
+.bk-nav-row{display:flex;gap:.8rem;margin-top:1.4rem}.bk-nav-row .bk-next-btn{flex:1;margin-top:0}
+.bk-confirm-btn{flex:1;padding:11px 20px;background:#dcfce7;border:1.5px solid #86efac;color:#166534;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:600;border-radius:10px;cursor:pointer;transition:all .15s}
+.bk-confirm-btn:hover{background:#bbf7d0;border-color:#6ee7b7}
+.bk-week-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem}
+.bk-week-arrow{width:36px;height:36px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;font-size:1.4rem;color:#374151;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.bk-week-arrow:disabled{opacity:.3;cursor:not-allowed}
+.bk-week-label{font-size:1rem;font-weight:500;color:#111}
+.bk-day-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:.4rem;margin-bottom:1.4rem}
+.bk-day-card{padding:.6rem 0;border:1.5px solid #e5e7eb;border-radius:8px;text-align:center;cursor:pointer;transition:all .15s}
+.bk-day-card--today{border-color:#F5820B}.bk-day-card--today .bk-day-num{color:#F5820B}
+.bk-day-card--past{opacity:.35;cursor:not-allowed;background:#f9fafb}
+.bk-day-card--active{border-color:#F5820B}.bk-day-card--active .bk-day-name,.bk-day-card--active .bk-day-num{color:#F5820B}
+.bk-day-name{font-size:.75rem;color:#9ca3af}.bk-day-num{font-size:1.1rem;font-weight:600;color:#111}
+.bk-time-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem}
+.bk-time-slot{padding:.6rem;border:1.5px solid #e5e7eb;border-radius:8px;text-align:center;font-size:.9rem;color:#374151;cursor:pointer;transition:all .15s}
+.bk-time-slot:hover{border-color:#F5820B;color:#F5820B}
+.bk-time-slot--active{border-color:#F5820B;color:#F5820B}
+.bk-time-slot--booked{background:#f9fafb;color:#d1d5db;text-decoration:line-through;cursor:not-allowed;border-color:#f0f0f0}
+.bk-summary{background:#f9fafb;border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.4rem}
+.bk-summary-row{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid #f3f4f6;font-size:.95rem}.bk-summary-row:last-child{border-bottom:none}
+.bk-summary-label{color:#9ca3af}.bk-summary-val{color:#111;font-weight:600}.bk-summary-val--green{color:#16a34a;font-weight:700}
+.bk-form{display:flex;flex-direction:column;gap:.8rem}
+.bk-form-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.bk-field label{display:block;font-size:.85rem;font-weight:500;color:#374151;margin-bottom:.3rem}
+.bk-field input,.bk-field textarea{width:100%;padding:.7rem .9rem;border:1px solid #e5e7eb;border-radius:8px;font-family:'Outfit',sans-serif;font-size:1rem;outline:none;box-sizing:border-box}
+.bk-field input:focus,.bk-field textarea:focus{border-color:#F5820B}
+.bk-done-title{font-size:1.4rem;font-weight:700;color:#111;text-align:center;margin-bottom:.4rem}
+.bk-done-sub{font-size:1rem;color:#9ca3af;text-align:center;margin-bottom:1.4rem}
+.bk-done-card{background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.4rem}
+.bk-done-actions{display:flex;gap:.8rem}
+.bk-cal-btn{flex:1;padding:11px;border:1.5px solid #86efac;background:#f0fdf4;color:#166534;font-family:'Outfit',sans-serif;font-weight:600;border-radius:10px;cursor:pointer}
+.bk-done-btn{flex:1;padding:11px;border:none;background:#16a34a;color:#fff;font-family:'Outfit',sans-serif;font-weight:600;border-radius:10px;cursor:pointer}
+@media(max-width:560px){.bk-modal{padding:1.4rem 1.2rem;border-radius:16px 16px 0 0;max-height:95vh}.bk-form-row{grid-template-columns:1fr}.bk-time-grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+
+<script>
+(function(){
+var st={tireName:'',tireSize:'',vehicle:'suv',qty:4,tpms:false,disposal:true,date:null,time:null};
+var vehs=[{id:'passenger',name:'Sedan',price:25},{id:'suv',name:'SUV / CUV',price:30},{id:'truck',name:'Truck',price:35},{id:'van',name:'Van',price:30},{id:'electric',name:'Electric',price:25},{id:'dually',name:'Dually',price:40},{id:'trailer',name:'Trailer',price:20},{id:'racecar',name:'Race Car',price:35},{id:'other',name:'Other',price:0}];
+var wk=0;
+function vp(){var v=vehs.find(function(x){return x.id===st.vehicle});return v?v.price:30}
+function calc(){var i=vp()*st.qty,t=st.tpms?75*st.qty:0,d=st.disposal?5*st.qty:0,s=i+t+d,g=s*.05;return{i:i,t:t,d:d,s:s,g:g,total:s+g}}
+function rp(){var c=calc(),h='<div class="bk-price-row"><span>Installation ('+st.qty+' × $'+vp()+')</span><span>$'+c.i.toFixed(2)+'</span></div>';
+if(st.tpms)h+='<div class="bk-price-row"><span>TPMS Sensors ('+st.qty+' × $75)</span><span>$'+c.t.toFixed(2)+'</span></div>';
+if(st.disposal)h+='<div class="bk-price-row"><span>Tire Disposal ('+st.qty+' × $5)</span><span>$'+c.d.toFixed(2)+'</span></div>';
+h+='<div class="bk-price-row"><span>Subtotal</span><span>$'+c.s.toFixed(2)+'</span></div>';
+h+='<div class="bk-price-row"><span>GST (5%)</span><span>$'+c.g.toFixed(2)+'</span></div>';
+h+='<div class="bk-price-row bk-price-row--total"><span>Total (incl. GST)</span><span class="bk-price-val">$'+c.total.toFixed(2)+'</span></div>';
+h+='<p class="bk-price-note">Final price confirmed at time of service</p>';
+document.getElementById('bk-price-box').innerHTML=h}
+var vIcons={
+passenger:'<svg width="38" height="24" viewBox="0 0 38 24" fill="none"><path d="M6 16h26" stroke="currentColor" stroke-width="1.5"/><path d="M8 16l2-6h18l2 6" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 10l1-4h12l1 4" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="11" cy="18" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="27" cy="18" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>',
+suv:'<svg width="38" height="24" viewBox="0 0 38 24" fill="none"><path d="M5 15h28" stroke="currentColor" stroke-width="1.5"/><path d="M7 15l1-5h22l1 5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M11 10V6h16v4" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="11" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="27" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><line x1="19" y1="6" x2="19" y2="10" stroke="currentColor" stroke-width="1"/></svg>',
+truck:'<svg width="38" height="24" viewBox="0 0 38 24" fill="none"><path d="M4 15h30" stroke="currentColor" stroke-width="1.5"/><rect x="4" y="9" width="14" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M18 15V7h10l4 5v3" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="10" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="28" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>',
+van:'<svg width="38" height="24" viewBox="0 0 38 24" fill="none"><path d="M6 15h26" stroke="currentColor" stroke-width="1.5"/><rect x="6" y="5" width="22" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M28 8l4 4v3h-4" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="11" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="27" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><line x1="16" y1="5" x2="16" y2="12" stroke="currentColor" stroke-width="1"/><line x1="22" y1="5" x2="22" y2="12" stroke="currentColor" stroke-width="1"/></svg>',
+electric:'<svg width="38" height="24" viewBox="0 0 38 24" fill="none"><path d="M6 16h26" stroke="currentColor" stroke-width="1.5"/><path d="M8 16l2-6h18l2 6" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 10l1-4h12l1 4" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="11" cy="18" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="27" cy="18" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M20 4l-3 5h4l-3 5" stroke="#eab308" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+dually:'<svg width="38" height="24" viewBox="0 0 38 24" fill="none"><path d="M4 15h30" stroke="currentColor" stroke-width="1.5"/><rect x="4" y="9" width="14" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M18 15V7h10l4 5v3" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="10" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="26" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="30" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>',
+trailer:'<svg width="38" height="24" viewBox="0 0 38 24" fill="none"><rect x="6" y="6" width="24" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="18" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="24" cy="18" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M30 11h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+racecar:'<svg width="38" height="24" viewBox="0 0 38 24" fill="none"><path d="M5 15h28" stroke="currentColor" stroke-width="1.5"/><path d="M7 15l3-4h18l3 4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M13 11l2-4h8l2 4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M28 8l3-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="11" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="27" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>',
+other:'<svg width="38" height="24" viewBox="0 0 38 24" fill="none"><circle cx="19" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><text x="19" y="16" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">?</text></svg>'
+};
+function rv(){document.getElementById('bk-vehicles').innerHTML=vehs.map(function(v){return'<div class="bk-vehicle-card'+(st.vehicle===v.id?' bk-vehicle-card--active':'')+'" data-v="'+v.id+'"><div class="bk-vehicle-icon">'+(vIcons[v.id]||vIcons.other)+'</div><div class="bk-vehicle-name">'+v.name+'</div><div class="bk-vehicle-price">'+(v.price?'$'+v.price+'/tire':'Ask us')+'</div></div>'}).join('');
+document.querySelectorAll('.bk-vehicle-card').forEach(function(e){e.addEventListener('click',function(){st.vehicle=this.dataset.v;rv();rp()})})}
+function rq(){var o=[1,2,4,'Other'];document.getElementById('bk-qty-grid').innerHTML=o.map(function(q){var a=(q==='Other'?st.qty>4||st.qty===3:st.qty===q);
+if(q==='Other'){return'<div class="bk-qty-btn'+(a?' bk-qty-btn--active':'')+'" data-q="Other"><input type="number" class="bk-qty-input" placeholder="Other" min="1" max="20" value="'+(a?st.qty:'')+'" data-qty-other></div>'}
+return'<button class="bk-qty-btn'+(a?' bk-qty-btn--active':'')+'" data-q="'+q+'"><strong>'+q+'</strong><span style="font-size:.75rem;color:#9ca3af;display:block">tire'+(q>1?'s':'')+'</span></button>'}).join('');
+document.querySelectorAll('.bk-qty-btn[data-q]:not([data-q="Other"])').forEach(function(e){e.addEventListener('click',function(){st.qty=parseInt(this.dataset.q);rq();rp()})});
+var otherInput=document.querySelector('[data-qty-other]');
+if(otherInput){otherInput.addEventListener('input',function(){var n=parseInt(this.value);if(n>0){st.qty=n;rp()}});otherInput.addEventListener('focus',function(){this.closest('.bk-qty-btn').classList.add('bk-qty-btn--active');document.querySelectorAll('.bk-qty-btn:not([data-q="Other"])').forEach(function(b){b.classList.remove('bk-qty-btn--active')})})}}
+function rw(){var td=new Date();td.setHours(0,0,0,0);var s=new Date(td);s.setDate(s.getDate()-s.getDay()+1+wk*7);var dn=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var e=new Date(s);e.setDate(e.getDate()+6);document.getElementById('bk-week-label').textContent=s.getDate()+' '+mn[s.getMonth()]+' – '+e.getDate()+' '+mn[e.getMonth()];
+document.getElementById('bk-prev-week').disabled=wk<=0;var h='';
+for(var i=0;i<7;i++){var d=new Date(s);d.setDate(d.getDate()+i);var ip=d<td,it=d.getTime()===td.getTime(),ia=st.date&&d.toDateString()===st.date.toDateString();
+var c='bk-day-card';if(ip)c+=' bk-day-card--past';if(it)c+=' bk-day-card--today';if(ia)c+=' bk-day-card--active';
+h+='<div class="'+c+'" data-date="'+d.toISOString()+'"><div class="bk-day-name">'+dn[i]+'</div><div class="bk-day-num">'+d.getDate()+'</div></div>'}
+document.getElementById('bk-day-strip').innerHTML=h;
+document.querySelectorAll('.bk-day-card:not(.bk-day-card--past)').forEach(function(e){e.addEventListener('click',function(){st.date=new Date(this.dataset.date);rw();rt()})})}
+async function rt(){if(!st.date){document.getElementById('bk-time-grid').innerHTML='<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Select a day first</p>';return}
+var sun=st.date.getDay()===0,sh=sun?10:9,sm=sun?0:30,eh=sun?15:17,em=sun?30:30,sl=[];
+for(var h=sh;h<=eh;h++){for(var m=(h===sh?sm:0);m<60;m+=30){if(h===eh&&m>em)break;var hr=h>12?h-12:h;sl.push(hr+':'+(m<10?'0':'')+m+' '+(h>=12?'PM':'AM'))}}
+document.getElementById('bk-time-grid').innerHTML='<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Loading availability...</p>';
+var booked=[];
+try{var ds=st.date.toISOString().split('T')[0];var r=await fetch('https://prince-tires-booking.vercel.app/api/availability?date='+ds);var d=await r.json();booked=d.booked||[]}catch(e){}
+document.getElementById('bk-time-grid').innerHTML=sl.map(function(s){var isBooked=booked.indexOf(s)>-1;return'<div class="bk-time-slot'+(st.time===s?' bk-time-slot--active':'')+(isBooked?' bk-time-slot--booked':'')+'" data-time="'+s+'"'+(isBooked?' title="Already booked"':'')+'>'+s+'</div>'}).join('');
+document.querySelectorAll('.bk-time-slot:not(.bk-time-slot--booked)').forEach(function(e){e.addEventListener('click',function(){st.time=this.dataset.time;rt();document.getElementById('bk-next-2').disabled=false})})}
+function rs(){var c=calc(),v=vehs.find(function(x){return x.id===st.vehicle}),ds=st.date?st.date.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})+' at '+st.time:'',ao=[];
+if(st.tpms)ao.push('TPMS Sensors');if(st.disposal)ao.push('Tire Disposal');var h='';
+h+='<div class="bk-summary-row"><span class="bk-summary-label">Date & Time</span><span class="bk-summary-val">'+ds+'</span></div>';
+h+='<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">'+(v?v.name:'')+'</span></div>';
+h+='<div class="bk-summary-row"><span class="bk-summary-label">Tire</span><span class="bk-summary-val">'+st.tireSize+' × '+st.qty+' tires</span></div>';
+if(ao.length)h+='<div class="bk-summary-row"><span class="bk-summary-label">Add-ons</span><span class="bk-summary-val">'+ao.join(', ')+'</span></div>';
+h+='<div class="bk-summary-row"><span class="bk-summary-label">Subtotal</span><span class="bk-summary-val">$'+c.s.toFixed(2)+'</span></div>';
+h+='<div class="bk-summary-row"><span class="bk-summary-label">GST (5%)</span><span class="bk-summary-val">$'+c.g.toFixed(2)+'</span></div>';
+h+='<div class="bk-summary-row"><span class="bk-summary-label" style="font-weight:700;color:#111">Total (incl. GST)</span><span class="bk-summary-val bk-summary-val--green">$'+c.total.toFixed(2)+'</span></div>';
+document.getElementById('bk-summary').innerHTML=h}
+window.openBookingModal=function(btn){st.tireName=btn.dataset.tireName||'Tire';st.tireSize=btn.dataset.tireSize||'';st.vehicle='suv';st.qty=4;st.tpms=false;st.disposal=true;st.date=null;st.time=null;wk=0;
+document.getElementById('bk-tire-name-display').textContent=st.tireName;document.getElementById('bk-tire-size-display').textContent=st.tireSize;
+document.getElementById('bk-tpms').checked=false;document.getElementById('bk-disposal').checked=true;
+document.getElementById('bk-addon-tpms').classList.remove('bk-addon--active');document.getElementById('bk-addon-disposal').classList.add('bk-addon--active');
+rv();rq();rp();bkGoTo(1);document.getElementById('bk-overlay').hidden=false;document.body.style.overflow='hidden'};
+window.closeBookingModal=function(){document.getElementById('bk-overlay').hidden=true;document.body.style.overflow=''};
+window.bkGoTo=function(step){[1,2,3].forEach(function(s){document.getElementById('bk-page-'+s).hidden=s!==step});document.getElementById('bk-page-done').hidden=true;document.getElementById('bk-stepper').style.opacity='1';
+[1,2,3].forEach(function(s){var ci=document.querySelector('[data-step="'+s+'"] .bk-step-circle'),la=document.querySelector('[data-step="'+s+'"] .bk-step-label'),li=document.querySelector('[data-line="'+s+'"]');
+ci.className='bk-step-circle';la.className='bk-step-label';if(li)li.className='bk-step-line';
+if(s<step){ci.className='bk-step-circle bk-step-circle--done';ci.innerHTML='&#10003;';la.className='bk-step-label bk-step-label--active';if(li)li.className='bk-step-line bk-step-line--done'}
+else if(s===step){ci.className='bk-step-circle bk-step-circle--active';ci.textContent=s;la.className='bk-step-label bk-step-label--active'}
+else{ci.textContent=s}});if(step===2){rw();rt()}if(step===3){rs()}};
+window.bkSubmit=function(){var n=document.getElementById('bk-name').value.trim(),p=document.getElementById('bk-phone').value.trim(),e=document.getElementById('bk-email').value.trim();
+if(!n||!p||!e){alert('Please fill in your name, phone, and email.');return}
+var c=calc(),v=vehs.find(function(x){return x.id===st.vehicle}),ds=st.date.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})+' at '+st.time;
+var h='<div class="bk-summary-row"><span class="bk-summary-label">Date & Time</span><span class="bk-summary-val">'+ds+'</span></div>';
+h+='<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">111 42 Ave SW, Calgary, AB</span></div>';
+h+='<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">(403) 452-4283</span></div>';
+h+='<div class="bk-summary-row"><span class="bk-summary-label">Tire</span><span class="bk-summary-val">'+st.tireSize+' × '+st.qty+' — '+(v?v.name:'')+'</span></div>';
+h+='<div class="bk-summary-row"><span class="bk-summary-label" style="font-weight:700;color:#111">Total (incl. GST)</span><span class="bk-summary-val bk-summary-val--green">$'+c.total.toFixed(2)+'</span></div>';
+document.getElementById('bk-done-card').innerHTML=h;[1,2,3].forEach(function(s){document.getElementById('bk-page-'+s).hidden=true});
+document.getElementById('bk-page-done').hidden=false;document.getElementById('bk-stepper').style.opacity='0';
+if(typeof confetti==='function'){var co=['#16a34a','#22c55e','#F5820B','#ffffff','#dc2626','#bbf7d0'];
+confetti({particleCount:80,spread:70,origin:{y:.6},colors:co});setTimeout(function(){confetti({particleCount:40,angle:60,spread:55,origin:{x:0},colors:co})},200);setTimeout(function(){confetti({particleCount:40,angle:120,spread:55,origin:{x:1},colors:co})},400)}};
+window.bkDownloadICS=function(){var ds=st.date.toISOString().split('T')[0].replace(/-/g,''),tm=st.time.match(/(\d+):(\d+)\s*(AM|PM)/),h=parseInt(tm[1]),m=parseInt(tm[2]);
+if(tm[3]==='PM'&&h<12)h+=12;if(tm[3]==='AM'&&h===12)h=0;var st2=(h<10?'0':'')+h+(m<10?'0':'')+m+'00',eh=h+Math.ceil(st.qty*.5),et=(eh<10?'0':'')+eh+(m<10?'0':'')+m+'00';
+var ics='BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART;TZID=America/Edmonton:'+ds+'T'+st2+'\nDTEND;TZID=America/Edmonton:'+ds+'T'+et+'\nSUMMARY:Tire Installation at Prince Tires\nLOCATION:111 42 Ave SW\\, Calgary\\, AB\nDESCRIPTION:'+st.tireSize+' x '+st.qty+' tires\nEND:VEVENT\nEND:VCALENDAR';
+var b=new Blob([ics],{type:'text/calendar'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='prince-tires-booking.ics';a.click()};
+document.getElementById('bk-tpms').addEventListener('change',function(){st.tpms=this.checked;document.getElementById('bk-addon-tpms').classList.toggle('bk-addon--active',this.checked);rp()});
+document.getElementById('bk-disposal').addEventListener('change',function(){st.disposal=this.checked;document.getElementById('bk-addon-disposal').classList.toggle('bk-addon--active',this.checked);rp()});
+document.getElementById('bk-prev-week').addEventListener('click',function(){if(wk>0){wk--;rw()}});
+document.getElementById('bk-next-week').addEventListener('click',function(){wk++;rw()});
+document.getElementById('bk-overlay').addEventListener('click',function(e){if(e.target===this)closeBookingModal()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeBookingModal()});
+})();
+</script>

@@ -1,0 +1,71 @@
+<div class="trust-strip">
+  <div class="trust-strip__container">
+    {%- for block in section.blocks -%}
+      <div class="trust-strip__item" {{ block.shopify_attributes }}>
+        {{ block.settings.text }}
+      </div>
+    {%- endfor -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .trust-strip {
+    background: #fff;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .trust-strip__container {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .trust-strip__item {
+    color: #6b7280;
+    font-size: 0.875rem;
+  }
+  @media (max-width: 768px) {
+    .trust-strip__container {
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+      text-align: center;
+    }
+    .trust-strip__item {
+      width: 45%;
+      font-size: 0.8rem;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:sections.trust_strip.name",
+  "blocks": [
+    {
+      "type": "trust_item",
+      "name": "t:sections.trust_strip.blocks.item.name",
+      "settings": [
+        {
+          "type": "text",
+          "id": "text",
+          "label": "t:sections.trust_strip.blocks.item.settings.text",
+          "default": "Trust point"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:sections.trust_strip.name",
+      "blocks": [
+        { "type": "trust_item", "settings": { "text": "Free tire inspection" } },
+        { "type": "trust_item", "settings": { "text": "Price match" } },
+        { "type": "trust_item", "settings": { "text": "Same-day service" } },
+        { "type": "trust_item", "settings": { "text": "Life-time tire rotation" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

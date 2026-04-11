@@ -1,0 +1,296 @@
+<header class="pt-header" data-pt-header>
+  <div class="pt-header__container">
+    {%- comment -%} Logo — centered above nav {%- endcomment -%}
+    <div class="pt-header__logo-row">
+      <a href="{{ routes.root_url }}" class="pt-header__logo" aria-label="{{ shop.name }}">
+        {%- if section.settings.logo != blank -%}
+          {{ section.settings.logo | image_url: height: 40 | image_tag: class: "pt-header__logo-img" }}
+        {%- else -%}
+          <div class="pt-header__logo-mark">
+            <span>P</span>
+          </div>
+        {%- endif -%}
+      </a>
+    </div>
+
+    {%- comment -%} Nav row: links centered, account/cart right {%- endcomment -%}
+    <div class="pt-header__nav-row">
+      <nav class="pt-header__nav" aria-label="{{ 'sections.pt_header.navigation' | t }}">
+        {%- for block in section.blocks -%}
+          {%- if block.type == 'nav_link' -%}
+            <a
+              href="{{ block.settings.link | default: '#' }}"
+              class="pt-header__link"
+              {{ block.shopify_attributes }}
+            >
+              {{ block.settings.label }}
+            </a>
+          {%- endif -%}
+        {%- endfor -%}
+      </nav>
+
+      <div class="pt-header__icons">
+        <a href="{{ routes.account_url }}" class="pt-header__icon" aria-label="{{ 'sections.pt_header.account' | t }}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </a>
+        {%- if customer -%}
+          <a href="/pages/my-garage" class="pt-header__icon pt-header__garage" aria-label="{{ 'sections.pt_header.garage' | t }}" data-garage-customer-id="{{ customer.id }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 17h14M7.5 17V13L6 9H18L16.5 13V17M9 21H7V19H9V21ZM17 21H15V19H17V21ZM3 13H21"/>
+            </svg>
+            <span class="pt-header__garage-count" data-garage-count hidden>0</span>
+          </a>
+        {%- endif -%}
+        <a href="{{ routes.cart_url }}" class="pt-header__icon pt-header__cart" aria-label="{{ 'sections.pt_header.cart' | t }}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+          {%- if cart.item_count > 0 -%}
+            <span class="pt-header__cart-count">{{ cart.item_count }}</span>
+          {%- endif -%}
+        </a>
+      </div>
+    </div>
+
+    {%- comment -%} Mobile menu button {%- endcomment -%}
+    <button class="pt-header__menu-btn" aria-label="{{ 'sections.pt_header.menu' | t }}" data-pt-menu-toggle>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+
+  {%- comment -%} Mobile drawer {%- endcomment -%}
+  <div class="pt-header__mobile-menu" data-pt-mobile-menu hidden>
+    <nav class="pt-header__mobile-nav">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'nav_link' -%}
+          <a href="{{ block.settings.link | default: '#' }}" class="pt-header__mobile-link">{{ block.settings.label }}</a>
+        {%- endif -%}
+      {%- endfor -%}
+      {%- if customer -%}
+        <a href="/pages/my-garage" class="pt-header__mobile-link">{{ 'sections.pt_header.garage' | t }}</a>
+      {%- endif -%}
+    </nav>
+  </div>
+</header>
+
+{% stylesheet %}
+  .pt-header {
+    background: #000;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .pt-header__container {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 1rem 1.5rem 1.25rem;
+  }
+  .pt-header__logo-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+  .pt-header__logo {
+    text-decoration: none;
+    display: block;
+  }
+  .pt-header__logo-img {
+    height: 32px;
+    width: auto;
+  }
+  .pt-header__logo-mark {
+    width: 32px;
+    height: 32px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pt-header__logo-mark span {
+    color: #000;
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .pt-header__nav-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+  }
+  .pt-header__nav {
+    display: flex;
+    gap: 3rem;
+    align-items: center;
+  }
+  .pt-header__link {
+    color: #d1d5db;
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s;
+  }
+  .pt-header__link:hover {
+    color: #fff;
+  }
+  .pt-header__icons {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    position: absolute;
+    right: 0;
+  }
+  .pt-header__icon {
+    color: #d1d5db;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  .pt-header__icon:hover {
+    color: #fff;
+  }
+  .pt-header__cart-count {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .pt-header__garage-count {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .pt-header__menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: #d1d5db;
+    cursor: pointer;
+    padding: 0;
+    position: absolute;
+    right: 1.5rem;
+    top: 1.25rem;
+  }
+  .pt-header__mobile-menu {
+    border-top: 1px solid #1f1f1f;
+    padding: 1rem 1.5rem;
+  }
+  .pt-header__mobile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .pt-header__mobile-link {
+    color: #d1d5db;
+    text-decoration: none;
+    font-size: 0.875rem;
+  }
+  @media (max-width: 768px) {
+    .pt-header__nav { display: none; }
+    .pt-header__icons { display: none; }
+    .pt-header__menu-btn { display: block; }
+    .pt-header__nav-row { justify-content: flex-start; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  const toggle = document.querySelector('[data-pt-menu-toggle]');
+  const menu = document.querySelector('[data-pt-mobile-menu]');
+  if (toggle && menu) {
+    toggle.addEventListener('click', function() {
+      menu.hidden = !menu.hidden;
+    });
+  }
+
+  /* Garage badge */
+  (function() {
+    var badge = document.querySelector('[data-garage-count]');
+    if (!badge) return;
+
+    function updateBadge(count) {
+      if (count > 0) {
+        badge.textContent = count;
+        badge.hidden = false;
+      } else {
+        badge.hidden = true;
+      }
+    }
+
+    /* Read initial count from localStorage */
+    var garageLink = document.querySelector('[data-garage-customer-id]');
+    var customerId = garageLink ? garageLink.dataset.garageCustomerId : null;
+    if (customerId) {
+      try {
+        var raw = localStorage.getItem('pt-garage-' + customerId);
+        var vehicles = raw ? JSON.parse(raw) : [];
+        updateBadge(vehicles.length);
+      } catch(e) {}
+    }
+
+    /* Subscribe to live updates */
+    if (typeof subscribe === 'function' && typeof PUB_SUB_EVENTS !== 'undefined') {
+      subscribe(PUB_SUB_EVENTS.garageUpdate, function(data) {
+        updateBadge(data.vehicles ? data.vehicles.length : 0);
+      });
+    }
+  })();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:sections.pt_header.name",
+  "blocks": [
+    {
+      "type": "nav_link",
+      "name": "t:sections.pt_header.blocks.nav_link.name",
+      "settings": [
+        {
+          "type": "text",
+          "id": "label",
+          "label": "t:sections.pt_header.blocks.nav_link.settings.label",
+          "default": "Link"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "t:sections.pt_header.blocks.nav_link.settings.link"
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "t:sections.pt_header.settings.logo"
+    }
+  ]
+}
+{% endschema %}

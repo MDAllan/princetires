@@ -1,0 +1,248 @@
+<div class="inv-pulse">
+  <div class="inv-pulse__container">
+
+    <div class="inv-pulse__stat">
+      <div class="inv-pulse__live">
+        <span class="inv-pulse__dot"></span>
+        <span class="inv-pulse__live-text">{{ section.settings.live_label }}</span>
+      </div>
+      <div class="inv-pulse__number" data-count-to="{{ section.settings.tire_count }}">0</div>
+      <div class="inv-pulse__label">{{ section.settings.tire_label }}</div>
+    </div>
+
+    <div class="inv-pulse__divider"></div>
+
+    <div class="inv-pulse__stat">
+      <div class="inv-pulse__number" data-count-to="{{ section.settings.brand_count }}">0</div>
+      <div class="inv-pulse__label">{{ section.settings.brand_label }}</div>
+    </div>
+
+    <div class="inv-pulse__divider"></div>
+
+    <div class="inv-pulse__stat">
+      <div class="inv-pulse__number" data-count-to="{{ section.settings.size_count }}">0</div>
+      <div class="inv-pulse__label">{{ section.settings.size_label }}</div>
+    </div>
+
+    <div class="inv-pulse__divider"></div>
+
+    <div class="inv-pulse__stat">
+      <div class="inv-pulse__badge">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="inv-pulse__label-bold">{{ section.settings.update_label }}</div>
+      <div class="inv-pulse__label">{{ section.settings.update_sub }}</div>
+    </div>
+
+  </div>
+</div>
+
+{% stylesheet %}
+  .inv-pulse {
+    background: #000;
+    padding: 3rem 2rem;
+    overflow: hidden;
+  }
+
+  .inv-pulse__container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+
+  .inv-pulse__stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.3rem;
+  }
+
+  .inv-pulse__live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .inv-pulse__dot {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    display: inline-block;
+    animation: inv-pulse-beat 2s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  }
+
+  @keyframes inv-pulse-beat {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
+  }
+
+  .inv-pulse__live-text {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #22c55e;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .inv-pulse__number {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3.2rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+
+  .inv-pulse__label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: #6b7280;
+    letter-spacing: 0.02em;
+  }
+
+  .inv-pulse__label-bold {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #fff;
+  }
+
+  .inv-pulse__badge {
+    width: 32px;
+    height: 32px;
+    background: rgba(34, 197, 94, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #22c55e;
+    margin-bottom: 0.2rem;
+  }
+
+  .inv-pulse__divider {
+    width: 1px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 768px) {
+    .inv-pulse__container {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2rem 3rem;
+      padding: 0 2rem;
+    }
+    .inv-pulse__divider {
+      display: none;
+    }
+    .inv-pulse__number {
+      font-size: 2.6rem;
+    }
+  }
+{% endstylesheet %}
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var counters = document.querySelectorAll('[data-count-to]');
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting) return;
+        var el = entry.target;
+        var target = parseInt(el.dataset.countTo);
+        if (!target) { el.textContent = '0'; return; }
+        var startTime = null;
+        function step(timestamp) {
+          if (!startTime) startTime = timestamp;
+          var progress = Math.min((timestamp - startTime) / 2000, 1);
+          var eased = 1 - Math.pow(1 - progress, 3);
+          el.textContent = Math.floor(eased * target).toLocaleString();
+          if (progress < 1) requestAnimationFrame(step);
+          else el.textContent = target.toLocaleString();
+        }
+        requestAnimationFrame(step);
+        observer.unobserve(el);
+      });
+    }, { threshold: 0.3 });
+    counters.forEach(function(c) { observer.observe(c); });
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Inventory pulse",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "live_label",
+      "label": "Live badge text",
+      "default": "Live inventory"
+    },
+    {
+      "type": "text",
+      "id": "tire_count",
+      "label": "Tires in stock",
+      "default": "3496"
+    },
+    {
+      "type": "text",
+      "id": "tire_label",
+      "label": "Tires label",
+      "default": "Tires in stock right now"
+    },
+    {
+      "type": "text",
+      "id": "brand_count",
+      "label": "Number of brands",
+      "default": "26"
+    },
+    {
+      "type": "text",
+      "id": "brand_label",
+      "label": "Brands label",
+      "default": "Trusted brands"
+    },
+    {
+      "type": "text",
+      "id": "size_count",
+      "label": "Number of sizes",
+      "default": "1036"
+    },
+    {
+      "type": "text",
+      "id": "size_label",
+      "label": "Sizes label",
+      "default": "Tire sizes available"
+    },
+    {
+      "type": "text",
+      "id": "update_label",
+      "label": "Update label",
+      "default": "Inventory synced daily"
+    },
+    {
+      "type": "text",
+      "id": "update_sub",
+      "label": "Update sublabel",
+      "default": "Powered by Trail Tire"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Inventory pulse"
+    }
+  ]
+}
+{% endschema %}

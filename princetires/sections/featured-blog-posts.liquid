@@ -1,0 +1,347 @@
+{%- assign blog_handle = section.settings.blog | default: 'news' -%}
+{%- assign blog_obj = blogs[blog_handle] -%}
+{%- assign post_count = section.settings.post_count | default: 6 -%}
+
+{%- if blog_obj.articles.size > 0 -%}
+<div class="fbp">
+  <div class="fbp__container">
+
+    <div class="fbp__top">
+      <div class="fbp__header">
+        <span class="fbp__eyebrow">{{ section.settings.eyebrow }}</span>
+        <h2 class="fbp__heading">{{ section.settings.heading }}</h2>
+      </div>
+
+      {%- if section.settings.show_view_all -%}
+        <a href="{{ blog_obj.url }}" class="fbp__view-all">
+          {{ section.settings.view_all_text }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      {%- endif -%}
+    </div>
+
+    <div class="fbp__carousel" data-fbp-carousel>
+      <div class="fbp__track" data-fbp-track>
+        {%- for article in blog_obj.articles limit: post_count -%}
+          <a href="{{ article.url }}" class="fbp__card">
+            <div class="fbp__card-image">
+              {%- if article.image -%}
+                {{ article.image | image_url: width: 500, height: 340, crop: 'center' | image_tag: class: 'fbp__img', loading: 'lazy' }}
+              {%- else -%}
+                <div class="fbp__card-placeholder"></div>
+              {%- endif -%}
+              {%- if article.tags.size > 0 -%}
+                <span class="fbp__card-tag">{{ article.tags.first }}</span>
+              {%- endif -%}
+            </div>
+            <div class="fbp__card-body">
+              <span class="fbp__card-meta">{{ article.published_at | date: '%b %d, %Y' }}{%- if article.author != blank %} · {{ article.author }}{% endif %}</span>
+              <h3 class="fbp__card-title">{{ article.title | escape }}</h3>
+              <p class="fbp__card-excerpt">{{ article.excerpt_or_content | strip_html | truncate: 80 }}</p>
+              <span class="fbp__card-readmore">Read more →</span>
+            </div>
+          </a>
+        {%- endfor -%}
+      </div>
+    </div>
+
+  </div>
+</div>
+{%- endif -%}
+
+{% stylesheet %}
+  .fbp {
+    background: #fff;
+    padding: 7rem 0;
+  }
+
+  .fbp__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+  }
+
+  .fbp__top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 4rem;
+  }
+
+  .fbp__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .fbp__eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #dc2626;
+    letter-spacing: 0.02em;
+  }
+
+  .fbp__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0;
+    line-height: 1.1;
+  }
+
+  .fbp__view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #dc2626;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: gap 0.2s;
+  }
+
+  .fbp__view-all:hover {
+    gap: 0.8rem;
+  }
+
+  /* ── Carousel ── */
+  .fbp__carousel {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 0 -1rem;
+    padding: 0 1rem;
+  }
+
+  .fbp__carousel::-webkit-scrollbar {
+    display: none;
+  }
+
+  .fbp__track {
+    display: flex;
+    gap: 2.4rem;
+    cursor: grab;
+    user-select: none;
+  }
+
+  .fbp__track:active {
+    cursor: grabbing;
+  }
+
+  /* ── Card ── */
+  .fbp__card {
+    min-width: 30rem;
+    max-width: 30rem;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    background: #f5f5f5;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+
+  .fbp__card:hover {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
+    transform: translateY(-2px);
+  }
+
+  .fbp__card-image {
+    position: relative;
+    aspect-ratio: 3/2;
+    overflow: hidden;
+    background: #e5e7eb;
+  }
+
+  .fbp__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
+  }
+
+  .fbp__card:hover .fbp__img {
+    transform: scale(1.04);
+  }
+
+  .fbp__card-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+  }
+
+  .fbp__card-tag {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.3rem 0.8rem;
+    border-radius: 3px;
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .fbp__card-body {
+    padding: 1.8rem 2rem 2.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+  }
+
+  .fbp__card-meta {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: #9ca3af;
+  }
+
+  .fbp__card-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0;
+    line-height: 1.35;
+  }
+
+  .fbp__card:hover .fbp__card-title {
+    color: #dc2626;
+  }
+
+  .fbp__card-excerpt {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .fbp__card-readmore {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #F5820B;
+    margin-top: auto;
+    padding-top: 0.6rem;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .fbp__container {
+      padding: 0 2rem;
+    }
+    .fbp__card {
+      min-width: 26rem;
+      max-width: 26rem;
+    }
+    .fbp__top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1.2rem;
+    }
+    .fbp__heading {
+      font-size: 2.4rem;
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function() {
+    var tracks = document.querySelectorAll('[data-fbp-track]');
+    tracks.forEach(function(track) {
+      var carousel = track.closest('[data-fbp-carousel]');
+      var isDragging = false;
+      var startX = 0;
+      var scrollLeft = 0;
+
+      track.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        startX = e.pageX;
+        scrollLeft = carousel.scrollLeft;
+      });
+      track.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        carousel.scrollLeft = scrollLeft - (e.pageX - startX) * 1.2;
+      });
+      track.addEventListener('mouseup', function() { isDragging = false; });
+      track.addEventListener('mouseleave', function() { isDragging = false; });
+    });
+  })();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Featured blog posts",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "Blog"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Tire tips & guides for every driver"
+    },
+    {
+      "type": "blog",
+      "id": "blog",
+      "label": "Blog"
+    },
+    {
+      "type": "range",
+      "id": "post_count",
+      "label": "Number of posts",
+      "min": 2,
+      "max": 12,
+      "step": 1,
+      "default": 6
+    },
+    {
+      "type": "text",
+      "id": "read_more_text",
+      "label": "Read more text",
+      "default": "Read more"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_view_all",
+      "label": "Show view all link",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "view_all_text",
+      "label": "View all text",
+      "default": "View more articles"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Featured blog posts"
+    }
+  ]
+}
+{% endschema %}

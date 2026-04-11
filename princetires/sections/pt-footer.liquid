@@ -1,0 +1,264 @@
+{%- liquid
+  assign footer_logo = section.settings.logo | default: settings.logo
+-%}
+
+<footer class="pt-footer">
+  <div class="pt-footer__main">
+
+    <div class="pt-footer__brand">
+      <a href="{{ routes.root_url }}" class="pt-footer__logo" aria-label="{{ shop.name }}">
+        {%- if footer_logo != blank -%}
+          {{ footer_logo | image_url: width: 200 | image_tag: style: 'height:36px;width:auto', alt: shop.name }}
+        {%- else -%}
+          <span class="pt-footer__wordmark">{{ shop.name }}</span>
+        {%- endif -%}
+      </a>
+      <p class="pt-footer__copy">
+        &copy; {{ 'now' | date: '%Y' }} {{ shop.name }}.
+        <br>All rights reserved.
+      </p>
+    </div>
+
+    <div class="pt-footer__columns">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'link_column' -%}
+          <div class="pt-footer__col" {{ block.shopify_attributes }}>
+            {%- if block.settings.heading != blank -%}
+              <h4 class="pt-footer__col-heading">{{ block.settings.heading }}</h4>
+            {%- endif -%}
+            {%- if block.settings.menu != blank -%}
+              <ul class="pt-footer__links">
+                {%- for link in linklists[block.settings.menu].links -%}
+                  <li><a href="{{ link.url }}" class="pt-footer__link">{{ link.title }}</a></li>
+                {%- endfor -%}
+              </ul>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
+
+        {%- if block.type == 'contact' -%}
+          <div class="pt-footer__col" {{ block.shopify_attributes }}>
+            {%- if block.settings.heading != blank -%}
+              <h4 class="pt-footer__col-heading">{{ block.settings.heading }}</h4>
+            {%- endif -%}
+            <ul class="pt-footer__links">
+              {%- if block.settings.phone != blank -%}
+                {%- assign pd = block.settings.phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
+                <li><a href="tel:+1{{ pd }}" class="pt-footer__link">{{ block.settings.phone }}</a></li>
+              {%- endif -%}
+              {%- if block.settings.email != blank -%}
+                <li><a href="mailto:{{ block.settings.email }}" class="pt-footer__link">{{ block.settings.email }}</a></li>
+              {%- endif -%}
+              {%- if block.settings.address != blank -%}
+                <li><span class="pt-footer__link pt-footer__link--static">{{ block.settings.address }}</span></li>
+              {%- endif -%}
+            </ul>
+          </div>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+
+  </div>
+</footer>
+
+{% stylesheet %}
+  .pt-footer {
+    background: #111;
+    font-family: 'Outfit', sans-serif;
+    padding: 5rem 0;
+  }
+
+  .pt-footer__main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 8rem;
+  }
+
+  .pt-footer__brand {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    min-width: 18rem;
+  }
+
+  .pt-footer__logo {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+  }
+
+  .pt-footer__wordmark {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .pt-footer__copy {
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: #4b5563;
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  .pt-footer__columns {
+    display: flex;
+    gap: 6rem;
+    flex: 1;
+  }
+
+  .pt-footer__col {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .pt-footer__col-heading {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 1.8rem;
+  }
+
+  .pt-footer__links {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .pt-footer__link {
+    font-size: 1.35rem;
+    font-weight: 300;
+    color: #6b7280;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  a.pt-footer__link:hover {
+    color: #fff;
+  }
+
+  .pt-footer__link--static {
+    line-height: 1.6;
+  }
+
+  @media (max-width: 989px) {
+    .pt-footer__main {
+      flex-direction: column;
+      gap: 3rem;
+      padding: 0 3rem;
+    }
+    .pt-footer__columns {
+      gap: 3rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .pt-footer__main {
+      padding: 0 2rem;
+    }
+    .pt-footer__columns {
+      flex-direction: column;
+      gap: 2.4rem;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "PT Footer",
+  "class": "pt-footer-section",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Footer logo",
+      "info": "Falls back to theme logo if empty"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "link_column",
+      "name": "Link column",
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Links"
+        },
+        {
+          "type": "link_list",
+          "id": "menu",
+          "label": "Menu"
+        }
+      ]
+    },
+    {
+      "type": "contact",
+      "name": "Contact",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Contacts"
+        },
+        {
+          "type": "text",
+          "id": "phone",
+          "label": "Phone",
+          "default": "(403) 287-1234"
+        },
+        {
+          "type": "text",
+          "id": "email",
+          "label": "Email",
+          "default": "info@princetires.ca"
+        },
+        {
+          "type": "text",
+          "id": "address",
+          "label": "Address",
+          "default": "Calgary, Alberta, Canada"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "PT Footer",
+      "blocks": [
+        {
+          "type": "link_column",
+          "settings": { "heading": "About", "menu": "footer" }
+        },
+        {
+          "type": "link_column",
+          "settings": { "heading": "Account", "menu": "main-menu" }
+        },
+        {
+          "type": "contact",
+          "settings": {
+            "heading": "Contacts",
+            "phone": "(403) 287-1234",
+            "email": "info@princetires.ca",
+            "address": "Calgary, Alberta, Canada"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

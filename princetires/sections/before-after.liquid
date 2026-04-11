@@ -1,0 +1,466 @@
+<div class="ba-slider" data-ba-slider>
+  <div class="ba-slider__container">
+    <div class="ba-slider__text">
+      <span class="ba-slider__eyebrow">{{ section.settings.eyebrow }}</span>
+      <h2 class="ba-slider__heading">
+        {{ section.settings.heading }}
+        {%- if section.settings.heading_accent != blank -%}
+          <span class="ba-slider__accent">{{ section.settings.heading_accent }}</span>
+        {%- endif -%}
+      </h2>
+      {%- if section.settings.description != blank -%}
+        <p class="ba-slider__desc">{{ section.settings.description }}</p>
+      {%- endif -%}
+      {%- if section.settings.cta_label != blank -%}
+        <a href="{{ section.settings.cta_link | default: '#' }}" class="ba-slider__cta">
+          {{ section.settings.cta_label }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      {%- endif -%}
+    </div>
+
+    <div class="ba-slider__viewer" data-ba-viewer>
+      <div class="ba-slider__image-wrap">
+        <div class="ba-slider__after">
+          {%- if section.settings.after_image != blank -%}
+            {{ section.settings.after_image | image_url: width: 1200 | image_tag: class: "ba-slider__img" }}
+          {%- else -%}
+            <div class="ba-slider__placeholder ba-slider__placeholder--after"></div>
+          {%- endif -%}
+          <span class="ba-slider__tag ba-slider__tag--after">{{ section.settings.after_label }}</span>
+        </div>
+
+        <div class="ba-slider__before" data-ba-before>
+          {%- if section.settings.before_image != blank -%}
+            {{ section.settings.before_image | image_url: width: 1200 | image_tag: class: "ba-slider__img" }}
+          {%- else -%}
+            <div class="ba-slider__placeholder ba-slider__placeholder--before"></div>
+          {%- endif -%}
+          <span class="ba-slider__tag ba-slider__tag--before">{{ section.settings.before_label }}</span>
+        </div>
+
+        <div class="ba-slider__handle" data-ba-handle>
+          <div class="ba-slider__handle-line"></div>
+          <div class="ba-slider__handle-knob">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M8 4l-6 8 6 8"/>
+              <path d="M16 4l6 8-6 8"/>
+            </svg>
+          </div>
+          <div class="ba-slider__handle-line"></div>
+        </div>
+      </div>
+
+      <div class="ba-slider__hint" data-ba-hint>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M8 9l-3 3 3 3M16 9l3 3-3 3"/></svg>
+        Drag to compare
+      </div>
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+  .ba-slider {
+    background: #0a0a0a;
+    padding: 6rem 2rem;
+    overflow: hidden;
+  }
+
+  .ba-slider__container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 8rem;
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 5rem;
+    align-items: center;
+  }
+
+  .ba-slider__text {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  .ba-slider__eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #dc2626;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .ba-slider__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3.2rem;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    margin: 0;
+  }
+
+  .ba-slider__accent {
+    color: #dc2626;
+  }
+
+  .ba-slider__desc {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 300;
+    color: #9ca3af;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .ba-slider__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: #dc2626;
+    text-decoration: none;
+    margin-top: 0.8rem;
+    transition: gap 0.2s ease;
+  }
+
+  .ba-slider__cta:hover {
+    gap: 1rem;
+  }
+
+  /* ── Viewer ── */
+  .ba-slider__viewer {
+    position: relative;
+  }
+
+  .ba-slider__image-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/10;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: col-resize;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .ba-slider__after,
+  .ba-slider__before {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  .ba-slider__before {
+    width: 50%;
+    z-index: 2;
+    border-right: none;
+  }
+
+  .ba-slider__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+  }
+
+  .ba-slider__before .ba-slider__img {
+    width: 200%;
+    max-width: none;
+  }
+
+  .ba-slider__placeholder {
+    width: 100%;
+    height: 100%;
+  }
+
+  .ba-slider__placeholder--before {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
+  }
+
+  .ba-slider__placeholder--after {
+    background: linear-gradient(135deg, #111 0%, #1f1f1f 50%, #111 100%);
+  }
+
+  .ba-slider__tag {
+    position: absolute;
+    bottom: 1.2rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0.4rem 1rem;
+    border-radius: 4px;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .ba-slider__tag--before {
+    left: 1.2rem;
+    background: rgba(220, 38, 38, 0.9);
+    color: #fff;
+  }
+
+  .ba-slider__tag--after {
+    right: 1.2rem;
+    background: rgba(34, 197, 94, 0.9);
+    color: #fff;
+  }
+
+  /* ── Handle ── */
+  .ba-slider__handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .ba-slider__handle-line {
+    flex: 1;
+    width: 2px;
+    background: #fff;
+    opacity: 0.8;
+  }
+
+  .ba-slider__handle-knob {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #111;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
+  }
+
+  .ba-slider__hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: #6b7280;
+    margin-top: 1.2rem;
+    transition: opacity 0.5s ease;
+  }
+
+  .ba-slider__hint[hidden] {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @media (max-width: 768px) {
+    .ba-slider__container {
+      grid-template-columns: 1fr;
+      gap: 2.4rem;
+      padding: 0 2rem;
+    }
+
+    .ba-slider__heading {
+      font-size: 2.4rem;
+    }
+
+    .ba-slider__text {
+      text-align: center;
+      align-items: center;
+    }
+
+    .ba-slider__image-wrap {
+      aspect-ratio: 4/3;
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  class BeforeAfterSlider {
+    constructor(section) {
+      this.viewer = section.querySelector('[data-ba-viewer]');
+      this.wrap = this.viewer.querySelector('.ba-slider__image-wrap');
+      this.before = section.querySelector('[data-ba-before]');
+      this.handle = section.querySelector('[data-ba-handle]');
+      this.hint = section.querySelector('[data-ba-hint]');
+      this.isDragging = false;
+      this.hasInteracted = false;
+
+      this.bindEvents();
+      this.animateEntry();
+    }
+
+    bindEvents() {
+      var self = this;
+      this.wrap.addEventListener('mousedown', function(e) { self.start(e); });
+      window.addEventListener('mousemove', function(e) { self.move(e); });
+      window.addEventListener('mouseup', function() { self.end(); });
+      this.wrap.addEventListener('touchstart', function(e) { self.start(e); }, { passive: true });
+      window.addEventListener('touchmove', function(e) { self.move(e); }, { passive: true });
+      window.addEventListener('touchend', function() { self.end(); });
+    }
+
+    start(e) {
+      this.isDragging = true;
+      this.move(e);
+      if (!this.hasInteracted) {
+        this.hasInteracted = true;
+        if (this.hint) this.hint.hidden = true;
+      }
+    }
+
+    move(e) {
+      if (!this.isDragging) return;
+      var rect = this.wrap.getBoundingClientRect();
+      var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      var pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
+      this.before.style.width = pct + '%';
+      this.handle.style.left = pct + '%';
+    }
+
+    end() {
+      this.isDragging = false;
+    }
+
+    animateEntry() {
+      var self = this;
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (!entry.isIntersecting) return;
+
+          var start = 50;
+          var targets = [30, 70, 50];
+          var durations = [600, 600, 400];
+          var delay = 500;
+          var current = 0;
+
+          function animateTo(target, duration) {
+            var from = start;
+            var startTime = null;
+            function step(ts) {
+              if (!startTime) startTime = ts;
+              var progress = Math.min((ts - startTime) / duration, 1);
+              var eased = 1 - Math.pow(1 - progress, 3);
+              var val = from + (target - from) * eased;
+              self.before.style.width = val + '%';
+              self.handle.style.left = val + '%';
+              if (progress < 1) {
+                requestAnimationFrame(step);
+              } else {
+                start = target;
+                current++;
+                if (current < targets.length) {
+                  setTimeout(function() {
+                    animateTo(targets[current], durations[current]);
+                  }, 100);
+                }
+              }
+            }
+            requestAnimationFrame(step);
+          }
+
+          setTimeout(function() {
+            animateTo(targets[0], durations[0]);
+          }, delay);
+
+          observer.unobserve(entry.target);
+        });
+      }, { threshold: 0.3 });
+
+      observer.observe(this.viewer);
+    }
+  }
+
+  document.querySelectorAll('[data-ba-slider]').forEach(function(el) {
+    new BeforeAfterSlider(el);
+  });
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Before / After",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "See the difference"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Don't wait until it's"
+    },
+    {
+      "type": "text",
+      "id": "heading_accent",
+      "label": "Heading accent",
+      "default": "too late"
+    },
+    {
+      "type": "richtext",
+      "id": "description",
+      "label": "Description",
+      "default": "<p>Your tires are the only thing between you and the road. Worn treads mean longer stopping distances, less grip in rain and snow, and higher risk of blowouts. See the difference fresh tires make.</p>"
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "CTA label",
+      "default": "Check your tires today"
+    },
+    {
+      "type": "url",
+      "id": "cta_link",
+      "label": "CTA link"
+    },
+    {
+      "type": "header",
+      "content": "Images"
+    },
+    {
+      "type": "image_picker",
+      "id": "before_image",
+      "label": "Before image (worn tire)",
+      "info": "Recommended: 1200x750px. Close-up of a worn tire tread."
+    },
+    {
+      "type": "image_picker",
+      "id": "after_image",
+      "label": "After image (new tire)",
+      "info": "Recommended: 1200x750px. Close-up of a fresh tire tread. Same angle as before."
+    },
+    {
+      "type": "text",
+      "id": "before_label",
+      "label": "Before label",
+      "default": "Worn"
+    },
+    {
+      "type": "text",
+      "id": "after_label",
+      "label": "After label",
+      "default": "New"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Before / After"
+    }
+  ]
+}
+{% endschema %}

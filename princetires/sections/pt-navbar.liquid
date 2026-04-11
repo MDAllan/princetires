@@ -1,0 +1,726 @@
+{% comment %}
+  Prince Tires — Custom Navbar
+  Section: pt-navbar
+  Fixed primary links + account, contact (phone), cart, book.
+{% endcomment %}
+
+{%- liquid
+  assign book_url = section.settings.book_url | default: '/pages/booking'
+  assign phone = section.settings.phone | default: '(403) 287-1234'
+  assign phone_digits = phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-'
+  assign tel_href = 'tel:+1' | append: phone_digits
+
+  assign href_about = section.settings.about_url
+  if href_about == blank
+    assign href_about = '/pages/about'
+  endif
+  assign href_services = section.settings.services_url
+  if href_services == blank
+    assign href_services = '/pages/services'
+  endif
+  assign href_brands = section.settings.brands_url
+  if href_brands == blank
+    assign href_brands = '/pages/brands'
+  endif
+  assign href_wholesale = section.settings.wholesale_url
+  if href_wholesale == blank
+    assign href_wholesale = '/pages/wholesale'
+  endif
+  assign href_contact = section.settings.contact_url
+  if href_contact == blank
+    assign href_contact = tel_href
+  endif
+-%}
+
+<style>
+/* ═══════════════════════════════════════
+   PT-NAVBAR  —  CSS VARS & RESET
+═══════════════════════════════════════ */
+#pt-navbar {
+  --nb-h:          72px;
+  --nb-bg:         transparent;
+  --nb-bg-scroll:  rgba(0, 0, 0, 0.88);
+  --nb-border:     rgba(255,255,255,0.07);
+  --nb-text:       #d1d5db;
+  --nb-muted:      #9ca3af;
+  --nb-red:        #B91C1C;
+  --nb-red-hover:  #991818;
+  --nb-red-glow:   rgba(185,28,28,0.3);
+  --nb-drop-bg:    #141920;
+  --nb-pill-bg:    rgba(255,255,255,0.05);
+  --nb-font:       'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --nb-ease:       cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: var(--nb-font);
+  position: relative;
+  z-index: 300;
+}
+
+/* ── sticky container ── */
+#pt-navbar .nb-root {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 300;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background 0.25s var(--nb-ease), box-shadow 0.25s var(--nb-ease), border-color 0.25s var(--nb-ease);
+}
+
+#pt-navbar .nb-root.is-scrolled {
+  background: var(--nb-bg-scroll);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 32px rgba(0,0,0,0.45);
+  border-bottom-color: rgba(255,255,255,0.06);
+}
+
+/* ── inner row ── */
+#pt-navbar .nb-inner {
+  height: var(--nb-h);
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* ══════════════════════════════════════
+   LOGO
+══════════════════════════════════════ */
+#pt-navbar .nb-logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  margin-right: 36px;
+}
+
+#pt-navbar .nb-logo img {
+  height: 40px;
+  width: auto;
+  display: block;
+}
+
+#pt-navbar .nb-logo__wordmark {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  color: #e5e7eb;
+}
+#pt-navbar .nb-logo__wordmark em {
+  color: var(--nb-red);
+  font-style: normal;
+}
+
+/* ══════════════════════════════════════
+   DESKTOP NAV — frosted pill (shows hero through bar)
+══════════════════════════════════════ */
+#pt-navbar .nb-links-frost {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  align-self: center;
+  min-height: 40px;
+  margin-right: 12px;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+#pt-navbar .nb-links {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  flex: 1;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#pt-navbar .nb-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+#pt-navbar .nb-link {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 14px;
+  height: 100%;
+  min-height: 36px;
+  color: var(--nb-muted);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 400;
+  white-space: nowrap;
+  transition: color 0.18s var(--nb-ease);
+  position: relative;
+  border-radius: 3px;
+}
+
+/* subtle hover pill inside frost */
+#pt-navbar .nb-link::before {
+  content: '';
+  position: absolute;
+  inset: 4px 2px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  opacity: 0;
+  transition: opacity 0.2s var(--nb-ease);
+  z-index: 0;
+}
+
+#pt-navbar .nb-item:hover .nb-link::before,
+#pt-navbar .nb-link.is-active::before {
+  opacity: 1;
+}
+
+#pt-navbar .nb-item:hover .nb-link,
+#pt-navbar .nb-item.is-open .nb-link,
+#pt-navbar .nb-link.is-active {
+  color: var(--nb-text);
+}
+
+#pt-navbar .nb-link span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ══════════════════════════════════════
+   RIGHT ACTIONS
+══════════════════════════════════════ */
+#pt-navbar .nb-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+/* icon button base */
+#pt-navbar .nb-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 3px;
+  background: transparent;
+  border: none;
+  color: var(--nb-muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+#pt-navbar .nb-icon:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--nb-text);
+}
+
+#pt-navbar .nb-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+#pt-navbar .nb-icon--cart svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* cart badge */
+#pt-navbar .nb-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 16px;
+  height: 16px;
+  background: var(--nb-red);
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 700;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* separator */
+#pt-navbar .nb-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--nb-border);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* Book Now button */
+#pt-navbar .nb-book {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  margin-left: 8px;
+  background: var(--nb-red);
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 3px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+  box-shadow: 0 2px 12px var(--nb-red-glow);
+}
+
+#pt-navbar .nb-book:hover {
+  background: var(--nb-red-hover);
+  box-shadow: 0 4px 20px var(--nb-red-glow);
+  transform: translateY(-1px);
+}
+
+#pt-navbar .nb-book svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* hamburger (mobile only) */
+#pt-navbar .nb-burger {
+  display: none;
+}
+
+/* ══════════════════════════════════════
+   MOBILE STYLES  (≤ 989px)
+══════════════════════════════════════ */
+@media (max-width: 989px) {
+  #pt-navbar .nb-links-frost,
+  #pt-navbar .nb-links,
+  #pt-navbar .nb-sep,
+  #pt-navbar .nb-book { display: none; }
+
+  #pt-navbar .nb-burger { display: flex; }
+
+  #pt-navbar .nb-logo { margin-right: auto; }
+
+  #pt-navbar .nb-inner { padding: 0 16px; }
+}
+
+/* ══════════════════════════════════════
+   MOBILE DRAWER
+══════════════════════════════════════ */
+#pt-navbar .nb-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(300px, 90vw);
+  background: var(--nb-drop-bg);
+  z-index: 600;
+  transform: translateX(100%);
+  transition: transform 0.3s var(--nb-ease);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -24px 0 70px rgba(0,0,0,0.7);
+  overflow-y: auto;
+}
+
+#pt-navbar .nb-drawer.is-open {
+  transform: translateX(0);
+}
+
+#pt-navbar .nb-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 590;
+  backdrop-filter: blur(2px);
+}
+#pt-navbar .nb-backdrop.is-open { display: block; }
+
+/* drawer header */
+#pt-navbar .nb-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--nb-border);
+  flex-shrink: 0;
+}
+
+#pt-navbar .nb-drawer-x {
+  width: 34px;
+  height: 34px;
+  background: rgba(255,255,255,0.06);
+  border: none;
+  border-radius: 3px;
+  color: var(--nb-muted);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* drawer links */
+#pt-navbar .nb-drawer-links {
+  flex: 1;
+  padding: 8px 0;
+}
+
+#pt-navbar .nb-drawer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 20px;
+  color: var(--nb-muted);
+  text-decoration: none;
+  font-size: 14.5px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--nb-border);
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+}
+
+#pt-navbar .nb-drawer-row:hover {
+  background: rgba(185,28,28,0.08);
+  color: var(--nb-text);
+}
+
+#pt-navbar .nb-drawer-sub {
+  display: none;
+  background: rgba(0,0,0,0.25);
+}
+#pt-navbar .nb-drawer-sub.is-open { display: block; }
+
+#pt-navbar .nb-drawer-sub a {
+  display: block;
+  padding: 10px 20px 10px 34px;
+  color: var(--nb-muted);
+  text-decoration: none;
+  font-size: 13px;
+  border-bottom: 1px solid var(--nb-border);
+  transition: color 0.13s, background 0.13s;
+}
+#pt-navbar .nb-drawer-sub a:hover {
+  color: var(--nb-text);
+  background: rgba(185,28,28,0.06);
+}
+
+/* drawer footer */
+#pt-navbar .nb-drawer-foot {
+  padding: 18px 20px;
+  border-top: 1px solid var(--nb-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+#pt-navbar .nb-drawer-book {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  background: var(--nb-red);
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+#pt-navbar .nb-drawer-book:hover { background: var(--nb-red-hover); }
+
+#pt-navbar .nb-drawer-tel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--nb-muted);
+  font-size: 13px;
+  text-decoration: none;
+  padding: 8px 0;
+  transition: color 0.13s;
+}
+#pt-navbar .nb-drawer-tel svg { width: 13px; height: 13px; }
+#pt-navbar .nb-drawer-tel:hover { color: var(--nb-text); }
+
+/* ══════════════════════════════════════
+   KEYFRAMES
+══════════════════════════════════════ */
+@keyframes nb-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes nb-slide-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<div id="pt-navbar">
+
+  {%- comment -%} ── BACKDROP ─────────────────────────── {%- endcomment -%}
+  <div class="nb-backdrop" id="nb-backdrop"></div>
+
+  {%- comment -%} ── STICKY ROOT ──────────────────────── {%- endcomment -%}
+  <div class="nb-root" id="nb-root">
+    <div class="nb-inner">
+
+      {%- comment -%} Hamburger (mobile) {%- endcomment -%}
+      <button class="nb-icon nb-burger" id="nb-open" aria-label="Open menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
+      {%- comment -%} Logo {%- endcomment -%}
+      {%- liquid
+        assign nav_logo = section.settings.logo | default: settings.logo
+        assign logo_h = section.settings.logo_height | default: 40
+      -%}
+      <a href="{{ routes.root_url }}" class="nb-logo" aria-label="{{ shop.name }}">
+        {%- if nav_logo != blank -%}
+          {{- nav_logo | image_url: width: 280 | image_tag: alt: shop.name, loading: 'eager', style: 'height:' | append: logo_h | append: 'px;width:auto' -}}
+        {%- else -%}
+          <span class="nb-logo__wordmark">{{ shop.name }}</span>
+        {%- endif -%}
+      </a>
+
+      {%- comment -%} Desktop nav — frosted pill {%- endcomment -%}
+      <div class="nb-links-frost">
+        <ul class="nb-links" role="list">
+          <li class="nb-item">
+            <a href="{{ href_about }}" class="nb-link{% if request.path == href_about %} is-active{% endif %}"><span>About us</span></a>
+          </li>
+          <li class="nb-item">
+            <a href="{{ href_services }}" class="nb-link{% if request.path == href_services %} is-active{% endif %}"><span>Services</span></a>
+          </li>
+          <li class="nb-item">
+            <a href="{{ href_brands }}" class="nb-link{% if request.path == href_brands %} is-active{% endif %}"><span>All brands</span></a>
+          </li>
+          <li class="nb-item">
+            <a href="{{ href_wholesale }}" class="nb-link{% if request.path == href_wholesale %} is-active{% endif %}"><span>Wholesale</span></a>
+          </li>
+        </ul>
+      </div>
+
+      {%- comment -%} Right-side actions {%- endcomment -%}
+      <div class="nb-actions">
+
+        {%- comment -%} Account {%- endcomment -%}
+        {%- if shop.customer_accounts_enabled -%}
+          <a href="{% if customer %}{{ routes.account_url }}{% else %}{{ routes.account_login_url }}{% endif %}" class="nb-icon" aria-label="{% if customer %}Account{% else %}Log in{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </a>
+        {%- endif -%}
+
+        {%- comment -%} Contact (phone or contact page) {%- endcomment -%}
+        <a href="{{ href_contact }}" class="nb-icon" aria-label="Contact us" title="Contact us">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 12 19.79 19.79 0 0 1 1.17 3.39 2 2 0 0 1 3.14 1.22h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16v.92z"/></svg>
+        </a>
+
+        {%- comment -%} Cart — id required for Dawn cart-drawer.js {%- endcomment -%}
+        <a href="{{ routes.cart_url }}" class="nb-icon nb-icon--cart" id="cart-icon-bubble" aria-label="{{ 'templates.cart.cart' | t }}{% if cart.item_count > 0 %} ({{ cart.item_count }}){% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+          {%- if cart.item_count > 0 -%}
+            <span class="nb-badge">{{ cart.item_count }}</span>
+          {%- endif -%}
+        </a>
+
+        <div class="nb-sep"></div>
+
+        {%- comment -%} Book Now {%- endcomment -%}
+        <a href="{{ book_url }}" class="nb-book">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Book Now
+        </a>
+
+      </div>{%- comment -%} /nb-actions {%- endcomment -%}
+    </div>{%- comment -%} /nb-inner {%- endcomment -%}
+  </div>{%- comment -%} /nb-root {%- endcomment -%}
+
+  {%- comment -%} ── MOBILE DRAWER ────────────────────── {%- endcomment -%}
+  <div class="nb-drawer" id="nb-drawer" role="dialog" aria-modal="true" aria-label="Navigation">
+
+    <div class="nb-drawer-head">
+      {%- if nav_logo != blank -%}
+        <a href="{{ routes.root_url }}">
+          {{- nav_logo | image_url: width: 160 | image_tag: alt: shop.name, style: 'height:30px;width:auto' -}}
+        </a>
+      {%- else -%}
+        <a href="{{ routes.root_url }}" style="font-size:16px;font-weight:700;color:#E8EAED;text-decoration:none">{{ shop.name }}</a>
+      {%- endif -%}
+      <button class="nb-drawer-x" id="nb-close" aria-label="Close menu">&times;</button>
+    </div>
+
+    <div class="nb-drawer-links">
+      <a class="nb-drawer-row" href="{{ href_about }}">About us</a>
+      <a class="nb-drawer-row" href="{{ href_services }}">Services</a>
+      <a class="nb-drawer-row" href="{{ href_brands }}">All brands</a>
+      <a class="nb-drawer-row" href="{{ href_wholesale }}">Wholesale</a>
+      <a class="nb-drawer-row" href="{{ href_contact }}">Contact us</a>
+    </div>
+
+    <div class="nb-drawer-foot">
+      <a href="{{ book_url }}" class="nb-drawer-book">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Book an Appointment
+      </a>
+      <a href="tel:+1{{ phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' }}" class="nb-drawer-tel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 12 19.79 19.79 0 0 1 1.17 3.39 2 2 0 0 1 3.14 1.22h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16v.92z"/></svg>
+        {{ phone }}
+      </a>
+    </div>
+
+  </div>{%- comment -%} /nb-drawer {%- endcomment -%}
+
+</div>{%- comment -%} /#pt-navbar {%- endcomment -%}
+
+<script>
+(function () {
+  /* ── elements ── */
+  var root          = document.getElementById('nb-root');
+  var backdrop      = document.getElementById('nb-backdrop');
+  var openBtn       = document.getElementById('nb-open');
+  var closeBtn      = document.getElementById('nb-close');
+  var drawer        = document.getElementById('nb-drawer');
+  /* ── sticky scroll class ── */
+  function onScroll() {
+    if (root) {
+      root.classList.toggle('is-scrolled', window.scrollY > 10);
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* ── drawer ── */
+  function openDrawer() {
+    drawer.classList.add('is-open');
+    backdrop.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    if (openBtn) openBtn.setAttribute('aria-expanded', 'true');
+  }
+  function closeDrawer() {
+    drawer.classList.remove('is-open');
+    backdrop.classList.remove('is-open');
+    document.body.style.overflow = '';
+    if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
+  }
+  if (openBtn)   openBtn.addEventListener('click', openDrawer);
+  if (closeBtn)  closeBtn.addEventListener('click', closeDrawer);
+  if (backdrop)  backdrop.addEventListener('click', closeDrawer);
+
+  /* ── Escape key ── */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeDrawer(); }
+  });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "PT Navbar",
+  "class": "pt-navbar-section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Logo"
+    },
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Logo image",
+      "info": "Upload your logo. Recommended height: 40px."
+    },
+    {
+      "type": "range",
+      "id": "logo_height",
+      "label": "Logo height",
+      "min": 24,
+      "max": 60,
+      "step": 2,
+      "default": 40,
+      "unit": "px"
+    },
+    {
+      "type": "header",
+      "content": "Main links"
+    },
+    {
+      "type": "url",
+      "id": "about_url",
+      "label": "About us",
+      "info": "Default: /pages/about"
+    },
+    {
+      "type": "url",
+      "id": "services_url",
+      "label": "Services",
+      "info": "Default: /pages/services"
+    },
+    {
+      "type": "url",
+      "id": "brands_url",
+      "label": "All brands",
+      "info": "Default: /pages/brands"
+    },
+    {
+      "type": "url",
+      "id": "wholesale_url",
+      "label": "Wholesale",
+      "info": "Default: /pages/wholesale"
+    },
+    {
+      "type": "url",
+      "id": "contact_url",
+      "label": "Contact us",
+      "info": "Leave blank to use phone (tel:). Otherwise e.g. /pages/contact"
+    },
+    {
+      "type": "header",
+      "content": "Contact & booking"
+    },
+    {
+      "type": "text",
+      "id": "phone",
+      "label": "Phone number",
+      "default": "(403) 287-1234",
+      "info": "Shown in drawer; used for Contact icon if no contact URL"
+    },
+    {
+      "type": "url",
+      "id": "book_url",
+      "label": "Book Now URL"
+    }
+  ],
+  "presets": [
+    {
+      "name": "PT Navbar"
+    }
+  ]
+}
+{% endschema %}
