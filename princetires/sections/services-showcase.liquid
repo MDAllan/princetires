@@ -15,14 +15,6 @@
           </a>
         {%- endif -%}
 
-        <div class="svc__arrows">
-          <button class="svc__arrow" data-svc-prev aria-label="{{ 'general.accessibility.previous' | t }}">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-          <button class="svc__arrow" data-svc-next aria-label="{{ 'general.accessibility.next' | t }}">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-        </div>
       </div>
     </div>
 
@@ -127,31 +119,6 @@
     gap: 0.8rem;
   }
 
-  .svc__arrows {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .svc__arrow {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 1px solid #e5e7eb;
-    background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: #6b7280;
-    transition: all 0.2s;
-  }
-
-  .svc__arrow:hover {
-    border-color: #d1d5db;
-    color: #111;
-    background: #f9fafb;
-  }
-
   /* ── Carousel ── */
   .svc__carousel {
     overflow-x: auto;
@@ -168,6 +135,7 @@
     gap: 2rem;
     user-select: none;
     padding-bottom: 0.5rem;
+    justify-content: center;
   }
 
   /* ── Card ── */
@@ -184,15 +152,13 @@
     flex-shrink: 0;
     min-width: 140px;
     border-radius: 10px;
-    border: 1px solid #f0f0f0;
-    background: #fafafa;
-    transition: box-shadow 0.25s ease, transform 0.25s ease, background 0.25s ease;
+    border: none;
+    background: transparent;
+    transition: transform 0.25s ease;
   }
 
   .svc__card:hover {
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
     transform: translateY(-2px);
-    background: #fff;
   }
 
   /* ── Icon ── */
@@ -251,8 +217,17 @@
   }
 
   @media (max-width: 768px) {
-    .svc__arrow {
-      display: none;
+    .svc {
+      padding: 4rem 0;
+    }
+    .svc__container {
+      padding: 0 1.6rem;
+    }
+    .svc__top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 2rem;
     }
   }
 
@@ -321,22 +296,8 @@
 {% javascript %}
   document.querySelectorAll('[data-svc-section]').forEach(function(section) {
     var carousel = section.querySelector('[data-svc-carousel]');
-    var prevBtn = section.querySelector('[data-svc-prev]');
-    var nextBtn = section.querySelector('[data-svc-next]');
 
     if (!carousel) return;
-
-    /* Arrow scroll */
-    if (prevBtn) {
-      prevBtn.addEventListener('click', function() {
-        carousel.scrollBy({ left: -250, behavior: 'smooth' });
-      });
-    }
-    if (nextBtn) {
-      nextBtn.addEventListener('click', function() {
-        carousel.scrollBy({ left: 250, behavior: 'smooth' });
-      });
-    }
 
     /* Mouse drag */
     var drag = { active: false, startX: 0, scrollLeft: 0 };
