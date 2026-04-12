@@ -118,7 +118,7 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
           </summary>
           <div class="ptg__filter-options ptg__filter-options--scroll">
-            {%- assign brand_list = 'BFGoodrich,Bridgestone,CARLSTAR,Continental,Cooper,Falken,Farroad,Firemax,Firestone,Fortune,General,Goodyear,Haida,Kumho,Linglong,Michelin,Mickey Thompson,Pirelli,Radar,Rotalla,Toyo,Uniroyal,Yeada,Yokohama' | split: ',' -%}
+            {%- assign brand_list = 'BFGoodrich,Bridgestone,CARLSTAR,Continental,Cooper,Falken,Farroad,Firemax,Firestone,Fortune,General,Goodyear,Haida,Kumho,Linglong,Michelin,Mickey Thompson,Pirelli,Radar,Rotalla,Tesche Tires,Toyo,Uniroyal,Yeada,Yokohama' | split: ',' -%}
             {%- for brand in brand_list -%}
               <a href="#" class="ptg__filter-link" data-filter-key="filter.p.vendor" data-filter-value="{{ brand }}">
                 <span class="ptg__filter-check"></span>
@@ -2112,6 +2112,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     if (!removed) newParams.append(key, value);
     var qs = newParams.toString();
+    try { sessionStorage.setItem('ptg_filter_open', '1'); } catch(e) {}
     window.location.href = baseUrl + (qs ? '?' + qs : '');
   }
 
@@ -2244,6 +2245,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         newParams.set('filter.price.min', mn);
         newParams.set('filter.price.max', mx);
+        try { sessionStorage.setItem('ptg_filter_open', '1'); } catch(e) {}
         window.location.href = baseUrl + '?' + newParams.toString();
       }, 800);
     }
@@ -2688,6 +2690,14 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeFilters();
   });
+
+  // Reopen filter drawer after a filter is selected on mobile
+  try {
+    if (sessionStorage.getItem('ptg_filter_open') === '1') {
+      sessionStorage.removeItem('ptg_filter_open');
+      openFilters();
+    }
+  } catch(e) {}
 
   // Sort
   var sortSelect = document.querySelector('[data-ptg-sort]');
