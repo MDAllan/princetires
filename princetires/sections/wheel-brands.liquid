@@ -16,35 +16,40 @@
     {%- assign wheel_blocks = section.blocks | where: "type", "wheel_card" -%}
 
     {%- if brand_blocks.size > 0 -%}
-      {%- capture wheel_tab_items -%}
-        {%- for block in brand_blocks -%}
-          <button
-            class="wheel-brands__tab{% if forloop.first %} wheel-brands__tab--active{% endif %}"
-            role="tab"
-            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
-            data-wheel-brand="{{ block.settings.name | handleize }}"
-            data-wheel-brand-name="{{ block.settings.name | escape }}"
-            {{ block.shopify_attributes }}
-          >
-            {%- if block.settings.logo != blank -%}
-              {{ block.settings.logo | image_url: height: 28 | image_tag: class: "wheel-brands__tab-logo", alt: block.settings.name }}
-            {%- else -%}
-              <span class="wheel-brands__tab-text">{{ block.settings.name }}</span>
-            {%- endif -%}
-          </button>
-        {%- endfor -%}
-      {%- endcapture -%}
+      <div class="wheel-brands__tabs-wrap">
+        <button class="wheel-brands__tabs-arrow wheel-brands__tabs-arrow--left" data-wb-tabs-prev aria-label="{{ 'general.accessibility.previous' | t }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
 
-      <div class="wheel-brands__tabs-marquee">
-        <div class="wheel-brands__tabs-track" role="tablist">
-          {{ wheel_tab_items }}
-          {{ wheel_tab_items }}
+        <div class="wheel-brands__tabs-scroll" data-wb-tabs-scroll>
+          <div class="wheel-brands__tabs-track" role="tablist">
+            {%- for block in brand_blocks -%}
+              <button
+                class="wheel-brands__tab{% if forloop.first %} wheel-brands__tab--active{% endif %}"
+                role="tab"
+                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+                data-wheel-brand="{{ block.settings.name | handleize }}"
+                data-wheel-brand-name="{{ block.settings.name | escape }}"
+                {{ block.shopify_attributes }}
+              >
+                {%- if block.settings.logo != blank -%}
+                  {{ block.settings.logo | image_url: height: 28 | image_tag: class: "wheel-brands__tab-logo", alt: block.settings.name }}
+                {%- else -%}
+                  <span class="wheel-brands__tab-text">{{ block.settings.name }}</span>
+                {%- endif -%}
+              </button>
+            {%- endfor -%}
+          </div>
         </div>
+
+        <button class="wheel-brands__tabs-arrow wheel-brands__tabs-arrow--right" data-wb-tabs-next aria-label="{{ 'general.accessibility.next' | t }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
       </div>
     {%- endif -%}
 
     <div class="wheel-brands__carousel-wrap">
-      <button class="wheel-brands__arrow wheel-brands__arrow--left" data-wheel-prev aria-label="Previous">
+      <button class="wheel-brands__arrow wheel-brands__arrow--left" data-wheel-prev aria-label="{{ 'general.accessibility.previous' | t }}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
 
@@ -52,6 +57,8 @@
         <div class="wheel-brands__track" data-wheel-track>
           {%- if wheel_blocks.size > 0 -%}
             {%- for block in wheel_blocks -%}
+              {%- assign auto_link = block.settings.brand | append: ' ' | append: block.settings.model -%}
+              {%- assign card_link = block.settings.link | default: blank -%}
               <div
                 class="wheel-brands__card"
                 data-wheel-card-brand="{{ block.settings.brand | handleize }}"
@@ -75,14 +82,13 @@
                   {%- endif -%}
                 </div>
                 <div class="wheel-brands__card-action">
-                  <a href="{{ block.settings.link | default: '#' }}" class="wheel-brands__card-btn">
+                  <a href="{% if card_link != blank %}{{ card_link }}{% else %}/search?q={{ auto_link | url_encode }}&type=product{% endif %}" class="wheel-brands__card-btn">
                     {{ block.settings.button_text | default: 'Request Quote' }}
                   </a>
                 </div>
               </div>
             {%- endfor -%}
           {%- else -%}
-            {%- comment -%} Placeholder cards when no wheel cards added yet {%- endcomment -%}
             {%- for i in (1..4) -%}
               <div class="wheel-brands__card">
                 <div class="wheel-brands__card-image">
@@ -102,14 +108,14 @@
         </div>
       </div>
 
-      <button class="wheel-brands__arrow wheel-brands__arrow--right" data-wheel-next aria-label="Next">
+      <button class="wheel-brands__arrow wheel-brands__arrow--right" data-wheel-next aria-label="{{ 'general.accessibility.next' | t }}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
 
     <div class="wheel-brands__footer">
-      <a href="{{ section.settings.view_all_link | default: '/collections/wheels' }}" class="wheel-brands__view-all">
-        {{ 'sections.wheel_brands.view_all' | t }} →
+      <a href="{{ section.settings.view_all_link | default: '/collections/wheels' }}" class="wheel-brands__view-all" data-wb-view-all>
+        {{ 'sections.wheel_brands.view_all' | t }} <span data-wb-view-all-name>{{ brand_blocks.first.settings.name }}</span> →
       </a>
     </div>
   </div>
@@ -157,29 +163,52 @@
     margin-right: auto;
   }
 
-  .wheel-brands__tabs-marquee {
-    overflow: hidden;
+  /* ── Swipeable tab bar ── */
+  .wheel-brands__tabs-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     margin-bottom: 3rem;
-    mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
-    -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+    position: relative;
   }
+
+  .wheel-brands__tabs-scroll {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    cursor: grab;
+    mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
+  }
+  .wheel-brands__tabs-scroll::-webkit-scrollbar { display: none; }
+  .wheel-brands__tabs-scroll:active { cursor: grabbing; }
 
   .wheel-brands__tabs-track {
     display: flex;
     align-items: center;
     gap: 1rem;
     width: max-content;
-    animation: wb-marquee 30s linear infinite;
+    padding: 0.4rem 0;
   }
 
-  .wheel-brands__tabs-marquee:hover .wheel-brands__tabs-track {
-    animation-play-state: paused;
+  .wheel-brands__tabs-arrow {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #9ca3af;
+    transition: all 0.2s;
+    z-index: 2;
   }
-
-  @keyframes wb-marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
+  .wheel-brands__tabs-arrow:hover { border-color: #d1d5db; color: #111; background: #f9fafb; }
 
   .wheel-brands__tab {
     background: transparent;
@@ -193,16 +222,20 @@
     display: flex;
     align-items: center;
     flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .wheel-brands__tab:hover {
     background: #f9fafb;
     border-color: #d1d5db;
+    transform: scale(1.04);
   }
 
   .wheel-brands__tab--active {
     border-color: #dc2626;
     background: #fef2f2;
+    transform: scale(1.06);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
   }
 
   .wheel-brands__tab-logo {
@@ -215,9 +248,9 @@
     font-size: 1.2rem;
     font-weight: 500;
     color: #374151;
-    white-space: nowrap;
   }
 
+  /* ── Product carousel ── */
   .wheel-brands__carousel-wrap {
     position: relative;
     display: flex;
@@ -404,11 +437,15 @@
     .wheel-brands__arrow {
       display: none;
     }
-    .wheel-brands__tabs {
-      gap: 0.4rem;
-    }
     .wheel-brands__heading {
       font-size: 2.2rem;
+    }
+    .wheel-brands__tabs-arrow {
+      display: none;
+    }
+    .wheel-brands__tabs-scroll {
+      mask-image: none;
+      -webkit-mask-image: none;
     }
   }
 
@@ -438,7 +475,7 @@
       padding: 1rem 1.8rem;
       min-height: 4.4rem;
     }
-    .wheel-brands__tabs-marquee {
+    .wheel-brands__tabs-wrap {
       margin-bottom: 2rem;
     }
     .wheel-brands__view-all {
@@ -466,10 +503,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .wheel-brands__tabs-track {
-      animation: none !important;
-    }
     .wheel-brands__card {
+      transition: none !important;
+    }
+    .wheel-brands__tab {
       transition: none !important;
     }
   }
@@ -483,11 +520,14 @@
       this.track = section.querySelector('[data-wheel-track]');
       this.prevBtn = section.querySelector('[data-wheel-prev]');
       this.nextBtn = section.querySelector('[data-wheel-next]');
+      this.viewAllLink = section.querySelector('[data-wb-view-all]');
+      this.viewAllName = section.querySelector('[data-wb-view-all-name]');
+
+      this.tabsScroll = section.querySelector('[data-wb-tabs-scroll]');
+      this.tabsPrev = section.querySelector('[data-wb-tabs-prev]');
+      this.tabsNext = section.querySelector('[data-wb-tabs-next]');
       this.tabs = section.querySelectorAll('.wheel-brands__tabs-track .wheel-brands__tab');
       this.cards = section.querySelectorAll('[data-wheel-card-brand]');
-      this.isDragging = false;
-      this.startX = 0;
-      this.scrollLeft = 0;
 
       this.bindEvents();
       if (this.tabs.length > 0) this.switchBrand(this.tabs[0]);
@@ -495,42 +535,83 @@
 
     bindEvents() {
       var self = this;
+
+      /* ── Tab clicks ── */
       this.tabs.forEach(function(tab) {
         tab.addEventListener('click', function() { self.switchBrand(tab); });
       });
-      this.prevBtn.addEventListener('click', function() { self.scroll(-1); });
-      this.nextBtn.addEventListener('click', function() { self.scroll(1); });
 
-      this.track.addEventListener('mousedown', function(e) { self.dragStart(e); });
-      this.track.addEventListener('mousemove', function(e) { self.dragMove(e); });
-      this.track.addEventListener('mouseup', function() { self.dragEnd(); });
-      this.track.addEventListener('mouseleave', function() { self.dragEnd(); });
-      this.track.addEventListener('touchstart', function(e) { self.dragStart(e); }, { passive: true });
-      this.track.addEventListener('touchmove', function(e) { self.dragMove(e); }, { passive: true });
-      this.track.addEventListener('touchend', function() { self.dragEnd(); });
+      /* ── Tab strip swipe (touch + mouse drag) ── */
+      if (this.tabsScroll) {
+        var tabDrag = { active: false, startX: 0, scrollLeft: 0 };
+
+        this.tabsScroll.addEventListener('mousedown', function(e) {
+          tabDrag.active = true;
+          tabDrag.startX = e.pageX;
+          tabDrag.scrollLeft = self.tabsScroll.scrollLeft;
+          self.tabsScroll.style.cursor = 'grabbing';
+        });
+        this.tabsScroll.addEventListener('mousemove', function(e) {
+          if (!tabDrag.active) return;
+          e.preventDefault();
+          self.tabsScroll.scrollLeft = tabDrag.scrollLeft - (e.pageX - tabDrag.startX);
+        });
+        this.tabsScroll.addEventListener('mouseup', function() { tabDrag.active = false; self.tabsScroll.style.cursor = ''; });
+        this.tabsScroll.addEventListener('mouseleave', function() { tabDrag.active = false; self.tabsScroll.style.cursor = ''; });
+
+        if (this.tabsPrev) {
+          this.tabsPrev.addEventListener('click', function() {
+            self.tabsScroll.scrollBy({ left: -200, behavior: 'smooth' });
+          });
+        }
+        if (this.tabsNext) {
+          this.tabsNext.addEventListener('click', function() {
+            self.tabsScroll.scrollBy({ left: 200, behavior: 'smooth' });
+          });
+        }
+      }
+
+      /* ── Product carousel arrows ── */
+      this.prevBtn.addEventListener('click', function() { self.scrollCarousel(-1); });
+      this.nextBtn.addEventListener('click', function() { self.scrollCarousel(1); });
+
+      /* ── Product carousel drag ── */
+      var drag = { active: false, startX: 0, scrollLeft: 0 };
+      this.carousel.style.overflowX = 'auto';
+      this.carousel.style.scrollbarWidth = 'none';
+
+      this.track.addEventListener('mousedown', function(e) {
+        drag.active = true;
+        drag.startX = e.pageX;
+        drag.scrollLeft = self.carousel.scrollLeft;
+      });
+      this.track.addEventListener('mousemove', function(e) {
+        if (!drag.active) return;
+        e.preventDefault();
+        self.carousel.scrollLeft = drag.scrollLeft - (e.pageX - drag.startX);
+      });
+      this.track.addEventListener('mouseup', function() { drag.active = false; });
+      this.track.addEventListener('mouseleave', function() { drag.active = false; });
+      this.track.addEventListener('touchstart', function(e) {
+        drag.active = true;
+        drag.startX = e.touches[0].pageX;
+        drag.scrollLeft = self.carousel.scrollLeft;
+      }, { passive: true });
+      this.track.addEventListener('touchmove', function(e) {
+        if (!drag.active) return;
+        self.carousel.scrollLeft = drag.scrollLeft - (e.touches[0].pageX - drag.startX);
+      }, { passive: true });
+      this.track.addEventListener('touchend', function() { drag.active = false; });
     }
 
-    dragStart(e) {
-      this.isDragging = true;
-      this.startX = (e.touches ? e.touches[0].pageX : e.pageX);
-      this.scrollLeft = this.carousel.scrollLeft;
-    }
-
-    dragMove(e) {
-      if (!this.isDragging) return;
-      var x = (e.touches ? e.touches[0].pageX : e.pageX);
-      this.carousel.scrollLeft = this.scrollLeft - (x - this.startX) * 1.2;
-    }
-
-    dragEnd() { this.isDragging = false; }
-
-    scroll(dir) {
+    scrollCarousel(dir) {
       var w = this.carousel.offsetWidth * 0.6;
       this.carousel.scrollBy({ left: dir * w, behavior: 'smooth' });
     }
 
     switchBrand(tab) {
       var brandHandle = tab.dataset.wheelBrand;
+      var brandName = tab.dataset.wheelBrandName;
 
       this.tabs.forEach(function(t) {
         t.classList.remove('wheel-brands__tab--active');
@@ -538,6 +619,14 @@
       });
       tab.classList.add('wheel-brands__tab--active');
       tab.setAttribute('aria-selected', 'true');
+
+      /* Scroll active tab into view */
+      tab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+
+      if (this.viewAllName) this.viewAllName.textContent = brandName;
+      if (this.viewAllLink) {
+        this.viewAllLink.href = '/search?q=' + encodeURIComponent(brandName) + '&type=product';
+      }
 
       this.cards.forEach(function(card) {
         if (card.dataset.wheelCardBrand === brandHandle) {
@@ -651,7 +740,8 @@
         {
           "type": "url",
           "id": "link",
-          "label": "Button link"
+          "label": "Button link",
+          "info": "Leave blank to auto-link to search for this brand + model"
         }
       ]
     }
