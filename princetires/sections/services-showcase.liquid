@@ -1,4 +1,4 @@
-<div class="svc">
+<div class="svc" data-svc-section>
   <div class="svc__container">
 
     <div class="svc__top">
@@ -7,42 +7,55 @@
         <h2 class="svc__heading">{{ section.settings.heading }}</h2>
       </div>
 
-      {%- if section.settings.cta_label != blank -%}
-        <a href="{{ section.settings.cta_link | default: '#' }}" class="svc__cta">
-          {{ section.settings.cta_label }}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </a>
-      {%- endif -%}
+      <div class="svc__controls">
+        {%- if section.settings.cta_label != blank -%}
+          <a href="{{ section.settings.cta_link | default: '#' }}" class="svc__cta">
+            {{ section.settings.cta_label }}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        {%- endif -%}
+
+        <div class="svc__arrows">
+          <button class="svc__arrow" data-svc-prev aria-label="{{ 'general.accessibility.previous' | t }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button class="svc__arrow" data-svc-next aria-label="{{ 'general.accessibility.next' | t }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div class="svc__grid">
-      {%- for block in section.blocks -%}
-        <a href="{{ block.settings.link | default: '#' }}" class="svc__card" {{ block.shopify_attributes }}>
-          <div class="svc__card-icon" aria-hidden="true">
-            {%- case block.settings.icon -%}
-              {%- when 'tire' -%}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c1.85 0 3.55.63 4.9 1.69L15.46 7.5A6.96 6.96 0 0012 6.5c-1.25 0-2.42.34-3.46 1L7.1 5.69A7.96 7.96 0 0112 4zm-6.31 3.1L7.5 8.54A6.96 6.96 0 006.5 12c0 1.25.34 2.42 1 3.46l-1.81 1.44A7.96 7.96 0 014 12c0-1.85.63-3.55 1.69-4.9zM12 8.5a3.5 3.5 0 110 7 3.5 3.5 0 010-7zm0 1.5a2 2 0 100 4 2 2 0 000-4zm6.31 1.1A7.96 7.96 0 0120 12c0 1.85-.63 3.55-1.69 4.9L16.5 15.46c.66-1.04 1-2.21 1-3.46 0-1.25-.34-2.42-1-3.46l1.81-1.44zM12 17.5c1.25 0 2.42-.34 3.46-1l1.44 1.81A7.96 7.96 0 0112 20a7.96 7.96 0 01-4.9-1.69L8.54 16.5c1.04.66 2.21 1 3.46 1z"/></svg>
-              {%- when 'wrench' -%}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
-              {%- when 'balance' -%}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12v4.7c0 4.67-3.13 9.06-7 10.28-3.87-1.22-7-5.61-7-10.28V6.3l7-3.12zM12 7a1 1 0 00-1 1v4a1 1 0 001 1h3a1 1 0 100-2h-2V8a1 1 0 00-1-1z"/></svg>
-              {%- when 'rotation' -%}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1 .25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-              {%- when 'repair' -%}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h10v2h2V3c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v4h2V5zm-4 6v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2zm9 7c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm0-4.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/></svg>
-              {%- when 'sensor' -%}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.962 8.962 0 0012 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
-              {%- when 'seasonal' -%}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z"/></svg>
-              {%- when 'wheel' -%}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13.5v3.11l-2.68-1.55-.5.87L10.5 10.5H7.39v1h3.11l-2.68 1.55.5.87L11 12.37v3.13h1v-3.13l2.68 1.55.5-.87-2.68-1.55h3.11v-1H12.5l2.68-1.55-.5-.87L12 10.63V7.5h-1z"/></svg>
-              {%- else -%}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
-            {%- endcase -%}
-          </div>
-          <h3 class="svc__card-title">{{ block.settings.title }}</h3>
-        </a>
-      {%- endfor -%}
+    <div class="svc__carousel" data-svc-carousel>
+      <div class="svc__track" data-svc-track>
+        {%- for block in section.blocks -%}
+          <a href="{{ block.settings.link | default: '#' }}" class="svc__card" {{ block.shopify_attributes }}>
+            <div class="svc__card-icon" aria-hidden="true">
+              {%- case block.settings.icon -%}
+                {%- when 'tire' -%}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c1.85 0 3.55.63 4.9 1.69L15.46 7.5A6.96 6.96 0 0012 6.5c-1.25 0-2.42.34-3.46 1L7.1 5.69A7.96 7.96 0 0112 4zm-6.31 3.1L7.5 8.54A6.96 6.96 0 006.5 12c0 1.25.34 2.42 1 3.46l-1.81 1.44A7.96 7.96 0 014 12c0-1.85.63-3.55 1.69-4.9zM12 8.5a3.5 3.5 0 110 7 3.5 3.5 0 010-7zm0 1.5a2 2 0 100 4 2 2 0 000-4zm6.31 1.1A7.96 7.96 0 0120 12c0 1.85-.63 3.55-1.69 4.9L16.5 15.46c.66-1.04 1-2.21 1-3.46 0-1.25-.34-2.42-1-3.46l1.81-1.44zM12 17.5c1.25 0 2.42-.34 3.46-1l1.44 1.81A7.96 7.96 0 0112 20a7.96 7.96 0 01-4.9-1.69L8.54 16.5c1.04.66 2.21 1 3.46 1z"/></svg>
+                {%- when 'wrench' -%}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
+                {%- when 'balance' -%}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12v4.7c0 4.67-3.13 9.06-7 10.28-3.87-1.22-7-5.61-7-10.28V6.3l7-3.12zM12 7a1 1 0 00-1 1v4a1 1 0 001 1h3a1 1 0 100-2h-2V8a1 1 0 00-1-1z"/></svg>
+                {%- when 'rotation' -%}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1 .25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                {%- when 'repair' -%}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h10v2h2V3c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v4h2V5zm-4 6v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2zm9 7c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm0-4.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/></svg>
+                {%- when 'sensor' -%}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.962 8.962 0 0012 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+                {%- when 'seasonal' -%}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z"/></svg>
+                {%- when 'wheel' -%}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13.5v3.11l-2.68-1.55-.5.87L10.5 10.5H7.39v1h3.11l-2.68 1.55.5.87L11 12.37v3.13h1v-3.13l2.68 1.55.5-.87-2.68-1.55h3.11v-1H12.5l2.68-1.55-.5-.87L12 10.63V7.5h-1z"/></svg>
+                {%- else -%}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
+              {%- endcase -%}
+            </div>
+            <h3 class="svc__card-title">{{ block.settings.title }}</h3>
+          </a>
+        {%- endfor -%}
+      </div>
     </div>
 
   </div>
@@ -90,6 +103,13 @@
     line-height: 1.1;
   }
 
+  .svc__controls {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-shrink: 0;
+  }
+
   .svc__cta {
     display: inline-flex;
     align-items: center;
@@ -100,7 +120,6 @@
     color: #dc2626;
     text-decoration: none;
     white-space: nowrap;
-    flex-shrink: 0;
     transition: gap 0.2s;
   }
 
@@ -108,12 +127,47 @@
     gap: 0.8rem;
   }
 
-  /* ── Grid ── */
-  .svc__grid {
+  .svc__arrows {
     display: flex;
+    gap: 0.5rem;
+  }
+
+  .svc__arrow {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    gap: 3.5rem;
-    flex-wrap: wrap;
+    cursor: pointer;
+    color: #6b7280;
+    transition: all 0.2s;
+  }
+
+  .svc__arrow:hover {
+    border-color: #d1d5db;
+    color: #111;
+    background: #f9fafb;
+  }
+
+  /* ── Carousel ── */
+  .svc__carousel {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    cursor: grab;
+  }
+  .svc__carousel::-webkit-scrollbar { display: none; }
+  .svc__carousel:active { cursor: grabbing; }
+
+  .svc__track {
+    display: flex;
+    gap: 2rem;
+    user-select: none;
+    padding-bottom: 0.5rem;
   }
 
   /* ── Card ── */
@@ -124,9 +178,21 @@
     text-align: center;
     gap: 0.8rem;
     cursor: pointer;
-    padding: 0.8rem;
+    padding: 2rem 1.6rem;
     text-decoration: none;
     color: inherit;
+    flex-shrink: 0;
+    min-width: 140px;
+    border-radius: 10px;
+    border: 1px solid #f0f0f0;
+    background: #fafafa;
+    transition: box-shadow 0.25s ease, transform 0.25s ease, background 0.25s ease;
+  }
+
+  .svc__card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    transform: translateY(-2px);
+    background: #fff;
   }
 
   /* ── Icon ── */
@@ -151,6 +217,8 @@
   .svc__card:nth-child(4) .svc__card-icon svg { color: #16a34a; }
   .svc__card:nth-child(5) .svc__card-icon svg { color: #7c3aed; }
   .svc__card:nth-child(6) .svc__card-icon svg { color: #0891b2; }
+  .svc__card:nth-child(7) .svc__card-icon svg { color: #ea580c; }
+  .svc__card:nth-child(8) .svc__card-icon svg { color: #4f46e5; }
 
   .svc__card:hover .svc__card-icon {
     transform: scale(1.2);
@@ -180,8 +248,11 @@
     .svc__container {
       padding: 0 4rem;
     }
-    .svc__grid {
-      gap: 2.4rem;
+  }
+
+  @media (max-width: 768px) {
+    .svc__arrow {
+      display: none;
     }
   }
 
@@ -198,15 +269,9 @@
       gap: 1rem;
       margin-bottom: 2rem;
     }
-    .svc__grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.2rem;
-    }
     .svc__card {
-      padding: 1.6rem 0.8rem;
-      border-radius: 8px;
-      background: #f7f7f8;
+      min-width: 120px;
+      padding: 1.6rem 1.2rem;
       min-height: 4.4rem;
     }
     .svc__card-icon {
@@ -231,12 +296,9 @@
     .svc__container {
       padding: 0 1.2rem;
     }
-    .svc__grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-    }
     .svc__card {
-      padding: 1.4rem 0.6rem;
+      min-width: 110px;
+      padding: 1.4rem 0.8rem;
     }
     .svc__card-title {
       font-size: 1rem;
@@ -245,7 +307,61 @@
       font-size: 2rem;
     }
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    .svc__card {
+      transition: none !important;
+    }
+    .svc__card-icon {
+      transition: none !important;
+    }
+  }
 {% endstylesheet %}
+
+{% javascript %}
+  document.querySelectorAll('[data-svc-section]').forEach(function(section) {
+    var carousel = section.querySelector('[data-svc-carousel]');
+    var prevBtn = section.querySelector('[data-svc-prev]');
+    var nextBtn = section.querySelector('[data-svc-next]');
+
+    if (!carousel) return;
+
+    /* Arrow scroll */
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function() {
+        carousel.scrollBy({ left: -250, behavior: 'smooth' });
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function() {
+        carousel.scrollBy({ left: 250, behavior: 'smooth' });
+      });
+    }
+
+    /* Mouse drag */
+    var drag = { active: false, startX: 0, scrollLeft: 0 };
+
+    carousel.addEventListener('mousedown', function(e) {
+      drag.active = true;
+      drag.startX = e.pageX;
+      drag.scrollLeft = carousel.scrollLeft;
+      carousel.style.cursor = 'grabbing';
+    });
+    carousel.addEventListener('mousemove', function(e) {
+      if (!drag.active) return;
+      e.preventDefault();
+      carousel.scrollLeft = drag.scrollLeft - (e.pageX - drag.startX);
+    });
+    carousel.addEventListener('mouseup', function() {
+      drag.active = false;
+      carousel.style.cursor = '';
+    });
+    carousel.addEventListener('mouseleave', function() {
+      drag.active = false;
+      carousel.style.cursor = '';
+    });
+  });
+{% endjavascript %}
 
 {% schema %}
 {
