@@ -37,13 +37,14 @@
               type="text"
               class="hero-smart-search__input"
               data-smart-search-input
-              placeholder="{{ section.settings.search_placeholder | escape }}"
+              placeholder=""
               autocomplete="off"
               aria-label="{{ 'sections.hero_smart_search.search_label' | t }}"
               aria-expanded="false"
               aria-controls="smart-search-results"
               role="combobox"
             >
+            <span class="hero-smart-search__typewriter" data-typewriter aria-hidden="true"></span>
             <button
               class="hero-smart-search__submit"
               data-smart-search-submit
@@ -311,6 +312,37 @@
     color: #6B7280;
   }
 
+  .hero-smart-search__typewriter {
+    position: absolute;
+    left: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    color: #6B7280;
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .hero-smart-search__typewriter::after {
+    content: '|';
+    animation: hero-cursor-blink 0.7s step-end infinite;
+    color: #F5820B;
+    font-weight: 300;
+    margin-left: 1px;
+  }
+
+  .hero-smart-search__typewriter.is-hidden {
+    display: none;
+  }
+
+  @keyframes hero-cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
   .hero-smart-search__submit {
     display: flex;
     align-items: center;
@@ -569,6 +601,105 @@
       font-size: 1rem;
     }
   }
+
+  @media screen and (max-width: 480px) {
+    .hero-smart-search {
+      padding: 4rem 1.2rem 2.5rem;
+      min-height: 60vh;
+    }
+    .hero-smart-search__heading {
+      font-size: clamp(2.2rem, 7vw, 2.8rem);
+      flex-direction: column;
+      gap: 0;
+    }
+    .hero-smart-search__subtitle {
+      font-size: 1.2rem;
+      margin-bottom: 2.5rem;
+    }
+    .hero-smart-search__search-wrapper {
+      max-width: 100%;
+    }
+    .hero-smart-search__input {
+      padding: 1.2rem 1.4rem;
+      font-size: 1.6rem;
+    }
+    .hero-smart-search__typewriter {
+      left: 1.4rem;
+      font-size: 1.4rem;
+    }
+    .hero-smart-search__badge {
+      font-size: 1rem;
+      padding: 0.3rem 0.8rem;
+    }
+    .hero-smart-search__actions {
+      flex-direction: row;
+      flex-wrap: nowrap;
+      width: 100%;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .hero-smart-search__btn {
+      padding: 0.5rem 0.8rem;
+      font-size: 0.75rem;
+      min-height: auto;
+      width: auto;
+      justify-content: center;
+      gap: 0.35rem;
+      letter-spacing: 0.04em;
+    }
+    .hero-smart-search__btn svg {
+      width: 14px;
+      height: 14px;
+    }
+    .hero-smart-search__submit {
+      min-height: 4.4rem;
+    }
+    .hero-smart-search__results {
+      max-height: 26rem;
+    }
+    .hero-smart-search__result-item {
+      padding: 1rem 1.2rem;
+      min-height: 4.4rem;
+    }
+  }
+
+  @media screen and (max-width: 360px) {
+    .hero-smart-search {
+      padding: 3.5rem 1rem 2rem;
+    }
+    .hero-smart-search__heading {
+      font-size: 2rem;
+    }
+    .hero-smart-search__subtitle {
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+    }
+    .hero-smart-search__input {
+      padding: 1rem 1.2rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-smart-search__heading-left,
+    .hero-smart-search__heading-right {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+    }
+    .hero-smart-search__input-wrapper::before {
+      animation: none !important;
+    }
+    .hero-smart-search__typewriter::after {
+      animation: none !important;
+    }
+    .hero-smart-search__badge-dot {
+      animation: none !important;
+    }
+    .hero-smart-search__spinner {
+      animation: none !important;
+    }
+  }
 {% endstylesheet %}
 
 <script>
@@ -591,10 +722,74 @@ document.addEventListener('DOMContentLoaded', function() {
       const configEl = document.querySelector('[data-smart-search-config]');
       this.config = configEl ? JSON.parse(configEl.textContent) : {};
 
-      this.tireSizeRegex = /[Pp]?[LlTtSs]?[Tt]?(\d{3})\/?(\d{2,3})?[Rr]?(\d{2}\.?\d?)/;
+      this.tireSizeRegex = /(?:^|[\s,])([Pp]?[LlTtSs]?[Tt]?\d{3}\/?\d{2,3}[Rr]\d{2}(?:\.\d)?)/;
       this.brands = ['michelin','bridgestone','goodyear','continental','toyo','pirelli','falken','kumho','yokohama','firestone','cooper','bfgoodrich','bf goodrich','general','uniroyal','hankook','nitto','mickey thompson','firemax','linglong','farroad','yeada','fortune','radar','rotalla','haida','carlstar'];
 
+      this.knownMakes = ['acura','alfa romeo','aston martin','audi','bmw','bentley','buick','cadillac','chevrolet','chevy','chrysler','dodge','ferrari','fiat','ford','gmc','genesis','honda','hyundai','ineos','infiniti','jaguar','jeep','karma','kia','lamborghini','land rover','lexus','lincoln','lotus','lucid','maserati','mazda','mclaren','mercedes-benz','mercedes','benz','mini','mitsubishi','nissan','polestar','porsche','ram','rivian','rolls-royce','subaru','tesla','toyota','vinfast','volkswagen','vw','volvo'];
+      this.makeAliases = {'chevy':'Chevrolet','vw':'Volkswagen','mercedes':'Mercedes-Benz','benz':'Mercedes-Benz'};
+      this.modelShortcuts = {
+        'crv':'CR-V','cr-v':'CR-V','hrv':'HR-V','hr-v':'HR-V','rav':'RAV4','rav4':'RAV4',
+        'f150':'F-150','f-150':'F-150','f250':'F-250','f-250':'F-250','f350':'F-350','f-350':'F-350',
+        '4runner':'4Runner','forerunner':'4Runner','camry':'Camry','corolla':'Corolla',
+        'cx5':'CX-5','cx-5':'CX-5','cx50':'CX-50','cx-50':'CX-50','cx9':'CX-9','cx-9':'CX-9','cx30':'CX-30','cx-30':'CX-30',
+        'mazda3':'Mazda3','mazda6':'Mazda6',
+        'q5':'Q5','q7':'Q7','q3':'Q3','x3':'X3','x5':'X5','x1':'X1',
+        'crz':'CR-Z','brz':'BRZ','grz':'GR86','gr86':'GR86',
+        'wrx':'WRX','sti':'WRX STI','outback':'Outback','forester':'Forester','crosstrek':'Crosstrek',
+        'silverado':'Silverado 1500','sierra':'Sierra 1500','tahoe':'Tahoe','suburban':'Suburban',
+        'wrangler':'Wrangler','cherokee':'Cherokee','grandcherokee':'Grand Cherokee','grand cherokee':'Grand Cherokee',
+        'mustang':'Mustang','bronco':'Bronco','escape':'Escape','explorer':'Explorer','expedition':'Expedition',
+        'tacoma':'Tacoma','tundra':'Tundra','highlander':'Highlander','prius':'Prius','supra':'GR Supra',
+        'civic':'Civic','accord':'Accord','pilot':'Pilot','odyssey':'Odyssey','ridgeline':'Ridgeline',
+        'altima':'Altima','maxima':'Maxima','sentra':'Sentra','rogue':'Rogue','pathfinder':'Pathfinder','frontier':'Frontier',
+        'elantra':'Elantra','sonata':'Sonata','tucson':'Tucson','santafe':'Santa Fe','santa fe':'Santa Fe','palisade':'Palisade',
+        'sorento':'Sorento','sportage':'Sportage','forte':'Forte','telluride':'Telluride',
+        'jetta':'Jetta','tiguan':'Tiguan','atlas':'Atlas','golf':'Golf','passat':'Passat',
+        'model3':'Model 3','modely':'Model Y','modelx':'Model X','models':'Model S',
+        'glc':'GLC','gle':'GLE','gls':'GLS','cclass':'C-Class','eclass':'E-Class',
+        'ram1500':'1500','ram2500':'2500','ram3500':'3500',
+        'malibu':'Malibu','equinox':'Equinox','traverse':'Traverse','trax':'Trax','blazer':'Blazer',
+        'terrain':'Terrain','acadia':'Acadia','yukon':'Yukon',
+        'durango':'Durango','charger':'Charger','challenger':'Challenger',
+        'outback':'Outback','impreza':'Impreza','legacy':'Legacy',
+        'maverick':'Maverick','ranger':'Ranger',
+        'ioniq5':'Ioniq 5','ioniq6':'Ioniq 6','kona':'Kona',
+        'ct4':'CT4','ct5':'CT5','escalade':'Escalade','xt5':'XT5','xt6':'XT6',
+      };
+      this.noiseWords = ['tires','tire','for','my','the','a','an','need','needs','looking','want','i','on','new','set','of','best','good','cheap','get','find','buy','shop','what','fit','fits','size','sizes'];
+
       this.bindEvents();
+    }
+
+    levenshtein(a, b) {
+      if (a.length === 0) return b.length;
+      if (b.length === 0) return a.length;
+      var matrix = [];
+      for (var i = 0; i <= b.length; i++) matrix[i] = [i];
+      for (var j = 0; j <= a.length; j++) matrix[0][j] = j;
+      for (var i = 1; i <= b.length; i++) {
+        for (var j = 1; j <= a.length; j++) {
+          var cost = a[j - 1] === b[i - 1] ? 0 : 1;
+          matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+        }
+      }
+      return matrix[b.length][a.length];
+    }
+
+    fuzzyMatchMake(word) {
+      /* Exact match first */
+      if (this.knownMakes.indexOf(word) >= 0) return this.makeAliases[word] || word;
+      /* Fuzzy: allow 1-2 typos depending on word length */
+      var maxDist = word.length <= 4 ? 1 : 2;
+      var best = null, bestDist = maxDist + 1;
+      for (var i = 0; i < this.knownMakes.length; i++) {
+        var mk = this.knownMakes[i];
+        if (Math.abs(mk.length - word.length) > maxDist) continue;
+        var d = this.levenshtein(word, mk);
+        if (d < bestDist) { bestDist = d; best = mk; }
+      }
+      if (best) return this.makeAliases[best] || best;
+      return null;
     }
 
     parseSearchIntent(query) {
@@ -618,9 +813,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     extractTireSize(query) {
-      const m = query.match(/[Pp]?(\d{3})\/?(\d{2,3})[Rr](\d{2})/);
-      if (m) return m[1] + '/' + m[2] + 'R' + m[3];
-      return null;
+      var n = this.normalizeTireSize(query);
+      return n ? n.size : null;
     }
 
     buildCollectionUrl(params) {
@@ -659,13 +853,41 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 300);
     }
 
+    normalizeTireSize(query) {
+      /* Standard format: 225/65R17, P225/65R17, LT225/65R17 */
+      var m = query.match(/[Pp]?[LlTtSs]?[Tt]?(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/);
+      if (m) return { width: m[1], aspect: m[2], rim: m[3], size: m[1] + '/' + m[2] + 'R' + m[3] };
+
+      /* Compact digits only: 2255517 or 2256517 (6-7 digits, width=3, aspect=2, rim=2) */
+      var compact = query.replace(/[\s\/\-rR]/g, '');
+      var dm = compact.match(/[Pp]?[LlTtSs]?[Tt]?(\d{3})(\d{2})(\d{2})$/);
+      if (dm) return { width: dm[1], aspect: dm[2], rim: dm[3], size: dm[1] + '/' + dm[2] + 'R' + dm[3] };
+
+      /* Spaced format: 225 55 17 or 225 65 17 */
+      var spaced = query.match(/(\d{3})\s+(\d{2})\s+(\d{2})/);
+      if (spaced) return { width: spaced[1], aspect: spaced[2], rim: spaced[3], size: spaced[1] + '/' + spaced[2] + 'R' + spaced[3] };
+
+      return null;
+    }
+
     async search(query) {
       if (this.abortController) this.abortController.abort();
       this.abortController = new AbortController();
 
-      const tireMatch = query.match(this.tireSizeRegex);
+      /* Try standard tire size regex first */
+      var tireMatch = query.match(this.tireSizeRegex);
       if (tireMatch && tireMatch[1]) {
-        this.handleTireSizeMatch(tireMatch, query);
+        var parsed = this.normalizeTireSize(query);
+        if (parsed) {
+          this.handleTireSizeMatch([null, parsed.width, parsed.aspect, parsed.rim], query);
+          return;
+        }
+      }
+
+      /* Try compact/spaced tire size (e.g. "2255517", "225 55 17") */
+      var normalized = this.normalizeTireSize(query);
+      if (normalized) {
+        this.handleTireSizeMatch([null, normalized.width, normalized.aspect, normalized.rim], query);
         return;
       }
 
@@ -708,19 +930,39 @@ document.addEventListener('DOMContentLoaded', function() {
       this.renderResults(results.slice(0, 6));
     }
 
+    cleanQueryForVehicle(query, intent) {
+      var q = query.toLowerCase();
+      /* Strip season words */
+      var seasonWords = ['winter','snow','ice','all-season','all season','allseason','all-weather','all weather','summer','performance'];
+      for (var i = 0; i < seasonWords.length; i++) {
+        q = q.replace(new RegExp('\\b' + seasonWords[i].replace(/-/g, '[-\\s]?') + '\\b', 'g'), ' ');
+      }
+      /* Strip matched brand */
+      if (intent.brand) {
+        var brandLower = intent.brand.toLowerCase();
+        q = q.replace(new RegExp('\\b' + brandLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), ' ');
+        /* Also strip common brand variants */
+        for (var b of this.brands) {
+          if (q.includes(b)) q = q.replace(new RegExp('\\b' + b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), ' ');
+        }
+      }
+      return q.replace(/\s+/g, ' ').trim();
+    }
+
     async handleVehicleQuery(query) {
       this.showLoading();
       const intent = this.parseSearchIntent(query);
+      const cleanedQuery = this.cleanQueryForVehicle(query, intent);
 
       try {
-        const vehicle = await this.recognizeVehicle(query);
+        const vehicle = cleanedQuery.length >= 2 ? await this.recognizeVehicle(cleanedQuery) : null;
 
-        if (!vehicle || !vehicle.year) {
-          // Try brand-only or season-only search
+        if (!vehicle || (!vehicle.year && !vehicle.model && !vehicle.make)) {
           if (intent.brand || intent.season) {
+            var filterTitle = [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires';
             this.renderResults([{
               type: 'search',
-              title: (intent.brand || '') + (intent.season ? ' ' + intent.season : '') + ' tires',
+              title: filterTitle,
               meta: 'Filter collection',
               url: this.buildCollectionUrl({ brand: intent.brand, season: intent.season }),
             }]);
@@ -736,14 +978,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const trims = await this.lookupVehicleTrims(vehicle);
-        const vLabel = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+        const vLabel = vehicle.year + ' ' + (vehicle.make || '') + ' ' + (vehicle.model || '');
+        const vLabelClean = vLabel.replace(/\s+/g, ' ').trim();
 
-        if (trims && trims.length > 0) {
-          this.renderTrimResults(vLabel, trims, intent);
+        if (trims && trims.length === 1 && vehicle.trim) {
+          /* User specified a trim and we found it — go straight to collection */
+          const trimLabel = vLabelClean + ' ' + trims[0].trim;
+          const url = this.buildCollectionUrl({ tireSize: trims[0].size, brand: intent.brand, season: intent.season });
+          this.renderResults([{
+            type: 'vehicle',
+            title: trimLabel,
+            meta: trims[0].size + (intent.season ? ' · ' + intent.season : '') + (intent.brand ? ' · ' + intent.brand : ''),
+            url: url,
+          }]);
+        } else if (trims && trims.length > 0) {
+          this.renderTrimResults(vLabelClean, trims, intent);
         } else {
           this.renderResults([{
             type: 'vehicle',
-            title: vLabel,
+            title: vLabelClean,
             meta: 'Browse all tires',
             url: this.buildCollectionUrl({ brand: intent.brand, season: intent.season }),
           }]);
@@ -821,26 +1074,92 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     tryDirectParse(query) {
-      const q = query.trim();
+      var q = query.trim().toLowerCase();
 
-      const fullMatch = q.match(/^['\u2018\u2019]?(\d{2,4})\s+([A-Za-z-]+)\s+(.+)$/);
-      if (fullMatch) {
-        let year = fullMatch[1];
-        if (year.length === 2) year = (parseInt(year) > 50 ? '19' : '20') + year;
-        const parts = fullMatch[3].trim().split(/\s+/);
-        const model = parts[0];
-        const trim = parts.length > 1 ? parts.slice(1).join(' ') : null;
-        return { year: parseInt(year), make: this.capitalizeMake(fullMatch[2]), model: model, trim: trim };
+      /* Strip noise words */
+      var words = q.split(/\s+/).filter(function(w) { return this.noiseWords.indexOf(w) === -1; }.bind(this));
+      if (words.length === 0) return null;
+
+      /* Extract year from anywhere */
+      var year = null;
+      var yearIndex = -1;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i].replace(/^[''\u2018\u2019]/, '');
+        var ym = w.match(/^(\d{2,4})$/);
+        if (ym) {
+          var y = ym[1];
+          if (y.length === 2) y = (parseInt(y) > 50 ? '19' : '20') + y;
+          var yn = parseInt(y);
+          if (yn >= 1990 && yn <= this.config.maxYear) {
+            year = yn;
+            yearIndex = i;
+            break;
+          }
+        }
+      }
+      if (yearIndex >= 0) words.splice(yearIndex, 1);
+      if (words.length === 0) return null;
+
+      /* Try to find a known make */
+      var make = null;
+      var makeEnd = -1;
+
+      /* Check two-word makes first (e.g. "alfa romeo", "land rover") */
+      for (var i = 0; i < words.length - 1; i++) {
+        var twoWord = words[i] + ' ' + words[i + 1];
+        if (this.knownMakes.indexOf(twoWord) >= 0) {
+          make = this.makeAliases[twoWord] || twoWord.split(' ').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
+          words.splice(i, 2);
+          break;
+        }
       }
 
-      const yearModelMatch = q.match(/^['\u2018\u2019]?(\d{2,4})\s+(.+)$/);
-      if (yearModelMatch) {
-        let year = yearModelMatch[1];
-        if (year.length === 2) year = (parseInt(year) > 50 ? '19' : '20') + year;
-        return { year: parseInt(year), make: null, model: yearModelMatch[2].trim(), trim: null };
+      /* Check single-word makes (exact then fuzzy) */
+      if (!make) {
+        for (var i = 0; i < words.length; i++) {
+          var matched = this.fuzzyMatchMake(words[i]);
+          if (matched) {
+            make = matched;
+            if (make === 'Bmw') make = 'BMW';
+            if (make === 'Gmc') make = 'GMC';
+            if (make === 'Ram') make = 'RAM';
+            make = make.charAt(0).toUpperCase() + make.slice(1);
+            if (this.makeAliases[words[i]]) make = this.makeAliases[words[i]];
+            words.splice(i, 1);
+            break;
+          }
+        }
       }
 
-      return null;
+      /* Remaining words are model (+ optional trim) */
+      if (words.length === 0 && !make) return null;
+
+      var model = null;
+      var trim = null;
+      if (words.length > 0) {
+        /* Check model shortcuts first (try multi-word then single) */
+        var modelJoined = words.join(' ');
+        var modelNoSpace = words.join('');
+        if (this.modelShortcuts[modelJoined]) {
+          model = this.modelShortcuts[modelJoined];
+          words = [];
+        } else if (this.modelShortcuts[modelNoSpace]) {
+          model = this.modelShortcuts[modelNoSpace];
+          words = [];
+        } else if (this.modelShortcuts[words[0]]) {
+          model = this.modelShortcuts[words[0]];
+          words.splice(0, 1);
+          trim = words.length > 0 ? words.join(' ') : null;
+        } else {
+          model = words[0];
+          trim = words.length > 1 ? words.slice(1).join(' ') : null;
+        }
+      }
+
+      /* Default year to max if not provided */
+      if (!year) year = this.config.maxYear;
+
+      return { year: year, make: make, model: model, trim: trim };
     }
 
     capitalizeMake(make) {
@@ -934,38 +1253,79 @@ document.addEventListener('DOMContentLoaded', function() {
       const data = await this.loadVehicleData(vehicle.year);
       if (!data || !data.models) return [];
 
-      let makeData = data.models[vehicle.make];
-      if (!makeData) {
-        const ml = vehicle.make.toLowerCase();
-        for (const [k, v] of Object.entries(data.models)) {
-          if (k.toLowerCase() === ml) { makeData = v; break; }
+      var makeData = null;
+      var modelData = null;
+
+      /* If we have a make, find it */
+      if (vehicle.make) {
+        makeData = data.models[vehicle.make];
+        if (!makeData) {
+          var ml = vehicle.make.toLowerCase();
+          for (var [k, v] of Object.entries(data.models)) {
+            if (k.toLowerCase() === ml) { makeData = v; vehicle.make = k; break; }
+          }
         }
       }
-      if (!makeData && vehicle.model) {
-        for (const [mk, models] of Object.entries(data.models)) {
-          for (const mn of Object.keys(models)) {
-            if (mn.toLowerCase() === vehicle.model.toLowerCase()) {
-              makeData = models; vehicle.make = mk; break;
+
+      /* Find model - search within make if known, or across all makes */
+      if (vehicle.model) {
+        var modelLower = vehicle.model.toLowerCase();
+        var modelClean = modelLower.replace(/[-\s]/g, '');
+        var searchIn = makeData ? [[vehicle.make, makeData]] : Object.entries(data.models);
+
+        for (var [mk, models] of searchIn) {
+          /* Exact match (case-insensitive) */
+          for (var [mn, md] of Object.entries(models)) {
+            if (mn.toLowerCase() === modelLower) {
+              modelData = md; vehicle.make = mk; vehicle.model = mn; break;
             }
           }
-          if (makeData) break;
-        }
-      }
-      if (!makeData) return [];
+          if (modelData) break;
 
-      let modelData = makeData[vehicle.model];
-      if (!modelData) {
-        const ml = vehicle.model.toLowerCase();
-        for (const [k, v] of Object.entries(makeData)) {
-          if (k.toLowerCase() === ml) { modelData = v; break; }
+          /* Partial match - stripped of hyphens/spaces */
+          for (var [mn, md] of Object.entries(models)) {
+            var mnClean = mn.toLowerCase().replace(/[-\s]/g, '');
+            if (mnClean.includes(modelClean) || modelClean.includes(mnClean)) {
+              modelData = md; vehicle.make = mk; vehicle.model = mn; break;
+            }
+          }
+          if (modelData) break;
+
+          /* Fuzzy match - Levenshtein distance */
+          var bestModel = null, bestDist = 3, bestMd = null;
+          for (var [mn, md] of Object.entries(models)) {
+            var mnClean = mn.toLowerCase().replace(/[-\s]/g, '');
+            var maxDist = modelClean.length <= 4 ? 1 : 2;
+            if (Math.abs(mnClean.length - modelClean.length) > maxDist) continue;
+            var d = this.levenshtein(modelClean, mnClean);
+            if (d <= maxDist && d < bestDist) { bestDist = d; bestModel = mn; bestMd = md; }
+          }
+          if (bestModel) { modelData = bestMd; vehicle.make = mk; vehicle.model = bestModel; break; }
         }
       }
+
       if (!modelData) return [];
 
-      const trims = [];
-      for (const [trimName, sizes] of Object.entries(modelData)) {
-        if (Array.isArray(sizes) && sizes.length > 0) {
-          trims.push({ trim: trimName, size: sizes[0] });
+      /* If a trim was specified, filter to matching trims only */
+      var trims = [];
+      if (vehicle.trim) {
+        var trimLower = vehicle.trim.toLowerCase();
+        for (var [trimName, sizes] of Object.entries(modelData)) {
+          if (Array.isArray(sizes) && sizes.length > 0) {
+            var tn = trimName.toLowerCase();
+            if (tn === trimLower || tn.includes(trimLower) || trimLower.includes(tn)) {
+              trims.push({ trim: trimName, size: sizes[0] });
+            }
+          }
+        }
+      }
+
+      /* If no trim specified or no match found, return all trims */
+      if (trims.length === 0) {
+        for (var [trimName, sizes] of Object.entries(modelData)) {
+          if (Array.isArray(sizes) && sizes.length > 0) {
+            trims.push({ trim: trimName, size: sizes[0] });
+          }
         }
       }
       return trims;
@@ -1191,6 +1551,111 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       setTimeout(trigger, 300);
     }
+  })();
+
+  /* Typewriter placeholder effect */
+  (function() {
+    var el = document.querySelector('[data-typewriter]');
+    var input = document.querySelector('[data-smart-search-input]');
+    if (!el || !input) return;
+
+    var intro = 'What are you looking for?';
+    var phrases = [
+      'tires for Honda Civic SI 2025',
+      'Michelin 225/65R17',
+      'winter tires for my RAV4',
+      'Ford F-150 2024',
+      'all season tires 2055516',
+      'Bridgestone Subaru Outback',
+      'crv 2025 winter',
+      'Toyota Camry LE 2024',
+    ];
+    var phase = 'intro';       /* intro → examples */
+    var phraseIndex = 0;
+    var charIndex = 0;
+    var isDeleting = false;
+    var isPaused = false;
+    var isActive = true;
+
+    function tick() {
+      if (!isActive) return;
+
+      /* Phase 1: Show intro instantly, pause, then clear */
+      if (phase === 'intro') {
+        el.textContent = intro;
+        phase = 'intro-clear';
+        setTimeout(tick, 2000);
+        return;
+      }
+
+      if (phase === 'intro-clear') {
+        el.textContent = '';
+        phase = 'examples';
+        setTimeout(tick, 300);
+        return;
+      }
+
+      /* Phase 2: Cycle through examples */
+      var current = phrases[phraseIndex];
+
+      if (isPaused) {
+        isPaused = false;
+        isDeleting = true;
+        setTimeout(tick, 25);
+        return;
+      }
+
+      if (!isDeleting) {
+        charIndex++;
+        el.textContent = current.slice(0, charIndex);
+        if (charIndex >= current.length) {
+          isPaused = true;
+          setTimeout(tick, 1600);
+          return;
+        }
+        setTimeout(tick, 35 + Math.random() * 25);
+      } else {
+        charIndex--;
+        el.textContent = current.slice(0, charIndex);
+        if (charIndex <= 0) {
+          isDeleting = false;
+          phraseIndex = (phraseIndex + 1) % phrases.length;
+          setTimeout(tick, 250);
+          return;
+        }
+        setTimeout(tick, 20);
+      }
+    }
+
+    /* Hide typewriter when user focuses or types */
+    input.addEventListener('focus', function() {
+      el.classList.add('is-hidden');
+    });
+    input.addEventListener('blur', function() {
+      if (!input.value) {
+        el.classList.remove('is-hidden');
+        if (!isActive) {
+          isActive = true;
+          tick();
+        }
+      }
+    });
+    input.addEventListener('input', function() {
+      if (input.value) {
+        el.classList.add('is-hidden');
+        isActive = false;
+      } else {
+        el.classList.remove('is-hidden');
+        if (!isActive) {
+          isActive = true;
+          charIndex = 0;
+          tick();
+        }
+      }
+    });
+
+    /* Start after heading animation completes */
+    setTimeout(tick, 1200);
   })();
 });
 </script>

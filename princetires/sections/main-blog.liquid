@@ -1,142 +1,418 @@
-{{ 'component-article-card.css' | asset_url | stylesheet_tag }}
-{{ 'component-card.css' | asset_url | stylesheet_tag }}
-{{ 'section-main-blog.css' | asset_url | stylesheet_tag }}
+{%- paginate blog.articles by section.settings.posts_per_page -%}
+<div class="pt-blog">
+  <div class="pt-blog__container">
 
-{%- style -%}
-  .section-{{ section.id }}-padding {
-    padding-top: {{ section.settings.padding_top | times: 0.75 | round: 0 }}px;
-    padding-bottom: {{ section.settings.padding_bottom | times: 0.75 | round: 0 }}px;
-  }
-
-  @media screen and (min-width: 750px) {
-    .section-{{ section.id }}-padding {
-      padding-top: {{ section.settings.padding_top }}px;
-      padding-bottom: {{ section.settings.padding_bottom }}px;
-    }
-  }
-{%- endstyle -%}
-
-{%- paginate blog.articles by 6 -%}
-  <div class="main-blog page-width section-{{ section.id }}-padding">
-    <h1 class="title--primary{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--fade-in{% endif %}">
-      {{ blog.title | escape }}
-    </h1>
-
-    <div class="blog-articles {% if section.settings.layout == 'collage' %}blog-articles--collage{% endif %}">
-      {%- for article in blog.articles -%}
-        <div
-          class="blog-articles__article article{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--slide-in{% endif %}"
-          {% if settings.animations_reveal_on_scroll %}
-            data-cascade
-            style="--animation-order: {{ forloop.index }};"
-          {% endif %}
-        >
-          {%- render 'article-card',
-            article: article,
-            media_height: section.settings.image_height,
-            media_aspect_ratio: article.image.aspect_ratio,
-            show_image: section.settings.show_image,
-            show_date: section.settings.show_date,
-            show_author: section.settings.show_author,
-            show_excerpt: true
-          -%}
-        </div>
-      {%- endfor -%}
+    <div class="pt-blog__top">
+      <div class="pt-blog__header">
+        <span class="pt-blog__eyebrow">{{ section.settings.eyebrow }}</span>
+        <h1 class="pt-blog__heading">{{ blog.title | escape }}</h1>
+      </div>
     </div>
 
-    {%- if paginate.pages > 1 -%}
-      {%- render 'pagination', paginate: paginate -%}
+    {%- if blog.tags.size > 0 -%}
+      <div class="pt-blog__tags-wrap">
+        <div class="pt-blog__tags">
+          <a href="{{ blog.url }}" class="pt-blog__tag {% if current_tags == blank %}pt-blog__tag--active{% endif %}">
+            {{ 'blogs.article.all' | t }}
+          </a>
+          {%- for tag in blog.tags -%}
+            <a href="{{ blog.url }}/tagged/{{ tag | handle }}" class="pt-blog__tag {% if current_tags contains tag %}pt-blog__tag--active{% endif %}">
+              {{ tag }}
+            </a>
+          {%- endfor -%}
+        </div>
+      </div>
     {%- endif -%}
+
+    {%- if blog.articles.size > 0 -%}
+      <div class="pt-blog__grid">
+        {%- for article in blog.articles -%}
+          <a href="{{ article.url }}" class="pt-blog__card">
+            <div class="pt-blog__card-image">
+              {%- if article.image -%}
+                {{ article.image | image_url: width: 720, height: 480, crop: 'center' | image_tag: class: 'pt-blog__img', loading: 'lazy' }}
+              {%- else -%}
+                <div class="pt-blog__card-placeholder">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                </div>
+              {%- endif -%}
+              {%- if article.tags.size > 0 -%}
+                <span class="pt-blog__card-tag">{{ article.tags.first }}</span>
+              {%- endif -%}
+            </div>
+            <div class="pt-blog__card-body">
+              <span class="pt-blog__card-meta">
+                {{ article.published_at | date: '%b %d, %Y' }}
+                {%- if section.settings.show_author and article.author != blank %}
+                  · {{ article.author }}
+                {%- endif -%}
+              </span>
+              <h2 class="pt-blog__card-title">{{ article.title | escape }}</h2>
+              {%- if section.settings.show_excerpt -%}
+                <p class="pt-blog__card-excerpt">{{ article.excerpt_or_content | strip_html | truncate: 120 }}</p>
+              {%- endif -%}
+              <span class="pt-blog__card-readmore">
+                {{ 'blogs.article.read_more' | t }} →
+              </span>
+            </div>
+          </a>
+        {%- endfor -%}
+      </div>
+
+      {%- if paginate.pages > 1 -%}
+        <nav class="pt-blog__pagination" aria-label="{{ 'general.pagination.label' | t }}">
+          {%- if paginate.previous -%}
+            <a href="{{ paginate.previous.url }}" class="pt-blog__page-btn" aria-label="{{ 'general.pagination.previous' | t }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </a>
+          {%- endif -%}
+
+          {%- for part in paginate.parts -%}
+            {%- if part.is_link -%}
+              <a href="{{ part.url }}" class="pt-blog__page-num">{{ part.title }}</a>
+            {%- else -%}
+              {%- if part.title == paginate.current_page -%}
+                <span class="pt-blog__page-num pt-blog__page-num--active" aria-current="page">{{ part.title }}</span>
+              {%- else -%}
+                <span class="pt-blog__page-num">{{ part.title }}</span>
+              {%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+
+          {%- if paginate.next -%}
+            <a href="{{ paginate.next.url }}" class="pt-blog__page-btn" aria-label="{{ 'general.pagination.next' | t }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+          {%- endif -%}
+        </nav>
+      {%- endif -%}
+    {%- else -%}
+      <p class="pt-blog__empty">{{ 'blogs.article.no_articles' | t }}</p>
+    {%- endif -%}
+
   </div>
+</div>
 {%- endpaginate -%}
+
+{% stylesheet %}
+  .pt-blog {
+    background: #fff;
+    padding: 7rem 0;
+  }
+
+  .pt-blog__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+  }
+
+  /* ── Header ── */
+  .pt-blog__top {
+    margin-bottom: 2rem;
+  }
+
+  .pt-blog__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .pt-blog__eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #dc2626;
+    letter-spacing: 0.02em;
+  }
+
+  .pt-blog__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3.6rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+    line-height: 1.05;
+  }
+
+  /* ── Tag filters ── */
+  .pt-blog__tags-wrap {
+    position: relative;
+    margin-bottom: 3.5rem;
+  }
+
+  .pt-blog__tags {
+    display: flex;
+    gap: 0.6rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    padding-bottom: 0.3rem;
+  }
+
+  .pt-blog__tags::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pt-blog__tag {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #6b7280;
+    text-decoration: none;
+    padding: 0.5rem 1.4rem;
+    border-radius: 100px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+
+  .pt-blog__tag:hover {
+    border-color: #111;
+    color: #111;
+  }
+
+  .pt-blog__tag--active {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+  }
+
+  .pt-blog__tag--active:hover {
+    background: #333;
+    color: #fff;
+    border-color: #333;
+  }
+
+  /* ── Grid ── */
+  .pt-blog__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.8rem;
+  }
+
+  /* ── Card ── */
+  .pt-blog__card {
+    display: flex;
+    flex-direction: column;
+    background: #f5f5f5;
+    border-radius: 10px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+
+  .pt-blog__card:hover {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
+    transform: translateY(-2px);
+  }
+
+  .pt-blog__card-image {
+    position: relative;
+    aspect-ratio: 3/2;
+    overflow: hidden;
+    background: #e5e7eb;
+  }
+
+  .pt-blog__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
+  }
+
+  .pt-blog__card:hover .pt-blog__img {
+    transform: scale(1.04);
+  }
+
+  .pt-blog__card-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pt-blog__card-tag {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.3rem 0.8rem;
+    border-radius: 3px;
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .pt-blog__card-body {
+    padding: 1.8rem 2rem 2.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+  }
+
+  .pt-blog__card-meta {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: #9ca3af;
+  }
+
+  .pt-blog__card-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0;
+    line-height: 1.35;
+    transition: color 0.2s;
+  }
+
+  .pt-blog__card:hover .pt-blog__card-title {
+    color: #dc2626;
+  }
+
+  .pt-blog__card-excerpt {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .pt-blog__card-readmore {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #F5820B;
+    margin-top: auto;
+    padding-top: 0.6rem;
+  }
+
+  /* ── Pagination ── */
+  .pt-blog__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-top: 5rem;
+  }
+
+  .pt-blog__page-num,
+  .pt-blog__page-btn {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #6b7280;
+    text-decoration: none;
+    width: 4rem;
+    height: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+
+  .pt-blog__page-num:hover,
+  .pt-blog__page-btn:hover {
+    background: #f3f4f6;
+    color: #111;
+  }
+
+  .pt-blog__page-num--active {
+    background: #111;
+    color: #fff;
+  }
+
+  .pt-blog__page-num--active:hover {
+    background: #333;
+    color: #fff;
+  }
+
+  .pt-blog__empty {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    color: #9ca3af;
+    text-align: center;
+    padding: 6rem 0;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 989px) {
+    .pt-blog__container {
+      padding: 0 4rem;
+    }
+    .pt-blog__grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 2rem;
+    }
+  }
+
+  @media (max-width: 749px) {
+    .pt-blog {
+      padding: 5rem 0;
+    }
+    .pt-blog__container {
+      padding: 0 2rem;
+    }
+    .pt-blog__grid {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+    .pt-blog__heading {
+      font-size: 2.8rem;
+    }
+    .pt-blog__top {
+      margin-bottom: 3rem;
+    }
+  }
+{% endstylesheet %}
 
 {% schema %}
 {
-  "name": "t:sections.main-blog.name",
+  "name": "Blog posts",
   "tag": "section",
   "class": "section",
   "settings": [
     {
-      "type": "select",
-      "id": "layout",
-      "options": [
-        {
-          "value": "grid",
-          "label": "t:sections.main-blog.settings.layout.options__1.label"
-        },
-        {
-          "value": "collage",
-          "label": "t:sections.main-blog.settings.layout.options__2.label"
-        }
-      ],
-      "default": "collage",
-      "label": "t:sections.main-blog.settings.layout.label"
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "Our blog"
+    },
+    {
+      "type": "range",
+      "id": "posts_per_page",
+      "label": "Posts per page",
+      "min": 3,
+      "max": 12,
+      "step": 3,
+      "default": 9
     },
     {
       "type": "checkbox",
-      "id": "show_image",
-      "default": true,
-      "label": "t:sections.main-blog.settings.show_image.label"
-    },
-    {
-      "type": "select",
-      "id": "image_height",
-      "options": [
-        {
-          "value": "adapt",
-          "label": "t:sections.main-blog.settings.image_height.options__1.label"
-        },
-        {
-          "value": "small",
-          "label": "t:sections.main-blog.settings.image_height.options__2.label"
-        },
-        {
-          "value": "medium",
-          "label": "t:sections.main-blog.settings.image_height.options__3.label"
-        },
-        {
-          "value": "large",
-          "label": "t:sections.main-blog.settings.image_height.options__4.label"
-        }
-      ],
-      "default": "medium",
-      "label": "t:sections.main-blog.settings.image_height.label"
-    },
-    {
-      "type": "checkbox",
-      "id": "show_date",
-      "default": true,
-      "label": "t:sections.main-blog.settings.show_date.label"
+      "id": "show_excerpt",
+      "label": "Show excerpt",
+      "default": true
     },
     {
       "type": "checkbox",
       "id": "show_author",
-      "default": false,
-      "label": "t:sections.main-blog.settings.show_author.label"
-    },
-    {
-      "type": "header",
-      "content": "t:sections.all.padding.section_padding_heading"
-    },
-    {
-      "type": "range",
-      "id": "padding_top",
-      "min": 0,
-      "max": 100,
-      "step": 4,
-      "unit": "px",
-      "label": "t:sections.all.padding.padding_top",
-      "default": 36
-    },
-    {
-      "type": "range",
-      "id": "padding_bottom",
-      "min": 0,
-      "max": 100,
-      "step": 4,
-      "unit": "px",
-      "label": "t:sections.all.padding.padding_bottom",
-      "default": 36
+      "label": "Show author",
+      "default": false
     }
   ]
 }

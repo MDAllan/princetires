@@ -17,7 +17,7 @@
 
     <div class="svc__grid">
       {%- for block in section.blocks -%}
-        <div class="svc__card" {{ block.shopify_attributes }}>
+        <a href="{{ block.settings.link | default: '#' }}" class="svc__card" {{ block.shopify_attributes }}>
           <div class="svc__card-icon" aria-hidden="true">
             {%- case block.settings.icon -%}
               {%- when 'tire' -%}
@@ -41,7 +41,7 @@
             {%- endcase -%}
           </div>
           <h3 class="svc__card-title">{{ block.settings.title }}</h3>
-        </div>
+        </a>
       {%- endfor -%}
     </div>
 
@@ -125,6 +125,8 @@
     gap: 0.8rem;
     cursor: pointer;
     padding: 0.8rem;
+    text-decoration: none;
+    color: inherit;
   }
 
   /* ── Icon ── */
@@ -184,14 +186,63 @@
   }
 
   @media (max-width: 480px) {
+    .svc {
+      padding: 4rem 0;
+    }
     .svc__container {
-      padding: 0 2rem;
+      padding: 0 1.6rem;
+    }
+    .svc__top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 2rem;
     }
     .svc__grid {
-      gap: 2rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.2rem;
+    }
+    .svc__card {
+      padding: 1.6rem 0.8rem;
+      border-radius: 8px;
+      background: #f7f7f8;
+      min-height: 4.4rem;
+    }
+    .svc__card-icon {
+      width: 44px;
+      height: 44px;
+    }
+    .svc__card-title {
+      font-size: 1.1rem;
     }
     .svc__heading {
-      font-size: 2.4rem;
+      font-size: clamp(2rem, 6vw, 2.4rem);
+    }
+    .svc__cta {
+      font-size: 1.2rem;
+      min-height: 4.4rem;
+      display: inline-flex;
+      align-items: center;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .svc__container {
+      padding: 0 1.2rem;
+    }
+    .svc__grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    .svc__card {
+      padding: 1.4rem 0.6rem;
+    }
+    .svc__card-title {
+      font-size: 1rem;
+    }
+    .svc__heading {
+      font-size: 2rem;
     }
   }
 {% endstylesheet %}
@@ -258,6 +309,11 @@
           "id": "description",
           "label": "Description",
           "default": "Service description goes here."
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "Service page link"
         }
       ]
     }

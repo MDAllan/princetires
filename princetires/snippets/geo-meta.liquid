@@ -119,6 +119,63 @@
         "name": {{ shop.name | json }}
       }
     },
+    {%- if product.metafields.custom.mpn != blank -%}
+      "mpn": {{ product.metafields.custom.mpn | json }},
+    {%- endif -%}
+    "additionalProperty": [
+      {%- if product.metafields.custom.tire_size != blank -%}
+        { "@type": "PropertyValue", "name": "Tire Size", "value": {{ product.metafields.custom.tire_size | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.load_index != blank -%}
+        { "@type": "PropertyValue", "name": "Load Index", "value": {{ product.metafields.custom.load_index | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.speed_rating != blank -%}
+        { "@type": "PropertyValue", "name": "Speed Rating", "value": {{ product.metafields.custom.speed_rating | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.utqg_treadwear != blank -%}
+        { "@type": "PropertyValue", "name": "UTQG Treadwear", "value": {{ product.metafields.custom.utqg_treadwear | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.utqg_traction != blank -%}
+        { "@type": "PropertyValue", "name": "UTQG Traction", "value": {{ product.metafields.custom.utqg_traction | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.utqg_temperature != blank -%}
+        { "@type": "PropertyValue", "name": "UTQG Temperature", "value": {{ product.metafields.custom.utqg_temperature | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.tread_depth != blank -%}
+        { "@type": "PropertyValue", "name": "Tread Depth", "value": {{ product.metafields.custom.tread_depth | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.ply_rating != blank -%}
+        { "@type": "PropertyValue", "name": "Load Range", "value": {{ product.metafields.custom.ply_rating | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.sidewall != blank -%}
+        { "@type": "PropertyValue", "name": "Sidewall", "value": {{ product.metafields.custom.sidewall | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.vehicle_type != blank -%}
+        { "@type": "PropertyValue", "name": "Vehicle Type", "value": {{ product.metafields.custom.vehicle_type | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.three_peak_snowflake == true -%}
+        { "@type": "PropertyValue", "name": "Three-Peak Mountain Snowflake (3PMSF)", "value": "Yes" },
+      {%- endif -%}
+      {%- if product.metafields.custom.mud_snow == true -%}
+        { "@type": "PropertyValue", "name": "M+S Rated", "value": "Yes" },
+      {%- endif -%}
+      {%- if product.metafields.custom.run_flat == true -%}
+        { "@type": "PropertyValue", "name": "Run-Flat", "value": "Yes" },
+      {%- endif -%}
+      {%- assign season_label = '' -%}
+      {%- for tag in product.tags -%}
+        {%- assign td = tag | downcase -%}
+        {%- if td contains 'winter' -%}{%- assign season_label = 'Winter' -%}
+        {%- elsif td contains 'all-season' or td contains 'all season' -%}{%- assign season_label = 'All-Season' -%}
+        {%- elsif td contains 'all-weather' or td contains 'all weather' -%}{%- assign season_label = 'All-Weather' -%}
+        {%- elsif td contains 'summer' -%}{%- assign season_label = 'Summer' -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {%- if season_label != blank -%}
+        { "@type": "PropertyValue", "name": "Season", "value": {{ season_label | json }} },
+      {%- endif -%}
+      { "@type": "PropertyValue", "name": "Construction", "value": "Radial" }
+    ],
     "isRelatedTo": [
       {%- for collection in product.collections limit: 3 -%}
         {
@@ -136,13 +193,19 @@
     that generative engines can pull directly into AI overviews.
   {%- endcomment -%}
   {%- capture ai_summary -%}
-    {{ product.title }} by {{ product.vendor }}. {{ product.description | strip_html | truncate: 200 }}
+    {{ product.title }} by {{ product.vendor }}.
+    {%- if product.metafields.custom.tire_size != blank %} Size: {{ product.metafields.custom.tire_size }}.{%- endif -%}
+    {%- if product.metafields.custom.vehicle_type != blank %} {{ product.metafields.custom.vehicle_type }} tire.{%- endif -%}
+    {%- if product.metafields.custom.load_index != blank %} Load index {{ product.metafields.custom.load_index }}.{%- endif -%}
+    {%- if product.metafields.custom.speed_rating != blank %} Speed rating {{ product.metafields.custom.speed_rating }}.{%- endif -%}
+    {%- if product.metafields.custom.warranty_km != blank %} {{ product.metafields.custom.warranty_km }} km warranty.{%- endif -%}
+    {{ ' ' }}{{ product.description | strip_html | truncate: 150 }}
     {%- if product.price_min == product.price_max -%}
       {{ ' ' }}Price: {{ product.price | money }}.
     {%- else -%}
       {{ ' ' }}Price range: {{ product.price_min | money }} - {{ product.price_max | money }}.
     {%- endif -%}
-    {%- if product.available %} In stock.{% else %} Out of stock.{% endif -%}
+    {%- if product.available %} In stock at Prince Tires Calgary.{% else %} Out of stock.{% endif -%}
   {%- endcapture -%}
   <meta name="summary" content="{{ ai_summary | strip_newlines | strip | escape }}">
 {%- endif -%}

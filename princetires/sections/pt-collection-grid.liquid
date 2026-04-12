@@ -9,6 +9,17 @@
 </script>
 
 {%- paginate collection.products by section.settings.products_per_page -%}
+{%- liquid
+  assign price_max_val = 0
+  for product in collection.products
+    assign p = product.price | divided_by: 100
+    if p > price_max_val
+      assign price_max_val = p
+    endif
+  endfor
+  assign price_max_rounded = price_max_val | plus: 49 | divided_by: 50 | times: 50
+  assign price_max_rounded = price_max_rounded | at_least: 200
+-%}
 <div class="ptg" style="--ptg-img-pad: {{ section.settings.image_padding }}rem; --ptg-img-ratio: {{ section.settings.image_ratio }};">
 
   <div class="ptg__container">
@@ -46,11 +57,11 @@
           <div class="ptg__price-slider">
             <div class="ptg__price-values">
               <span data-price-min-display>${{ active_price_min | default: '0' }}</span>
-              <span data-price-max-display>${{ active_price_max | default: '500' }}</span>
+              <span data-price-max-display>${{ active_price_max | default: price_max_rounded }}</span>
             </div>
             <div class="ptg__price-track">
-              <input type="range" min="0" max="500" value="{{ active_price_min | default: 0 }}" step="10" class="ptg__price-range ptg__price-range--min" data-price-min>
-              <input type="range" min="0" max="500" value="{{ active_price_max | default: 500 }}" step="10" class="ptg__price-range ptg__price-range--max" data-price-max>
+              <input type="range" min="0" max="{{ price_max_rounded }}" value="{{ active_price_min | default: 0 }}" step="10" class="ptg__price-range ptg__price-range--min" data-price-min>
+              <input type="range" min="0" max="{{ price_max_rounded }}" value="{{ active_price_max | default: price_max_rounded }}" step="10" class="ptg__price-range ptg__price-range--max" data-price-max>
             </div>
           </div>
         </div>
@@ -112,6 +123,7 @@
               <a href="#" class="ptg__filter-link" data-filter-key="filter.p.vendor" data-filter-value="{{ brand }}">
                 <span class="ptg__filter-check"></span>
                 {{ brand }}
+                <span class="ptg__filter-cnt" data-filter-cnt="vendor:{{ brand | handleize }}"></span>
               </a>
             {%- endfor -%}
           </div>
@@ -129,6 +141,7 @@
               <a href="#" class="ptg__filter-link" data-filter-key="filter.p.product_type" data-filter-value="{{ pt }}">
                 <span class="ptg__filter-check"></span>
                 {{ pt }}
+                <span class="ptg__filter-cnt" data-filter-cnt="type:{{ pt | handleize }}"></span>
               </a>
             {%- endfor -%}
           </div>
@@ -204,10 +217,13 @@
           Filters
         </button>
 
+        {%- if section.settings.show_trust_bar -%}
+        {%- endif -%}
+
         <div class="ptg__toolbar">
           <div class="ptg__search" data-ptg-smart-search>
-            <svg class="ptg__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg>
-            <input type="text" class="ptg__search-input" placeholder="Search by vehicle or tire size..." data-ptg-search autocomplete="off">
+            <svg class="ptg__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>
+            <input type="text" class="ptg__search-input" placeholder="" data-ptg-search data-ptg-typewriter autocomplete="off">
             <span class="ptg__search-badge">
               <span class="ptg__search-dot"></span>
               Powered by <strong>Smart Search</strong>
@@ -233,6 +249,11 @@
               <svg class="ptg__sort-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
             </div>
           </div>
+        </div>
+
+        <div class="ptg__results" data-ptg-result-count style="display:none">
+          Showing <span class="ptg__results-count">{{ collection.products_count }}</span> tires
+          <span class="ptg__results-size" data-results-size hidden>for <strong data-results-size-val></strong></span>
         </div>
 
         {%- if collection.products.size > 0 -%}
@@ -277,6 +298,20 @@
                 if tire_size_display != blank
                   assign card_title = product.title | remove: tire_size_display | strip | remove_first: ' '
                 endif
+                assign set_price = product.price | times: 4
+                assign card_rating = product.metafields.reviews.rating.value
+                assign card_rating_count = product.metafields.reviews.rating_count | default: 0
+                assign mileage_warranty = product.metafields.custom.mileage_warranty | default: ''
+                assign card_speed = product.metafields.custom.speed_rating | default: ''
+                assign card_load = product.metafields.custom.load_index | default: ''
+                assign rebate_text = product.metafields.custom.rebate_text | default: ''
+                assign is_bestseller = false
+                for tag in product.tags
+                  assign tag_down = tag | downcase
+                  if tag_down == 'best-seller' or tag_down == 'best seller' or tag_down == 'bestseller'
+                    assign is_bestseller = true
+                  endif
+                endfor
               -%}
               <a href="{{ product.url }}" class="ptg__card" data-vendor="{{ product.vendor | handleize }}" data-season="{{ season_tag | handleize }}" data-type="{{ product.type | downcase }}" data-price="{{ product.price | money_without_currency | strip_html | strip }}" data-tire-size="{{ tire_size_display }}" data-product-title="{{ card_title | escape }}">
                 <div class="ptg__card-img">
@@ -290,10 +325,26 @@
                   {%- if product.compare_at_price > product.price -%}
                     <span class="ptg__card-sale">Sale</span>
                   {%- endif -%}
+                  {%- if section.settings.show_bestseller and is_bestseller -%}
+                    <span class="ptg__card-badge-best">Best Seller</span>
+                  {%- endif -%}
+                  {%- if section.settings.enable_compare -%}
+                    <label class="ptg__card-compare" onclick="event.preventDefault();event.stopPropagation();">
+                      <input type="checkbox" class="ptg__compare-check" data-compare-id="{{ product.id }}" data-compare-title="{{ card_title | escape }}" data-compare-vendor="{{ product.vendor | escape }}" data-compare-price="{{ product.price | money_without_currency | strip_html | strip }}" data-compare-set="{{ set_price | money_without_currency | strip_html | strip }}" data-compare-img="{{ product.featured_image | image_url: width: 200 }}" data-compare-size="{{ tire_size_display }}" data-compare-url="{{ product.url }}" data-compare-season="{{ season_tag }}" data-compare-type="{{ product.type | escape }}" data-compare-speed="{{ card_speed }}" data-compare-load="{{ card_load }}" data-compare-warranty="{{ mileage_warranty }}">
+                      <span class="ptg__compare-label">Compare</span>
+                    </label>
+                  {%- endif -%}
                   <div class="ptg__card-img-bottom">
                     <span class="ptg__card-stars">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="#F5820B"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                      4.5
+                      {%- if card_rating != blank -%}
+                        {{ card_rating | round: 1 }}
+                        {%- if card_rating_count > 0 -%}
+                          <span class="ptg__card-review-count">({{ card_rating_count }})</span>
+                        {%- endif -%}
+                      {%- else -%}
+                        4.5
+                      {%- endif -%}
                     </span>
                     {%- if season_tag != blank -%}
                       <span class="ptg__card-season" style="background: {{ season_color }}">{{ season_tag }}</span>
@@ -301,14 +352,38 @@
                   </div>
                 </div>
                 <div class="ptg__card-body">
+                  {%- if tire_size_display != blank -%}
+                    <span class="ptg__card-size">{{ tire_size_display }}</span>
+                  {%- endif -%}
+                  {%- if section.settings.show_fitment -%}
+                    <span class="ptg__card-fitment" data-card-fitment hidden>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                      Fits your vehicle
+                    </span>
+                  {%- endif -%}
                   <span class="ptg__card-vendor ptg__card-vendor--{{ product.vendor | handleize }}">{{ product.vendor | escape }}</span>
                   <h3 class="ptg__card-title">{{ card_title | escape }}</h3>
-                  <div class="ptg__card-tags">
-                    {%- if tire_size_display != blank -%}
-                      <span class="ptg__card-size-tag">{{ tire_size_display }}</span>
+                  <span class="ptg__card-type-tag">{{ product.type | escape }}</span>
+                  {%- if section.settings.show_warranty and mileage_warranty != blank -%}
+                    <span class="ptg__card-warranty">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      {{ mileage_warranty }} warranty
+                    </span>
+                  {%- endif -%}
+                  {%- if section.settings.show_specs -%}
+                    {%- if card_speed != blank or card_load != blank -%}
+                      <div class="ptg__card-specs">
+                        {%- if card_load != blank -%}<span class="ptg__card-spec">{{ card_load }}LI</span>{%- endif -%}
+                        {%- if card_speed != blank -%}<span class="ptg__card-spec">{{ card_speed }}</span>{%- endif -%}
+                      </div>
                     {%- endif -%}
-                    <span class="ptg__card-type-tag">{{ product.type | escape }}</span>
-                  </div>
+                  {%- endif -%}
+                  {%- if section.settings.show_rebate and rebate_text != blank -%}
+                    <span class="ptg__card-rebate">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                      {{ rebate_text }}
+                    </span>
+                  {%- endif -%}
                   <div class="ptg__card-price">
                     {%- if product.compare_at_price > product.price -%}
                       <span class="ptg__price-sale">${{ product.price | money_without_currency }}</span>
@@ -317,9 +392,39 @@
                       <span>${{ product.price | money_without_currency }}</span>
                     {%- endif -%}
                     <span class="ptg__price-per">/tire</span>
+                    {%- if section.settings.show_set_price -%}
+                      <span class="ptg__price-set">${{ set_price | money_without_currency }} for 4</span>
+                    {%- endif -%}
                   </div>
                   <div class="ptg__card-actions">
-                    <button type="button" class="ptg__card-book" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ product.metafields.custom.tire_size | default: '' }}" onclick="event.preventDefault();event.stopPropagation();openBookingModal(this)">Book Installation</button>
+                    {%- liquid
+                      assign grid_vtype = 'passenger'
+                      assign grid_ts = product.metafields.custom.tire_size | default: '' | upcase
+                      assign grid_vmeta = product.metafields.custom.vehicle_type | downcase | default: ''
+                      if grid_vmeta contains 'suv' or grid_vmeta contains 'cuv'
+                        assign grid_vtype = 'suv'
+                      elsif grid_vmeta contains 'light truck'
+                        assign grid_vtype = 'truck'
+                      elsif grid_vmeta contains 'trailer'
+                        assign grid_vtype = 'trailer'
+                      elsif grid_vmeta contains 'van'
+                        assign grid_vtype = 'van'
+                      elsif grid_vmeta contains 'truck'
+                        assign grid_vtype = 'truck'
+                      elsif grid_ts contains 'LT'
+                        assign grid_vtype = 'truck'
+                      elsif grid_ts contains 'ST'
+                        assign grid_vtype = 'trailer'
+                      else
+                        assign grid_pt = product.type | downcase
+                        if grid_pt contains 'trailer'
+                          assign grid_vtype = 'trailer'
+                        elsif grid_pt contains 'light truck'
+                          assign grid_vtype = 'truck'
+                        endif
+                      endif
+                    -%}
+                    <button type="button" class="ptg__card-book" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ product.metafields.custom.tire_size | default: '' }}" data-vehicle-type="{{ grid_vtype }}" onclick="event.preventDefault();event.stopPropagation();openBookingModal(this)">Book Installation</button>
                     <span class="ptg__card-cart">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
                     </span>
@@ -362,6 +467,29 @@
     </div>
   </div>
 </div>
+
+{%- if section.settings.enable_compare -%}
+  <div class="ptg__compare-tray" data-compare-tray hidden>
+    <div class="ptg__compare-tray-inner">
+      <div class="ptg__compare-items" data-compare-items></div>
+      <button type="button" class="ptg__compare-btn" data-compare-open disabled>Compare (<span data-compare-count>0</span>)</button>
+      <button type="button" class="ptg__compare-clear" data-compare-clear>Clear</button>
+    </div>
+  </div>
+  <div class="ptg__compare-modal" data-compare-modal hidden>
+    <div class="ptg__compare-modal-backdrop" data-compare-modal-close></div>
+    <div class="ptg__compare-modal-content">
+      <div class="ptg__compare-modal-head">
+        <h3>Compare tires</h3>
+        <button type="button" class="ptg__compare-modal-x" data-compare-modal-close>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="ptg__compare-table-wrap" data-compare-table></div>
+    </div>
+  </div>
+{%- endif -%}
+
 {%- endpaginate -%}
 
 {% stylesheet %}
@@ -867,6 +995,34 @@
 
   .ptg__active-clear:hover { color: #dc2626; }
 
+  /* ══ Trust Bar ══ */
+  .ptg__trust-bar {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 0.6rem 1.2rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .ptg__trust-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #15803d;
+    white-space: nowrap;
+  }
+  .ptg__trust-sep {
+    color: #bbf7d0;
+    font-weight: 300;
+  }
+
   .ptg__toolbar {
     display: flex;
     align-items: center;
@@ -883,6 +1039,8 @@
   }
 
   .ptg__results-count { font-weight: 500; color: #111; }
+  .ptg__results-size { font-weight: 300; }
+  .ptg__results-size strong { font-weight: 600; color: #F5820B; }
 
   .ptg__search {
     flex: 1;
@@ -895,31 +1053,35 @@
   .ptg__search-icon {
     position: absolute;
     left: 1rem;
-    color: #9ca3af;
+    color: #F5820B;
     pointer-events: none;
+    z-index: 1;
   }
 
   .ptg__search-input {
     width: 100%;
     padding: 0.6rem 1rem 0.6rem 2.8rem;
     border: 1px solid #e5e7eb;
-    border-radius: 4px;
+    border-radius: 6px;
     font-family: 'Outfit', sans-serif;
     font-size: 1.15rem;
     font-weight: 300;
     color: #111;
     background: #fafafa;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
+    caret-color: #F5820B;
   }
 
   .ptg__search-input::placeholder {
-    color: #c0c0c0;
+    color: #9ca3af;
+    transition: color 0.2s;
   }
 
   .ptg__search-input:focus {
     border-color: #F5820B;
     background: #fff;
+    box-shadow: 0 0 0 3px rgba(245, 130, 11, 0.1), 0 2px 8px rgba(245, 130, 11, 0.08);
   }
 
   .ptg__search-badge {
@@ -1207,22 +1369,13 @@
   }
 
 
-  .ptg__card-tags {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-    margin-top: 0.4rem;
-  }
-
-  .ptg__card-size-tag {
+  .ptg__card-size {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 600;
+    font-size: 1.4rem;
+    font-weight: 700;
     color: #111;
-    background: none;
-    padding: 0;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
   }
 
   .ptg__card-type-tag {
@@ -1230,6 +1383,77 @@
     font-size: 0.95rem;
     font-weight: 300;
     color: #9ca3af;
+  }
+
+  .ptg__card-review-count { font-weight: 300; font-size: 0.8rem; color: #9ca3af; }
+
+  .ptg__card-badge-best {
+    position: absolute;
+    bottom: 0.6rem;
+    left: 0.6rem;
+    background: #F5820B;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .ptg__card-fitment {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #16a34a;
+  }
+  .ptg__card-fitment[hidden] { display: none; }
+
+  .ptg__card-warranty {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #16a34a;
+    background: #ecfdf5;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    width: fit-content;
+  }
+
+  .ptg__card-specs {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+  }
+  .ptg__card-spec {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: #6b7280;
+    background: #f7f7f7;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+  }
+
+  .ptg__card-rebate {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #F5820B;
+    background: rgba(245, 130, 11, 0.08);
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    width: fit-content;
   }
 
   .ptg__card-price {
@@ -1247,11 +1471,12 @@
   .ptg__price-sale { color: #dc2626; }
   .ptg__price-was { font-size: 1.05rem; font-weight: 300; color: #9ca3af; text-decoration: line-through; }
   .ptg__price-per { font-size: 1rem; font-weight: 300; color: #9ca3af; }
+  .ptg__price-set { font-size: 0.9rem; font-weight: 400; color: #6b7280; margin-left: auto; }
 
   .ptg__card-actions {
     display: flex;
     gap: 0.4rem;
-    margin-top: 0.8rem;
+    margin-top: 0.4rem;
   }
 
   .ptg__card-book {
@@ -1260,9 +1485,9 @@
     align-items: center;
     justify-content: center;
     padding: 0.5rem;
-    background: transparent;
-    color: #dc2626;
-    border: 1px solid #e5e7eb;
+    background: #dc2626;
+    color: #fff;
+    border: 1px solid #dc2626;
     font-family: 'Outfit', sans-serif;
     font-size: 0.95rem;
     font-weight: 500;
@@ -1271,9 +1496,9 @@
   }
 
   .ptg__card-book:hover {
-    background: #dc2626;
+    background: #b91c1c;
     color: #fff;
-    border-color: #dc2626;
+    border-color: #b91c1c;
   }
 
   .ptg__card-cart {
@@ -1294,6 +1519,188 @@
     background: #dc2626;
     color: #fff;
   }
+
+  /* ══ Compare ══ */
+  .ptg__card-compare {
+    position: absolute;
+    bottom: 0.6rem;
+    right: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(4px);
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    cursor: pointer;
+    z-index: 2;
+    transition: opacity 0.15s;
+    opacity: 0;
+    display: none;
+  }
+  .ptg__card:hover .ptg__card-compare,
+  .ptg__card-compare:has(.ptg__compare-check:checked) { opacity: 1; }
+  .ptg__compare-check { width: 14px; height: 14px; accent-color: #F5820B; cursor: pointer; margin: 0; }
+  .ptg__compare-label { font-family: 'Outfit', sans-serif; font-size: 0.8rem; font-weight: 500; color: #374151; cursor: pointer; }
+
+  .ptg__compare-tray {
+    display: none !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 400;
+    background: #fff;
+    border-top: 2px solid #F5820B;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.1);
+    padding: 0.8rem 2rem;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .ptg__compare-tray[hidden] { display: block; }
+  .ptg__compare-tray.is-visible { transform: translateY(0); }
+  .ptg__compare-tray-inner { display: flex; align-items: center; gap: 1rem; max-width: 1400px; margin: 0 auto; }
+  .ptg__compare-items { display: flex; gap: 0.6rem; flex: 1; overflow-x: auto; }
+  .ptg__compare-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #f7f7f7;
+    border-radius: 4px;
+    padding: 0.3rem 0.5rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .ptg__compare-item img { width: 32px; height: 32px; object-fit: contain; border-radius: 2px; }
+  .ptg__compare-item-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    padding: 0;
+    display: flex;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+  .ptg__compare-item-remove:hover { color: #dc2626; }
+  .ptg__compare-btn {
+    background: #F5820B;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 4px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .ptg__compare-btn:hover { background: #e0740a; }
+  .ptg__compare-btn:disabled { background: #d1d5db; cursor: not-allowed; }
+  .ptg__compare-clear {
+    background: none;
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem 0.8rem;
+    border-radius: 4px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    color: #6b7280;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .ptg__compare-clear:hover { border-color: #dc2626; color: #dc2626; }
+
+  .ptg__compare-modal {
+    display: none !important;
+    position: fixed;
+    inset: 0;
+    z-index: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ptg__compare-modal[hidden] { display: none; }
+  .ptg__compare-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+  }
+  .ptg__compare-modal-content {
+    position: relative;
+    background: #fff;
+    border-radius: 10px;
+    width: min(95vw, 1000px);
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  .ptg__compare-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 1.6rem;
+    border-bottom: 1px solid #f0f0f0;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+    border-radius: 10px 10px 0 0;
+  }
+  .ptg__compare-modal-head h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+  }
+  .ptg__compare-modal-x {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    padding: 0.3rem;
+    border-radius: 4px;
+  }
+  .ptg__compare-modal-x:hover { color: #111; background: #f7f7f7; }
+
+  .ptg__cmp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Outfit', sans-serif;
+  }
+  .ptg__cmp-table th {
+    text-align: left;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #9ca3af;
+    background: #fafafa;
+    white-space: nowrap;
+    width: 120px;
+    vertical-align: top;
+  }
+  .ptg__cmp-table td {
+    padding: 0.6rem 1rem;
+    font-size: 0.95rem;
+    color: #374151;
+    border-bottom: 1px solid #f5f5f5;
+    vertical-align: top;
+    text-align: center;
+  }
+  .ptg__cmp-table td img { width: 80px; height: 80px; object-fit: contain; }
+  .ptg__cmp-table .ptg__cmp-price { font-weight: 700; color: #111; font-size: 1.1rem; }
+  .ptg__cmp-table .ptg__cmp-link {
+    display: inline-block;
+    margin-top: 0.4rem;
+    color: #F5820B;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  .ptg__cmp-table .ptg__cmp-link:hover { text-decoration: underline; }
 
   /* ══ Pagination ══ */
   .ptg__pages {
@@ -1469,15 +1876,189 @@
     .ptg__sidebar-head {
       display: none;
     }
+
+    /* ── Trust bar mobile ── */
+    .ptg__trust-bar {
+      flex-direction: column;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+    }
+    .ptg__trust-sep { display: none; }
+
+    /* ── Compare tray mobile ── */
+    .ptg__compare-tray { padding: 0.6rem 1rem; }
+    .ptg__compare-tray-inner { flex-wrap: wrap; gap: 0.5rem; }
+    .ptg__compare-items { flex: 1 1 100%; }
+
+    /* ── Compare modal mobile ── */
+    .ptg__compare-modal-content { width: 98vw; max-height: 90vh; }
+    .ptg__cmp-table th { font-size: 0.75rem; width: 80px; padding: 0.4rem 0.5rem; }
+    .ptg__cmp-table td { font-size: 0.8rem; padding: 0.4rem 0.5rem; }
+    .ptg__cmp-table td img { width: 50px; height: 50px; }
+
+    /* ── Card badges mobile ── */
+    .ptg__card-compare { opacity: 1; }
+    .ptg__card-size { font-size: 1.2rem; }
+  }
+
+  @media (max-width: 480px) {
+    .ptg__container {
+      padding: 0 1.2rem;
+    }
+    .ptg__grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.6rem;
+    }
+    .ptg__mobile-filter-btn {
+      padding: 1rem 1.4rem;
+      font-size: 1.3rem;
+      min-height: 4.4rem;
+    }
+    .ptg__sidebar {
+      width: min(280px, 85vw);
+    }
+    .ptg__card-book {
+      padding: 0.8rem;
+      font-size: 1.1rem;
+      min-height: 4rem;
+    }
+    .ptg__card-cart {
+      width: 4rem;
+      height: 4rem;
+      min-width: 4rem;
+    }
+    .ptg__card-title {
+      font-size: 1.15rem;
+    }
+    .ptg__card-price {
+      font-size: 1.5rem;
+    }
+    .ptg__card-size {
+      font-size: 1.1rem;
+    }
+    .ptg__trust-bar {
+      font-size: 0.8rem;
+      padding: 0.4rem 0.8rem;
+    }
+    .ptg__search-badge {
+      display: none;
+    }
+    .ptg__search-input {
+      font-size: 1.4rem;
+      padding: 0.5rem 0.8rem 0.5rem 2.6rem;
+    }
+    .ptg__search {
+      max-width: 100%;
+    }
+    .ptg__top-bar {
+      flex-direction: column;
+      gap: 0.8rem;
+      align-items: stretch;
+    }
+    .ptg__compare-tray-inner {
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .ptg__container {
+      padding: 0 1rem;
+    }
+    .ptg__grid {
+      gap: 0.5rem;
+    }
+    .ptg__sidebar {
+      width: 100vw;
+    }
+    .ptg__card-body {
+      padding: 0.8rem;
+    }
+    .ptg__card-title {
+      font-size: 1.05rem;
+    }
+    .ptg__card-actions {
+      gap: 0.3rem;
+    }
+    .ptg__card-book {
+      padding: 0.7rem;
+      font-size: 1rem;
+    }
+    .ptg__card-cart {
+      width: 3.6rem;
+      height: 3.6rem;
+      min-width: 3.6rem;
+    }
   }
 {% endstylesheet %}
 
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+
+  /* ── Typewriter placeholder ── */
+  (function() {
+    var input = document.querySelector('[data-ptg-typewriter]');
+    if (!input) return;
+    var phrases = [
+      'Search by vehicle...',
+      '2025 Toyota RAV4',
+      'Search by tire size...',
+      '225/65R17',
+      'Smart search...',
+      'Michelin Defender'
+    ];
+    var phraseIdx = 0, charIdx = 0, deleting = false, paused = false;
+
+    function tick() {
+      if (paused || input === document.activeElement || input.value !== '') return;
+      var phrase = phrases[phraseIdx];
+
+      if (!deleting) {
+        charIdx++;
+        input.setAttribute('placeholder', phrase.slice(0, charIdx));
+        if (charIdx >= phrase.length) {
+          deleting = true;
+          setTimeout(tick, 1800);
+          return;
+        }
+        setTimeout(tick, 70);
+      } else {
+        charIdx--;
+        input.setAttribute('placeholder', phrase.slice(0, charIdx));
+        if (charIdx <= 0) {
+          deleting = false;
+          phraseIdx = (phraseIdx + 1) % phrases.length;
+          setTimeout(tick, 300);
+          return;
+        }
+        setTimeout(tick, 25);
+      }
+    }
+
+    input.addEventListener('focus', function() { paused = true; input.setAttribute('placeholder', ''); });
+    input.addEventListener('blur', function() {
+      paused = false;
+      if (input.value === '') { charIdx = 0; deleting = false; tick(); }
+    });
+
+    tick();
+  })();
+
   var activeFiltersBar = document.querySelector('[data-active-filters-sidebar]');
   var params = new URLSearchParams(window.location.search);
   var baseUrl = window.location.pathname;
+
+  // Result count — show tire size context if filtered
+  (function() {
+    var sizeParam = params.get('filter.p.m.custom.tire_size');
+    if (sizeParam) {
+      var sizeSpan = document.querySelector('[data-results-size]');
+      var sizeVal = document.querySelector('[data-results-size-val]');
+      if (sizeSpan && sizeVal) { sizeVal.textContent = sizeParam; sizeSpan.hidden = false; }
+    }
+  })();
 
   function isFilterActive(key, value) {
     var found = false;
@@ -1636,7 +2217,52 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
 
-  // Collection smart search — same logic as hero, with trim dropdown + intent parsing
+  // Approximate filter counts from visible cards
+  (function() {
+    var cards = document.querySelectorAll('.ptg__card[data-vendor]');
+    var vendorCounts = {};
+    var typeCounts = {};
+    cards.forEach(function(card) {
+      var v = card.dataset.vendor;
+      if (v) vendorCounts[v] = (vendorCounts[v] || 0) + 1;
+      var t = card.dataset.type;
+      if (t) typeCounts[t] = (typeCounts[t] || 0) + 1;
+    });
+    document.querySelectorAll('[data-filter-cnt]').forEach(function(el) {
+      var parts = el.dataset.filterCnt.split(':');
+      var kind = parts[0], key = parts[1];
+      var count = 0;
+      if (kind === 'vendor') count = vendorCounts[key] || 0;
+      else if (kind === 'type') count = typeCounts[key] || 0;
+      if (count > 0) el.textContent = '(' + count + ')';
+    });
+  })();
+
+  // Vehicle fitment confirmation on cards
+  (function() {
+    var fitmentBadges = document.querySelectorAll('[data-card-fitment]');
+    if (!fitmentBadges.length) return;
+    try {
+      var keys = Object.keys(localStorage).filter(function(k) { return k.startsWith('pt-garage-'); });
+      var vehicleSizes = [];
+      for (var i = 0; i < keys.length; i++) {
+        var vehicles = JSON.parse(localStorage.getItem(keys[i]));
+        var def = (vehicles || []).find(function(v) { return v.isDefault; });
+        if (def && def.sizes) { vehicleSizes = def.sizes; break; }
+      }
+      if (vehicleSizes.length > 0) {
+        document.querySelectorAll('.ptg__card[data-tire-size]').forEach(function(card) {
+          var cardSize = card.dataset.tireSize;
+          if (cardSize && vehicleSizes.indexOf(cardSize) !== -1) {
+            var badge = card.querySelector('[data-card-fitment]');
+            if (badge) badge.hidden = false;
+          }
+        });
+      }
+    } catch(e) {}
+  })();
+
+  // Collection smart search — same logic as hero
   (function() {
     var wrap = document.querySelector('[data-ptg-smart-search]');
     if (!wrap) return;
@@ -1646,26 +2272,86 @@ document.addEventListener('DOMContentLoaded', function() {
     var list = wrap.querySelector('[data-ptg-list]');
     var configEl = document.querySelector('[data-smart-search-config]');
     var config = configEl ? JSON.parse(configEl.textContent) : {};
-    var tireSizeRegex = /[Pp]?[LlTtSs]?[Tt]?(\d{3})\/?(\d{2,3})?[Rr]?(\d{2}\.?\d?)/;
+    var tireSizeRegex = /(?:^|[\s,])([Pp]?[LlTtSs]?[Tt]?\d{3}\/?\d{2,3}[Rr]\d{2}(?:\.\d)?)/;
     var vehicleCache = {};
     var debounceTimer = null;
     var brands = ['michelin','bridgestone','goodyear','continental','toyo','pirelli','falken','kumho','yokohama','firestone','cooper','bfgoodrich','bf goodrich','general','uniroyal','hankook','nitto','mickey thompson','firemax','linglong','farroad','yeada','fortune','radar','rotalla','haida','carlstar'];
+    var knownMakes = ['acura','alfa romeo','aston martin','audi','bmw','bentley','buick','cadillac','chevrolet','chevy','chrysler','dodge','ferrari','fiat','ford','gmc','genesis','honda','hyundai','ineos','infiniti','jaguar','jeep','karma','kia','lamborghini','land rover','lexus','lincoln','lotus','lucid','maserati','mazda','mclaren','mercedes-benz','mercedes','benz','mini','mitsubishi','nissan','polestar','porsche','ram','rivian','rolls-royce','subaru','tesla','toyota','vinfast','volkswagen','vw','volvo'];
+    var makeAliases = {'chevy':'Chevrolet','vw':'Volkswagen','mercedes':'Mercedes-Benz','benz':'Mercedes-Benz'};
+    var modelShortcuts = {'crv':'CR-V','cr-v':'CR-V','hrv':'HR-V','hr-v':'HR-V','rav':'RAV4','rav4':'RAV4','f150':'F-150','f-150':'F-150','f250':'F-250','f-250':'F-250','f350':'F-350','f-350':'F-350','4runner':'4Runner','forerunner':'4Runner','camry':'Camry','corolla':'Corolla','cx5':'CX-5','cx-5':'CX-5','cx50':'CX-50','cx-50':'CX-50','cx9':'CX-9','cx-9':'CX-9','cx30':'CX-30','cx-30':'CX-30','mazda3':'Mazda3','mazda6':'Mazda6','q5':'Q5','q7':'Q7','q3':'Q3','x3':'X3','x5':'X5','x1':'X1','crz':'CR-Z','brz':'BRZ','gr86':'GR86','wrx':'WRX','sti':'WRX STI','outback':'Outback','forester':'Forester','crosstrek':'Crosstrek','silverado':'Silverado 1500','sierra':'Sierra 1500','tahoe':'Tahoe','suburban':'Suburban','wrangler':'Wrangler','cherokee':'Cherokee','grandcherokee':'Grand Cherokee','grand cherokee':'Grand Cherokee','mustang':'Mustang','bronco':'Bronco','escape':'Escape','explorer':'Explorer','expedition':'Expedition','tacoma':'Tacoma','tundra':'Tundra','highlander':'Highlander','prius':'Prius','supra':'GR Supra','civic':'Civic','accord':'Accord','pilot':'Pilot','odyssey':'Odyssey','ridgeline':'Ridgeline','altima':'Altima','maxima':'Maxima','sentra':'Sentra','rogue':'Rogue','pathfinder':'Pathfinder','frontier':'Frontier','elantra':'Elantra','sonata':'Sonata','tucson':'Tucson','santafe':'Santa Fe','santa fe':'Santa Fe','palisade':'Palisade','sorento':'Sorento','sportage':'Sportage','forte':'Forte','telluride':'Telluride','jetta':'Jetta','tiguan':'Tiguan','atlas':'Atlas','golf':'Golf','passat':'Passat','model3':'Model 3','modely':'Model Y','modelx':'Model X','models':'Model S','glc':'GLC','gle':'GLE','gls':'GLS','ram1500':'1500','ram2500':'2500','ram3500':'3500','malibu':'Malibu','equinox':'Equinox','traverse':'Traverse','trax':'Trax','blazer':'Blazer','terrain':'Terrain','acadia':'Acadia','yukon':'Yukon','durango':'Durango','charger':'Charger','challenger':'Challenger','impreza':'Impreza','legacy':'Legacy','maverick':'Maverick','ranger':'Ranger','ioniq5':'Ioniq 5','ioniq6':'Ioniq 6','kona':'Kona','ct4':'CT4','ct5':'CT5','escalade':'Escalade','xt5':'XT5','xt6':'XT6'};
+    var noiseWords = ['tires','tire','for','my','the','a','an','need','needs','looking','want','i','on','new','set','of','best','good','cheap','get','find','buy','shop','what','fit','fits','size','sizes'];
+
+    function levenshtein(a, b) {
+      if (a.length === 0) return b.length;
+      if (b.length === 0) return a.length;
+      var matrix = [];
+      for (var i = 0; i <= b.length; i++) matrix[i] = [i];
+      for (var j = 0; j <= a.length; j++) matrix[0][j] = j;
+      for (var i = 1; i <= b.length; i++) {
+        for (var j = 1; j <= a.length; j++) {
+          var cost = a[j - 1] === b[i - 1] ? 0 : 1;
+          matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+        }
+      }
+      return matrix[b.length][a.length];
+    }
+
+    function fuzzyMatchMake(word) {
+      if (knownMakes.indexOf(word) >= 0) return makeAliases[word] || word;
+      var maxDist = word.length <= 4 ? 1 : 2;
+      var best = null, bestDist = maxDist + 1;
+      for (var i = 0; i < knownMakes.length; i++) {
+        var mk = knownMakes[i];
+        if (Math.abs(mk.length - word.length) > maxDist) continue;
+        var d = levenshtein(word, mk);
+        if (d < bestDist) { bestDist = d; best = mk; }
+      }
+      return best ? (makeAliases[best] || best) : null;
+    }
+
+    function normalizeTireSize(query) {
+      var m = query.match(/[Pp]?[LlTtSs]?[Tt]?(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/);
+      if (m) return { width: m[1], aspect: m[2], rim: m[3], size: m[1] + '/' + m[2] + 'R' + m[3] };
+      var compact = query.replace(/[\s\/\-rR]/g, '');
+      var dm = compact.match(/[Pp]?[LlTtSs]?[Tt]?(\d{3})(\d{2})(\d{2})$/);
+      if (dm) return { width: dm[1], aspect: dm[2], rim: dm[3], size: dm[1] + '/' + dm[2] + 'R' + dm[3] };
+      var spaced = query.match(/(\d{3})\s+(\d{2})\s+(\d{2})/);
+      if (spaced) return { width: spaced[1], aspect: spaced[2], rim: spaced[3], size: spaced[1] + '/' + spaced[2] + 'R' + spaced[3] };
+      return null;
+    }
 
     function parseIntent(query) {
       var q = query.toLowerCase();
       var intent = { season: null, brand: null };
       if (q.includes('winter') || q.includes('snow') || q.includes('ice')) intent.season = 'Winter';
-      else if (q.includes('all-season') || q.includes('all season')) intent.season = 'All-Season';
+      else if (q.includes('all-season') || q.includes('all season') || q.includes('allseason')) intent.season = 'All-Season';
       else if (q.includes('all-weather') || q.includes('all weather')) intent.season = 'All-Weather';
       else if (q.includes('summer') || q.includes('performance')) intent.season = 'Summer';
       for (var i = 0; i < brands.length; i++) {
         if (q.includes(brands[i])) {
           intent.brand = brands[i].split(' ').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
           if (intent.brand === 'Bfgoodrich' || intent.brand === 'Bf Goodrich') intent.brand = 'BFGoodrich';
+          if (intent.brand === 'Mickey Thompson') intent.brand = 'Mickey Thompson';
           break;
         }
       }
       return intent;
+    }
+
+    function cleanQueryForVehicle(query, intent) {
+      var q = query.toLowerCase();
+      var seasonWords = ['winter','snow','ice','all-season','all season','allseason','all-weather','all weather','summer','performance'];
+      for (var i = 0; i < seasonWords.length; i++) {
+        q = q.replace(new RegExp('\\b' + seasonWords[i].replace(/-/g, '[-\\s]?') + '\\b', 'g'), ' ');
+      }
+      if (intent.brand) {
+        var brandLower = intent.brand.toLowerCase();
+        q = q.replace(new RegExp('\\b' + brandLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), ' ');
+        for (var b of brands) {
+          if (q.includes(b)) q = q.replace(new RegExp('\\b' + b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), ' ');
+        }
+      }
+      return q.replace(/\s+/g, ' ').trim();
     }
 
     function buildUrl(p) {
@@ -1679,8 +2365,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function extractSize(q) {
-      var m = q.match(/[Pp]?(\d{3})\/?(\d{2,3})[Rr](\d{2})/);
-      return m ? m[1] + '/' + m[2] + 'R' + m[3] : null;
+      var n = normalizeTireSize(q);
+      return n ? n.size : null;
     }
 
     input.addEventListener('input', function() {
@@ -1714,15 +2400,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function search(query) {
-      var sizeMatch = query.match(tireSizeRegex);
-      if (sizeMatch && sizeMatch[1]) {
-        var size = extractSize(query);
+      var normalized = normalizeTireSize(query);
+      if (normalized) {
         var intent = parseIntent(query);
-        if (size) {
-          var label = size + (intent.brand ? ' by ' + intent.brand : '');
-          var meta = 'Filter collection' + (intent.season ? ' · ' + intent.season : '');
-          renderResults([{ type: 'size', title: label, meta: meta, url: buildUrl({ tireSize: size, brand: intent.brand, season: intent.season }) }]);
-        }
+        var label = normalized.size + (intent.brand ? ' by ' + intent.brand : '');
+        var meta = 'Filter collection' + (intent.season ? ' · ' + intent.season : '');
+        renderResults([{ type: 'size', title: label, meta: meta, url: buildUrl({ tireSize: normalized.size, brand: intent.brand, season: intent.season }) }]);
         return;
       }
       searchVehicle(query);
@@ -1733,51 +2416,100 @@ document.addEventListener('DOMContentLoaded', function() {
       loading.hidden = false;
       list.innerHTML = '';
       var intent = parseIntent(query);
+      var cleanedQuery = cleanQueryForVehicle(query, intent);
 
       try {
-        var vehicle = tryDirectParse(query);
-        if (!vehicle && config.geminiKey) vehicle = await callGemini(query);
+        var vehicle = cleanedQuery.length >= 2 ? tryDirectParse(cleanedQuery) : null;
 
-        if (vehicle && vehicle.year && vehicle.make) {
-          var trims = await lookupTrims(vehicle);
-          var vLabel = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
-
-          if (trims.length > 0) {
-            renderTrimResults(vLabel, trims, intent);
+        if (!vehicle || (!vehicle.year && !vehicle.model && !vehicle.make)) {
+          if (intent.brand || intent.season) {
+            var filterTitle = [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires';
+            renderResults([{ type: 'search', title: filterTitle, meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
           } else {
-            renderResults([{ type: 'vehicle', title: vLabel, meta: 'Browse all tires', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+            renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
           }
-        } else if (intent.brand || intent.season) {
-          renderResults([{ type: 'search', title: (intent.brand || '') + (intent.season ? ' ' + intent.season : '') + ' tires', meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+          return;
+        }
+
+        var trims = await lookupTrims(vehicle);
+        var vLabel = (vehicle.year + ' ' + (vehicle.make || '') + ' ' + (vehicle.model || '')).replace(/\s+/g, ' ').trim();
+
+        if (trims.length === 1 && vehicle.trim) {
+          /* User specified a trim — go straight to collection */
+          var url = buildUrl({ tireSize: trims[0].size, brand: intent.brand, season: intent.season });
+          renderResults([{ type: 'vehicle', title: vLabel + ' ' + trims[0].trim, meta: trims[0].size + (intent.season ? ' · ' + intent.season : '') + (intent.brand ? ' · ' + intent.brand : ''), url: url }]);
+        } else if (trims.length > 0) {
+          renderTrimResults(vLabel, trims, intent);
+        } else {
+          renderResults([{ type: 'vehicle', title: vLabel, meta: 'Browse all tires', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+        }
+      } catch(e) {
+        if (intent.brand || intent.season) {
+          renderResults([{ type: 'search', title: [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires', meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
         } else {
           renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
         }
-      } catch(e) {
-        renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
       }
     }
 
-    function tryDirectParse(q) {
-      var m = q.trim().match(/^['\u2018\u2019]?(\d{2,4})\s+([A-Za-z-]+)\s+(.+)$/);
-      if (m) {
-        var yr = m[1]; if (yr.length === 2) yr = (parseInt(yr) > 50 ? '19' : '20') + yr;
-        return { year: parseInt(yr), make: m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase(), model: m[3].trim().split(/\s+/)[0] };
-      }
-      return null;
-    }
+    function tryDirectParse(query) {
+      var q = query.trim().toLowerCase();
+      var words = q.split(/\s+/).filter(function(w) { return noiseWords.indexOf(w) === -1; });
+      if (words.length === 0) return null;
 
-    async function callGemini(query) {
-      try {
-        var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + config.geminiKey, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: 'Extract vehicle from: "' + query + '". Return ONLY JSON: {"year":NUMBER,"make":"STRING","model":"STRING","trim":null}. If not a vehicle return {"year":null,"make":null,"model":null,"trim":null}' }] }], generationConfig: { temperature: 0, maxOutputTokens: 100 } })
-        });
-        if (!r.ok) return null;
-        var d = await r.json();
-        var txt = (d.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json\n?/g, '').replace(/```/g, '').trim();
-        var v = JSON.parse(txt);
-        return (v.year && v.make) ? v : null;
-      } catch(e) { return null; }
+      /* Extract year from anywhere */
+      var year = null;
+      var yearIndex = -1;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i].replace(/^[''\u2018\u2019]/, '');
+        var ym = w.match(/^(\d{2,4})$/);
+        if (ym) {
+          var y = ym[1];
+          if (y.length === 2) y = (parseInt(y) > 50 ? '19' : '20') + y;
+          var yn = parseInt(y);
+          if (yn >= 1990 && yn <= config.maxYear) { year = yn; yearIndex = i; break; }
+        }
+      }
+      if (yearIndex >= 0) words.splice(yearIndex, 1);
+      if (words.length === 0) return null;
+
+      /* Try to find a known make */
+      var make = null;
+      /* Check two-word makes first */
+      for (var i = 0; i < words.length - 1; i++) {
+        var twoWord = words[i] + ' ' + words[i + 1];
+        if (knownMakes.indexOf(twoWord) >= 0) {
+          make = makeAliases[twoWord] || twoWord.split(' ').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
+          words.splice(i, 2); break;
+        }
+      }
+      if (!make) {
+        for (var i = 0; i < words.length; i++) {
+          var matched = fuzzyMatchMake(words[i]);
+          if (matched) {
+            make = matched;
+            if (make === 'Bmw') make = 'BMW';
+            if (make === 'Gmc') make = 'GMC';
+            if (make === 'Ram') make = 'RAM';
+            make = make.charAt(0).toUpperCase() + make.slice(1);
+            if (makeAliases[words[i]]) make = makeAliases[words[i]];
+            words.splice(i, 1); break;
+          }
+        }
+      }
+
+      if (words.length === 0 && !make) return null;
+      var model = null, trim = null;
+      if (words.length > 0) {
+        var modelJoined = words.join(' ');
+        var modelNoSpace = words.join('');
+        if (modelShortcuts[modelJoined]) { model = modelShortcuts[modelJoined]; words = []; }
+        else if (modelShortcuts[modelNoSpace]) { model = modelShortcuts[modelNoSpace]; words = []; }
+        else if (modelShortcuts[words[0]]) { model = modelShortcuts[words[0]]; words.splice(0, 1); trim = words.length > 0 ? words.join(' ') : null; }
+        else { model = words[0]; trim = words.length > 1 ? words.slice(1).join(' ') : null; }
+      }
+      if (!year) year = config.maxYear;
+      return { year: year, make: make, model: model, trim: trim };
     }
 
     async function lookupTrims(vehicle) {
@@ -1791,21 +2523,63 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       var data = vehicleCache[year];
       if (!data || !data.models) return [];
-      var makeData = data.models[vehicle.make];
-      if (!makeData) {
-        var ml = vehicle.make.toLowerCase();
-        for (var k in data.models) { if (k.toLowerCase() === ml) { makeData = data.models[k]; break; } }
+
+      var makeData = null, modelData = null;
+
+      if (vehicle.make) {
+        makeData = data.models[vehicle.make];
+        if (!makeData) {
+          var ml = vehicle.make.toLowerCase();
+          for (var k in data.models) { if (k.toLowerCase() === ml) { makeData = data.models[k]; vehicle.make = k; break; } }
+        }
       }
-      if (!makeData) return [];
-      var modelData = makeData[vehicle.model];
-      if (!modelData) {
-        var mdl = vehicle.model.toLowerCase();
-        for (var k in makeData) { if (k.toLowerCase() === mdl) { modelData = makeData[k]; break; } }
+
+      if (vehicle.model) {
+        var modelLower = vehicle.model.toLowerCase();
+        var modelClean = modelLower.replace(/[-\s]/g, '');
+        var searchIn = makeData ? [[vehicle.make, makeData]] : Object.entries(data.models);
+        for (var [mk, models] of searchIn) {
+          for (var [mn, md] of Object.entries(models)) {
+            if (mn.toLowerCase() === modelLower) { modelData = md; vehicle.make = mk; vehicle.model = mn; break; }
+          }
+          if (modelData) break;
+          for (var [mn, md] of Object.entries(models)) {
+            var mnClean = mn.toLowerCase().replace(/[-\s]/g, '');
+            if (mnClean.includes(modelClean) || modelClean.includes(mnClean)) { modelData = md; vehicle.make = mk; vehicle.model = mn; break; }
+          }
+          if (modelData) break;
+          /* Fuzzy match */
+          var bestModel = null, bestDist = 3, bestMd = null;
+          for (var [mn, md] of Object.entries(models)) {
+            var mnClean = mn.toLowerCase().replace(/[-\s]/g, '');
+            var maxDist = modelClean.length <= 4 ? 1 : 2;
+            if (Math.abs(mnClean.length - modelClean.length) > maxDist) continue;
+            var d = levenshtein(modelClean, mnClean);
+            if (d <= maxDist && d < bestDist) { bestDist = d; bestModel = mn; bestMd = md; }
+          }
+          if (bestModel) { modelData = bestMd; vehicle.make = mk; vehicle.model = bestModel; break; }
+        }
       }
+
       if (!modelData) return [];
+
+      /* If trim specified, filter to matching trims */
       var trims = [];
-      for (var t in modelData) {
-        if (Array.isArray(modelData[t]) && modelData[t].length > 0) trims.push({ trim: t, size: modelData[t][0] });
+      if (vehicle.trim) {
+        var trimLower = vehicle.trim.toLowerCase();
+        for (var [tn, sizes] of Object.entries(modelData)) {
+          if (Array.isArray(sizes) && sizes.length > 0) {
+            var tnl = tn.toLowerCase();
+            if (tnl === trimLower || tnl.includes(trimLower) || trimLower.includes(tnl)) {
+              trims.push({ trim: tn, size: sizes[0] });
+            }
+          }
+        }
+      }
+      if (trims.length === 0) {
+        for (var [tn, sizes] of Object.entries(modelData)) {
+          if (Array.isArray(sizes) && sizes.length > 0) trims.push({ trim: tn, size: sizes[0] });
+        }
       }
       return trims;
     }
@@ -1887,6 +2661,140 @@ document.addEventListener('DOMContentLoaded', function() {
       window.location.href = url.toString();
     });
   }
+
+  // Compare feature
+  (function() {
+    var tray = document.querySelector('[data-compare-tray]');
+    var itemsWrap = document.querySelector('[data-compare-items]');
+    var countEl = document.querySelector('[data-compare-count]');
+    var openBtn = document.querySelector('[data-compare-open]');
+    var clearBtn = document.querySelector('[data-compare-clear]');
+    var modal = document.querySelector('[data-compare-modal]');
+    var tableWrap = document.querySelector('[data-compare-table]');
+    if (!tray) return;
+
+    var compareList = [];
+    var MAX_COMPARE = 4;
+
+    function updateTray() {
+      if (compareList.length === 0) {
+        tray.classList.remove('is-visible');
+        return;
+      }
+      tray.classList.add('is-visible');
+      countEl.textContent = compareList.length;
+      openBtn.disabled = compareList.length < 2;
+
+      var html = '';
+      compareList.forEach(function(item) {
+        html += '<div class="ptg__compare-item">' +
+          (item.img ? '<img src="' + item.img + '" alt="">' : '') +
+          '<span>' + item.vendor + ' ' + item.title + '</span>' +
+          '<button type="button" class="ptg__compare-item-remove" data-remove-id="' + item.id + '">&times;</button>' +
+        '</div>';
+      });
+      itemsWrap.innerHTML = html;
+
+      itemsWrap.querySelectorAll('[data-remove-id]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          removeFromCompare(this.dataset.removeId);
+        });
+      });
+    }
+
+    function addToCompare(data) {
+      if (compareList.length >= MAX_COMPARE) return;
+      if (compareList.find(function(i) { return i.id === data.id; })) return;
+      compareList.push(data);
+      updateTray();
+    }
+
+    function removeFromCompare(id) {
+      compareList = compareList.filter(function(i) { return i.id !== id; });
+      var cb = document.querySelector('.ptg__compare-check[data-compare-id="' + id + '"]');
+      if (cb) cb.checked = false;
+      updateTray();
+    }
+
+    document.querySelectorAll('.ptg__compare-check').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        if (this.checked) {
+          if (compareList.length >= MAX_COMPARE) { this.checked = false; return; }
+          addToCompare({
+            id: this.dataset.compareId,
+            title: this.dataset.compareTitle,
+            vendor: this.dataset.compareVendor,
+            price: this.dataset.comparePrice,
+            setPrice: this.dataset.compareSet,
+            img: this.dataset.compareImg,
+            size: this.dataset.compareSize,
+            url: this.dataset.compareUrl,
+            season: this.dataset.compareSeason,
+            type: this.dataset.compareType,
+            speed: this.dataset.compareSpeed,
+            load: this.dataset.compareLoad,
+            warranty: this.dataset.compareWarranty
+          });
+        } else {
+          removeFromCompare(this.dataset.compareId);
+        }
+      });
+    });
+
+    if (clearBtn) clearBtn.addEventListener('click', function() {
+      compareList = [];
+      document.querySelectorAll('.ptg__compare-check').forEach(function(cb) { cb.checked = false; });
+      updateTray();
+    });
+
+    function buildTable() {
+      var rows = [
+        { label: '', key: 'img', render: function(v) { return v.img ? '<img src="' + v.img + '" alt="">' : ''; } },
+        { label: 'Brand', key: 'vendor' },
+        { label: 'Model', key: 'title' },
+        { label: 'Size', key: 'size' },
+        { label: 'Price / tire', key: 'price', cls: 'ptg__cmp-price', render: function(v) { return '$' + v.price; } },
+        { label: 'Set of 4', key: 'setPrice', render: function(v) { return '$' + v.setPrice; } },
+        { label: 'Season', key: 'season' },
+        { label: 'Type', key: 'type' },
+        { label: 'Speed rating', key: 'speed' },
+        { label: 'Load index', key: 'load' },
+        { label: 'Warranty', key: 'warranty' },
+        { label: '', key: 'url', render: function(v) { return '<a href="' + v.url + '" class="ptg__cmp-link">View tire →</a>'; } }
+      ];
+
+      var html = '<table class="ptg__cmp-table">';
+      rows.forEach(function(row) {
+        html += '<tr><th>' + row.label + '</th>';
+        compareList.forEach(function(item) {
+          var val = row.render ? row.render(item) : (item[row.key] || '—');
+          html += '<td' + (row.cls ? ' class="' + row.cls + '"' : '') + '>' + val + '</td>';
+        });
+        html += '</tr>';
+      });
+      html += '</table>';
+      tableWrap.innerHTML = html;
+    }
+
+    if (openBtn) openBtn.addEventListener('click', function() {
+      if (compareList.length < 2) return;
+      buildTable();
+      modal.hidden = false;
+      document.body.style.overflow = 'hidden';
+    });
+
+    function closeModal() {
+      if (modal) { modal.hidden = true; document.body.style.overflow = ''; }
+    }
+
+    document.querySelectorAll('[data-compare-modal-close]').forEach(function(el) {
+      el.addEventListener('click', closeModal);
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && modal && !modal.hidden) closeModal();
+    });
+  })();
 });
 </script>
 
@@ -1926,6 +2834,84 @@ document.addEventListener('DOMContentLoaded', function() {
         { "value": "1.2", "label": "Tall (5:6)" }
       ],
       "default": "1"
+    },
+    {
+      "type": "header",
+      "content": "Trust bar"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_trust_bar",
+      "label": "Show trust bar",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "trust_1",
+      "label": "Trust item 1",
+      "default": "Free Shipping"
+    },
+    {
+      "type": "text",
+      "id": "trust_2",
+      "label": "Trust item 2",
+      "default": "Price Match Guarantee"
+    },
+    {
+      "type": "text",
+      "id": "trust_3",
+      "label": "Trust item 3",
+      "default": "Road Hazard Protection"
+    },
+    {
+      "type": "header",
+      "content": "Card features"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_set_price",
+      "label": "Show set-of-4 price",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_warranty",
+      "label": "Show mileage warranty",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_specs",
+      "label": "Show speed/load badges",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_fitment",
+      "label": "Show vehicle fitment confirmation",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_bestseller",
+      "label": "Show best seller badge",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_rebate",
+      "label": "Show rebate callouts",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Compare"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_compare",
+      "label": "Enable compare feature",
+      "default": true
     }
   ]
 }

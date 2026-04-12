@@ -10,7 +10,14 @@
 
     <div class="sbc__grid">
       {%- for block in section.blocks -%}
-        <a href="{{ block.settings.link | default: '#' }}" class="sbc__card sbc__card--{{ forloop.index }}" {{ block.shopify_attributes }}>
+        {%- liquid
+          if block.settings.filter_url != blank
+            assign card_url = block.settings.filter_url
+          else
+            assign card_url = block.settings.link | default: '#'
+          endif
+        -%}
+        <a href="{{ card_url }}" class="sbc__card sbc__card--{{ forloop.index }}" {{ block.shopify_attributes }}>
           <div class="sbc__card-bg">
             {%- if block.settings.image != blank -%}
               {{ block.settings.image | image_url: width: 800 | image_tag: class: 'sbc__card-img' }}
@@ -266,18 +273,61 @@
   }
 
   @media (max-width: 480px) {
+    .sbc {
+      padding: 4rem 0;
+    }
     .sbc__grid {
       grid-template-columns: 1fr;
+      gap: 1.2rem;
     }
     .sbc__container {
-      padding: 0 2rem;
+      padding: 0 1.6rem;
     }
     .sbc__heading {
-      font-size: 2.4rem;
+      font-size: clamp(2rem, 6vw, 2.4rem);
+    }
+    .sbc__card-title {
+      font-size: 1.8rem;
+    }
+    .sbc__card-content {
+      padding: 1.6rem;
     }
     .sbc__card-cta {
       opacity: 1;
       transform: translateY(0);
+      min-height: 4.4rem;
+      display: inline-flex;
+      align-items: center;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .sbc__container {
+      padding: 0 1.2rem;
+    }
+    .sbc__heading {
+      font-size: 2rem;
+    }
+    .sbc__card-title {
+      font-size: 1.6rem;
+    }
+    .sbc__card-content {
+      padding: 1.4rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sbc__card-img {
+      transition: none !important;
+    }
+    .sbc__card-shine {
+      display: none;
+    }
+    .sbc__card::after {
+      transition: none !important;
+    }
+    .sbc__card-cta {
+      transition: none !important;
     }
   }
 {% endstylesheet %}
@@ -328,7 +378,14 @@
         {
           "type": "url",
           "id": "link",
-          "label": "Link"
+          "label": "Link",
+          "info": "Fallback if filter URL is empty"
+        },
+        {
+          "type": "text",
+          "id": "filter_url",
+          "label": "Filter URL",
+          "info": "Full URL with filter, e.g. /collections/all?filter.p.m.custom.seasonality=Winter"
         }
       ]
     }
@@ -342,7 +399,7 @@
           "settings": {
             "title": "Winter Tires",
             "product_count": "500+ options",
-            "link": "/collections/winter-tires"
+            "filter_url": "/collections/all?filter.p.m.custom.seasonality=Winter"
           }
         },
         {
@@ -350,7 +407,7 @@
           "settings": {
             "title": "All-Season Tires",
             "product_count": "800+ options",
-            "link": "/collections/all-season"
+            "filter_url": "/collections/all?filter.p.m.custom.seasonality=All-Season"
           }
         },
         {
@@ -358,7 +415,7 @@
           "settings": {
             "title": "All-Weather Tires",
             "product_count": "300+ options",
-            "link": "/collections/all-weather"
+            "filter_url": "/collections/all?filter.p.m.custom.seasonality=All-Weather"
           }
         },
         {
@@ -366,7 +423,7 @@
           "settings": {
             "title": "Performance",
             "product_count": "250+ options",
-            "link": "/collections/performance"
+            "filter_url": "/collections/all?filter.p.product_type=Performance"
           }
         },
         {
@@ -374,7 +431,7 @@
           "settings": {
             "title": "Truck & SUV",
             "product_count": "600+ options",
-            "link": "/collections/truck-suv"
+            "filter_url": "/collections/all?filter.p.m.custom.service_type=LT"
           }
         },
         {

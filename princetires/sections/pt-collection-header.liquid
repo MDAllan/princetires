@@ -4,14 +4,13 @@
     <div class="ptc__top">
       <div class="ptc__header">
         <span class="ptc__eyebrow">{{ section.settings.eyebrow | default: 'Browse' }}</span>
-        <h1 class="ptc__heading">{{ collection.title | escape }}</h1>
+        <div class="ptc__title-row">
+          <h1 class="ptc__heading">{{ collection.title | escape }}</h1>
+          <span class="ptc__count">{{ collection.products_count }} products</span>
+        </div>
         {%- if collection.description != blank and section.settings.show_description -%}
           <p class="ptc__desc">{{ collection.description | strip_html | truncate: 160 }}</p>
         {%- endif -%}
-      </div>
-      <div class="ptc__count">
-        <span class="ptc__count-num">{{ collection.products_count }}</span>
-        <span class="ptc__count-label">products</span>
       </div>
     </div>
 
@@ -33,10 +32,7 @@
   }
 
   .ptc__top {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    margin-bottom: 2.4rem;
+    margin-bottom: 2rem;
   }
 
   .ptc__header {
@@ -53,6 +49,12 @@
     letter-spacing: 0.02em;
   }
 
+  .ptc__title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+  }
+
   .ptc__heading {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 3rem;
@@ -60,6 +62,15 @@
     color: #111;
     margin: 0;
     line-height: 1.1;
+  }
+
+  .ptc__count {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: #9ca3af;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .ptc__desc {
@@ -71,40 +82,41 @@
     max-width: 50rem;
   }
 
-  .ptc__count {
-    display: flex;
-    align-items: baseline;
-    gap: 0.4rem;
-    flex-shrink: 0;
-  }
-
-  .ptc__count-num {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 2.4rem;
-    font-weight: 600;
-    color: #111;
-  }
-
-  .ptc__count-label {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.3rem;
-    font-weight: 300;
-    color: #9ca3af;
-  }
-
 
   /* ── Responsive ── */
   @media (max-width: 768px) {
     .ptc__container {
       padding: 0 2rem;
     }
-    .ptc__top {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1rem;
-    }
     .ptc__heading {
       font-size: 2.4rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .ptc {
+      padding: 2.5rem 0 1rem;
+    }
+    .ptc__container {
+      padding: 0 1.2rem;
+    }
+    .ptc__heading {
+      font-size: clamp(2rem, 6vw, 2.4rem);
+    }
+    .ptc__count {
+      font-size: 1.1rem;
+    }
+    .ptc__top {
+      margin-bottom: 1.2rem;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .ptc__container {
+      padding: 0 1rem;
+    }
+    .ptc__heading {
+      font-size: 2rem;
     }
   }
 {% endstylesheet %}
