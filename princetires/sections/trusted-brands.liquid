@@ -478,9 +478,24 @@
 
       scroll.addEventListener('mouseenter', function() { self._marqueePaused = true; });
       scroll.addEventListener('mouseleave', function() { self._marqueePaused = false; });
-      scroll.addEventListener('touchstart', function() { self._marqueePaused = true; }, { passive: true });
+
+      /* Touch drag: finger follows the strip; auto-scroll resumes after lift */
+      var touchStartX = 0;
+      var touchStartPos = 0;
+      scroll.addEventListener('touchstart', function(e) {
+        self._marqueePaused = true;
+        touchStartX = e.touches[0].clientX;
+        touchStartPos = pos;
+      }, { passive: true });
+      scroll.addEventListener('touchmove', function(e) {
+        var loopAt = origTrack.offsetWidth + 16;
+        var delta = e.touches[0].clientX - touchStartX;
+        var newPos = touchStartPos - delta;
+        pos = ((newPos % loopAt) + loopAt) % loopAt;
+        wrapper.style.transform = 'translateX(-' + pos + 'px)';
+      }, { passive: true });
       scroll.addEventListener('touchend', function() {
-        setTimeout(function() { self._marqueePaused = false; }, 1500);
+        setTimeout(function() { self._marqueePaused = false; }, 1000);
       });
 
       function tick() {
