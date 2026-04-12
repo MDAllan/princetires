@@ -1,0 +1,328 @@
+<section
+  class="abtv"
+  style="
+    --abtv-bg: {{ section.settings.bg_color }};
+    --abtv-text: {{ section.settings.text_color }};
+    --abtv-accent: {{ section.settings.accent_color }};
+  "
+>
+  <div class="abtv__container">
+
+    <div class="abtv__header">
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="abtv__eyebrow">{{ section.settings.eyebrow }}</span>
+      {%- endif -%}
+      {%- if section.settings.heading != blank -%}
+        <h2 class="abtv__heading">{{ section.settings.heading }}</h2>
+      {%- endif -%}
+      {%- if section.settings.subheading != blank -%}
+        <p class="abtv__subheading">{{ section.settings.subheading }}</p>
+      {%- endif -%}
+    </div>
+
+    <div class="abtv__grid">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'value' -%}
+          <div class="abtv__card" {{ block.shopify_attributes }}>
+            <div class="abtv__card-icon" aria-hidden="true">
+              {%- case block.settings.icon -%}
+                {%- when 'price' -%}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+                {%- when 'wrench' -%}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
+                {%- when 'clock' -%}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+                {%- when 'shield' -%}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                {%- when 'star' -%}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                {%- when 'rotation' -%}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1 .25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                {%- when 'location' -%}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                {%- when 'snowflake' -%}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z"/></svg>
+                {%- else -%}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+              {%- endcase -%}
+            </div>
+            {%- if block.settings.title != blank -%}
+              <h3 class="abtv__card-title">{{ block.settings.title }}</h3>
+            {%- endif -%}
+            {%- if block.settings.body != blank -%}
+              <p class="abtv__card-body">{{ block.settings.body }}</p>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+
+  </div>
+</section>
+
+{% stylesheet %}
+  .abtv {
+    background: var(--abtv-bg, #111);
+    color: var(--abtv-text, #fff);
+    font-family: 'Outfit', sans-serif;
+    padding: 7rem 0;
+  }
+
+  .abtv__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+  }
+
+  .abtv__header {
+    text-align: center;
+    max-width: 640px;
+    margin: 0 auto 4.5rem;
+  }
+
+  .abtv__eyebrow {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--abtv-accent, #F5820B);
+    margin-bottom: 0.875rem;
+  }
+
+  .abtv__heading {
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 1rem;
+    color: #fff;
+  }
+
+  .abtv__subheading {
+    font-size: 1.0625rem;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .abtv__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+  }
+
+  .abtv__card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 2rem 1.75rem;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .abtv__card:hover {
+    border-color: rgba(245,130,11,0.4);
+    background: rgba(245,130,11,0.05);
+  }
+
+  .abtv__card-icon {
+    width: 52px;
+    height: 52px;
+    background: rgba(245,130,11,0.12);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--abtv-accent, #F5820B);
+    margin-bottom: 1.25rem;
+  }
+
+  .abtv__card-title {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.625rem;
+  }
+
+  .abtv__card-body {
+    font-size: 0.9375rem;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.65;
+    margin: 0;
+  }
+
+  @media (max-width: 1024px) {
+    .abtv__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .abtv__container {
+      padding: 0 2.5rem;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .abtv {
+      padding: 4.5rem 0;
+    }
+    .abtv__container {
+      padding: 0 1.5rem;
+    }
+    .abtv__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "About — Values",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "Why choose us"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "The difference that keeps Calgarians coming back"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "We built Prince Tires around the things that actually matter to Calgary drivers."
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background",
+      "default": "#111111"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent",
+      "default": "#F5820B"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "value",
+      "name": "Value pillar",
+      "settings": [
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "Icon",
+          "options": [
+            { "value": "price", "label": "Price tag" },
+            { "value": "wrench", "label": "Wrench" },
+            { "value": "clock", "label": "Clock" },
+            { "value": "shield", "label": "Shield" },
+            { "value": "star", "label": "Star" },
+            { "value": "rotation", "label": "Rotation" },
+            { "value": "location", "label": "Location pin" },
+            { "value": "snowflake", "label": "Snowflake" }
+          ],
+          "default": "shield"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Transparent pricing"
+        },
+        {
+          "type": "textarea",
+          "id": "body",
+          "label": "Description",
+          "default": "The price we quote is the price you pay. No surprise fees, no last-minute upsells — ever."
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "About — Values",
+      "blocks": [
+        {
+          "type": "value",
+          "settings": {
+            "icon": "price",
+            "title": "Transparent pricing",
+            "body": "The price we quote is the price you pay. No surprise fees, no upsells — we price-match any local competitor."
+          }
+        },
+        {
+          "type": "value",
+          "settings": {
+            "icon": "wrench",
+            "title": "Certified technicians",
+            "body": "Our team has decades of combined experience fitting tires on everything from daily drivers to heavy-duty trucks."
+          }
+        },
+        {
+          "type": "value",
+          "settings": {
+            "icon": "clock",
+            "title": "Same-day service",
+            "body": "Most installs are done the same day. Drop off your vehicle in the morning, pick it up ready to roll in the afternoon."
+          }
+        },
+        {
+          "type": "value",
+          "settings": {
+            "icon": "rotation",
+            "title": "Lifetime tire rotation",
+            "body": "Every set of tires we install comes with free lifetime rotations. Because your safety doesn't have an expiry date."
+          }
+        },
+        {
+          "type": "value",
+          "settings": {
+            "icon": "snowflake",
+            "title": "Alberta winter experts",
+            "body": "We know Calgary winters. We stock the best winter tires for our climate and help you choose the right set for your vehicle."
+          }
+        },
+        {
+          "type": "value",
+          "settings": {
+            "icon": "shield",
+            "title": "Road hazard protection",
+            "body": "Calgary roads can be rough. Our optional road hazard coverage has you covered if your new tires hit a pothole or nail."
+          }
+        },
+        {
+          "type": "value",
+          "settings": {
+            "icon": "star",
+            "title": "4.9★ Google rating",
+            "body": "Over 300 verified Google reviews from real Calgary drivers — our reputation is earned one vehicle at a time."
+          }
+        },
+        {
+          "type": "value",
+          "settings": {
+            "icon": "location",
+            "title": "Conveniently located",
+            "body": "Easy to find and easy to access from anywhere in the city, with ample parking and fast in-and-out service."
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

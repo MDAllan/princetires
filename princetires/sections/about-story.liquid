@@ -1,0 +1,374 @@
+<section
+  class="abts"
+  style="
+    --abts-bg: {{ section.settings.bg_color }};
+    --abts-text: {{ section.settings.text_color }};
+    --abts-accent: {{ section.settings.accent_color }};
+  "
+>
+  <div class="abts__container">
+
+    <div class="abts__text-col">
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="abts__eyebrow">{{ section.settings.eyebrow }}</span>
+      {%- endif -%}
+
+      {%- if section.settings.heading != blank -%}
+        <h2 class="abts__heading">{{ section.settings.heading }}</h2>
+      {%- endif -%}
+
+      {%- if section.settings.body != blank -%}
+        <div class="abts__body">{{ section.settings.body }}</div>
+      {%- endif -%}
+
+      {%- if section.settings.founder_name != blank -%}
+        <div class="abts__founder">
+          {%- if section.settings.founder_image != blank -%}
+            <div class="abts__founder-avatar">
+              {{ section.settings.founder_image | image_url: width: 80, height: 80 | image_tag: loading: 'lazy', alt: section.settings.founder_name }}
+            </div>
+          {%- else -%}
+            <div class="abts__founder-avatar abts__founder-avatar--initials">
+              {{ section.settings.founder_name | slice: 0 }}
+            </div>
+          {%- endif -%}
+          <div class="abts__founder-info">
+            <strong class="abts__founder-name">{{ section.settings.founder_name }}</strong>
+            {%- if section.settings.founder_title != blank -%}
+              <span class="abts__founder-title">{{ section.settings.founder_title }}</span>
+            {%- endif -%}
+          </div>
+        </div>
+      {%- endif -%}
+
+      {%- if section.settings.cta_label != blank -%}
+        <a href="{{ section.settings.cta_link | default: '#' }}" class="abts__cta">
+          {{ section.settings.cta_label }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      {%- endif -%}
+    </div>
+
+    <div class="abts__image-col">
+      {%- if section.settings.image != blank -%}
+        <div class="abts__image-wrap">
+          {{ section.settings.image | image_url: width: 900 | image_tag: loading: 'lazy', alt: section.settings.image_alt | default: shop.name }}
+          {%- if section.settings.badge_text != blank -%}
+            <div class="abts__badge">
+              <span class="abts__badge-value">{{ section.settings.badge_value }}</span>
+              <span class="abts__badge-label">{{ section.settings.badge_text }}</span>
+            </div>
+          {%- endif -%}
+        </div>
+      {%- else -%}
+        <div class="abts__image-placeholder">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="rgba(245,130,11,0.3)" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c1.85 0 3.55.63 4.9 1.69L15.46 7.5A6.96 6.96 0 0012 6.5c-1.25 0-2.42.34-3.46 1L7.1 5.69A7.96 7.96 0 0112 4zm0 14c-1.85 0-3.55-.63-4.9-1.69l1.44-1.81c1.04.66 2.21 1 3.46 1 1.25 0 2.42-.34 3.46-1l1.44 1.81A7.96 7.96 0 0112 18z"/></svg>
+        </div>
+      {%- endif -%}
+    </div>
+
+  </div>
+</section>
+
+{% stylesheet %}
+  .abts {
+    background: var(--abts-bg, #fff);
+    color: var(--abts-text, #111);
+    font-family: 'Outfit', sans-serif;
+    padding: 7rem 0;
+  }
+
+  .abts__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6rem;
+    align-items: center;
+  }
+
+  .abts__eyebrow {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--abts-accent, #F5820B);
+    margin-bottom: 1rem;
+  }
+
+  .abts__heading {
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 1.75rem;
+    color: var(--abts-text, #111);
+  }
+
+  .abts__body {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: #374151;
+    margin-bottom: 2rem;
+  }
+
+  .abts__body p {
+    margin: 0 0 1.25em;
+  }
+
+  .abts__body p:last-child {
+    margin-bottom: 0;
+  }
+
+  .abts__founder {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    background: #f9fafb;
+    border-left: 3px solid var(--abts-accent, #F5820B);
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 2rem;
+  }
+
+  .abts__founder-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .abts__founder-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .abts__founder-avatar--initials {
+    background: var(--abts-accent, #F5820B);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .abts__founder-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .abts__founder-name {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #111;
+  }
+
+  .abts__founder-title {
+    font-size: 0.8125rem;
+    color: #6b7280;
+  }
+
+  .abts__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--abts-accent, #F5820B);
+    text-decoration: none;
+    transition: gap 0.2s ease;
+  }
+
+  .abts__cta:hover {
+    gap: 0.75rem;
+  }
+
+  .abts__image-wrap {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+    aspect-ratio: 4 / 5;
+  }
+
+  .abts__image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .abts__badge {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    background: var(--abts-accent, #F5820B);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.875rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    box-shadow: 0 4px 20px rgba(245,130,11,0.4);
+    min-width: 90px;
+    text-align: center;
+  }
+
+  .abts__badge-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .abts__badge-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.3;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.9;
+  }
+
+  .abts__image-placeholder {
+    aspect-ratio: 4 / 5;
+    background: #f3f4f6;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @media (max-width: 1024px) {
+    .abts__container {
+      padding: 0 2.5rem;
+      gap: 4rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .abts {
+      padding: 4.5rem 0;
+    }
+    .abts__container {
+      grid-template-columns: 1fr;
+      padding: 0 1.5rem;
+      gap: 2.5rem;
+    }
+    .abts__image-col {
+      order: -1;
+    }
+    .abts__image-wrap {
+      aspect-ratio: 16 / 9;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "About — Story",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "Our story"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Built on Calgary Roads, Powered by Honest Service"
+    },
+    {
+      "type": "richtext",
+      "id": "body",
+      "label": "Story text",
+      "default": "<p>Prince Tires started with one simple idea: Calgary drivers deserve a tire shop they can actually trust. No hidden fees, no upsells, no runaround — just straight-up expertise and fair prices on every set of tires we touch.</p><p>We've built our reputation one vehicle at a time, helping families across NE Calgary, NW Calgary, and every corner of the city stay safe through Alberta's brutal winters and everything in between. From first snowfall to spring changeover, we're the shop Calgarians call first.</p><p>Today we stock over 50 tire brands, offer same-day service on most installs, and stand behind every job with our lifetime rotation guarantee. Because when your family's on the road, corners aren't worth cutting.</p>"
+    },
+    {
+      "type": "text",
+      "id": "founder_name",
+      "label": "Founder / owner name",
+      "default": "Prince Tires Team"
+    },
+    {
+      "type": "text",
+      "id": "founder_title",
+      "label": "Founder title",
+      "default": "Founder & Lead Technician, Calgary AB"
+    },
+    {
+      "type": "image_picker",
+      "id": "founder_image",
+      "label": "Founder photo"
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "CTA label",
+      "default": "View all our services"
+    },
+    {
+      "type": "url",
+      "id": "cta_link",
+      "label": "CTA link"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Section image"
+    },
+    {
+      "type": "text",
+      "id": "image_alt",
+      "label": "Image alt text",
+      "default": "Prince Tires Calgary — inside the shop"
+    },
+    {
+      "type": "text",
+      "id": "badge_value",
+      "label": "Badge value (optional)",
+      "default": "10+"
+    },
+    {
+      "type": "text",
+      "id": "badge_text",
+      "label": "Badge label (optional)",
+      "default": "Years serving Calgary"
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text",
+      "default": "#111111"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent",
+      "default": "#F5820B"
+    }
+  ],
+  "presets": [
+    {
+      "name": "About — Story"
+    }
+  ]
+}
+{% endschema %}

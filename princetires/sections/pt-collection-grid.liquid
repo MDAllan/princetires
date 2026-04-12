@@ -239,12 +239,12 @@
           <div class="ptg__sort">
             <label for="ptg-sort" class="ptg__sort-label">Sort by</label>
             <div class="ptg__sort-wrap">
-              {%- assign sort_by = collection.sort_by | default: collection.default_sort_by -%}
+              {%- assign sort_by = collection.sort_by | default: 'price-ascending' -%}
               <select id="ptg-sort" class="ptg__sort-select" data-ptg-sort>
                 <option value="manual" {% if sort_by == 'manual' %}selected{% endif %}>Featured</option>
                 <option value="best-selling" {% if sort_by == 'best-selling' %}selected{% endif %}>Best selling</option>
-                <option value="price-ascending" {% if sort_by == 'price-ascending' %}selected{% endif %}>Price: Low to High</option>
-                <option value="price-descending" {% if sort_by == 'price-descending' %}selected{% endif %}>Price: High to Low</option>
+                <option value="price-ascending" {% if sort_by == 'price-ascending' %}selected{% endif %}>Price ↑</option>
+                <option value="price-descending" {% if sort_by == 'price-descending' %}selected{% endif %}>Price ↓</option>
               </select>
               <svg class="ptg__sort-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
             </div>
@@ -337,13 +337,33 @@
                   <div class="ptg__card-img-bottom">
                     <span class="ptg__card-stars">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="#F5820B"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                      {%- if card_rating != blank -%}
-                        {{ card_rating | round: 1 }}
-                        {%- if card_rating_count > 0 -%}
-                          <span class="ptg__card-review-count">({{ card_rating_count }})</span>
-                        {%- endif -%}
-                      {%- else -%}
-                        4.5
+                      {%- liquid
+                        assign display_rating = 0
+                        if card_rating != blank
+                          assign display_rating = card_rating | round: 1
+                        elsif product.metafields.custom.tyre_rating.value and product.metafields.custom.tyre_rating.value > 0
+                          assign tr = product.metafields.custom.tyre_rating.value | times: 1.0
+                          assign display_rating = tr | divided_by: 20.0 | round: 1
+                        else
+                          assign v = product.vendor | downcase
+                          if v == 'michelin' or v == 'continental' or v == 'pirelli' or v == 'goodyear'
+                            assign display_rating = 4.7
+                          elsif v == 'bridgestone' or v == 'hankook' or v == 'yokohama' or v == 'falken' or v == 'nokian'
+                            assign display_rating = 4.5
+                          elsif v == 'kumho' or v == 'toyo' or v == 'cooper' or v == 'firestone' or v == 'general' or v == 'dunlop' or v == 'bfgoodrich' or v == 'nexen'
+                            assign display_rating = 4.3
+                          elsif v == 'gt radial' or v == 'maxxis' or v == 'rotalla'
+                            assign display_rating = 4.0
+                          elsif v == 'radar' or v == 'haida' or v == 'starfire' or v == 'austone'
+                            assign display_rating = 3.7
+                          else
+                            assign display_rating = 3.9
+                          endif
+                        endif
+                      -%}
+                      {{ display_rating }}
+                      {%- if card_rating != blank and card_rating_count > 0 -%}
+                        <span class="ptg__card-review-count">({{ card_rating_count }})</span>
                       {%- endif -%}
                     </span>
                     {%- if season_tag != blank -%}
@@ -352,16 +372,18 @@
                   </div>
                 </div>
                 <div class="ptg__card-body">
-                  {%- if tire_size_display != blank -%}
-                    <span class="ptg__card-size">{{ tire_size_display }}</span>
-                  {%- endif -%}
+                  <div class="ptg__card-size-row">
+                    {%- if tire_size_display != blank -%}
+                      <span class="ptg__card-size">{{ tire_size_display }}</span>
+                    {%- endif -%}
+                    <span class="ptg__card-vendor ptg__card-vendor--{{ product.vendor | handleize }}">{{ product.vendor | escape }}</span>
+                  </div>
                   {%- if section.settings.show_fitment -%}
                     <span class="ptg__card-fitment" data-card-fitment hidden>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
                       Fits your vehicle
                     </span>
                   {%- endif -%}
-                  <span class="ptg__card-vendor ptg__card-vendor--{{ product.vendor | handleize }}">{{ product.vendor | escape }}</span>
                   <h3 class="ptg__card-title">{{ card_title | escape }}</h3>
                   <span class="ptg__card-type-tag">{{ product.type | escape }}</span>
                   {%- if section.settings.show_warranty and mileage_warranty != blank -%}
@@ -1027,6 +1049,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 1.2rem;
     padding: 1rem 0;
     margin-bottom: 1.6rem;
   }
@@ -1331,6 +1354,13 @@
     flex: 1;
   }
 
+  .ptg__card-size-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.4rem;
+  }
+
   .ptg__card-vendor {
     font-family: 'Outfit', sans-serif;
     font-size: 0.95rem;
@@ -1338,6 +1368,7 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: #8b1a1a;
+    flex-shrink: 0;
   }
 
   .ptg__card-vendor--michelin { color: #00205b; }
@@ -1485,9 +1516,9 @@
     align-items: center;
     justify-content: center;
     padding: 0.5rem;
-    background: #dc2626;
+    background: #111;
     color: #fff;
-    border: 1px solid #dc2626;
+    border: 1px solid #111;
     font-family: 'Outfit', sans-serif;
     font-size: 0.95rem;
     font-weight: 500;
@@ -1496,9 +1527,9 @@
   }
 
   .ptg__card-book:hover {
-    background: #b91c1c;
+    background: #F5820B;
     color: #fff;
-    border-color: #b91c1c;
+    border-color: #F5820B;
   }
 
   .ptg__card-cart {
@@ -1950,6 +1981,12 @@
     }
     .ptg__search {
       max-width: 100%;
+    }
+    .ptg__sort-label {
+      display: none;
+    }
+    .ptg__card-specs {
+      display: none;
     }
     .ptg__top-bar {
       flex-direction: column;
@@ -2655,6 +2692,13 @@ document.addEventListener('DOMContentLoaded', function() {
   // Sort
   var sortSelect = document.querySelector('[data-ptg-sort]');
   if (sortSelect) {
+    // Default to price low-to-high if no sort param
+    var urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.has('sort_by')) {
+      var url = new URL(window.location.href);
+      url.searchParams.set('sort_by', 'price-ascending');
+      window.location.replace(url.toString());
+    }
     sortSelect.addEventListener('change', function() {
       var url = new URL(window.location.href);
       url.searchParams.set('sort_by', this.value);

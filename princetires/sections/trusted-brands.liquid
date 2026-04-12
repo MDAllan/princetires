@@ -202,10 +202,8 @@
   }
 
   .trusted-brands__tab--active {
-    border-color: #dc2626;
-    background: #fef2f2;
-    transform: scale(1.06);
-    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
+    border-color: #111;
+    background: #f9fafb;
   }
 
   .trusted-brands__tab-logo {
@@ -392,7 +390,7 @@
     }
 
     init() {
-      if (this.tabs.length > 0) this.switchBrand(this.tabs[0]);
+      if (this.tabs.length > 0) this.switchBrand(this.tabs[0], false);
     }
 
     bindEvents() {
@@ -400,7 +398,7 @@
 
       /* ── Tab clicks ── */
       this.tabs.forEach(function(tab) {
-        tab.addEventListener('click', function() { self.switchBrand(tab); });
+        tab.addEventListener('click', function() { self.switchBrand(tab, true); });
       });
 
       /* ── Tab strip swipe (touch + mouse drag) ── */
@@ -464,6 +462,53 @@
         self.carousel.scrollLeft = drag.scrollLeft - (e.touches[0].pageX - drag.startX);
       }, { passive: true });
       this.track.addEventListener('touchend', function() { drag.active = false; });
+
+      /* ── Tab strip marquee auto-scroll ── */
+      this.startTabMarquee();
+    }
+
+    startTabMarquee() {
+      var self = this;
+      var scroll = this.tabsScroll;
+      if (!scroll) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      var origTrack = scroll.querySelector('[data-brand-tabs-track]');
+      if (!origTrack) return;
+
+      /* Clone logos for seamless loop — clones are non-interactive */
+      var clone = origTrack.cloneNode(true);
+      clone.removeAttribute('data-brand-tabs-track');
+      clone.setAttribute('aria-hidden', 'true');
+      clone.querySelectorAll('button').forEach(function(b) {
+        b.setAttribute('tabindex', '-1');
+        b.setAttribute('aria-hidden', 'true');
+        b.style.pointerEvents = 'none';
+      });
+      scroll.appendChild(clone);
+
+      /* Force no smooth-scroll so rAF sets scrollLeft cleanly */
+      scroll.style.scrollBehavior = 'auto';
+
+      this._marqueePaused = false;
+
+      scroll.addEventListener('mouseenter', function() { self._marqueePaused = true; });
+      scroll.addEventListener('mouseleave', function() { self._marqueePaused = false; });
+      scroll.addEventListener('touchstart', function() { self._marqueePaused = true; }, { passive: true });
+      scroll.addEventListener('touchend', function() {
+        setTimeout(function() { self._marqueePaused = false; }, 1500);
+      });
+
+      function tick() {
+        if (!self._marqueePaused) {
+          var next = scroll.scrollLeft + 0.5;
+          var loopAt = origTrack.scrollWidth;
+          if (next >= loopAt) next = 0;
+          scroll.scrollLeft = next;
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
     }
 
     scrollCarousel(dir) {
@@ -471,7 +516,7 @@
       this.carousel.scrollBy({ left: dir * w, behavior: 'smooth' });
     }
 
-    switchBrand(tab) {
+    switchBrand(tab, scrollTab) {
       var brandHandle = tab.dataset.brand;
       var brandName = tab.dataset.brandName;
 
@@ -482,8 +527,8 @@
       tab.classList.add('trusted-brands__tab--active');
       tab.setAttribute('aria-selected', 'true');
 
-      /* Scroll active tab into view */
-      tab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      /* Scroll active tab into view — only on user clicks, not on init */
+      if (scrollTab) tab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 
       if (this.viewAllName) this.viewAllName.textContent = brandName;
       if (this.viewAllLink) {
