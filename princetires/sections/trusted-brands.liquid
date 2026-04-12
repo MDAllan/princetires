@@ -144,16 +144,8 @@
 
   .trusted-brands__tabs-scroll {
     flex: 1;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    cursor: grab;
-    mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
-    -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
+    overflow: hidden;
   }
-  .trusted-brands__tabs-scroll::-webkit-scrollbar { display: none; }
-  .trusted-brands__tabs-scroll:active { cursor: grabbing; }
 
   .trusted-brands__tabs-track {
     display: flex;
@@ -164,21 +156,8 @@
   }
 
   .trusted-brands__tabs-arrow {
-    flex-shrink: 0;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    border: 1px solid #e5e7eb;
-    background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: #9ca3af;
-    transition: all 0.2s;
-    z-index: 2;
+    display: none;
   }
-  .trusted-brands__tabs-arrow:hover { border-color: #d1d5db; color: #111; background: #f9fafb; }
 
   .trusted-brands__tab {
     background: transparent;
@@ -476,7 +455,13 @@
       var origTrack = scroll.querySelector('[data-brand-tabs-track]');
       if (!origTrack) return;
 
-      /* Clone logos for seamless loop — clones are non-interactive */
+      /* Wrap original + clone in a single flex row for seamless loop */
+      var wrapper = document.createElement('div');
+      wrapper.style.cssText = 'display:flex;align-items:center;gap:1rem;width:max-content;will-change:transform';
+
+      scroll.appendChild(wrapper);
+      wrapper.appendChild(origTrack);
+
       var clone = origTrack.cloneNode(true);
       clone.removeAttribute('data-brand-tabs-track');
       clone.setAttribute('aria-hidden', 'true');
@@ -485,11 +470,9 @@
         b.setAttribute('aria-hidden', 'true');
         b.style.pointerEvents = 'none';
       });
-      scroll.appendChild(clone);
+      wrapper.appendChild(clone);
 
-      /* Force no smooth-scroll so rAF sets scrollLeft cleanly */
-      scroll.style.scrollBehavior = 'auto';
-
+      var pos = 0;
       this._marqueePaused = false;
 
       scroll.addEventListener('mouseenter', function() { self._marqueePaused = true; });
@@ -501,10 +484,11 @@
 
       function tick() {
         if (!self._marqueePaused) {
-          var next = scroll.scrollLeft + 0.5;
-          var loopAt = origTrack.scrollWidth;
-          if (next >= loopAt) next = 0;
-          scroll.scrollLeft = next;
+          pos += 0.5;
+          /* Loop when we've scrolled one full copy of the original track */
+          var loopAt = origTrack.offsetWidth + 16; /* +16 for the 1rem gap between copies */
+          if (pos >= loopAt) pos = 0;
+          wrapper.style.transform = 'translateX(-' + pos + 'px)';
         }
         requestAnimationFrame(tick);
       }
