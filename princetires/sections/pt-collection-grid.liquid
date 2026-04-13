@@ -335,37 +335,41 @@
                     </label>
                   {%- endif -%}
                   <div class="ptg__card-img-bottom">
+                    {%- liquid
+                      assign display_rating = 0
+                      if card_rating != blank
+                        assign display_rating = card_rating | round: 1
+                      elsif product.metafields.custom.tyre_rating.value and product.metafields.custom.tyre_rating.value > 0
+                        assign tr = product.metafields.custom.tyre_rating.value | times: 1.0
+                        assign display_rating = tr | divided_by: 20.0 | round: 1
+                      else
+                        assign v = product.vendor | downcase
+                        if v == 'michelin' or v == 'continental' or v == 'pirelli' or v == 'goodyear'
+                          assign display_rating = 4.7
+                        elsif v == 'bridgestone' or v == 'hankook' or v == 'yokohama' or v == 'falken' or v == 'nokian'
+                          assign display_rating = 4.5
+                        elsif v == 'kumho' or v == 'toyo' or v == 'cooper' or v == 'firestone' or v == 'general' or v == 'dunlop' or v == 'bfgoodrich' or v == 'nexen'
+                          assign display_rating = 4.3
+                        elsif v == 'gt radial' or v == 'maxxis' or v == 'rotalla'
+                          assign display_rating = 4.0
+                        elsif v == 'radar' or v == 'haida' or v == 'starfire' or v == 'austone'
+                          assign display_rating = 3.7
+                        else
+                          assign display_rating = 3.9
+                        endif
+                      endif
+                    -%}
+                    {%- if display_rating >= 4.0 -%}
                     <span class="ptg__card-stars">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="#F5820B"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                      {%- liquid
-                        assign display_rating = 0
-                        if card_rating != blank
-                          assign display_rating = card_rating | round: 1
-                        elsif product.metafields.custom.tyre_rating.value and product.metafields.custom.tyre_rating.value > 0
-                          assign tr = product.metafields.custom.tyre_rating.value | times: 1.0
-                          assign display_rating = tr | divided_by: 20.0 | round: 1
-                        else
-                          assign v = product.vendor | downcase
-                          if v == 'michelin' or v == 'continental' or v == 'pirelli' or v == 'goodyear'
-                            assign display_rating = 4.7
-                          elsif v == 'bridgestone' or v == 'hankook' or v == 'yokohama' or v == 'falken' or v == 'nokian'
-                            assign display_rating = 4.5
-                          elsif v == 'kumho' or v == 'toyo' or v == 'cooper' or v == 'firestone' or v == 'general' or v == 'dunlop' or v == 'bfgoodrich' or v == 'nexen'
-                            assign display_rating = 4.3
-                          elsif v == 'gt radial' or v == 'maxxis' or v == 'rotalla'
-                            assign display_rating = 4.0
-                          elsif v == 'radar' or v == 'haida' or v == 'starfire' or v == 'austone'
-                            assign display_rating = 3.7
-                          else
-                            assign display_rating = 3.9
-                          endif
-                        endif
-                      -%}
                       {{ display_rating }}
                       {%- if card_rating != blank and card_rating_count > 0 -%}
                         <span class="ptg__card-review-count">({{ card_rating_count }})</span>
                       {%- endif -%}
                     </span>
+                    {%- else -%}
+                    <span class="ptg__card-stars ptg__card-stars--na">N/A</span>
+                    {%- endif -%}
                     {%- if season_tag != blank -%}
                       <span class="ptg__card-season" style="background: {{ season_color }}">{{ season_tag }}</span>
                     {%- endif -%}
@@ -1334,6 +1338,12 @@
     backdrop-filter: blur(4px);
     padding: 0.2rem 0.5rem;
     border-radius: 3px;
+  }
+
+  .ptg__card-stars--na {
+    color: #9ca3af;
+    font-weight: 400;
+    font-size: 0.9rem;
   }
 
   .ptg__card-season {
