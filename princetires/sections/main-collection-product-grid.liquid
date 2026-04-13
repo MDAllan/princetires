@@ -34,6 +34,20 @@
       padding-bottom: {{ section.settings.padding_bottom }}px;
     }
   }
+
+  .collection-winter-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.2rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    color: #1d4ed8;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
 {%- endstyle -%}
 
 <div class="section-{{ section.id }}-padding gradient color-{{ section.settings.color_scheme }}">
@@ -143,6 +157,21 @@
             class="collection{% if section.settings.filter_type != 'vertical' %} page-width{% endif %}"
           >
             <div class="loading-overlay gradient"></div>
+
+            {%- comment -%} Winter season: November (11) through March (3) {%- endcomment -%}
+            {%- assign current_month = 'now' | date: '%m' | plus: 0 -%}
+            {%- assign is_winter_season = false -%}
+            {%- if current_month >= 11 or current_month <= 3 -%}
+              {%- assign is_winter_season = true -%}
+            {%- endif -%}
+
+            {%- if is_winter_season -%}
+              <div class="collection-winter-notice">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z"/></svg>
+                Winter tires are shown first — recommended for Calgary's winter season
+              </div>
+            {%- endif -%}
+
             <ul
               id="product-grid"
               data-id="{{ section.id }}"
@@ -153,33 +182,115 @@
               "
             >
               {% assign skip_card_product_styles = false %}
-              {%- for product in collection.products -%}
-                {% assign lazy_load = false %}
-                {%- if forloop.index > 2 -%}
-                  {%- assign lazy_load = true -%}
-                {%- endif -%}
-                <li
-                  class="grid__item{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--slide-in{% endif %}"
-                  {% if settings.animations_reveal_on_scroll %}
-                    data-cascade
-                    style="--animation-order: {{ forloop.index }};"
-                  {% endif %}
-                >
-                  {% render 'card-product',
-                    card_product: product,
-                    media_aspect_ratio: section.settings.image_ratio,
-                    image_shape: section.settings.image_shape,
-                    show_secondary_image: section.settings.show_secondary_image,
-                    show_vendor: section.settings.show_vendor,
-                    show_rating: section.settings.show_rating,
-                    lazy_load: lazy_load,
-                    skip_styles: skip_card_product_styles,
-                    quick_add: section.settings.quick_add,
-                    section_id: section.id
-                  %}
-                </li>
-                {%- assign skip_card_product_styles = true -%}
-              {%- endfor -%}
+              {%- assign card_render_index = 0 -%}
+
+              {%- if is_winter_season -%}
+
+                {%- comment -%} Pass 1: winter tires first {%- endcomment -%}
+                {%- for product in collection.products -%}
+                  {%- assign is_winter = false -%}
+                  {%- for tag in product.tags -%}
+                    {%- if tag | downcase | contains: 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
+                  {%- endfor -%}
+                  {%- unless is_winter -%}
+                    {%- if product.type | downcase | contains: 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
+                  {%- endunless -%}
+                  {%- if is_winter -%}
+                    {%- assign card_render_index = card_render_index | plus: 1 -%}
+                    {%- assign lazy_load = true -%}
+                    {%- if card_render_index <= 2 -%}{%- assign lazy_load = false -%}{%- endif -%}
+                    <li
+                      class="grid__item{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--slide-in{% endif %}"
+                      {% if settings.animations_reveal_on_scroll %}
+                        data-cascade
+                        style="--animation-order: {{ card_render_index }};"
+                      {% endif %}
+                    >
+                      {% render 'card-product',
+                        card_product: product,
+                        media_aspect_ratio: section.settings.image_ratio,
+                        image_shape: section.settings.image_shape,
+                        show_secondary_image: section.settings.show_secondary_image,
+                        show_vendor: section.settings.show_vendor,
+                        show_rating: section.settings.show_rating,
+                        lazy_load: lazy_load,
+                        skip_styles: skip_card_product_styles,
+                        quick_add: section.settings.quick_add,
+                        section_id: section.id
+                      %}
+                    </li>
+                    {%- assign skip_card_product_styles = true -%}
+                  {%- endif -%}
+                {%- endfor -%}
+
+                {%- comment -%} Pass 2: all other tires {%- endcomment -%}
+                {%- for product in collection.products -%}
+                  {%- assign is_winter = false -%}
+                  {%- for tag in product.tags -%}
+                    {%- if tag | downcase | contains: 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
+                  {%- endfor -%}
+                  {%- unless is_winter -%}
+                    {%- if product.type | downcase | contains: 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
+                  {%- endunless -%}
+                  {%- unless is_winter -%}
+                    {%- assign card_render_index = card_render_index | plus: 1 -%}
+                    {%- assign lazy_load = true -%}
+                    {%- if card_render_index <= 2 -%}{%- assign lazy_load = false -%}{%- endif -%}
+                    <li
+                      class="grid__item{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--slide-in{% endif %}"
+                      {% if settings.animations_reveal_on_scroll %}
+                        data-cascade
+                        style="--animation-order: {{ card_render_index }};"
+                      {% endif %}
+                    >
+                      {% render 'card-product',
+                        card_product: product,
+                        media_aspect_ratio: section.settings.image_ratio,
+                        image_shape: section.settings.image_shape,
+                        show_secondary_image: section.settings.show_secondary_image,
+                        show_vendor: section.settings.show_vendor,
+                        show_rating: section.settings.show_rating,
+                        lazy_load: lazy_load,
+                        skip_styles: skip_card_product_styles,
+                        quick_add: section.settings.quick_add,
+                        section_id: section.id
+                      %}
+                    </li>
+                    {%- assign skip_card_product_styles = true -%}
+                  {%- endunless -%}
+                {%- endfor -%}
+
+              {%- else -%}
+
+                {%- for product in collection.products -%}
+                  {% assign lazy_load = false %}
+                  {%- if forloop.index > 2 -%}
+                    {%- assign lazy_load = true -%}
+                  {%- endif -%}
+                  <li
+                    class="grid__item{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--slide-in{% endif %}"
+                    {% if settings.animations_reveal_on_scroll %}
+                      data-cascade
+                      style="--animation-order: {{ forloop.index }};"
+                    {% endif %}
+                  >
+                    {% render 'card-product',
+                      card_product: product,
+                      media_aspect_ratio: section.settings.image_ratio,
+                      image_shape: section.settings.image_shape,
+                      show_secondary_image: section.settings.show_secondary_image,
+                      show_vendor: section.settings.show_vendor,
+                      show_rating: section.settings.show_rating,
+                      lazy_load: lazy_load,
+                      skip_styles: skip_card_product_styles,
+                      quick_add: section.settings.quick_add,
+                      section_id: section.id
+                    %}
+                  </li>
+                  {%- assign skip_card_product_styles = true -%}
+                {%- endfor -%}
+
+              {%- endif -%}
             </ul>
 
             {%- if paginate.pages > 1 -%}

@@ -1,0 +1,1675 @@
+{%- liquid
+  assign tire_size = product.metafields.custom.tire_size | default: ''
+  assign product_title = product.title
+
+  assign season_tag = ''
+  assign season_color = '#6b7280'
+  for tag in product.tags
+    assign tag_down = tag | downcase
+    if tag_down contains 'winter'
+      assign season_tag = 'Winter'
+      assign season_color = '#2563eb'
+    elsif tag_down contains 'all-season' or tag_down contains 'all season'
+      assign season_tag = 'All-Season'
+      assign season_color = '#16a34a'
+    elsif tag_down contains 'all-weather' or tag_down contains 'all weather'
+      assign season_tag = 'All-Weather'
+      assign season_color = '#F5820B'
+    elsif tag_down contains 'summer'
+      assign season_tag = 'Summer'
+      assign season_color = '#eab308'
+    endif
+  endfor
+  if season_tag == blank
+    assign type_down = product.type | downcase
+    if type_down contains 'winter'
+      assign season_tag = 'Winter'
+      assign season_color = '#2563eb'
+    elsif type_down contains 'passenger'
+      assign season_tag = 'All-Season'
+      assign season_color = '#16a34a'
+    elsif type_down contains 'trailer'
+      assign season_tag = 'Trailer'
+      assign season_color = '#6b7280'
+    endif
+  endif
+
+  assign product_form_id = 'pt-product-form-' | append: section.id
+
+  assign spec_width = ''
+  assign spec_aspect = ''
+  assign spec_rim = ''
+  if tire_size != blank
+    assign clean_size = tire_size | remove: 'P' | remove: 'LT' | remove: 'ST' | strip
+    assign slash_parts = clean_size | split: '/'
+    if slash_parts.size > 1
+      assign spec_width = slash_parts[0]
+      assign r_parts = slash_parts[1] | split: 'R'
+      assign spec_aspect = r_parts[0]
+      if r_parts.size > 1
+        assign spec_rim = r_parts[1]
+      endif
+    else
+      assign r_parts = clean_size | split: 'R'
+      if r_parts.size > 1
+        assign spec_width = r_parts[0]
+        assign spec_rim = r_parts[1]
+      endif
+    endif
+  endif
+
+  assign set_price = product.price | times: 4
+
+  assign on_sale = false
+  if product.compare_at_price > product.price
+    assign on_sale = true
+    assign save_amount = product.compare_at_price | minus: product.price
+    assign save_percent = save_amount | times: 100.0 | divided_by: product.compare_at_price | round
+  endif
+
+  assign rating_value = product.metafields.reviews.rating.value
+  assign rating_count = product.metafields.reviews.rating_count | default: 0
+  assign rating_decimal = 0
+  assign tyre_rating_raw = product.metafields.custom.tyre_rating.value | default: 0
+  assign use_tyre_rating = false
+
+  if rating_value != blank
+    assign decimal = rating_value.rating | modulo: 1
+    if decimal >= 0.3
+      if decimal <= 0.7
+        assign rating_decimal = 0.5
+      elsif decimal > 0.7
+        assign rating_decimal = 1
+      endif
+    endif
+  elsif tyre_rating_raw > 0
+    assign use_tyre_rating = true
+    assign tr_star = tyre_rating_raw | times: 5.0 | divided_by: 100.0
+    assign tr_floor = tr_star | floor
+    assign tr_dec = tr_star | modulo: 1
+    assign rating_decimal = 0
+    if tr_dec >= 0.3
+      if tr_dec <= 0.7
+        assign rating_decimal = 0.5
+      elsif tr_dec > 0.7
+        assign rating_decimal = 1
+      endif
+    endif
+  endif
+
+  assign perf_dry = product.metafields.custom.dry_grip.value | default: section.settings.perf_dry_grip | default: 0
+  assign perf_wet = product.metafields.custom.wet_grip.value | default: section.settings.perf_wet_grip | default: 0
+  assign perf_ice = product.metafields.custom.ice_grip.value | default: section.settings.perf_ice_grip | default: 0
+  assign perf_snow = product.metafields.custom.snow_grip.value | default: section.settings.perf_snow_traction | default: 0
+  assign perf_tread = product.metafields.custom.wear_score.value | default: section.settings.perf_tread_life | default: 0
+  assign has_perf_data = false
+  if perf_dry > 0 or perf_wet > 0 or perf_ice > 0 or perf_snow > 0 or perf_tread > 0
+    assign has_perf_data = true
+  endif
+
+  assign detected_vehicle = 'passenger'
+  assign vehicle_meta = product.metafields.custom.vehicle_type | downcase | default: ''
+  if vehicle_meta != blank
+    if vehicle_meta contains 'suv' or vehicle_meta contains 'cuv'
+      assign detected_vehicle = 'suv'
+    elsif vehicle_meta contains 'light truck'
+      assign detected_vehicle = 'truck'
+    elsif vehicle_meta contains 'trailer'
+      assign detected_vehicle = 'trailer'
+    elsif vehicle_meta contains 'van'
+      assign detected_vehicle = 'van'
+    elsif vehicle_meta contains 'truck'
+      assign detected_vehicle = 'truck'
+    endif
+  else
+    assign type_check = product.type | downcase
+    if tire_size != blank
+      assign size_upper = tire_size | upcase
+      if size_upper contains 'LT'
+        assign detected_vehicle = 'truck'
+      elsif size_upper contains 'ST'
+        assign detected_vehicle = 'trailer'
+      endif
+    endif
+    if detected_vehicle == 'passenger'
+      if type_check contains 'trailer'
+        assign detected_vehicle = 'trailer'
+      elsif type_check contains 'light truck' or type_check contains 'lt '
+        assign detected_vehicle = 'truck'
+      elsif type_check contains 'suv' or type_check contains 'cuv'
+        assign detected_vehicle = 'suv'
+      endif
+    endif
+    if detected_vehicle == 'passenger'
+      for tag in product.tags
+        assign tag_lc = tag | downcase
+        if tag_lc contains 'trailer'
+          assign detected_vehicle = 'trailer'
+          break
+        elsif tag_lc contains 'light truck' or tag_lc contains 'lt tire'
+          assign detected_vehicle = 'truck'
+          break
+        elsif tag_lc contains 'suv'
+          assign detected_vehicle = 'suv'
+          break
+        endif
+      endfor
+    endif
+  endif
+-%}
+
+{{ 'component-price.css' | asset_url | stylesheet_tag }}
+{{ 'component-rating.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'product-info.js' | asset_url }}" defer="defer"></script>
+<script src="{{ 'product-form.js' | asset_url }}" defer="defer"></script>
+{%- if section.settings.enable_image_zoom -%}
+  <script src="{{ 'magnify.js' | asset_url }}" defer="defer"></script>
+{%- endif -%}
+
+<product-info class="ptp" data-section="{{ section.id }}" data-product-id="{{ product.id }}" data-update-url="true" data-url="{{ product.url }}">
+  <div class="ptp__container">
+
+    {%- comment -%} Breadcrumb {%- endcomment -%}
+    <nav class="ptp__breadcrumb" aria-label="Breadcrumb">
+      <ol class="ptp__breadcrumb-list">
+        <li><a href="/">{{ 'general.breadcrumbs.home' | t | default: 'Home' }}</a></li>
+        {%- if product.collections.size > 0 -%}
+          {%- assign col = product.collections | first -%}
+          <li><a href="{{ col.url }}">{{ col.title }}</a></li>
+        {%- endif -%}
+        <li aria-current="page">{{ product.title | truncate: 40 }}</li>
+      </ol>
+    </nav>
+
+    {%- comment -%} Breadcrumb JSON-LD {%- endcomment -%}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": {{ 'general.breadcrumbs.home' | t | default: 'Home' | json }},
+          "item": "{{ shop.url }}"
+        }
+        {%- if product.collections.size > 0 -%}
+          {%- assign col = product.collections | first -%}
+          ,{
+            "@type": "ListItem",
+            "position": 2,
+            "name": {{ col.title | json }},
+            "item": "{{ shop.url }}{{ col.url }}"
+          }
+          ,{
+            "@type": "ListItem",
+            "position": 3,
+            "name": {{ product.title | json }}
+          }
+        {%- else -%}
+          ,{
+            "@type": "ListItem",
+            "position": 2,
+            "name": {{ product.title | json }}
+          }
+        {%- endif -%}
+      ]
+    }
+    </script>
+
+    {%- comment -%} Vehicle Fitment Banner {%- endcomment -%}
+    <div class="ptp__fitment" data-ptp-fitment hidden>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+      <span>Fits your <strong data-ptp-fitment-vehicle></strong></span>
+      <a href="/collections/tires" class="ptp__fitment-change">Change vehicle</a>
+    </div>
+
+    {%- comment -%} Two-Column Layout {%- endcomment -%}
+    <div class="ptp__layout">
+
+      {%- comment -%} Left Column: Image Gallery {%- endcomment -%}
+      <div class="ptp__gallery-col">
+        <div class="ptp__gallery">
+          <div class="ptp__gallery-main">
+            {%- if product.featured_image -%}
+              <div class="ptp__gallery-main-wrap">
+                {{ product.featured_image | image_url: width: 800 | image_tag:
+                  class: 'ptp__gallery-main-img',
+                  loading: 'eager',
+                  id: 'ptp-featured-img',
+                  sizes: '(min-width: 750px) 50vw, 100vw',
+                  alt: product.featured_image.alt | default: product.title }}
+                {%- if on_sale -%}
+                  <span class="ptp__sale-badge">-{{ save_percent }}%</span>
+                {%- endif -%}
+              </div>
+            {%- endif -%}
+          </div>
+          {%- assign video_url = product.metafields.custom.video_url | default: '' -%}
+          {%- comment -%} Video overlay — shown when video thumb is clicked {%- endcomment -%}
+          {%- if video_url != blank -%}
+            <div class="ptp__gallery-video" data-ptp-video hidden>
+              <button type="button" class="ptp__gallery-video-close" data-ptp-video-close aria-label="Close video">&times;</button>
+              <div class="ptp__gallery-video-wrap" data-ptp-video-wrap></div>
+            </div>
+          {%- endif -%}
+          {%- if product.images.size > 1 or video_url != blank -%}
+            <div class="ptp__gallery-thumbs" role="list" aria-label="Product images">
+              {%- for image in product.images -%}
+                <button class="ptp__gallery-thumb{% if forloop.first %} ptp__gallery-thumb--active{% endif %}" role="listitem" data-ptp-thumb-idx="{{ forloop.index0 }}" data-ptp-thumb-src="{{ image | image_url: width: 800 }}" aria-label="View image {{ forloop.index }} of {{ product.images.size }}" type="button">
+                  {{ image | image_url: width: 120, height: 120, crop: 'center' | image_tag: loading: 'lazy', class: 'ptp__gallery-thumb-img', alt: image.alt | default: product.title }}
+                </button>
+              {%- endfor -%}
+              {%- if video_url != blank -%}
+                <button class="ptp__gallery-thumb ptp__gallery-thumb--video" role="listitem" data-ptp-video-thumb data-video-url="{{ video_url | escape }}" aria-label="Play video" type="button">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="#dc2626"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+              {%- endif -%}
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+
+      {%- comment -%} Right Column: Product Info {%- endcomment -%}
+      <div class="ptp__info-col{% if section.settings.enable_sticky_info %} ptp__info-col--sticky{% endif %}">
+        <a href="{{ product.vendor | url_for_vendor }}" class="ptp__vendor">{{ product.vendor }}</a>
+        <h1 class="ptp__title">{{ product_title }}</h1>
+
+        <div class="ptp__quick-specs">
+          {%- if tire_size != blank -%}<span class="ptp__quick-spec-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg> {{ tire_size }}</span>{%- endif -%}
+          {%- if season_tag != blank -%}<span class="ptp__quick-spec-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg> {{ season_tag }}</span>{%- endif -%}
+          {%- if product.type != blank -%}<span class="ptp__quick-spec-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/></svg> {{ product.type }}</span>{%- endif -%}
+        </div>
+
+        {%- if season_tag != blank -%}
+          <div class="ptp__season-banner" style="--season-clr: {{ season_color }}">
+            {%- case season_tag -%}
+              {%- when 'Winter' -%}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z"/></svg>
+                Certified for Canadian winters — 3PMSF rated
+              {%- when 'All-Season' -%}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.66 8L12 2.35 6.34 8C4.78 9.56 4 11.64 4 13.64s.78 4.11 2.34 5.67 3.61 2.35 5.66 2.35 4.1-.79 5.66-2.35S20 15.64 20 13.64 19.22 9.56 17.66 8z"/></svg>
+                Spring, summer &amp; fall — winter tires recommended for Calgary
+              {%- when 'All-Weather' -%}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8z"/></svg>
+                Winter &amp; summer certified — all-weather ready
+              {%- when 'Summer' -%}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                Peak summer performance — UHP rated
+            {%- endcase -%}
+          </div>
+        {%- endif -%}
+
+        {%- comment -%} Weather-based seasonal warning {%- endcomment -%}
+        <div class="ptp__weather-warn" data-ptp-weather-warn data-tire-season="{{ season_tag | downcase }}" hidden>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          <span data-ptp-weather-msg></span>
+        </div>
+
+        {%- if rating_value != blank -%}
+          {%- if rating_value.rating >= 4.0 -%}
+            <div class="ptp__rating-row">
+              <div class="ptp__rating" role="img" aria-label="{{ 'accessibility.star_reviews_info' | t: rating_value: rating_value, rating_max: rating_value.scale_max }}">
+                <span aria-hidden="true" class="rating-star" style="--rating: {{ rating_value.rating | floor }}; --rating-max: {{ rating_value.scale_max }}; --rating-decimal: {{ rating_decimal }};"></span>
+                <span class="ptp__rating-text" aria-hidden="true">{{ rating_value.rating }}</span>
+                <span class="ptp__rating-count" aria-hidden="true">({{ rating_count }} reviews)</span>
+              </div>
+            </div>
+          {%- endif -%}
+        {%- elsif use_tyre_rating -%}
+          {%- if tr_star >= 4.0 -%}
+            <div class="ptp__rating-row">
+              <div class="ptp__rating" role="img" aria-label="Rating {{ tr_star | round: 1 }} out of 5 stars">
+                <span aria-hidden="true" class="rating-star" style="--rating: {{ tr_floor }}; --rating-max: 5; --rating-decimal: {{ rating_decimal }};"></span>
+                <span class="ptp__rating-text" aria-hidden="true">{{ tr_star | round: 1 }}/5</span>
+                <span class="ptp__rating-count" aria-hidden="true">TyreReviews</span>
+              </div>
+            </div>
+          {%- endif -%}
+        {%- else -%}
+          {%- liquid
+            assign v = product.vendor | downcase
+            assign gen_rating = 0
+            if v == 'michelin' or v == 'continental' or v == 'pirelli' or v == 'goodyear'
+              assign gen_rating = 4.7
+            elsif v == 'bridgestone' or v == 'hankook' or v == 'yokohama' or v == 'falken' or v == 'nokian'
+              assign gen_rating = 4.5
+            elsif v == 'kumho' or v == 'toyo' or v == 'cooper' or v == 'firestone' or v == 'general' or v == 'dunlop' or v == 'bfgoodrich' or v == 'nexen'
+              assign gen_rating = 4.3
+            elsif v == 'gt radial' or v == 'maxxis' or v == 'rotalla'
+              assign gen_rating = 4.0
+            endif
+            assign gen_floor = gen_rating | floor
+            assign gen_dec = gen_rating | modulo: 1
+            assign gen_decimal = 0
+            if gen_dec >= 0.3
+              if gen_dec <= 0.7
+                assign gen_decimal = 0.5
+              elsif gen_dec > 0.7
+                assign gen_decimal = 1
+              endif
+            endif
+          -%}
+          {%- if gen_rating >= 4.0 -%}
+            <div class="ptp__rating-row">
+              <div class="ptp__rating" role="img" aria-label="Rating {{ gen_rating }} out of 5 stars">
+                <span aria-hidden="true" class="rating-star" style="--rating: {{ gen_floor }}; --rating-max: 5; --rating-decimal: {{ gen_decimal }};"></span>
+                <span class="ptp__rating-text" aria-hidden="true">{{ gen_rating }}/5</span>
+              </div>
+            </div>
+          {%- endif -%}
+        {%- endif -%}
+
+        {%- comment -%} Pricing Card {%- endcomment -%}
+        <div class="ptp__pricing-card">
+          <div class="ptp__price-hero">
+            <div class="ptp__price-hero-left">
+              <span class="ptp__price-hero-amount">${{ set_price | money_without_currency }}</span>
+              <span class="ptp__price-hero-label">for a set of 4</span>
+            </div>
+            {%- if product.available -%}
+              {%- assign variant_inventory = product.selected_or_first_available_variant.inventory_quantity -%}
+              {%- if variant_inventory <= 8 and variant_inventory > 0 and product.selected_or_first_available_variant.inventory_management == 'shopify' -%}
+                <span class="ptp__stock ptp__stock--low"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg> {{ 'products.product.low_stock' | t: count: variant_inventory | default: 'Only ' | append: variant_inventory | append: ' left' }}</span>
+              {%- else -%}
+                <span class="ptp__stock ptp__stock--in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg> {{ 'products.product.in_stock' | t | default: 'In stock' }}</span>
+              {%- endif -%}
+            {%- else -%}
+              <span class="ptp__stock ptp__stock--out">{{ 'products.product.sold_out' | t | default: 'Sold out' }}</span>
+            {%- endif -%}
+          </div>
+          <div class="ptp__price-per-tire">
+            {%- if on_sale -%}
+              <span class="ptp__price-current ptp__price-current--sale">${{ product.price | money_without_currency }}</span>
+              <span class="ptp__price-was">${{ product.compare_at_price | money_without_currency }}</span>
+              <span class="ptp__price-per">/tire</span>
+              <span class="ptp__save-tag">Save ${{ save_amount | money_without_currency }}</span>
+            {%- else -%}
+              <span class="ptp__price-current">${{ product.price | money_without_currency }}</span>
+              <span class="ptp__price-per">/tire</span>
+            {%- endif -%}
+          </div>
+          {%- if section.settings.show_installed_price -%}
+            {%- assign install_per_tire = section.settings.install_cost_per_tire | default: '30' | times: 100 -%}
+            {%- assign disposal_per_tire = section.settings.disposal_cost_per_tire | default: '5' | times: 100 -%}
+            {%- assign service_per_tire = install_per_tire | plus: disposal_per_tire -%}
+            {%- assign installed_set_price = set_price | plus: service_per_tire | times: 4 | divided_by: 100 -%}
+            {%- comment -%} set_price is already price*4 in cents, service needs *4 too {%- endcomment -%}
+            {%- assign service_total = service_per_tire | times: 4 -%}
+            {%- assign installed_total = set_price | plus: service_total -%}
+            <div class="ptp__installed-price">
+              <div class="ptp__installed-price-row">
+                <span class="ptp__installed-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+                  {{ 'products.product.installed_total' | t | default: 'Installed total' }}
+                </span>
+                <span class="ptp__installed-amount">${{ installed_total | money_without_currency }}</span>
+              </div>
+              <span class="ptp__installed-note">{{ 'products.product.installed_includes' | t | default: 'Includes mount, balance & disposal for 4 tires' }}</span>
+            </div>
+          {%- endif -%}
+        </div>
+
+        {%- comment -%} Manufacturer Rebate Banner {%- endcomment -%}
+        {%- assign rebate_text = product.metafields.custom.rebate_text | default: '' -%}
+        {%- if rebate_text != blank -%}
+          <div class="ptp__rebate-banner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <span>{{ rebate_text }}</span>
+          </div>
+        {%- endif -%}
+
+        {%- comment -%} CTAs — Book Installation is PRIMARY {%- endcomment -%}
+        <div class="ptp__cta-stack">
+          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Book installation
+          </button>
+
+          <product-form data-section-id="{{ section.id }}">
+            {%- form 'product', product, id: product_form_id, novalidate: 'novalidate', data-type: 'add-to-cart-form' -%}
+              <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}">
+              {%- if product.available -%}
+                <div class="ptp__cart-row">
+                  <div class="ptp__qty" role="group" aria-label="Quantity">
+                    <button type="button" data-ptp-qty-minus aria-label="Decrease quantity"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg></button>
+                    <input type="number" name="quantity" value="4" min="1" data-ptp-qty aria-label="Quantity">
+                    <button type="button" data-ptp-qty-plus aria-label="Increase quantity"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>
+                  </div>
+                  <button type="submit" class="ptp__add-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+                    Add to cart — <span data-ptp-cart-total>${{ set_price | money_without_currency }}</span>
+                  </button>
+                </div>
+              {%- else -%}
+                <div class="ptp__back-in-stock" data-ptp-bis>
+                  <p class="ptp__bis-text">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+                    {{ 'products.product.notify_when_available' | t | default: 'Get notified when this tire is back in stock' }}
+                  </p>
+                  <div class="ptp__bis-form">
+                    <input type="email" class="ptp__bis-email" placeholder="{{ 'products.product.email_placeholder' | t | default: 'Enter your email' }}" data-ptp-bis-email required>
+                    <button type="button" class="ptp__bis-btn" data-ptp-bis-submit>
+                      {{ 'products.product.notify_me' | t | default: 'Notify me' }}
+                    </button>
+                  </div>
+                  <p class="ptp__bis-success" data-ptp-bis-success hidden>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                    {{ 'products.product.notify_success' | t | default: "We'll email you when it's back!" }}
+                  </p>
+                </div>
+              {%- endif -%}
+              <div class="loading__spinner hidden">
+                <svg aria-hidden="true" focusable="false" class="spinner" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg"><circle class="path" fill="none" stroke-width="6" cx="33" cy="33" r="30"></circle></svg>
+              </div>
+            {%- endform -%}
+          </product-form>
+        </div>
+
+        {%- comment -%} Trust Signals {%- endcomment -%}
+        {%- if section.settings.show_trust_signals -%}
+          <div class="ptp__trust">
+            <div class="ptp__trust-item">
+              <div class="ptp__trust-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+              <div class="ptp__trust-text"><strong>{{ section.settings.trust_1_text | default: 'Fast delivery' }}</strong><span>Delivery within Calgary</span></div>
+            </div>
+            <div class="ptp__trust-item">
+              <div class="ptp__trust-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+              <div class="ptp__trust-text"><strong>{{ section.settings.trust_2_text | default: 'Manufacturer warranty' }}</strong><span>Manufacturing defect warranty</span></div>
+            </div>
+            <div class="ptp__trust-item">
+              <div class="ptp__trust-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></div>
+              <div class="ptp__trust-text"><strong>{{ section.settings.trust_3_text | default: 'Easy returns' }}</strong><span>Must be uninstalled, unused, with stickers on</span></div>
+            </div>
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+
+    {%- comment -%} Key Stats Strip {%- endcomment -%}
+    {%- if tire_size != blank -%}
+      <div class="ptp__stats-strip">
+        <div class="ptp__stat">
+          <span class="ptp__stat-num">{{ tire_size }}</span>
+          <span class="ptp__stat-label">Tire size</span>
+        </div>
+        {%- if season_tag != blank -%}
+          <div class="ptp__stat">
+            <span class="ptp__stat-num" style="color: {{ season_color }}">{{ season_tag }}</span>
+            <span class="ptp__stat-label">Season rating</span>
+          </div>
+        {%- endif -%}
+        {%- if product.metafields.custom.warranty_km != blank -%}
+          <div class="ptp__stat">
+            <span class="ptp__stat-num">{{ product.metafields.custom.warranty_km }}<span class="ptp__stat-unit">km</span></span>
+            <span class="ptp__stat-label">Treadwear warranty</span>
+          </div>
+        {%- endif -%}
+        <div class="ptp__stat">
+          <span class="ptp__stat-num">${{ product.price | money_without_currency }}<span class="ptp__stat-unit">/tire</span></span>
+          <span class="ptp__stat-label">Per tire price</span>
+        </div>
+        {%- if product.metafields.custom.warranty_km != blank -%}
+          {%- assign warranty_km_num = product.metafields.custom.warranty_km | times: 1 -%}
+          {%- if warranty_km_num > 0 -%}
+            {%- assign price_dollars = product.price | times: 1.0 | divided_by: 100.0 -%}
+            {%- assign cost_per_km_raw = price_dollars | divided_by: warranty_km_num | times: 1000.0 -%}
+            {%- assign cost_per_km_cents = cost_per_km_raw | round: 1 -%}
+            <div class="ptp__stat">
+              <span class="ptp__stat-num" style="color: var(--ptp-accent)">{{ cost_per_km_cents }}<span class="ptp__stat-unit">&cent;/km</span></span>
+              <span class="ptp__stat-label">{{ 'products.product.cost_per_km' | t | default: 'Cost per km' }}</span>
+            </div>
+          {%- endif -%}
+        {%- endif -%}
+        {%- if product.vendor != blank -%}
+          <div class="ptp__stat">
+            <span class="ptp__stat-num ptp__stat-brand">{{ product.vendor }}</span>
+            <span class="ptp__stat-label">Brand</span>
+          </div>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} ===== TABS SECTION ===== {%- endcomment -%}
+    <div class="ptp__tabs-section">
+      <div class="ptp__tabs">
+        <div class="ptp__tab-bar" role="tablist">
+        {%- if spec_width != blank and section.settings.show_specs_tab -%}
+          <button class="ptp__tab ptp__tab--active" role="tab" aria-selected="true" data-ptp-tab="specs" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+            Specifications
+          </button>
+        {%- endif -%}
+        {%- if section.settings.show_desc_tab -%}
+          <button class="ptp__tab{% if spec_width == blank %} ptp__tab--active{% endif %}" role="tab" aria-selected="{% if spec_width == blank %}true{% else %}false{% endif %}" data-ptp-tab="desc" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+            Description
+          </button>
+        {%- endif -%}
+        {%- if section.settings.show_warranty_tab -%}
+          <button class="ptp__tab" role="tab" aria-selected="false" data-ptp-tab="warranty" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Warranty
+          </button>
+        {%- endif -%}
+        {%- if section.settings.show_shipping_tab -%}
+          <button class="ptp__tab" role="tab" aria-selected="false" data-ptp-tab="shipping" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Shipping
+          </button>
+        {%- endif -%}
+        {%- if section.settings.show_ai_tab -%}
+          <button class="ptp__tab" role="tab" aria-selected="false" data-ptp-tab="ai" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            {{ section.settings.ai_tab_title | default: 'Ask AI' }}
+          </button>
+        {%- endif -%}
+      </div>
+
+      <div class="ptp__tab-panels">
+        {%- comment -%} Specs Panel — extended with all tire metafields {%- endcomment -%}
+        {%- if spec_width != blank and section.settings.show_specs_tab -%}
+          <div class="ptp__tab-panel ptp__tab-panel--active" role="tabpanel" data-ptp-panel="specs">
+            <div class="ptp__specs-grid">
+              {%- if tire_size != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_tire_size' | t }}</span><span class="ptp__spec-val">{{ tire_size }}</span></div>{%- endif -%}
+              {%- if spec_width != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_section_width' | t }}</span><span class="ptp__spec-val">{{ spec_width }} mm</span></div>{%- endif -%}
+              {%- if spec_aspect != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_aspect_ratio' | t }}</span><span class="ptp__spec-val">{{ spec_aspect }}</span></div>{%- endif -%}
+              {%- if spec_rim != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_rim_diameter' | t }}</span><span class="ptp__spec-val">{{ spec_rim }}"</span></div>{%- endif -%}
+              {%- if season_tag != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_season' | t }}</span><span class="ptp__spec-val">{{ season_tag }}</span></div>{%- endif -%}
+              {%- if product.type != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_type' | t }}</span><span class="ptp__spec-val">{{ product.type }}</span></div>{%- endif -%}
+              <div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_brand' | t }}</span><span class="ptp__spec-val">{{ product.vendor }}</span></div>
+              {%- if product.metafields.custom.load_index != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_load_index' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.load_index }}{%- if product.metafields.custom.max_load_lbs != blank %} ({{ product.metafields.custom.max_load_lbs }} lbs){%- endif -%}</span></div>{%- endif -%}
+              {%- if product.metafields.custom.speed_rating != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_speed_rating' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.speed_rating }}{%- if product.metafields.custom.max_speed_kmh != blank %} ({{ product.metafields.custom.max_speed_kmh }} km/h){%- endif -%}</span></div>{%- endif -%}
+              {%- if product.metafields.custom.ply_rating != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_ply_rating' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.ply_rating }}</span></div>{%- endif -%}
+              {%- if product.metafields.custom.sidewall != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_sidewall' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.sidewall }}</span></div>{%- endif -%}
+              {%- if product.metafields.custom.tread_depth != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_tread_depth' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.tread_depth }}</span></div>{%- endif -%}
+              {%- if product.metafields.custom.vehicle_type != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_vehicle_type' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.vehicle_type }}</span></div>{%- endif -%}
+              {%- if product.variants.first.weight > 0 -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_weight' | t }}</span><span class="ptp__spec-val">{{ product.variants.first.weight }} {{ product.variants.first.weight_unit }}</span></div>{%- endif -%}
+              {%- if product.metafields.custom.run_flat != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_run_flat' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.run_flat }}</span></div>{%- endif -%}
+              {%- if product.metafields.custom.stud_option != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_studdable' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.stud_option }}</span></div>{%- endif -%}
+              {%- if product.metafields.custom.three_peak_snowflake == true -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_3pmsf' | t }}</span><span class="ptp__spec-val" style="color:#2563eb">&#10052; {{ 'sections.tire_description.certified' | t }}</span></div>{%- endif -%}
+              {%- if product.metafields.custom.mud_snow == true -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_ms' | t }}</span><span class="ptp__spec-val">{{ 'sections.tire_description.yes' | t }}</span></div>{%- endif -%}
+            </div>
+
+            {%- comment -%} UTQG Ratings {%- endcomment -%}
+            {%- if product.metafields.custom.utqg_treadwear != blank or product.metafields.custom.utqg_traction != blank or product.metafields.custom.utqg_temperature != blank -%}
+              <h3 class="ptp__perf-heading">{{ 'sections.tire_description.utqg_heading' | t }}</h3>
+              <div class="ptp__specs-grid">
+                {%- if product.metafields.custom.utqg_treadwear != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_utqg_treadwear' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.utqg_treadwear }}</span></div>{%- endif -%}
+                {%- if product.metafields.custom.utqg_traction != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_utqg_traction' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.utqg_traction }}</span></div>{%- endif -%}
+                {%- if product.metafields.custom.utqg_temperature != blank -%}<div class="ptp__spec-item"><span class="ptp__spec-label">{{ 'sections.tire_description.spec_utqg_temperature' | t }}</span><span class="ptp__spec-val">{{ product.metafields.custom.utqg_temperature }}</span></div>{%- endif -%}
+              </div>
+            {%- endif -%}
+
+            {%- comment -%} Warranty Badge {%- endcomment -%}
+            {%- if product.metafields.custom.warranty_km != blank -%}
+              <div class="ptp__warranty-badge">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5820B" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>{{ 'sections.tire_description.warranty_badge' | t: warranty_km: product.metafields.custom.warranty_km }}</span>
+              </div>
+            {%- endif -%}
+
+            {%- if has_perf_data and section.settings.show_performance -%}
+              <h3 class="ptp__perf-heading">Performance ratings</h3>
+              <div class="ptp__perf-bars" data-ptp-perf>
+                {%- if perf_dry > 0 -%}<div class="ptp__perf-row"><span class="ptp__perf-label">Dry grip</span><div class="ptp__perf-track"><div class="ptp__perf-fill" data-ptp-bar="{{ perf_dry }}" style="width:0%;background:#fca5a5"></div></div><span class="ptp__perf-val" data-ptp-count="{{ perf_dry }}">0</span></div>{%- endif -%}
+                {%- if perf_wet > 0 -%}<div class="ptp__perf-row"><span class="ptp__perf-label">Wet grip</span><div class="ptp__perf-track"><div class="ptp__perf-fill" data-ptp-bar="{{ perf_wet }}" style="width:0%;background:#93c5fd"></div></div><span class="ptp__perf-val" data-ptp-count="{{ perf_wet }}">0</span></div>{%- endif -%}
+                {%- if perf_ice > 0 -%}<div class="ptp__perf-row"><span class="ptp__perf-label">Ice grip</span><div class="ptp__perf-track"><div class="ptp__perf-fill" data-ptp-bar="{{ perf_ice }}" style="width:0%;background:#7dd3fc"></div></div><span class="ptp__perf-val" data-ptp-count="{{ perf_ice }}">0</span></div>{%- endif -%}
+                {%- if perf_snow > 0 -%}<div class="ptp__perf-row"><span class="ptp__perf-label">Snow traction</span><div class="ptp__perf-track"><div class="ptp__perf-fill" data-ptp-bar="{{ perf_snow }}" style="width:0%;background:#fdba74"></div></div><span class="ptp__perf-val" data-ptp-count="{{ perf_snow }}">0</span></div>{%- endif -%}
+                {%- if perf_tread > 0 -%}<div class="ptp__perf-row"><span class="ptp__perf-label">Tread life</span><div class="ptp__perf-track"><div class="ptp__perf-fill" data-ptp-bar="{{ perf_tread }}" style="width:0%;background:#86efac"></div></div><span class="ptp__perf-val" data-ptp-count="{{ perf_tread }}">0</span></div>{%- endif -%}
+              </div>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
+
+        {%- comment -%} Description Panel — auto-generated from metafields + FAQ {%- endcomment -%}
+        {%- if section.settings.show_desc_tab -%}
+          <div class="ptp__tab-panel{% if spec_width == blank %} ptp__tab-panel--active{% endif %}" role="tabpanel" data-ptp-panel="desc">
+
+            {%- comment -%} Auto-generated intro {%- endcomment -%}
+            {%- if tire_size != blank -%}
+              <div class="ptp__description rte" data-aeo-speakable>
+                <p>
+                  {{ 'sections.tire_description.intro_line_1' | t:
+                    vendor: product.vendor,
+                    title: product.title,
+                    season: season_tag,
+                    vehicle_type: product.metafields.custom.vehicle_type,
+                    tire_size: tire_size
+                  }}
+                  {%- if product.metafields.custom.load_index != blank -%}
+                    {%- if product.metafields.custom.speed_rating != blank -%}
+                      {{ 'sections.tire_description.intro_rated' | t: load_index: product.metafields.custom.load_index, speed_rating: product.metafields.custom.speed_rating }}
+                    {%- endif -%}
+                    {%- if product.metafields.custom.max_load_lbs != blank -%}
+                      {{ 'sections.tire_description.intro_load_capacity' | t: max_load_lbs: product.metafields.custom.max_load_lbs }}
+                    {%- endif -%}
+                    {%- if product.metafields.custom.max_speed_kmh != blank -%}
+                      {{ 'sections.tire_description.intro_speed_capacity' | t: max_speed_kmh: product.metafields.custom.max_speed_kmh }}
+                    {%- endif -%}
+                  {%- endif -%}
+                </p>
+                {%- if product.metafields.custom.warranty_km != blank -%}
+                  <p>{{ 'sections.tire_description.intro_warranty' | t: warranty_km: product.metafields.custom.warranty_km, vendor: product.vendor }}</p>
+                {%- endif -%}
+                {%- if product.metafields.custom.three_peak_snowflake == true -%}
+                  <p>{{ 'sections.tire_description.intro_3pmsf' | t }}</p>
+                {%- elsif product.metafields.custom.mud_snow == true -%}
+                  <p>{{ 'sections.tire_description.intro_ms' | t }}</p>
+                {%- endif -%}
+                <p>{{ 'sections.tire_description.intro_available' | t }}</p>
+              </div>
+            {%- endif -%}
+
+            {%- comment -%} Best for / Not recommended tags {%- endcomment -%}
+            {%- if product.metafields.custom.best_for != blank or product.metafields.custom.not_recommended_for != blank -%}
+              <div class="ptp__use-cases">
+                {%- if product.metafields.custom.best_for != blank -%}
+                  {%- assign best_for_items = product.metafields.custom.best_for | split: ',' -%}
+                  <div class="ptp__use-case ptp__use-case--good">
+                    <span class="ptp__use-case-label">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                      {{ 'sections.tire_description.best_for' | t }}
+                    </span>
+                    <div class="ptp__use-tags">
+                      {%- for item in best_for_items -%}
+                        <span class="ptp__use-tag ptp__use-tag--green">{{ item | strip }}</span>
+                      {%- endfor -%}
+                    </div>
+                  </div>
+                {%- endif -%}
+                {%- if product.metafields.custom.not_recommended_for != blank -%}
+                  {%- assign not_rec_items = product.metafields.custom.not_recommended_for | split: ',' -%}
+                  <div class="ptp__use-case ptp__use-case--caution">
+                    <span class="ptp__use-case-label">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+                      {{ 'sections.tire_description.not_recommended' | t }}
+                    </span>
+                    <div class="ptp__use-tags">
+                      {%- for item in not_rec_items -%}
+                        <span class="ptp__use-tag ptp__use-tag--red">{{ item | strip }}</span>
+                      {%- endfor -%}
+                    </div>
+                  </div>
+                {%- endif -%}
+              </div>
+            {%- endif -%}
+
+            {%- comment -%} Compatible vehicles {%- endcomment -%}
+            {%- if product.metafields.custom.compatible_vehicles != blank -%}
+              {%- assign compat_items = product.metafields.custom.compatible_vehicles | split: ',' -%}
+              <h3 class="ptp__desc-subheading">{{ 'sections.tire_description.vehicles_heading' | t: tire_size: tire_size }}</h3>
+              <div class="ptp__vehicle-list">
+                {%- for v in compat_items -%}
+                  <span class="ptp__vehicle-chip">{{ v | strip }}</span>
+                {%- endfor -%}
+              </div>
+            {%- endif -%}
+
+            {%- comment -%} Calgary driving conditions {%- endcomment -%}
+            {%- if tire_size != blank -%}
+              <h3 class="ptp__desc-subheading">{{ 'sections.tire_description.local_heading' | t }}</h3>
+              <div class="ptp__local-note">
+                {%- case season_tag -%}
+                  {%- when 'Winter' -%}
+                    <p>{{ 'sections.tire_description.local_winter' | t: title: product.title }}</p>
+                  {%- when 'All-Season' -%}
+                    <p>{{ 'sections.tire_description.local_all_season' | t: title: product.title }}</p>
+                  {%- when 'All-Weather' -%}
+                    {%- if product.metafields.custom.three_peak_snowflake == true -%}
+                      <p>{{ 'sections.tire_description.local_all_weather_3pmsf' | t: title: product.title }}</p>
+                    {%- else -%}
+                      <p>{{ 'sections.tire_description.local_all_weather' | t: title: product.title }}</p>
+                    {%- endif -%}
+                  {%- when 'Summer' -%}
+                    <p>{{ 'sections.tire_description.local_summer' | t: title: product.title }}</p>
+                  {%- else -%}
+                    <p>{{ 'sections.tire_description.local_default' | t: title: product.title }}</p>
+                {%- endcase -%}
+              </div>
+            {%- endif -%}
+
+            {%- comment -%} FAQ {%- endcomment -%}
+            {%- if tire_size != blank -%}
+              <h3 class="ptp__desc-subheading">{{ 'sections.tire_description.faq_heading' | t }}</h3>
+              <div class="ptp__faq-list">
+                {%- capture faq_1_q -%}{{ 'sections.tire_description.faq_1_q' | t: title: product.title }}{%- endcapture -%}
+                {%- capture faq_1_a -%}
+                  {%- case season_tag -%}
+                    {%- when 'Winter' -%}{{ 'sections.tire_description.faq_1_a_winter' | t: title: product.title }}
+                    {%- when 'All-Season' -%}{{ 'sections.tire_description.faq_1_a_all_season' | t: title: product.title }}
+                    {%- when 'All-Weather' -%}
+                      {%- if product.metafields.custom.three_peak_snowflake == true -%}{{ 'sections.tire_description.faq_1_a_all_weather_3pmsf' | t: title: product.title }}
+                      {%- else -%}{{ 'sections.tire_description.faq_1_a_all_weather' | t: title: product.title }}{%- endif -%}
+                    {%- when 'Summer' -%}{{ 'sections.tire_description.faq_1_a_summer' | t: title: product.title }}
+                    {%- else -%}{{ 'sections.tire_description.faq_1_a_default' | t: title: product.title }}
+                  {%- endcase -%}
+                {%- endcapture -%}
+                <details class="ptp__faq-item"><summary class="ptp__faq-q">{{ faq_1_q | strip }}</summary><div class="ptp__faq-a">{{ faq_1_a | strip }}</div></details>
+
+                {%- if product.metafields.custom.utqg_treadwear != blank or product.metafields.custom.warranty_km != blank -%}
+                  {%- capture faq_2_q -%}{{ 'sections.tire_description.faq_2_q' | t: title: product.title }}{%- endcapture -%}
+                  {%- capture faq_2_a -%}
+                    {%- if product.metafields.custom.warranty_km != blank -%}
+                      {%- if product.metafields.custom.utqg_treadwear != blank -%}{{ 'sections.tire_description.faq_2_a_full' | t: title: product.title, warranty_km: product.metafields.custom.warranty_km, utqg_treadwear: product.metafields.custom.utqg_treadwear }}
+                      {%- else -%}{{ 'sections.tire_description.faq_2_a_warranty' | t: title: product.title, warranty_km: product.metafields.custom.warranty_km }}{%- endif -%}
+                    {%- else -%}{{ 'sections.tire_description.faq_2_a_utqg' | t: title: product.title, utqg_treadwear: product.metafields.custom.utqg_treadwear }}{%- endif -%}
+                  {%- endcapture -%}
+                  <details class="ptp__faq-item"><summary class="ptp__faq-q">{{ faq_2_q | strip }}</summary><div class="ptp__faq-a">{{ faq_2_a | strip }}</div></details>
+                {%- endif -%}
+
+                {%- if product.metafields.custom.load_index != blank -%}
+                  {%- capture faq_3_q -%}{{ 'sections.tire_description.faq_3_q' | t: title: product.title }}{%- endcapture -%}
+                  {%- capture faq_3_a -%}
+                    {%- if product.metafields.custom.max_load_lbs != blank -%}{{ 'sections.tire_description.faq_3_a_full' | t: title: product.title, load_index: product.metafields.custom.load_index, max_load_lbs: product.metafields.custom.max_load_lbs }}
+                    {%- else -%}{{ 'sections.tire_description.faq_3_a_basic' | t: title: product.title, load_index: product.metafields.custom.load_index }}{%- endif -%}
+                  {%- endcapture -%}
+                  <details class="ptp__faq-item"><summary class="ptp__faq-q">{{ faq_3_q | strip }}</summary><div class="ptp__faq-a">{{ faq_3_a | strip }}</div></details>
+                {%- endif -%}
+
+                {%- if season_tag == 'Winter' or season_tag == 'All-Weather' or product.metafields.custom.three_peak_snowflake == true or product.metafields.custom.three_peak_snowflake == false -%}
+                  {%- capture faq_4_q -%}{{ 'sections.tire_description.faq_4_q' | t: title: product.title }}{%- endcapture -%}
+                  {%- capture faq_4_a -%}
+                    {%- if product.metafields.custom.three_peak_snowflake == true -%}{{ 'sections.tire_description.faq_4_a_yes' | t: title: product.title }}
+                    {%- else -%}{{ 'sections.tire_description.faq_4_a_no' | t: title: product.title }}{%- endif -%}
+                  {%- endcapture -%}
+                  <details class="ptp__faq-item"><summary class="ptp__faq-q">{{ faq_4_q | strip }}</summary><div class="ptp__faq-a">{{ faq_4_a | strip }}</div></details>
+                {%- endif -%}
+
+                {%- capture faq_5_q -%}{{ 'sections.tire_description.faq_5_q' | t }}{%- endcapture -%}
+                {%- capture faq_5_a -%}{{ 'sections.tire_description.faq_5_a' | t }}{%- endcapture -%}
+                <details class="ptp__faq-item"><summary class="ptp__faq-q">{{ faq_5_q | strip }}</summary><div class="ptp__faq-a">{{ faq_5_a | strip }}</div></details>
+              </div>
+
+              {%- comment -%} FAQ Page JSON-LD Schema {%- endcomment -%}
+              <script type="application/ld+json">
+              {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": [
+                  { "@type": "Question", "name": {{ faq_1_q | strip | json }}, "acceptedAnswer": { "@type": "Answer", "text": {{ faq_1_a | strip | json }} } }
+                  {%- if product.metafields.custom.utqg_treadwear != blank or product.metafields.custom.warranty_km != blank -%}
+                    ,{ "@type": "Question", "name": {{ faq_2_q | strip | json }}, "acceptedAnswer": { "@type": "Answer", "text": {{ faq_2_a | strip | json }} } }
+                  {%- endif -%}
+                  {%- if product.metafields.custom.load_index != blank -%}
+                    ,{ "@type": "Question", "name": {{ faq_3_q | strip | json }}, "acceptedAnswer": { "@type": "Answer", "text": {{ faq_3_a | strip | json }} } }
+                  {%- endif -%}
+                  {%- if season_tag == 'Winter' or season_tag == 'All-Weather' or product.metafields.custom.three_peak_snowflake == true or product.metafields.custom.three_peak_snowflake == false -%}
+                    ,{ "@type": "Question", "name": {{ faq_4_q | strip | json }}, "acceptedAnswer": { "@type": "Answer", "text": {{ faq_4_a | strip | json }} } }
+                  {%- endif -%}
+                  ,{ "@type": "Question", "name": {{ faq_5_q | strip | json }}, "acceptedAnswer": { "@type": "Answer", "text": {{ faq_5_a | strip | json }} } }
+                ]
+              }
+              </script>
+            {%- endif -%}
+
+            {%- comment -%} Shopify description hidden — auto-generated description above covers this {%- endcomment -%}
+
+          </div>
+        {%- endif -%}
+
+        {%- comment -%} Warranty Panel {%- endcomment -%}
+        {%- if section.settings.show_warranty_tab -%}
+          <div class="ptp__tab-panel" role="tabpanel" data-ptp-panel="warranty">
+            <div class="ptp__warranty-grid">
+              <div class="ptp__warranty-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F5820B" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <div><strong>Manufacturing defect warranty</strong><span>Covers manufacturing defects for 80,000 km on all-season and all-weather tires. Winter tires are covered for 1 year from the date of purchase.</span></div>
+              </div>
+              <div class="ptp__warranty-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F5820B" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <div><strong>What's covered</strong><span>Defects in materials and workmanship under normal driving conditions. Does not cover road hazards, punctures, improper installation, or misuse.</span></div>
+              </div>
+            </div>
+          </div>
+        {%- endif -%}
+
+        {%- comment -%} Shipping Panel {%- endcomment -%}
+        {%- if section.settings.show_shipping_tab -%}
+          <div class="ptp__tab-panel" role="tabpanel" data-ptp-panel="shipping">
+            <div class="ptp__shipping-info rte">
+              <p><strong>Calgary delivery</strong><br>Free delivery within Calgary. Orders typically arrive within 1–3 business days.</p>
+              <p><strong>Outside Calgary</strong><br>Customer covers the delivery cost. Delivery may take 1–2 weeks depending on your location.</p>
+              <p><strong>Returns</strong><br>Tires must be uninstalled, unused, and with original stickers on. Contact us within 30 days of purchase.</p>
+            </div>
+          </div>
+        {%- endif -%}
+
+        {%- comment -%} AI Assistant Panel {%- endcomment -%}
+        {%- if section.settings.show_ai_tab -%}
+          <div class="ptp__tab-panel" role="tabpanel" data-ptp-panel="ai">
+            <div class="ptp__ai">
+              <div class="ptp__ai-header">
+                <div class="ptp__ai-logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+                <div><strong>Tire assistant</strong><span>Ask anything about this tire</span></div>
+              </div>
+              <div class="ptp__ai-suggestions">
+                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_1 | default: 'Is this tire good for winter driving?' | escape }}" type="button">{{ section.settings.ai_suggestion_1 | default: 'Is this tire good for winter driving?' }}</button>
+                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_2 | default: 'How long will this tire last?' | escape }}" type="button">{{ section.settings.ai_suggestion_2 | default: 'How long will this tire last?' }}</button>
+                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_3 | default: 'What size rim do I need?' | escape }}" type="button">{{ section.settings.ai_suggestion_3 | default: 'What size rim do I need?' }}</button>
+              </div>
+              <div class="ptp__ai-chat" data-ptp-ai-chat></div>
+              <div class="ptp__ai-input-row">
+                <input type="text" class="ptp__ai-input" placeholder="Ask about this tire..." data-ptp-ai-input>
+                <button class="ptp__ai-send" data-ptp-ai-send type="button" aria-label="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg></button>
+              </div>
+            </div>
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+
+        {%- comment -%} Browse & Share Links {%- endcomment -%}
+        <div class="ptp__links-row">
+          <div class="ptp__links">
+            <a href="/collections/tires?filter.p.vendor={{ product.vendor | url_encode }}" class="ptp__link">More from {{ product.vendor }}</a>
+            {%- if tire_size != blank -%}
+              <a href="/collections/tires?filter.p.m.custom.tire_size={{ tire_size | url_encode }}" class="ptp__link">Compare {{ tire_size }} tires</a>
+            {%- endif -%}
+          </div>
+          <div class="ptp__share" data-ptp-share>
+            <span class="ptp__share-label">{{ 'products.product.share' | t | default: 'Share this product' }}</span>
+            <a href="https://wa.me/?text={{ product.title | url_encode }}%20{{ shop.url | append: product.url | url_encode }}" target="_blank" rel="noopener" class="ptp__share-btn ptp__share-btn--wa" aria-label="Share on WhatsApp">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            </a>
+            <a href="https://www.facebook.com/sharer/sharer.php?u={{ shop.url | append: product.url | url_encode }}" target="_blank" rel="noopener" class="ptp__share-btn" aria-label="Share on Facebook">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </a>
+            <button type="button" class="ptp__share-btn" data-ptp-copy-url aria-label="Copy link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            </button>
+          </div>
+        </div>
+    </div>{%- comment -%} /ptp__tabs-section {%- endcomment -%}
+
+    {%- comment -%} Sticky Mobile CTA {%- endcomment -%}
+    <div class="ptp__sticky">
+      {%- if product.featured_image -%}
+        {{ product.featured_image | image_url: width: 80, height: 80, crop: 'center' | image_tag: class: 'ptp__sticky-thumb', loading: 'lazy', alt: product.title }}
+      {%- endif -%}
+      <div class="ptp__sticky-price">
+        <span class="ptp__sticky-set" data-ptp-sticky-total>${{ set_price | money_without_currency }}</span>
+        <span class="ptp__sticky-per">set of 4</span>
+      </div>
+      <button type="button" class="ptp__sticky-btn" data-ptp-sticky-add aria-label="Book installation" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}">Book now</button>
+    </div>
+  </div>
+</product-info>
+
+{% stylesheet %}
+  .ptp {
+    --ptp-max-width: 100%; --ptp-gap: 4rem; --ptp-font: 'Outfit', sans-serif;
+    --ptp-heading: 'Barlow Condensed', sans-serif;
+    --ptp-text: #111; --ptp-muted: #9ca3af; --ptp-subtle: #6b7280;
+    --ptp-border: #f0f0f0; --ptp-border-soft: #e5e7eb;
+    --ptp-bg: #ffffff; --ptp-bg2: #f7f7f8;
+    --ptp-accent: #F5820B; --ptp-accent-dark: #d97006;
+    --ptp-success: #16a34a; --ptp-sale: #dc2626;
+    --ptp-cta: #dc2626; --ptp-cta-hover: #b91c1c;
+    --ptp-r: 10px; --ptp-r-sm: 8px;
+    background: var(--ptp-bg); font-family: var(--ptp-font); color: var(--ptp-text);
+  }
+  .ptp__container { max-width: 1200px; margin: 0 auto; padding: 4rem 2rem 6rem; }
+
+  /* Breadcrumb */
+  .ptp__breadcrumb { margin-bottom: 3rem; }
+  .ptp__breadcrumb-list { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 400; color: #9ca3af; list-style: none; padding: 0; margin: 0; }
+  .ptp__breadcrumb-list li:not(:last-child)::after { content: '/'; margin-left: 0.6rem; color: #d1d5db; }
+  .ptp__breadcrumb-list a { color: #9ca3af; text-decoration: none; transition: color 0.2s; }
+  .ptp__breadcrumb-list a:hover { color: #111; }
+  .ptp__breadcrumb-list li:last-child { color: #6b7280; }
+
+  /* Fitment */
+  .ptp__fitment { display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1.2rem; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--ptp-r-sm); margin-bottom: 1.5rem; font-size: 0.95rem; color: #374151; }
+  .ptp__fitment[hidden] { display: none; }
+  .ptp__fitment strong { color: var(--ptp-text); }
+  .ptp__fitment-change { margin-left: auto; font-size: 0.85rem; color: var(--ptp-muted); text-decoration: underline; text-underline-offset: 2px; }
+
+  /* Layout */
+  .ptp__layout { display: grid; grid-template-columns: 1fr; gap: 2.5rem; margin-bottom: 3.5rem; }
+  @media (min-width: 750px) {
+    .ptp__layout { grid-template-columns: 1fr 1fr; gap: 4rem; }
+    .ptp__info-col--sticky { position: sticky; top: 2rem; align-self: start; }
+  }
+
+  /* Gallery — matches ft__card-image */
+  .ptp__gallery-main-wrap { position: relative; background: #f9fafb; border-radius: 12px; min-height: 380px; max-height: 460px; display: flex; align-items: center; justify-content: center; padding: 2.5rem; overflow: hidden; }
+  .ptp__gallery-main-img { max-height: 340px; }
+  .ptp__gallery-main-img { width: 100%; height: 100%; object-fit: contain; cursor: zoom-in; transition: transform 0.3s ease; }
+  .ptp__gallery-main-wrap:hover .ptp__gallery-main-img { transform: scale(1.03); }
+  .ptp__sale-badge { position: absolute; top: 1rem; left: 1rem; background: var(--ptp-sale); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 0.35rem 0.9rem; border-radius: 100px; z-index: 1; }
+  .ptp__gallery-thumbs { display: flex; gap: 0.5rem; margin-top: 0.8rem; overflow-x: auto; scrollbar-width: none; }
+  .ptp__gallery-thumbs::-webkit-scrollbar { display: none; }
+  .ptp__gallery-thumb { flex: 0 0 5.5rem; width: 5.5rem; height: 5.5rem; border: 2px solid var(--ptp-border); border-radius: var(--ptp-r-sm); background: #fff; cursor: pointer; padding: 0.4rem; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  .ptp__gallery-thumb--active { border-color: var(--ptp-accent); box-shadow: 0 0 0 1px var(--ptp-accent); }
+  .ptp__gallery-thumb--video { display: flex; align-items: center; justify-content: center; background: #f1f5f9; }
+  .ptp__gallery-video { position: relative; background: #000; border-radius: var(--ptp-r); overflow: hidden; aspect-ratio: 16/9; margin-bottom: 0.8rem; }
+  .ptp__gallery-video[hidden] { display: none; }
+  .ptp__gallery-video-close { position: absolute; top: 0.5rem; right: 0.5rem; z-index: 2; width: 2rem; height: 2rem; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .ptp__gallery-video-wrap { width: 100%; height: 100%; }
+  .ptp__gallery-video-wrap iframe { width: 100%; height: 100%; border: none; }
+  .ptp__gallery-thumb:hover { border-color: var(--ptp-accent); }
+  .ptp__gallery-thumb-img { width: 100%; height: 100%; object-fit: contain; }
+
+  /* Info Column — matches ft__eyebrow + ft__heading exactly */
+  .ptp__vendor { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 400; color: #9ca3af; text-decoration: none; display: inline-block; margin-bottom: 0.5rem; letter-spacing: 0.02em; }
+  .ptp__vendor:hover { color: #111; }
+  .ptp__title { font-family: 'Barlow Condensed', sans-serif; font-size: 2.8rem; font-weight: 700; color: #111; margin: 0 0 1rem; line-height: 1.1; letter-spacing: 0.02em; }
+  .ptp__quick-specs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+  .ptp__quick-spec-tag { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; font-weight: 500; padding: 0.35rem 0.8rem; border-radius: 100px; color: #6b7280; background: #f3f4f6; border: 1px solid #e5e7eb; }
+  .ptp__quick-spec-tag svg { stroke: #9ca3af; }
+  .ptp__rating-row { margin-bottom: 1rem; }
+  .ptp__rating { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 1rem; font-weight: 500; }
+  .ptp .rating-star { --color-rating-star: #F5820B; --letter-spacing: 0.6; --font-size: 1.5; }
+  .ptp__rating-text { font-weight: 600; color: var(--ptp-text); }
+  .ptp__rating-count { color: var(--ptp-muted); font-weight: 400; font-size: 0.9rem; }
+
+  /* Pricing Card — matches ft__card style */
+  .ptp__pricing-card { background: #fff; padding: 0; margin-bottom: 1.5rem; border-bottom: 1px solid #f3f4f6; padding-bottom: 1.5rem; }
+  .ptp__price-hero { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+  .ptp__price-hero-left { display: flex; align-items: baseline; gap: 0.5rem; }
+  .ptp__price-hero-amount { font-family: 'Barlow Condensed', sans-serif; font-size: 3rem; font-weight: 700; color: #111; letter-spacing: 0.02em; }
+  .ptp__price-hero-label { font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 300; color: #9ca3af; }
+  .ptp__stock { font-family: 'Outfit', sans-serif; font-size: 0.85rem; font-weight: 600; padding: 0.3rem 0.7rem; border-radius: 100px; display: inline-flex; align-items: center; gap: 0.3rem; }
+  .ptp__stock--in { color: #16a34a; background: #f0fdf4; }
+  .ptp__stock--low { color: #d97706; background: #fffbeb; }
+  .ptp__stock--out { color: #dc2626; background: #fef2f2; }
+  .ptp__price-per-tire { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; border-top: 1px solid var(--ptp-border); padding-top: 0.6rem; margin-top: 0.2rem; }
+  .ptp__price-current { font-family: 'Barlow Condensed', sans-serif; font-size: 1.5rem; font-weight: 700; color: #111; }
+  .ptp__price-current--sale { color: #dc2626; }
+  .ptp__price-was { font-size: 1rem; color: #9ca3af; text-decoration: line-through; }
+  .ptp__price-per { font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 300; color: #9ca3af; }
+  .ptp__save-tag { font-family: 'Outfit', sans-serif; font-size: 0.78rem; font-weight: 600; color: #fff; background: #dc2626; padding: 0.2rem 0.55rem; border-radius: 100px; }
+  .ptp__installed-price { border-top: 1px dashed var(--ptp-border); padding-top: 0.7rem; margin-top: 0.5rem; }
+  .ptp__installed-price-row { display: flex; align-items: center; justify-content: space-between; }
+  .ptp__installed-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; font-weight: 500; color: var(--ptp-subtle); }
+  .ptp__installed-label svg { stroke: var(--ptp-accent); }
+  .ptp__installed-amount { font-family: 'Barlow Condensed', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--ptp-accent); }
+  .ptp__installed-note { font-size: 0.75rem; color: var(--ptp-muted); display: block; margin-top: 0.15rem; }
+  .ptp__rebate-banner { display: flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1rem; margin-bottom: 0.8rem; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; border-radius: var(--ptp-r-sm); font-size: 0.88rem; font-weight: 600; color: #92400e; }
+  .ptp__rebate-banner svg { stroke: #d97706; flex-shrink: 0; }
+
+  /* Back in stock */
+  .ptp__back-in-stock { padding: 1.2rem; background: #f8fafc; border: 1.5px dashed var(--ptp-border-soft); border-radius: var(--ptp-r-sm); }
+  .ptp__bis-text { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 500; color: var(--ptp-subtle); margin: 0 0 0.8rem; }
+  .ptp__bis-text svg { stroke: var(--ptp-muted); flex-shrink: 0; }
+  .ptp__bis-form { display: flex; gap: 0.5rem; }
+  .ptp__bis-email { flex: 1; height: 3rem; padding: 0 1rem; border: 1.5px solid var(--ptp-border); border-radius: var(--ptp-r-sm); font-family: var(--ptp-font); font-size: 0.9rem; color: var(--ptp-text); background: #fff; }
+  .ptp__bis-email:focus { outline: none; border-color: var(--ptp-accent); }
+  .ptp__bis-btn { height: 3rem; padding: 0 1.4rem; background: var(--ptp-cta); color: #fff; border: none; border-radius: var(--ptp-r-sm); font-family: var(--ptp-font); font-size: 0.9rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+  .ptp__bis-btn:hover { background: var(--ptp-cta-hover); }
+  .ptp__bis-success { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 500; color: #16a34a; margin: 0.6rem 0 0; }
+  .ptp__bis-success[hidden] { display: none; }
+
+  /* CTA Stack */
+  .ptp__cta-stack { display: flex; flex-direction: column; gap: 0.7rem; }
+  .ptp__book-btn {
+    display: flex; width: 100%; background: #fef2f2; color: #dc2626; border: 1.5px solid #fca5a5;
+    text-align: center; padding: 1rem; border-radius: 10px;
+    font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; align-items: center; justify-content: center; gap: 0.5rem;
+  }
+  .ptp__book-btn:hover { background: #fee2e2; border-color: #f87171; }
+  @media (max-width: 749px) {
+    .ptp__book-btn { padding: 0.6rem 0.75rem; font-size: 0.9rem; white-space: nowrap; }
+  }
+
+  .ptp__cart-row { display: flex; gap: 0.6rem; }
+  .ptp__qty { display: flex; align-items: center; background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px; overflow: hidden; flex-shrink: 0; }
+  .ptp__qty button { width: 3.2rem; height: 3.4rem; border: none; background: transparent; cursor: pointer; color: #9ca3af; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .ptp__qty button:hover { color: #111; background: #f9fafb; }
+  .ptp__qty input { width: 2.6rem; height: 3.4rem; text-align: center; border: none; background: transparent; font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 600; color: #111; -moz-appearance: textfield; }
+  .ptp__qty input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .ptp__add-btn {
+    flex: 1; height: 3.4rem; background: #f3f4f6; color: #374151;
+    border: none; border-radius: 10px;
+    font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+  }
+  .ptp__add-btn:hover { background: #e5e7eb; }
+  .ptp__add-btn:disabled { background: #f9fafb; color: #d1d5db; cursor: not-allowed; }
+  .loading__spinner { display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .loading__spinner.hidden { display: none; }
+  .loading__spinner .spinner { width: 2rem; height: 2rem; animation: ptp-spin 0.8s linear infinite; }
+  .loading__spinner .path { stroke: var(--ptp-cta); stroke-linecap: round; animation: ptp-dash 1.5s ease-in-out infinite; }
+  @keyframes ptp-spin { to { transform: rotate(360deg); } }
+  @keyframes ptp-dash { 0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; } 50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; } 100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; } }
+
+  /* Trust */
+  .ptp__trust { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #f3f4f6; }
+  .ptp__trust-item { display: flex; align-items: center; gap: 0.8rem; }
+  .ptp__trust-item:hover { opacity: 0.8; }
+  .ptp__trust-item + .ptp__trust-item { }
+  .ptp__trust-icon { width: 2rem; height: 2rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .ptp__trust-icon svg { stroke: #9ca3af; width: 18px; height: 18px; }
+  .ptp__trust-text { display: flex; flex-direction: column; gap: 0; }
+  .ptp__trust-text strong { font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 500; color: #111; line-height: 1.3; }
+  .ptp__trust-text span { font-family: 'Outfit', sans-serif; font-size: 0.85rem; font-weight: 300; color: #9ca3af; }
+
+  /* ===== HORIZONTAL TABS — section-level styling ===== */
+  .ptp__tabs-section { background: #fff; padding: 3.5rem 0 3rem; margin-top: 0; border-top: 1px solid #f3f4f6; }
+  .ptp__tabs-heading span { color: #dc2626; }
+  .ptp__tabs { max-width: 780px; margin: 0 auto 2rem; }
+  .ptp__tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--ptp-border); overflow-x: auto; scrollbar-width: none; }
+  .ptp__tab-bar::-webkit-scrollbar { display: none; }
+  .ptp__tab {
+    padding: 1rem 1.4rem; font-family: var(--ptp-font); font-size: 0.9rem; font-weight: 600;
+    color: var(--ptp-muted); background: none; border: none;
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 0.45rem;
+    transition: all 0.2s;
+  }
+  .ptp__tab svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .ptp__tab--active { color: var(--ptp-cta); border-bottom-color: var(--ptp-cta); }
+  .ptp__tab--active svg { stroke: var(--ptp-cta); }
+  .ptp__tab:hover:not(.ptp__tab--active) { color: var(--ptp-text); }
+  .ptp__tab-panels { min-height: 12rem; }
+  .ptp__tab-panel { display: none; padding: 1.5rem 0; animation: ptp-fade 0.25s ease; }
+  .ptp__tab-panel--active { display: block; }
+  @keyframes ptp-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Specs */
+  .ptp__specs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .ptp__spec-item { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9; }
+  .ptp__spec-label { font-size: 0.95rem; font-weight: 500; color: var(--ptp-muted); }
+  .ptp__spec-val { font-size: 0.95rem; font-weight: 600; color: var(--ptp-text); }
+  .ptp__spec-item:nth-child(odd) { padding-right: 1.5rem; border-right: 1px solid #f1f5f9; }
+  .ptp__spec-item:nth-child(even) { padding-left: 1.5rem; }
+  .ptp__perf-heading { font-family: var(--ptp-font); font-size: 0.95rem; font-weight: 600; color: var(--ptp-muted); margin: 1.5rem 0 1rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .ptp__perf-bars { display: flex; flex-direction: column; gap: 0.9rem; }
+  .ptp__perf-row { display: flex; align-items: center; gap: 0.8rem; }
+  .ptp__perf-label { width: 9rem; flex-shrink: 0; font-size: 0.95rem; font-weight: 500; color: var(--ptp-muted); }
+  .ptp__perf-track { flex: 1; height: 10px; background: #f1f5f9; border-radius: 5px; overflow: hidden; }
+  .ptp__perf-fill { height: 100%; border-radius: 5px; transition: width 2.5s cubic-bezier(0.16,1,0.3,1); }
+  .ptp__perf-val { width: 2.5rem; text-align: right; font-size: 1.1rem; font-weight: 700; color: var(--ptp-text); }
+
+  /* Warranty */
+  .ptp__warranty-grid { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+  .ptp__warranty-item { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem; background: var(--ptp-bg2); border-radius: var(--ptp-r-sm); border: 1px solid #f1f5f9; }
+  .ptp__warranty-item svg { flex-shrink: 0; }
+  .ptp__warranty-item div { display: flex; flex-direction: column; gap: 0.15rem; }
+  .ptp__warranty-item strong { font-size: 0.95rem; color: var(--ptp-text); }
+  .ptp__warranty-item span { font-size: 0.85rem; color: var(--ptp-muted); }
+  .ptp__description, .ptp__shipping-info { font-size: 1.05rem; line-height: 1.75; color: #475569; }
+
+  /* Warranty badge in specs */
+  .ptp__warranty-badge { display: flex; align-items: center; gap: 0.6rem; margin-top: 1.2rem; padding: 0.8rem 1rem; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; font-size: 0.95rem; font-weight: 600; color: #9a3412; }
+
+  /* Use cases (best for / not recommended) */
+  .ptp__use-cases { display: flex; gap: 1rem; margin: 1.5rem 0; }
+  .ptp__use-case { flex: 1; padding: 1rem 1.2rem; border-radius: 8px; }
+  .ptp__use-case--good { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .ptp__use-case--caution { background: #fef2f2; border: 1px solid #fecaca; }
+  .ptp__use-case-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 0.6rem; }
+  .ptp__use-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .ptp__use-tag { font-size: 0.82rem; font-weight: 500; padding: 0.25rem 0.7rem; border-radius: 50px; }
+  .ptp__use-tag--green { background: #dcfce7; color: #166534; }
+  .ptp__use-tag--red { background: #fee2e2; color: #991b1b; }
+
+  /* Description sub-headings */
+  .ptp__desc-subheading { font-size: 1rem; font-weight: 600; color: var(--ptp-text); margin: 1.8rem 0 0.8rem; padding-bottom: 0.4rem; border-bottom: 1px solid #f1f5f9; }
+
+  /* Compatible vehicles */
+  .ptp__vehicle-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .ptp__vehicle-chip { font-size: 0.85rem; font-weight: 400; color: #374151; padding: 0.35rem 0.8rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; }
+
+  /* Calgary driving note */
+  .ptp__local-note { font-size: 1rem; line-height: 1.75; color: #475569; padding: 1rem 1.2rem; background: #f8fafc; border-left: 3px solid #F5820B; border-radius: 0 8px 8px 0; }
+  .ptp__local-note p { margin: 0; }
+
+  /* FAQ */
+  .ptp__faq-list { display: flex; flex-direction: column; }
+  .ptp__faq-item { border-bottom: 1px solid #e5e7eb; }
+  .ptp__faq-q { font-size: 0.95rem; font-weight: 600; color: var(--ptp-text); padding: 0.9rem 1.8rem 0.9rem 0; cursor: pointer; list-style: none; position: relative; }
+  .ptp__faq-q::-webkit-details-marker { display: none; }
+  .ptp__faq-q::after { content: '+'; position: absolute; right: 0; top: 50%; transform: translateY(-50%); font-size: 1.3rem; font-weight: 300; color: #9ca3af; }
+  .ptp__faq-item[open] .ptp__faq-q::after { content: '\2212'; }
+  .ptp__faq-a { font-size: 0.95rem; line-height: 1.75; color: #475569; padding: 0 0 1rem; }
+
+  @media (max-width: 768px) {
+    .ptp__use-cases { flex-direction: column; }
+  }
+
+  /* AI Assistant */
+  .ptp__ai { max-width: 640px; }
+  .ptp__ai-header { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem; }
+  .ptp__ai-logo { width: 2.8rem; height: 2.8rem; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #F5820B 0%, #dc2626 100%); border-radius: 50%; color: #fff; }
+  .ptp__ai-logo svg { stroke: #fff; }
+  .ptp__ai-header strong { font-size: 1rem; color: var(--ptp-text); display: block; }
+  .ptp__ai-header span { font-size: 0.85rem; color: var(--ptp-muted); }
+  .ptp__ai-suggestions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .ptp__ai-chip {
+    padding: 0.5rem 1rem; border: 1.5px solid var(--ptp-border); border-radius: 100px;
+    background: var(--ptp-bg); font-family: var(--ptp-font); font-size: 0.85rem; font-weight: 500;
+    color: var(--ptp-muted); cursor: pointer; transition: all 0.2s;
+  }
+  .ptp__ai-chip:hover { border-color: var(--ptp-accent); color: var(--ptp-accent); }
+  .ptp__ai-chat { display: flex; flex-direction: column; gap: 0.8rem; max-height: 24rem; overflow-y: auto; margin-bottom: 1rem; scrollbar-width: thin; }
+  .ptp__ai-msg { padding: 0.8rem 1rem; border-radius: var(--ptp-r-sm); font-size: 0.9rem; line-height: 1.6; max-width: 90%; animation: ptp-fade 0.3s ease; }
+  .ptp__ai-msg--user { background: var(--ptp-text); color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
+  .ptp__ai-msg--bot { background: var(--ptp-bg2); color: var(--ptp-text); border: 1px solid var(--ptp-border); align-self: flex-start; border-bottom-left-radius: 2px; }
+  .ptp__ai-input-row { display: flex; gap: 0.5rem; }
+  .ptp__ai-input {
+    flex: 1; height: 3rem; padding: 0 1rem; border: 1.5px solid var(--ptp-border); border-radius: var(--ptp-r-sm);
+    font-family: var(--ptp-font); font-size: 0.9rem; color: var(--ptp-text); background: var(--ptp-bg);
+    transition: border-color 0.2s;
+  }
+  .ptp__ai-input:focus { outline: none; border-color: var(--ptp-accent); }
+  .ptp__ai-send {
+    width: 3rem; height: 3rem; border: none; border-radius: var(--ptp-r-sm);
+    background: var(--ptp-accent); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .ptp__ai-send:hover { background: var(--ptp-accent-dark); }
+  .ptp__ai-send svg { stroke: #fff; }
+
+  /* Browse & Share Links */
+  .ptp__links-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; max-width: 780px; margin: 0 auto; padding-top: 2rem; border-top: 1px solid #f3f4f6; }
+  .ptp__links { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .ptp__link { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.1rem; border: 1.5px solid var(--ptp-border); border-radius: 100px; font-size: 0.9rem; font-weight: 500; color: var(--ptp-muted); text-decoration: none; transition: all 0.2s; }
+  .ptp__link:hover { border-color: var(--ptp-accent); color: var(--ptp-accent); }
+  .ptp__share { display: flex; align-items: center; gap: 0.5rem; }
+  .ptp__share-label { font-size: 0.82rem; font-weight: 500; color: var(--ptp-muted); }
+  .ptp__share-btn { width: 2.4rem; height: 2.4rem; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--ptp-border); border-radius: 50%; background: #fff; color: var(--ptp-muted); cursor: pointer; transition: all 0.2s; text-decoration: none; }
+  .ptp__share-btn:hover { border-color: var(--ptp-accent); color: var(--ptp-accent); }
+  .ptp__share-btn--wa:hover { border-color: #25d366; color: #25d366; }
+  .ptp__share-btn svg { width: 14px; height: 14px; }
+
+  /* Sticky */
+  .ptp__sticky { display: none; }
+  @media (max-width: 989px) {
+    .ptp__container { padding: 3rem 2rem 0; }
+    .ptp__tabs-section { padding: 3rem 0 2.5rem; }
+    .ptp__install-band { padding: 3.5rem 0; }
+  }
+  @media (max-width: 749px) {
+    .ptp__container { padding: 3rem 2rem 5rem; }
+    .ptp__tabs-section { padding: 2.5rem 0 2rem; }
+    .ptp__title { font-size: 2rem; }
+    .ptp__price-hero-amount { font-size: 2.2rem; }
+    .ptp__specs-grid { grid-template-columns: 1fr; }
+    .ptp__spec-item:nth-child(odd) { padding-right: 0; border-right: none; }
+    .ptp__spec-item:nth-child(even) { padding-left: 0; }
+    .ptp__sticky {
+      display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 99;
+      background: #fff; border-top: 1px solid var(--ptp-border);
+      padding: 0.7rem 1.4rem; align-items: center; gap: 0.8rem;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+    }
+    .ptp__sticky-thumb { width: 2.8rem; height: 2.8rem; object-fit: contain; border-radius: 6px; background: var(--ptp-bg2); flex-shrink: 0; }
+    .ptp__sticky-price { display: flex; flex-direction: column; line-height: 1.2; flex: 1; min-width: 0; }
+    .ptp__sticky-set { font-size: 1.25rem; font-weight: 700; color: var(--ptp-text); }
+    .ptp__sticky-per { font-size: 0.8rem; color: var(--ptp-subtle); }
+    .ptp__sticky-btn { flex-shrink: 0; height: 3.2rem; padding: 0 1.4rem; background: var(--ptp-cta); color: #fff; border: none; border-radius: var(--ptp-r-sm); font-family: var(--ptp-font); font-size: 0.95rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(220,38,38,0.25); }
+  }
+
+  /* Key Stats Strip */
+  .ptp__stats-strip {
+    display: flex; align-items: stretch;
+    overflow: hidden; margin-bottom: 0;
+    background: #f9fafb; border-radius: 12px;
+  }
+  .ptp__stat {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; padding: 1.5rem 1rem; gap: 0.25rem;
+  }
+  .ptp__stat + .ptp__stat { border-left: 1px solid #f3f4f6; }
+  .ptp__stat-num {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 1.4rem; font-weight: 700;
+    color: #111; line-height: 1; letter-spacing: 0.02em;
+  }
+  .ptp__stat-unit { font-size: 1.1rem; font-weight: 400; color: #9ca3af; margin-left: 0.2rem; }
+  .ptp__stat-brand { font-size: 1.5rem; }
+  .ptp__stat-label {
+    font-family: 'Outfit', sans-serif; font-size: 0.82rem; font-weight: 400;
+    color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  @media (max-width: 749px) {
+    .ptp__stats-strip { display: grid; grid-template-columns: 1fr 1fr; }
+    .ptp__stat:nth-child(odd):not(:last-child) { border-right: 1px solid var(--ptp-border); }
+    .ptp__stat + .ptp__stat { border-left: none; }
+    .ptp__stat:nth-child(n+3) { border-top: 1px solid var(--ptp-border); }
+  }
+
+  /* Season Banner */
+  .ptp__season-banner {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 0.9rem; margin-bottom: 0.8rem;
+    background: color-mix(in srgb, var(--season-clr) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--season-clr) 22%, transparent);
+    border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+    color: var(--season-clr);
+  }
+  .ptp__season-banner svg { fill: var(--season-clr); flex-shrink: 0; }
+  .ptp__weather-warn { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.9rem; margin-bottom: 0.8rem; background: #fef3c7; border: 1px solid #fbbf24; border-radius: 6px; font-size: 0.8rem; font-weight: 500; color: #92400e; }
+  .ptp__weather-warn[hidden] { display: none; }
+  .ptp__weather-warn svg { stroke: #d97706; flex-shrink: 0; }
+  .ptp__weather-warn a { color: #d97706; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+
+  /* Installation Band */
+  .ptp__install-band {
+    background: #f7f7f7; padding: 4rem 0;
+    position: relative; overflow: hidden;
+  }
+  .ptp__install-band::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, #F5820B 0%, #dc2626 50%, #F5820B 100%);
+  }
+  .ptp__install-band-grid {
+    max-width: var(--ptp-max-width); margin: 0 auto;
+    display: grid; grid-template-columns: 1fr auto auto;
+    align-items: center; gap: 3rem;
+  }
+  .ptp__install-eyebrow {
+    display: block; font-family: var(--ptp-font); font-size: 0.82rem;
+    font-weight: 600; color: #F5820B; text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 0.4rem;
+  }
+  .ptp__install-heading {
+    font-family: var(--ptp-heading); font-size: clamp(1.5rem, 2.2vw, 2rem);
+    font-weight: 700; color: #111; margin: 0 0 0.4rem;
+    text-transform: uppercase; letter-spacing: 0.02em;
+  }
+  .ptp__install-sub { font-family: var(--ptp-font); font-size: 0.9rem; color: #6b7280; margin: 0; }
+  .ptp__install-perks { display: flex; flex-direction: column; gap: 0.65rem; }
+  .ptp__install-perk {
+    display: flex; align-items: center; gap: 0.55rem;
+    font-family: var(--ptp-font); font-size: 0.88rem; color: #6b7280;
+  }
+  .ptp__install-perk svg { stroke: #F5820B; flex-shrink: 0; }
+  .ptp__install-cta { display: flex; flex-direction: column; align-items: center; gap: 0.55rem; }
+  .ptp__install-btn {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0 2rem; height: 3.6rem; background: #dc2626; color: #fff;
+    border: none; border-radius: 8px; font-family: var(--ptp-font);
+    font-size: 1rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+    transition: background 0.2s, transform 0.2s;
+    box-shadow: 0 2px 16px rgba(220,38,38,0.4);
+  }
+  .ptp__install-btn:hover { background: #b91c1c; transform: translateY(-1px); }
+  .ptp__install-note { font-family: var(--ptp-font); font-size: 0.75rem; color: #9ca3af; text-align: center; }
+
+  @media (max-width: 989px) {
+    .ptp__install-band-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .ptp__install-cta { grid-column: 1 / -1; align-items: flex-start; }
+  }
+  @media (max-width: 749px) {
+    .ptp__install-band-grid { grid-template-columns: 1fr; gap: 1.8rem; }
+    .ptp__install-btn { width: 100%; justify-content: center; }
+  }
+{% endstylesheet %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var qtyInput = document.querySelector('[data-ptp-qty]');
+  var cartTotal = document.querySelector('[data-ptp-cart-total]');
+  var unitPrice = {{ product.price }} / 100;
+
+  function updateTotal() { if (cartTotal && qtyInput) cartTotal.textContent = '$' + (parseInt(qtyInput.value || 1) * unitPrice).toFixed(2); }
+  function updateStickyTotal() { var s = document.querySelector('[data-ptp-sticky-total]'); if (s && qtyInput) s.textContent = '$' + (parseInt(qtyInput.value || 1) * unitPrice).toFixed(2); }
+
+  if (qtyInput) {
+    var m = document.querySelector('[data-ptp-qty-minus]'), p = document.querySelector('[data-ptp-qty-plus]');
+    if (m) m.addEventListener('click', function() { var v = parseInt(qtyInput.value)||1; if(v>1){qtyInput.value=v-1; updateTotal(); updateStickyTotal();} });
+    if (p) p.addEventListener('click', function() { var v = parseInt(qtyInput.value)||1; qtyInput.value=v+1; updateTotal(); updateStickyTotal(); });
+    qtyInput.addEventListener('change', function() { updateTotal(); updateStickyTotal(); });
+  }
+
+  /* Fitment */
+  (function() {
+    var fitment = document.querySelector('[data-ptp-fitment]');
+    if (!fitment) return;
+    try {
+      var keys = Object.keys(localStorage).filter(function(k) { return k.startsWith('pt-garage-'); });
+      for (var i = 0; i < keys.length; i++) {
+        var vehicles = JSON.parse(localStorage.getItem(keys[i]));
+        var def = (vehicles || []).find(function(v) { return v.isDefault; });
+        if (def) { var label = def.year + ' ' + def.make + ' ' + def.model; if (def.trim) label += ' ' + def.trim; fitment.querySelector('[data-ptp-fitment-vehicle]').textContent = label; fitment.hidden = false; break; }
+      }
+    } catch(e) {}
+  })();
+
+  /* Thumbnails */
+  (function() {
+    var thumbs = document.querySelectorAll('[data-ptp-thumb-idx]'), mainImg = document.getElementById('ptp-featured-img');
+    if (!thumbs.length || !mainImg) return;
+    thumbs.forEach(function(thumb) {
+      thumb.addEventListener('click', function() {
+        var src = this.dataset.ptpThumbSrc; if (!src) return;
+        mainImg.src = src; mainImg.removeAttribute('srcset');
+        thumbs.forEach(function(t) { t.classList.remove('ptp__gallery-thumb--active'); });
+        this.classList.add('ptp__gallery-thumb--active');
+      });
+    });
+  })();
+
+  /* ===== TABS ===== */
+  (function() {
+    var tabs = document.querySelectorAll('[data-ptp-tab]');
+    var panels = document.querySelectorAll('[data-ptp-panel]');
+    if (!tabs.length) return;
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        var target = this.dataset.ptpTab;
+        tabs.forEach(function(t) { t.classList.remove('ptp__tab--active'); t.setAttribute('aria-selected', 'false'); });
+        panels.forEach(function(p) { p.classList.remove('ptp__tab-panel--active'); });
+        this.classList.add('ptp__tab--active');
+        this.setAttribute('aria-selected', 'true');
+        var panel = document.querySelector('[data-ptp-panel="' + target + '"]');
+        if (panel) panel.classList.add('ptp__tab-panel--active');
+        /* Trigger perf animation when specs tab opens */
+        if (target === 'specs') triggerPerfAnimation();
+      });
+    });
+  })();
+
+  /* Performance bar animation */
+  var perfAnimated = false;
+  function triggerPerfAnimation() {
+    var perfContainer = document.querySelector('[data-ptp-perf]');
+    if (!perfContainer || perfAnimated) return;
+    perfAnimated = true;
+    perfContainer.querySelectorAll('[data-ptp-bar]').forEach(function(bar, i) {
+      setTimeout(function() { bar.style.width = bar.dataset.ptpBar + '%'; }, i * 250);
+    });
+    perfContainer.querySelectorAll('[data-ptp-count]').forEach(function(el, i) {
+      var target = parseInt(el.dataset.ptpCount);
+      setTimeout(function() {
+        var start = null;
+        function step(ts) { if (!start) start = ts; var p = Math.min((ts - start) / 2000, 1); el.textContent = Math.round((1 - Math.pow(1-p,3)) * target); if (p < 1) requestAnimationFrame(step); }
+        requestAnimationFrame(step);
+      }, i * 250);
+    });
+  }
+  /* Auto-trigger if specs tab is already active */
+  var activePanel = document.querySelector('.ptp__tab-panel--active[data-ptp-panel="specs"]');
+  if (activePanel && document.querySelector('[data-ptp-perf]')) {
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function(e) { if (e[0].isIntersecting) triggerPerfAnimation(); }, { threshold: 0.3 }).observe(activePanel);
+    } else { triggerPerfAnimation(); }
+  }
+
+  /* ===== AI CHAT ===== */
+  (function() {
+    var chat = document.querySelector('[data-ptp-ai-chat]');
+    var input = document.querySelector('[data-ptp-ai-input]');
+    var sendBtn = document.querySelector('[data-ptp-ai-send]');
+    var chips = document.querySelectorAll('[data-ptp-ai-q]');
+    if (!chat || !input) return;
+
+    var productData = {
+      title: {{ product.title | json }},
+      vendor: {{ product.vendor | json }},
+      type: {{ product.type | json }},
+      size: {{ tire_size | json }},
+      season: {{ season_tag | json }},
+      price: unitPrice,
+      setPrice: unitPrice * 4,
+      available: {{ product.available | json }},
+      description: {{ product.description | strip_html | truncate: 500 | json }}
+    };
+
+    function addMsg(text, type) {
+      var div = document.createElement('div');
+      div.className = 'ptp__ai-msg ptp__ai-msg--' + type;
+      div.textContent = text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    /* Fallback keyword-based responses (used when AI API is unavailable) */
+    function getFallbackResponse(q) {
+      var ql = q.toLowerCase();
+      if (ql.indexOf('winter') > -1 || ql.indexOf('snow') > -1 || ql.indexOf('ice') > -1) {
+        if (productData.season === 'Winter') return 'Yes! The ' + productData.title + ' is a winter tire designed for excellent traction on snow and ice.';
+        if (productData.season === 'All-Weather') return 'This is an All-Weather tire with 3PMSF certification, meaning it\'s approved for winter use while also performing well in other seasons.';
+        if (productData.season === 'All-Season') return 'This is an All-Season tire. It handles light winter conditions but for heavy snow/ice, a dedicated winter tire is recommended.';
+        return 'This ' + productData.type + ' tire is a ' + (productData.season || 'general use') + ' tire. Check the season rating for winter suitability.';
+      }
+      if (ql.indexOf('last') > -1 || ql.indexOf('long') > -1 || ql.indexOf('life') > -1 || ql.indexOf('durable') > -1) {
+        return 'Tire lifespan depends on driving habits, road conditions, and maintenance. Most ' + productData.vendor + ' tires in this category last 60,000-80,000 km with proper rotation every 8,000-10,000 km. Check the treadwear warranty in the Warranty tab.';
+      }
+      if (ql.indexOf('size') > -1 || ql.indexOf('rim') > -1 || ql.indexOf('fit') > -1 || ql.indexOf('vehicle') > -1 || ql.indexOf('car') > -1) {
+        if (productData.size) return 'This tire is size ' + productData.size + '. Make sure your vehicle\'s door jamb sticker or owner\'s manual lists this size. The tire fits a ' + productData.size.split('R')[1] + '" rim diameter.';
+        return 'Check your vehicle\'s door jamb sticker or owner\'s manual for the correct tire size.';
+      }
+      if (ql.indexOf('price') > -1 || ql.indexOf('cost') > -1 || ql.indexOf('cheap') > -1) {
+        return 'This tire is $' + productData.price.toFixed(2) + ' each, or $' + productData.setPrice.toFixed(2) + ' for a set of 4. Book installation through our page for the best service experience.';
+      }
+      if (ql.indexOf('install') > -1 || ql.indexOf('book') > -1 || ql.indexOf('mount') > -1) {
+        return 'You can book professional installation directly from this page using the red "Book installation" button above. We\'ll handle mounting, balancing, and disposal of your old tires.';
+      }
+      return 'The ' + productData.title + ' is a ' + (productData.season || '') + ' ' + (productData.type || 'tire') + ' by ' + productData.vendor + ' in size ' + (productData.size || 'N/A') + ', priced at $' + productData.price.toFixed(2) + '/tire. What would you like to know?';
+    }
+
+    /* AI-powered response via proxy endpoint */
+    var AI_ENDPOINT = '/apps/tire-ai/chat'; /* Configure your AI proxy endpoint */
+    var chatHistory = [];
+
+    function getAIResponse(q, callback) {
+      chatHistory.push({ role: 'user', content: q });
+
+      var payload = {
+        messages: chatHistory.slice(-6), /* Keep last 3 exchanges */
+        product: {
+          title: productData.title,
+          vendor: productData.vendor,
+          type: productData.type,
+          size: productData.size,
+          season: productData.season,
+          price: productData.price,
+          available: productData.available,
+          description: productData.description,
+          warranty_km: {{ product.metafields.custom.warranty_km | json }},
+          speed_rating: {{ product.metafields.custom.speed_rating | json }},
+          load_index: {{ product.metafields.custom.load_index | json }},
+          vehicle_type: {{ product.metafields.custom.vehicle_type | json }},
+          three_peak: {{ product.metafields.custom.three_peak_snowflake | json }},
+          best_for: {{ product.metafields.custom.best_for | json }},
+          not_recommended: {{ product.metafields.custom.not_recommended_for | json }}
+        }
+      };
+
+      fetch(AI_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(function(r) {
+        if (!r.ok) throw new Error('AI unavailable');
+        return r.json();
+      })
+      .then(function(data) {
+        var reply = data.reply || data.message || data.response;
+        if (reply) {
+          chatHistory.push({ role: 'assistant', content: reply });
+          callback(reply);
+        } else {
+          callback(getFallbackResponse(q));
+        }
+      })
+      .catch(function() {
+        /* Fallback to keyword matching */
+        var fallback = getFallbackResponse(q);
+        chatHistory.push({ role: 'assistant', content: fallback });
+        callback(fallback);
+      });
+    }
+
+    function handleQuestion(q) {
+      if (!q.trim()) return;
+      addMsg(q, 'user');
+      input.value = '';
+      /* Show typing indicator */
+      var typing = document.createElement('div');
+      typing.className = 'ptp__ai-msg ptp__ai-msg--bot';
+      typing.textContent = 'Thinking...';
+      typing.style.opacity = '0.6';
+      chat.appendChild(typing);
+      chat.scrollTop = chat.scrollHeight;
+
+      getAIResponse(q, function(reply) {
+        chat.removeChild(typing);
+        addMsg(reply, 'bot');
+      });
+    }
+
+    if (sendBtn) sendBtn.addEventListener('click', function() { handleQuestion(input.value); });
+    input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); handleQuestion(input.value); } });
+    chips.forEach(function(chip) { chip.addEventListener('click', function() { handleQuestion(this.dataset.ptpAiQ); }); });
+  })();
+
+  if (typeof enableZoomOnHover === 'function') enableZoomOnHover(2);
+
+  /* Weather-based seasonal warning */
+  (function() {
+    var warn = sec.querySelector('[data-ptp-weather-warn]');
+    if (!warn) return;
+    var season = warn.dataset.tireSeason;
+    if (!season) return;
+    var msgEl = warn.querySelector('[data-ptp-weather-msg]');
+
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=51.0447&longitude=-114.0719&current=temperature_2m&timezone=America/Edmonton')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.current) return;
+        var temp = Math.round(data.current.temperature_2m);
+        var msg = '';
+
+        if (season === 'summer' && temp < 7) {
+          msg = "It's " + temp + "°C in Calgary right now. Summer tires are not recommended below 7°C. <a href='/collections/winter-tires'>Shop winter tires</a>";
+        } else if (season === 'winter' && temp > 15) {
+          msg = "It's " + temp + "°C in Calgary. Winter tires wear faster in warm weather. <a href='/collections/all-season-tires'>Shop all-season tires</a>";
+        }
+
+        if (msg) {
+          msgEl.innerHTML = msg;
+          warn.hidden = false;
+        }
+      })
+      .catch(function() { /* silently fail */ });
+  })();
+
+  /* Video gallery support */
+  (function() {
+    var videoThumb = sec.querySelector('[data-ptp-video-thumb]');
+    if (!videoThumb) return;
+    var videoOverlay = sec.querySelector('[data-ptp-video]');
+    var videoWrap = sec.querySelector('[data-ptp-video-wrap]');
+    var videoClose = sec.querySelector('[data-ptp-video-close]');
+    var mainWrap = sec.querySelector('.ptp__gallery-main');
+
+    function getEmbedUrl(url) {
+      /* YouTube */
+      var yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+      if (yt) return 'https://www.youtube-nocookie.com/embed/' + yt[1] + '?autoplay=1&rel=0';
+      /* Vimeo */
+      var vm = url.match(/vimeo\.com\/(\d+)/);
+      if (vm) return 'https://player.vimeo.com/video/' + vm[1] + '?autoplay=1';
+      return url;
+    }
+
+    videoThumb.addEventListener('click', function() {
+      var url = this.dataset.videoUrl;
+      videoWrap.innerHTML = '<iframe src="' + getEmbedUrl(url) + '" allow="autoplay; fullscreen" allowfullscreen></iframe>';
+      mainWrap.style.display = 'none';
+      videoOverlay.hidden = false;
+      sec.querySelectorAll('.ptp__gallery-thumb--active').forEach(function(t) { t.classList.remove('ptp__gallery-thumb--active'); });
+      videoThumb.classList.add('ptp__gallery-thumb--active');
+    });
+
+    videoClose.addEventListener('click', function() {
+      videoOverlay.hidden = true;
+      videoWrap.innerHTML = '';
+      mainWrap.style.display = '';
+      sec.querySelectorAll('.ptp__gallery-thumb--active').forEach(function(t) { t.classList.remove('ptp__gallery-thumb--active'); });
+      var firstThumb = sec.querySelector('.ptp__gallery-thumb');
+      if (firstThumb) firstThumb.classList.add('ptp__gallery-thumb--active');
+    });
+  })();
+
+  /* Copy URL to clipboard */
+  (function() {
+    var copyBtn = sec.querySelector('[data-ptp-copy-url]');
+    if (!copyBtn) return;
+    copyBtn.addEventListener('click', function() {
+      navigator.clipboard.writeText(window.location.href).then(function() {
+        var orig = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>';
+        setTimeout(function() { copyBtn.innerHTML = orig; }, 2000);
+      });
+    });
+  })();
+
+  /* Back-in-stock notification */
+  (function() {
+    var bisSubmit = sec.querySelector('[data-ptp-bis-submit]');
+    if (!bisSubmit) return;
+    var bisEmail = sec.querySelector('[data-ptp-bis-email]');
+    var bisSuccess = sec.querySelector('[data-ptp-bis-success]');
+    var bisForm = sec.querySelector('.ptp__bis-form');
+    bisSubmit.addEventListener('click', function() {
+      var email = bisEmail.value.trim();
+      if (!email || !email.includes('@')) { bisEmail.style.borderColor = '#dc2626'; return; }
+      bisSubmit.textContent = '...';
+      bisSubmit.disabled = true;
+      /* Store in localStorage as fallback, integrate with Klaviyo/Mailchimp webhook as needed */
+      var bisData = JSON.parse(localStorage.getItem('pt_bis') || '[]');
+      bisData.push({ email: email, product_id: '{{ product.id }}', variant_id: '{{ product.selected_or_first_available_variant.id }}', title: '{{ product.title | escape }}', date: new Date().toISOString() });
+      localStorage.setItem('pt_bis', JSON.stringify(bisData));
+      bisForm.style.display = 'none';
+      bisSuccess.hidden = false;
+    });
+  })();
+});
+</script>
+
+{% schema %}
+{
+  "name": "t:sections.pt_product.name",
+  "tag": "section",
+  "class": "section-pt-product",
+  "settings": [
+    { "type": "checkbox", "id": "enable_sticky_info", "default": true, "label": "t:sections.pt_product.settings.enable_sticky_info.label" },
+    { "type": "checkbox", "id": "enable_image_zoom", "default": true, "label": "t:sections.pt_product.settings.enable_image_zoom.label" },
+    { "type": "header", "content": "t:sections.pt_product.settings.header_installed_price.content" },
+    { "type": "checkbox", "id": "show_installed_price", "default": true, "label": "t:sections.pt_product.settings.show_installed_price.label" },
+    { "type": "text", "id": "install_cost_per_tire", "default": "30", "label": "t:sections.pt_product.settings.install_cost_per_tire.label" },
+    { "type": "text", "id": "disposal_cost_per_tire", "default": "5", "label": "t:sections.pt_product.settings.disposal_cost_per_tire.label" },
+    { "type": "header", "content": "t:sections.pt_product.settings.header_trust.content" },
+    { "type": "checkbox", "id": "show_trust_signals", "default": true, "label": "t:sections.pt_product.settings.show_trust_signals.label" },
+    { "type": "text", "id": "trust_1_text", "default": "Fast delivery", "label": "t:sections.pt_product.settings.trust_1_text.label" },
+    { "type": "text", "id": "trust_2_text", "default": "Manufacturer warranty", "label": "t:sections.pt_product.settings.trust_2_text.label" },
+    { "type": "text", "id": "trust_3_text", "default": "Easy returns", "label": "t:sections.pt_product.settings.trust_3_text.label" },
+    { "type": "header", "content": "t:sections.pt_product.settings.header_performance.content" },
+    { "type": "checkbox", "id": "show_performance", "default": true, "label": "t:sections.pt_product.settings.show_performance.label" },
+    { "type": "range", "id": "perf_dry_grip", "min": 0, "max": 100, "step": 5, "default": 0, "label": "t:sections.pt_product.settings.perf_dry_grip.label" },
+    { "type": "range", "id": "perf_wet_grip", "min": 0, "max": 100, "step": 5, "default": 0, "label": "t:sections.pt_product.settings.perf_wet_grip.label" },
+    { "type": "range", "id": "perf_ice_grip", "min": 0, "max": 100, "step": 5, "default": 0, "label": "t:sections.pt_product.settings.perf_ice_grip.label" },
+    { "type": "range", "id": "perf_snow_traction", "min": 0, "max": 100, "step": 5, "default": 0, "label": "t:sections.pt_product.settings.perf_snow_traction.label" },
+    { "type": "range", "id": "perf_tread_life", "min": 0, "max": 100, "step": 5, "default": 0, "label": "t:sections.pt_product.settings.perf_tread_life.label" },
+    { "type": "header", "content": "t:sections.pt_product.settings.header_warranty.content" },
+    { "type": "checkbox", "id": "show_warranty", "default": true, "label": "t:sections.pt_product.settings.show_warranty.label" },
+    { "type": "text", "id": "warranty_1_title", "default": "Manufacturer warranty", "label": "t:sections.pt_product.settings.warranty_1_title.label" },
+    { "type": "text", "id": "warranty_1_text", "default": "Covered by the manufacturer", "label": "t:sections.pt_product.settings.warranty_1_text.label" },
+    { "type": "text", "id": "warranty_2_title", "default": "Treadwear guarantee", "label": "t:sections.pt_product.settings.warranty_2_title.label" },
+    { "type": "text", "id": "warranty_2_text", "default": "Long-lasting performance", "label": "t:sections.pt_product.settings.warranty_2_text.label" },
+    { "type": "text", "id": "warranty_3_title", "default": "Road hazard protection", "label": "t:sections.pt_product.settings.warranty_3_title.label" },
+    { "type": "text", "id": "warranty_3_text", "default": "Against nails, potholes & debris", "label": "t:sections.pt_product.settings.warranty_3_text.label" },
+    { "type": "header", "content": "t:sections.pt_product.settings.header_shipping.content" },
+    { "type": "checkbox", "id": "show_shipping", "default": true, "label": "t:sections.pt_product.settings.show_shipping.label" },
+    { "type": "richtext", "id": "shipping_text", "default": "<p>Standard delivery takes 3-5 business days. Returns accepted within 30 days of purchase.</p>", "label": "t:sections.pt_product.settings.shipping_text.label" },
+    { "type": "header", "content": "t:sections.pt_product.settings.header_tabs.content" },
+    { "type": "checkbox", "id": "show_specs_tab", "default": true, "label": "t:sections.pt_product.settings.show_specs_tab.label" },
+    { "type": "checkbox", "id": "show_desc_tab", "default": true, "label": "t:sections.pt_product.settings.show_desc_tab.label" },
+    { "type": "checkbox", "id": "show_warranty_tab", "default": true, "label": "t:sections.pt_product.settings.show_warranty_tab.label" },
+    { "type": "checkbox", "id": "show_shipping_tab", "default": true, "label": "t:sections.pt_product.settings.show_shipping_tab.label" },
+    { "type": "checkbox", "id": "show_ai_tab", "default": true, "label": "t:sections.pt_product.settings.show_ai_tab.label" },
+    { "type": "text", "id": "ai_tab_title", "default": "Ask AI", "label": "t:sections.pt_product.settings.ai_tab_title.label" },
+    { "type": "text", "id": "ai_suggestion_1", "default": "Is this tire good for winter driving?", "label": "t:sections.pt_product.settings.ai_suggestion_1.label" },
+    { "type": "text", "id": "ai_suggestion_2", "default": "How long will this tire last?", "label": "t:sections.pt_product.settings.ai_suggestion_2.label" },
+    { "type": "text", "id": "ai_suggestion_3", "default": "What size rim do I need?", "label": "t:sections.pt_product.settings.ai_suggestion_3.label" }
+  ],
+  "presets": [{ "name": "PT Product page" }]
+}
+{% endschema %}
