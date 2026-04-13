@@ -239,7 +239,7 @@
           <div class="ptg__sort">
             <label for="ptg-sort" class="ptg__sort-label">Sort by</label>
             <div class="ptg__sort-wrap">
-              {%- assign sort_by = collection.sort_by | default: 'price-ascending' -%}
+              {%- assign sort_by = collection.sort_by | default: collection.default_sort_by -%}
               <select id="ptg-sort" class="ptg__sort-select" data-ptg-sort>
                 <option value="manual" {% if sort_by == 'manual' %}selected{% endif %}>Featured</option>
                 <option value="best-selling" {% if sort_by == 'best-selling' %}selected{% endif %}>Best selling</option>
@@ -2702,13 +2702,6 @@ document.addEventListener('DOMContentLoaded', function() {
   // Sort
   var sortSelect = document.querySelector('[data-ptg-sort]');
   if (sortSelect) {
-    // Default to price low-to-high if no sort param
-    var urlParams = new URLSearchParams(window.location.search);
-    if (!urlParams.has('sort_by')) {
-      var url = new URL(window.location.href);
-      url.searchParams.set('sort_by', 'price-ascending');
-      window.location.replace(url.toString());
-    }
     sortSelect.addEventListener('change', function() {
       var url = new URL(window.location.href);
       url.searchParams.set('sort_by', this.value);
