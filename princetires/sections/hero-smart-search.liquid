@@ -163,8 +163,10 @@
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 60% 50% at 50% 100%, rgba(220, 38, 38, 0.18) 0%, transparent 70%),
-      radial-gradient(ellipse 40% 30% at 50% 60%, rgba(220, 38, 38, 0.08) 0%, transparent 60%);
+      radial-gradient(ellipse 70% 45% at 50% 100%, rgba(148, 163, 184, 0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 25% at 50% 62%, rgba(100, 116, 139, 0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 30% 20% at 15% 80%, rgba(71, 85, 105, 0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 30% 20% at 85% 80%, rgba(71, 85, 105, 0.08) 0%, transparent 60%);
     pointer-events: none;
   }
 
@@ -789,9 +791,41 @@
     }
   }
 
+  function drawTireRings(cx, cy, baseR) {
+    /* draws faint concentric tire-ring silhouettes */
+    var rings = [1, 0.72, 0.5]; /* outer sidewall, tread shoulder, inner rim */
+    var opacities = [0.07, 0.05, 0.04];
+    for (var r = 0; r < rings.length; r++) {
+      var radius = baseR * rings[r];
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(148,163,184,' + opacities[r] + ')';
+      ctx.lineWidth = r === 0 ? 18 : 8;
+      ctx.stroke();
+    }
+    /* tread blocks: short radial dashes around the outer ring */
+    var treads = 28;
+    var outerR  = baseR;
+    var innerR  = baseR * 0.84;
+    ctx.lineWidth = 2.5;
+    for (var d = 0; d < treads; d++) {
+      var angle = (d / treads) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
+      ctx.lineTo(cx + Math.cos(angle) * outerR,  cy + Math.sin(angle) * outerR);
+      ctx.strokeStyle = 'rgba(148,163,184,0.055)';
+      ctx.stroke();
+    }
+  }
+
   function drawGrid(t) {
     var vx = W / 2;
     var vy = H * 0.38;
+
+    /* tire ring silhouettes — bottom-left and bottom-right corners */
+    var ringR = Math.min(W, H) * 0.42;
+    drawTireRings(-ringR * 0.3, H + ringR * 0.15, ringR);
+    drawTireRings(W + ringR * 0.3, H + ringR * 0.15, ringR);
 
     /* vertical converging lines */
     var cols = 14;
@@ -800,9 +834,9 @@
       var prog = i / cols;
       var bx = prog * W;
       var grad = ctx.createLinearGradient(vx, vy, bx, H);
-      grad.addColorStop(0, 'rgba(220,38,38,0)');
-      grad.addColorStop(0.5, 'rgba(80,80,80,0.18)');
-      grad.addColorStop(1, 'rgba(80,80,80,0.32)');
+      grad.addColorStop(0, 'rgba(100,116,139,0)');
+      grad.addColorStop(0.45, 'rgba(100,116,139,0.14)');
+      grad.addColorStop(1, 'rgba(148,163,184,0.28)');
       ctx.beginPath();
       ctx.moveTo(vx, vy);
       ctx.lineTo(bx, H);
@@ -818,24 +852,24 @@
       var perspY = vy + Math.pow(rawY, 2.2) * (H - vy);
       if (perspY > H) continue;
       var perspProg = (perspY - vy) / (H - vy);
-      var xl = vx - perspProg * (vx);
+      var xl = vx - perspProg * vx;
       var xr = vx + perspProg * (W - vx);
-      var alpha = perspProg * 0.28;
+      var alpha = perspProg * 0.22;
       ctx.beginPath();
       ctx.moveTo(xl, perspY);
       ctx.lineTo(xr, perspY);
-      ctx.strokeStyle = 'rgba(70,70,70,' + alpha + ')';
-      ctx.lineWidth = 0.5 + perspProg * 0.7;
+      ctx.strokeStyle = 'rgba(100,116,139,' + alpha + ')';
+      ctx.lineWidth = 0.5 + perspProg * 0.8;
       ctx.stroke();
     }
 
-    /* horizon glow line */
+    /* horizon steel glow line */
     var horizGrad = ctx.createLinearGradient(0, vy, W, vy);
-    horizGrad.addColorStop(0, 'rgba(220,38,38,0)');
-    horizGrad.addColorStop(0.35, 'rgba(220,38,38,0)');
-    horizGrad.addColorStop(0.5, 'rgba(220,38,38,0.55)');
-    horizGrad.addColorStop(0.65, 'rgba(220,38,38,0)');
-    horizGrad.addColorStop(1, 'rgba(220,38,38,0)');
+    horizGrad.addColorStop(0,    'rgba(148,163,184,0)');
+    horizGrad.addColorStop(0.3,  'rgba(148,163,184,0)');
+    horizGrad.addColorStop(0.5,  'rgba(203,213,225,0.45)');
+    horizGrad.addColorStop(0.7,  'rgba(148,163,184,0)');
+    horizGrad.addColorStop(1,    'rgba(148,163,184,0)');
     ctx.beginPath();
     ctx.moveTo(0, vy);
     ctx.lineTo(W, vy);
