@@ -4,8 +4,6 @@
   Rendered once in layout/theme.liquid before </body>.
 {% enddoc %}
 
-{%- unless settings.chatbot_enabled == false -%}
-
 {%- assign chatbot_endpoint = settings.chatbot_api_endpoint | strip -%}
 {%- if chatbot_endpoint == blank -%}
   {%- assign chatbot_endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' | append: settings.gemini_api_key -%}
@@ -17,7 +15,8 @@
   data-system-prompt="{{ settings.chatbot_system_prompt | escape }}"
   data-title="{{ settings.chatbot_title | escape }}"
   data-greeting="{{ 'sections.chatbot.greeting' | t | escape }}"
-  style="--cb-accent: {{ settings.chatbot_accent_color }};"
+  data-disabled="{% if settings.chatbot_enabled == false %}true{% else %}false{% endif %}"
+  style="--cb-accent: {{ settings.chatbot_accent_color }};{% if settings.chatbot_enabled == false %} display:none;{% endif %}"
 >
   <!-- Toggle button -->
   <button class="cb-toggle" id="cb-toggle" aria-label="Open chat" aria-expanded="false">
@@ -321,7 +320,7 @@
 {% javascript %}
   (function () {
     var root = document.getElementById('chatbot-bubble-root');
-    if (!root) return;
+    if (!root || root.dataset.disabled === 'true') return;
 
     var endpoint    = root.dataset.endpoint;
     var sysprompt   = root.dataset.systemPrompt;
@@ -452,5 +451,3 @@
     resetChat();
   })();
 {% endjavascript %}
-
-{%- endunless -%}
