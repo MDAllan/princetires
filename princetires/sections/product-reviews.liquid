@@ -9,9 +9,12 @@
 
       <div class="product-reviews__summary" aria-label="{{ 'sections.product_reviews.rating_summary' | t }}">
         {%- assign total_rating = 0 -%}
-        {%- assign review_count = section.blocks.size -%}
+        {%- assign review_count = 0 -%}
         {%- for block in section.blocks -%}
-          {%- assign total_rating = total_rating | plus: block.settings.rating -%}
+          {%- if block.settings.rating >= 4 -%}
+            {%- assign total_rating = total_rating | plus: block.settings.rating -%}
+            {%- assign review_count = review_count | plus: 1 -%}
+          {%- endif -%}
         {%- endfor -%}
         {%- assign avg_rating = total_rating | times: 10 | divided_by: review_count | times: 1.0 | divided_by: 10 -%}
 
@@ -31,9 +34,12 @@
       </div>
     </div>
 
-    <div class="product-reviews__list">
+    <div class="product-reviews__list" data-pr-list>
+      {%- assign shown_count = 0 -%}
       {%- for block in section.blocks -%}
-        <div class="product-reviews__item" {{ block.shopify_attributes }}>
+        {%- if block.settings.rating < 4 -%}{%- continue -%}{%- endif -%}
+        {%- assign shown_count = shown_count | plus: 1 -%}
+        <div class="product-reviews__item{% if shown_count > 3 %} product-reviews__item--hidden{% endif %}" {{ block.shopify_attributes }}>
           <div class="product-reviews__item-header">
             <div class="product-reviews__item-stars" aria-label="{{ 'sections.product_reviews.star_rating' | t: rating: block.settings.rating }}">
               {%- for i in (1..5) -%}
@@ -58,6 +64,59 @@
         </div>
       {%- endfor -%}
     </div>
+
+    {%- if review_count > 3 -%}
+      <div class="product-reviews__load-more-wrap">
+        <button type="button" class="product-reviews__load-more" data-pr-load-more>Load more reviews</button>
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} Write a Review Form — logged in users only {%- endcomment -%}
+    <div class="product-reviews__form-section">
+      {%- if customer -%}
+        <h3 class="product-reviews__form-heading">Share your experience with this tire</h3>
+        <div class="product-reviews__form" data-pr-form>
+          <div class="product-reviews__form-row">
+            <div class="product-reviews__form-field">
+              <label class="product-reviews__label">Your name</label>
+              <input type="text" class="product-reviews__input" data-pr-name placeholder="Enter your name" value="{{ customer.name | escape }}" required>
+            </div>
+            <div class="product-reviews__form-field">
+              <label class="product-reviews__label">Rating</label>
+              <div class="product-reviews__star-select" data-pr-stars>
+                {%- for i in (1..5) -%}
+                  <button type="button" class="product-reviews__star-btn" data-pr-star="{{ i }}" aria-label="{{ i }} stars">&#9733;</button>
+                {%- endfor -%}
+              </div>
+            </div>
+          </div>
+          <div class="product-reviews__form-field">
+            <label class="product-reviews__label">Review title</label>
+            <input type="text" class="product-reviews__input" data-pr-title placeholder="Summarize your experience">
+          </div>
+          <div class="product-reviews__form-field">
+            <label class="product-reviews__label">Your review</label>
+            <textarea class="product-reviews__textarea" data-pr-body rows="4" placeholder="Tell us about your experience with this tire"></textarea>
+          </div>
+          <button type="button" class="product-reviews__submit" data-pr-submit>Submit review</button>
+          <p class="product-reviews__success" data-pr-success hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+            Thank you! Your review has been submitted.
+          </p>
+        </div>
+      {%- else -%}
+        <div class="product-reviews__login-prompt">
+          <div class="product-reviews__login-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </div>
+          <div class="product-reviews__login-text">
+            <strong>Driven on these tires? Add yours.</strong>
+            <span>Your review helps other Calgary drivers make the right call.</span>
+          </div>
+          <a href="{{ routes.account_login_url }}" class="product-reviews__login-btn">Write a review</a>
+        </div>
+      {%- endif -%}
+    </div>
   </div>
 
   {%- comment -%}
@@ -77,8 +136,11 @@
         "worstRating": "1"
       },
       "review": [
+        {%- assign first_review = true -%}
         {%- for block in section.blocks -%}
-          {%- if forloop.first == false -%},{%- endif -%}
+          {%- if block.settings.rating < 4 -%}{%- continue -%}{%- endif -%}
+          {%- if first_review == false -%},{%- endif -%}
+          {%- assign first_review = false -%}
           {
             "@type": "Review",
             "author": {
@@ -110,80 +172,285 @@
 
 {% stylesheet %}
   .product-reviews {
-    max-width: 80rem;
+    max-width: 1200px;
     margin: 0 auto;
+    padding: 4rem 2rem 5rem;
   }
 
   .product-reviews__header {
-    margin-bottom: 2.4rem;
+    margin-bottom: 2.5rem;
+    text-align: center;
   }
 
   .product-reviews__heading {
-    margin-bottom: 0.8rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #111;
+    margin: 0 0 0.6rem;
   }
 
   .product-reviews__summary {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    font-size: 1.4rem;
+    justify-content: center;
+    gap: 0.6rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
   }
 
   .product-reviews__star {
-    color: rgba(var(--color-foreground), 0.2);
-    font-size: 1.8rem;
+    color: #e5e7eb;
+    font-size: 1.4rem;
+    line-height: 1;
   }
 
   .product-reviews__star--filled {
-    color: #f5a623;
+    color: #F5820B;
   }
 
   .product-reviews__avg {
     font-weight: 700;
+    color: #111;
+    font-size: 1.1rem;
   }
 
   .product-reviews__count {
-    opacity: 0.6;
+    color: #9ca3af;
+    font-weight: 400;
   }
 
   .product-reviews__list {
     display: grid;
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
   }
 
   .product-reviews__item {
-    padding: 2rem;
-    border: 1px solid rgba(var(--color-foreground), 0.1);
-    border-radius: 0.8rem;
+    padding: 1.8rem;
+    background: #f7f7f8;
+    border: 1px solid #f0f0f0;
+    border-radius: 10px;
+    transition: box-shadow 0.2s;
+  }
+
+  .product-reviews__item:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
   }
 
   .product-reviews__item-header {
     display: flex;
     align-items: center;
-    gap: 1.2rem;
+    gap: 0.8rem;
     margin-bottom: 0.8rem;
     flex-wrap: wrap;
   }
 
+  .product-reviews__item-stars {
+    display: flex;
+    gap: 0.1rem;
+  }
+
   .product-reviews__author {
+    font-family: 'Outfit', sans-serif;
     font-weight: 600;
+    font-size: 0.95rem;
+    color: #111;
   }
 
   .product-reviews__date {
-    opacity: 0.5;
-    font-size: 1.3rem;
+    font-family: 'Outfit', sans-serif;
+    color: #9ca3af;
+    font-size: 0.82rem;
+    margin-left: auto;
   }
 
   .product-reviews__item-title {
-    font-size: 1.6rem;
-    margin-bottom: 0.4rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0 0 0.4rem;
   }
 
   .product-reviews__item-body {
-    opacity: 0.75;
-    line-height: 1.6;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    color: #6b7280;
+    line-height: 1.65;
+  }
+
+  @media (max-width: 989px) {
+    .product-reviews { padding: 3rem 2rem; }
+  }
+
+  /* Load more */
+  .product-reviews__item--hidden { display: none; }
+  .product-reviews__load-more-wrap { text-align: center; margin-top: 1.5rem; }
+  .product-reviews__load-more {
+    font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 600;
+    color: #374151; background: #f3f4f6; border: none; padding: 0.7rem 2rem;
+    border-radius: 10px; cursor: pointer; transition: background 0.2s;
+  }
+  .product-reviews__load-more:hover { background: #e5e7eb; }
+
+  /* Review form */
+  .product-reviews__form-section { margin-top: 3rem; padding-top: 2.5rem; border-top: 1px solid #f3f4f6; }
+  .product-reviews__form-heading {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 1.6rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em; color: #111; margin: 0 0 1.5rem;
+  }
+  .product-reviews__form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .product-reviews__form-field { margin-bottom: 1rem; }
+  .product-reviews__label {
+    display: block; font-family: 'Outfit', sans-serif; font-size: 0.9rem;
+    font-weight: 500; color: #374151; margin-bottom: 0.4rem;
+  }
+  .product-reviews__input, .product-reviews__textarea {
+    width: 100%; font-family: 'Outfit', sans-serif; font-size: 0.95rem;
+    color: #111; padding: 0.7rem 1rem; border: 1.5px solid #e5e7eb;
+    border-radius: 8px; background: #fff; transition: border-color 0.2s; box-sizing: border-box;
+  }
+  .product-reviews__input:focus, .product-reviews__textarea:focus { outline: none; border-color: #9ca3af; }
+  .product-reviews__textarea { resize: vertical; min-height: 6rem; }
+  .product-reviews__star-select { display: flex; gap: 0.2rem; }
+  .product-reviews__star-btn {
+    font-size: 1.6rem; color: #e5e7eb; background: none; border: none;
+    cursor: pointer; transition: color 0.15s; padding: 0; line-height: 1;
+  }
+  .product-reviews__star-btn--active { color: #F5820B; }
+  .product-reviews__submit {
+    font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 600;
+    color: #374151; background: #f3f4f6; border: none; padding: 0.7rem 2rem;
+    border-radius: 10px; cursor: pointer; transition: background 0.2s;
+  }
+  .product-reviews__submit:hover { background: #e5e7eb; }
+  .product-reviews__success {
+    display: flex; align-items: center; gap: 0.4rem; font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem; color: #16a34a; margin: 0.8rem 0 0;
+  }
+  .product-reviews__success[hidden] { display: none; }
+  .product-reviews__login-prompt {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.4rem 1.6rem;
+    background: #f9fafb;
+    border: 1px solid #f0f0f0;
+    border-radius: 10px;
+    font-family: 'Outfit', sans-serif;
+  }
+  .product-reviews__login-icon {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #dc2626;
+  }
+  .product-reviews__login-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .product-reviews__login-text strong {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #111;
+  }
+  .product-reviews__login-text span {
+    font-size: 0.85rem;
+    color: #6b7280;
+  }
+  .product-reviews__login-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 1.2rem;
+    background: #dc2626;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .product-reviews__login-btn:hover { background: #b91c1c; }
+
+  @media (max-width: 749px) {
+    .product-reviews { padding: 2.5rem 2rem; }
+    .product-reviews__list { grid-template-columns: 1fr; }
+    .product-reviews__heading { font-size: 1.8rem; }
+    .product-reviews__form-row { grid-template-columns: 1fr; }
   }
 {% endstylesheet %}
+
+{% javascript %}
+  (function() {
+    /* Load more */
+    var loadBtn = document.querySelector('[data-pr-load-more]');
+    if (loadBtn) {
+      loadBtn.addEventListener('click', function() {
+        document.querySelectorAll('.product-reviews__item--hidden').forEach(function(el) {
+          el.classList.remove('product-reviews__item--hidden');
+        });
+        loadBtn.parentElement.style.display = 'none';
+      });
+    }
+
+    /* Star rating select */
+    var starBtns = document.querySelectorAll('[data-pr-star]');
+    var selectedRating = 0;
+    starBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        selectedRating = parseInt(this.dataset.prStar);
+        starBtns.forEach(function(b) {
+          b.classList.toggle('product-reviews__star-btn--active', parseInt(b.dataset.prStar) <= selectedRating);
+        });
+      });
+      btn.addEventListener('mouseenter', function() {
+        var hover = parseInt(this.dataset.prStar);
+        starBtns.forEach(function(b) {
+          b.classList.toggle('product-reviews__star-btn--active', parseInt(b.dataset.prStar) <= hover);
+        });
+      });
+    });
+    var starsWrap = document.querySelector('[data-pr-stars]');
+    if (starsWrap) {
+      starsWrap.addEventListener('mouseleave', function() {
+        starBtns.forEach(function(b) {
+          b.classList.toggle('product-reviews__star-btn--active', parseInt(b.dataset.prStar) <= selectedRating);
+        });
+      });
+    }
+
+    /* Submit review (localStorage) */
+    var submitBtn = document.querySelector('[data-pr-submit]');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', function() {
+        var name = document.querySelector('[data-pr-name]').value.trim();
+        var title = document.querySelector('[data-pr-title]').value.trim();
+        var body = document.querySelector('[data-pr-body]').value.trim();
+        if (!name || !body || selectedRating === 0) { alert('Please fill in your name, select a rating, and write a review.'); return; }
+        var reviews = JSON.parse(localStorage.getItem('pt_reviews') || '[]');
+        reviews.push({ name: name, rating: selectedRating, title: title, body: body, product: window.location.pathname, date: new Date().toISOString().split('T')[0] });
+        localStorage.setItem('pt_reviews', JSON.stringify(reviews));
+        document.querySelector('[data-pr-form]').style.display = 'none';
+        document.querySelector('[data-pr-success]').hidden = false;
+      });
+    }
+  })();
+{% endjavascript %}
 
 {% schema %}
 {

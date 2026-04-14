@@ -275,11 +275,6 @@
         <a href="{{ product.vendor | url_for_vendor }}" class="ptp__vendor">{{ product.vendor }}</a>
         <h1 class="ptp__title">{{ product_title }}</h1>
 
-        <div class="ptp__quick-specs">
-          {%- if tire_size != blank -%}<span class="ptp__quick-spec-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg> {{ tire_size }}</span>{%- endif -%}
-          {%- if season_tag != blank -%}<span class="ptp__quick-spec-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg> {{ season_tag }}</span>{%- endif -%}
-          {%- if product.type != blank -%}<span class="ptp__quick-spec-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/></svg> {{ product.type }}</span>{%- endif -%}
-        </div>
 
         {%- if season_tag != blank -%}
           <div class="ptp__season-banner" style="--season-clr: {{ season_color }}">
@@ -546,6 +541,12 @@
             Description
           </button>
         {%- endif -%}
+        {%- if section.settings.show_ai_tab -%}
+          <button class="ptp__tab" role="tab" aria-selected="false" data-ptp-tab="ai" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            {{ section.settings.ai_tab_title | default: 'Ask AI' }}
+          </button>
+        {%- endif -%}
         {%- if section.settings.show_warranty_tab -%}
           <button class="ptp__tab" role="tab" aria-selected="false" data-ptp-tab="warranty" type="button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -556,12 +557,6 @@
           <button class="ptp__tab" role="tab" aria-selected="false" data-ptp-tab="shipping" type="button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
             Shipping
-          </button>
-        {%- endif -%}
-        {%- if section.settings.show_ai_tab -%}
-          <button class="ptp__tab" role="tab" aria-selected="false" data-ptp-tab="ai" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            {{ section.settings.ai_tab_title | default: 'Ask AI' }}
           </button>
         {%- endif -%}
       </div>
@@ -809,6 +804,28 @@
         {%- endif -%}
 
         {%- comment -%} Warranty Panel {%- endcomment -%}
+        {%- comment -%} AI Assistant Panel {%- endcomment -%}
+        {%- if section.settings.show_ai_tab -%}
+          <div class="ptp__tab-panel" role="tabpanel" data-ptp-panel="ai">
+            <div class="ptp__ai">
+              <div class="ptp__ai-header">
+                <div class="ptp__ai-logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+                <div><strong>Tire assistant</strong><span>Ask anything about this tire</span></div>
+              </div>
+              <div class="ptp__ai-suggestions">
+                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_1 | default: 'Is this tire good for winter driving?' | escape }}" type="button">{{ section.settings.ai_suggestion_1 | default: 'Is this tire good for winter driving?' }}</button>
+                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_2 | default: 'How long will this tire last?' | escape }}" type="button">{{ section.settings.ai_suggestion_2 | default: 'How long will this tire last?' }}</button>
+                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_3 | default: 'What size rim do I need?' | escape }}" type="button">{{ section.settings.ai_suggestion_3 | default: 'What size rim do I need?' }}</button>
+              </div>
+              <div class="ptp__ai-chat" data-ptp-ai-chat></div>
+              <div class="ptp__ai-input-row">
+                <input type="text" class="ptp__ai-input" placeholder="Ask about this tire..." data-ptp-ai-input>
+                <button class="ptp__ai-send" data-ptp-ai-send type="button" aria-label="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg></button>
+              </div>
+            </div>
+          </div>
+        {%- endif -%}
+
         {%- if section.settings.show_warranty_tab -%}
           <div class="ptp__tab-panel" role="tabpanel" data-ptp-panel="warranty">
             <div class="ptp__warranty-grid">
@@ -835,27 +852,6 @@
           </div>
         {%- endif -%}
 
-        {%- comment -%} AI Assistant Panel {%- endcomment -%}
-        {%- if section.settings.show_ai_tab -%}
-          <div class="ptp__tab-panel" role="tabpanel" data-ptp-panel="ai">
-            <div class="ptp__ai">
-              <div class="ptp__ai-header">
-                <div class="ptp__ai-logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-                <div><strong>Tire assistant</strong><span>Ask anything about this tire</span></div>
-              </div>
-              <div class="ptp__ai-suggestions">
-                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_1 | default: 'Is this tire good for winter driving?' | escape }}" type="button">{{ section.settings.ai_suggestion_1 | default: 'Is this tire good for winter driving?' }}</button>
-                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_2 | default: 'How long will this tire last?' | escape }}" type="button">{{ section.settings.ai_suggestion_2 | default: 'How long will this tire last?' }}</button>
-                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_3 | default: 'What size rim do I need?' | escape }}" type="button">{{ section.settings.ai_suggestion_3 | default: 'What size rim do I need?' }}</button>
-              </div>
-              <div class="ptp__ai-chat" data-ptp-ai-chat></div>
-              <div class="ptp__ai-input-row">
-                <input type="text" class="ptp__ai-input" placeholder="Ask about this tire..." data-ptp-ai-input>
-                <button class="ptp__ai-send" data-ptp-ai-send type="button" aria-label="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg></button>
-              </div>
-            </div>
-          </div>
-        {%- endif -%}
       </div>
     </div>
 
@@ -872,10 +868,10 @@
             <a href="https://wa.me/?text={{ product.title | url_encode }}%20{{ shop.url | append: product.url | url_encode }}" target="_blank" rel="noopener" class="ptp__share-btn ptp__share-btn--wa" aria-label="Share on WhatsApp">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
             </a>
-            <a href="https://www.facebook.com/sharer/sharer.php?u={{ shop.url | append: product.url | url_encode }}" target="_blank" rel="noopener" class="ptp__share-btn" aria-label="Share on Facebook">
+            <a href="https://www.facebook.com/sharer/sharer.php?u={{ shop.url | append: product.url | url_encode }}" target="_blank" rel="noopener" class="ptp__share-btn ptp__share-btn--fb" aria-label="Share on Facebook">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
             </a>
-            <button type="button" class="ptp__share-btn" data-ptp-copy-url aria-label="Copy link">
+            <button type="button" class="ptp__share-btn ptp__share-btn--link" data-ptp-copy-url aria-label="Copy link">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
             </button>
           </div>
@@ -933,7 +929,7 @@
   }
 
   /* Gallery — matches ft__card-image */
-  .ptp__gallery-main-wrap { position: relative; background: #f9fafb; border-radius: 12px; min-height: 380px; max-height: 460px; display: flex; align-items: center; justify-content: center; padding: 2.5rem; overflow: hidden; }
+  .ptp__gallery-main-wrap { position: relative; background: transparent; border-radius: 12px; min-height: 380px; max-height: 460px; display: flex; align-items: center; justify-content: center; padding: 2.5rem; overflow: hidden; }
   .ptp__gallery-main-img { max-height: 340px; }
   .ptp__gallery-main-img { width: 100%; height: 100%; object-fit: contain; cursor: zoom-in; transition: transform 0.3s ease; }
   .ptp__gallery-main-wrap:hover .ptp__gallery-main-img { transform: scale(1.03); }
@@ -1004,12 +1000,12 @@
   /* CTA Stack */
   .ptp__cta-stack { display: flex; flex-direction: column; gap: 0.7rem; }
   .ptp__book-btn {
-    display: flex; width: 100%; background: #fef2f2; color: #dc2626; border: 1.5px solid #fca5a5;
+    display: flex; width: 100%; background: #dc2626; color: #fff; border: none;
     text-align: center; padding: 1rem; border-radius: 10px;
     font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 600;
     cursor: pointer; transition: all 0.2s; align-items: center; justify-content: center; gap: 0.5rem;
   }
-  .ptp__book-btn:hover { background: #fee2e2; border-color: #f87171; }
+  .ptp__book-btn:hover { background: #b91c1c; }
   @media (max-width: 749px) {
     .ptp__book-btn { padding: 0.6rem 0.75rem; font-size: 0.9rem; white-space: nowrap; }
   }
@@ -1170,10 +1166,20 @@
   .ptp__link:hover { border-color: var(--ptp-accent); color: var(--ptp-accent); }
   .ptp__share { display: flex; align-items: center; gap: 0.5rem; }
   .ptp__share-label { font-size: 0.82rem; font-weight: 500; color: var(--ptp-muted); }
-  .ptp__share-btn { width: 2.4rem; height: 2.4rem; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--ptp-border); border-radius: 50%; background: #fff; color: var(--ptp-muted); cursor: pointer; transition: all 0.2s; text-decoration: none; }
-  .ptp__share-btn:hover { border-color: var(--ptp-accent); color: var(--ptp-accent); }
-  .ptp__share-btn--wa:hover { border-color: #25d366; color: #25d366; }
+  .ptp__share-btn { width: 2.4rem; height: 2.4rem; display: flex; align-items: center; justify-content: center; border: 1.5px solid transparent; border-radius: 50%; cursor: pointer; transition: all 0.2s; text-decoration: none; }
   .ptp__share-btn svg { width: 14px; height: 14px; }
+  /* WhatsApp */
+  .ptp__share-btn--wa { background: #25d366; color: #fff; border-color: #25d366; }
+  .ptp__share-btn--wa:hover { background: #20ba5a; border-color: #20ba5a; transform: scale(1.08); }
+  /* Facebook */
+  .ptp__share-btn--fb { background: #1877f2; color: #fff; border-color: #1877f2; }
+  .ptp__share-btn--fb:hover { background: #1464d4; border-color: #1464d4; transform: scale(1.08); }
+  /* Copy link */
+  .ptp__share-btn--link { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; }
+  .ptp__share-btn--link:hover { background: #e5e7eb; color: #374151; transform: scale(1.08); }
+  /* Bigger paragraph text in tabs */
+  .ptp__tab-panel p, .ptp__tab-panel li, .ptp__description p, .ptp__description li,
+  .ptp__shipping-info p, .ptp__warranty-item span { font-size: 1rem; line-height: 1.7; }
 
   /* Sticky */
   .ptp__sticky { display: none; }
@@ -1443,7 +1449,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /* AI-powered response via proxy endpoint */
-    var AI_ENDPOINT = '/apps/tire-ai/chat'; /* Configure your AI proxy endpoint */
+    var AI_ENDPOINT = 'https://prince-tires-ai.vercel.app/api/chat';
     var chatHistory = [];
 
     function getAIResponse(q, callback) {
