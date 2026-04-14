@@ -268,11 +268,7 @@
 {% endstylesheet %}
 
 {% javascript %}
-  (function () {
-    const root = document.currentScript
-      ? document.currentScript.closest('.chatbot-section')
-      : document.querySelector('.chatbot-section');
-
+  function initChatbotSection(root) {
     const sectionId = root.dataset.sectionId;
     const apiEndpoint = root.dataset.apiEndpoint;
     const systemPrompt = root.dataset.systemPrompt;
@@ -282,6 +278,8 @@
     const inputEl = document.getElementById('chatbot-input-' + sectionId);
     const sendBtn = document.getElementById('chatbot-send-' + sectionId);
     const resetBtn = document.getElementById('chatbot-reset-' + sectionId);
+
+    if (!messagesEl || !inputEl || !sendBtn) return;
 
     let history = [];
 
@@ -294,7 +292,6 @@
       wrapper.appendChild(bubble);
       messagesEl.appendChild(wrapper);
       messagesEl.scrollTop = messagesEl.scrollHeight;
-      return bubble;
     }
 
     function showThinking() {
@@ -380,10 +377,12 @@
         sendMessage();
       }
     });
-    resetBtn.addEventListener('click', resetChat);
+    if (resetBtn) resetBtn.addEventListener('click', resetChat);
 
     resetChat();
-  })();
+  }
+
+  document.querySelectorAll('.chatbot-section').forEach(initChatbotSection);
 {% endjavascript %}
 
 {% schema %}
