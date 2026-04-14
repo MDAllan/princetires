@@ -6,7 +6,7 @@
 
 {%- liquid
   assign book_url = section.settings.book_url | default: '/pages/booking'
-  assign phone = section.settings.phone | default: '(403) 287-1234'
+  assign phone = section.settings.phone | default: '(403) 452-4283'
   assign phone_digits = phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-'
   assign tel_href = 'tel:+1' | append: phone_digits
 
@@ -37,25 +37,24 @@
    PT-NAVBAR  —  CSS VARS & RESET
 ═══════════════════════════════════════ */
 #pt-navbar {
-  --nb-h:          72px;
-  --nb-bg:         transparent;
-  --nb-bg-scroll:  rgba(0, 0, 0, 0.88);
+  --nb-h:          70px;
+  --nb-bg-scroll:  rgba(8, 8, 10, 0.92);
   --nb-border:     rgba(255,255,255,0.07);
-  --nb-text:       #d1d5db;
+  --nb-text:       #f3f4f6;
   --nb-muted:      #9ca3af;
-  --nb-red:        #B91C1C;
-  --nb-red-hover:  #991818;
-  --nb-red-glow:   rgba(185,28,28,0.3);
-  --nb-drop-bg:    #141920;
-  --nb-pill-bg:    rgba(255,255,255,0.05);
+  --nb-red:        #dc2626;
+  --nb-red-dim:    #b91c1c;
+  --nb-red-glow:   rgba(220,38,38,0.35);
+  --nb-red-glow2:  rgba(220,38,38,0.15);
+  --nb-drop-bg:    #0d0d10;
   --nb-font:       'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --nb-ease:       cubic-bezier(0.4, 0, 0.2, 1);
+  --nb-ease:       cubic-bezier(0.16, 1, 0.3, 1);
   font-family: var(--nb-font);
   position: relative;
   z-index: 300;
 }
 
-/* ── sticky container ── */
+/* ── sticky root ── */
 #pt-navbar .nb-root {
   position: sticky;
   top: 0;
@@ -64,15 +63,36 @@
   z-index: 300;
   background: transparent;
   border-bottom: 1px solid transparent;
-  transition: background 0.25s var(--nb-ease), box-shadow 0.25s var(--nb-ease), border-color 0.25s var(--nb-ease);
+  transition:
+    background 0.3s var(--nb-ease),
+    box-shadow 0.3s var(--nb-ease),
+    border-color 0.3s var(--nb-ease);
 }
 
+/* scrolled glass state */
 #pt-navbar .nb-root.is-scrolled {
   background: var(--nb-bg-scroll);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 4px 32px rgba(0,0,0,0.45);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 8px 40px rgba(0,0,0,0.55);
   border-bottom-color: rgba(255,255,255,0.06);
+}
+
+/* red accent hairline at very bottom on scroll */
+#pt-navbar .nb-root::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--nb-red), transparent);
+  transform: translateX(-50%);
+  transition: width 0.5s var(--nb-ease);
+  pointer-events: none;
+}
+#pt-navbar .nb-root.is-scrolled::after {
+  width: 60%;
 }
 
 /* ── inner row ── */
@@ -83,7 +103,6 @@
   padding: 0 24px;
   display: flex;
   align-items: center;
-  gap: 0;
 }
 
 /* ══════════════════════════════════════
@@ -94,52 +113,82 @@
   display: flex;
   align-items: center;
   text-decoration: none;
-  margin-right: 36px;
+  margin-right: 32px;
+  position: relative;
 }
 
 #pt-navbar .nb-logo img {
   height: 40px;
   width: auto;
   display: block;
+  transition: filter 0.2s;
+}
+#pt-navbar .nb-logo:hover img {
+  filter: drop-shadow(0 0 8px var(--nb-red-glow2));
 }
 
 #pt-navbar .nb-logo__wordmark {
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
   line-height: 1;
-  color: #e5e7eb;
+  color: #f3f4f6;
+  transition: opacity 0.2s;
 }
 #pt-navbar .nb-logo__wordmark em {
   color: var(--nb-red);
   font-style: normal;
 }
+#pt-navbar .nb-logo:hover .nb-logo__wordmark {
+  opacity: 0.9;
+}
 
 /* ══════════════════════════════════════
-   DESKTOP NAV — frosted pill (shows hero through bar)
+   DESKTOP NAV — frosted pill
 ══════════════════════════════════════ */
 #pt-navbar .nb-links-frost {
+  position: relative;
   display: flex;
   flex: 1;
   align-items: center;
   align-self: center;
-  min-height: 40px;
+  height: 42px;
   margin-right: 12px;
-  padding: 2px 8px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  padding: 3px 6px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* sliding glide indicator */
+#pt-navbar .nb-indicator {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  height: calc(100% - 6px);
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  pointer-events: none;
+  transition: left 0.22s var(--nb-ease), width 0.22s var(--nb-ease), opacity 0.15s;
+  opacity: 0;
+  z-index: 0;
+}
+#pt-navbar .nb-links-frost:hover .nb-indicator,
+#pt-navbar .nb-links-frost:focus-within .nb-indicator {
+  opacity: 1;
 }
 
 #pt-navbar .nb-links {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: stretch;
   height: 100%;
   flex: 1;
-  gap: 2px;
+  gap: 0;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -154,46 +203,35 @@
 #pt-navbar .nb-link {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 14px;
+  padding: 0 15px;
   height: 100%;
-  min-height: 36px;
   color: var(--nb-muted);
   text-decoration: none;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 400;
   white-space: nowrap;
+  letter-spacing: 0.01em;
   transition: color 0.18s var(--nb-ease);
-  position: relative;
-  border-radius: 3px;
-}
-
-/* subtle hover pill inside frost */
-#pt-navbar .nb-link::before {
-  content: '';
-  position: absolute;
-  inset: 4px 2px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.06);
-  opacity: 0;
-  transition: opacity 0.2s var(--nb-ease);
-  z-index: 0;
-}
-
-#pt-navbar .nb-item:hover .nb-link::before,
-#pt-navbar .nb-link.is-active::before {
-  opacity: 1;
+  border-radius: 4px;
 }
 
 #pt-navbar .nb-item:hover .nb-link,
-#pt-navbar .nb-item.is-open .nb-link,
 #pt-navbar .nb-link.is-active {
   color: var(--nb-text);
 }
 
-#pt-navbar .nb-link span {
-  position: relative;
-  z-index: 1;
+/* active red dot */
+#pt-navbar .nb-link.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--nb-red);
+  box-shadow: 0 0 6px var(--nb-red);
 }
 
 /* ══════════════════════════════════════
@@ -204,11 +242,9 @@
   align-items: center;
   gap: 2px;
   margin-left: auto;
-  margin-right: 12px;
   flex-shrink: 0;
 }
 
-/* icon button base */
 #pt-navbar .nb-icon {
   position: relative;
   display: flex;
@@ -216,40 +252,31 @@
   justify-content: center;
   width: 38px;
   height: 38px;
-  border-radius: 3px;
+  border-radius: 6px;
   background: transparent;
   border: none;
   color: var(--nb-muted);
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
-
 #pt-navbar .nb-icon:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255,255,255,0.06);
   color: var(--nb-text);
 }
-
-#pt-navbar .nb-icon svg {
-  width: 19px;
-  height: 19px;
-}
-
-#pt-navbar .nb-icon--cart svg {
-  width: 20px;
-  height: 20px;
-}
+#pt-navbar .nb-icon svg { width: 19px; height: 19px; }
+#pt-navbar .nb-icon--cart svg { width: 20px; height: 20px; }
 
 /* cart badge */
 #pt-navbar .nb-badge {
   position: absolute;
-  top: 3px;
-  right: 3px;
-  min-width: 16px;
-  height: 16px;
+  top: 4px;
+  right: 4px;
+  min-width: 15px;
+  height: 15px;
   background: var(--nb-red);
   color: #fff;
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
   border-radius: 99px;
   display: flex;
@@ -258,67 +285,78 @@
   padding: 0 3px;
   pointer-events: none;
   line-height: 1;
+  box-shadow: 0 0 8px var(--nb-red-glow2);
 }
 
 /* separator */
 #pt-navbar .nb-sep {
   width: 1px;
-  height: 22px;
-  background: var(--nb-border);
-  margin: 0 6px;
+  height: 20px;
+  background: rgba(255,255,255,0.1);
+  margin: 0 8px;
   flex-shrink: 0;
 }
 
-/* Book Now button */
+/* ── Book Now — shimmer CTA ── */
 #pt-navbar .nb-book {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 36px;
-  padding: 0 16px;
+  padding: 0 18px;
   margin-left: 8px;
   background: var(--nb-red);
   color: #fff;
   text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 3px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 6px;
   border: none;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
-  box-shadow: 0 2px 12px var(--nb-red-glow);
+  overflow: hidden;
+  letter-spacing: 0.02em;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
+  box-shadow: 0 2px 16px var(--nb-red-glow2), inset 0 1px 0 rgba(255,255,255,0.15);
 }
-
+#pt-navbar .nb-book::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  transform: skewX(-20deg);
+  animation: nb-shimmer 3s ease-in-out infinite;
+}
 #pt-navbar .nb-book:hover {
-  background: var(--nb-red-hover);
-  box-shadow: 0 4px 20px var(--nb-red-glow);
+  background: var(--nb-red-dim);
+  box-shadow: 0 4px 24px var(--nb-red-glow), inset 0 1px 0 rgba(255,255,255,0.15);
   transform: translateY(-1px);
 }
+#pt-navbar .nb-book svg { width: 13px; height: 13px; flex-shrink: 0; }
 
-#pt-navbar .nb-book svg {
-  width: 13px;
-  height: 13px;
+@keyframes nb-shimmer {
+  0%   { left: -75%; }
+  60%  { left: 125%; }
+  100% { left: 125%; }
 }
 
-/* hamburger (mobile only) */
-#pt-navbar .nb-burger {
-  display: none;
-}
+/* hamburger */
+#pt-navbar .nb-burger { display: none; }
 
 /* ══════════════════════════════════════
-   MOBILE STYLES  (≤ 989px)
+   MOBILE  (≤ 989px)
 ══════════════════════════════════════ */
 @media (max-width: 989px) {
   #pt-navbar .nb-links-frost,
-  #pt-navbar .nb-links,
   #pt-navbar .nb-sep,
   #pt-navbar .nb-book { display: none; }
 
   #pt-navbar .nb-burger { display: flex; }
-
   #pt-navbar .nb-logo { margin-right: auto; }
-
   #pt-navbar .nb-inner { padding: 0 16px; }
 }
 
@@ -332,100 +370,82 @@
   background: var(--nb-drop-bg);
   z-index: 600;
   transform: translateX(100%);
-  transition: transform 0.3s var(--nb-ease);
+  transition: transform 0.32s var(--nb-ease);
   display: flex;
   flex-direction: column;
-  box-shadow: -24px 0 70px rgba(0,0,0,0.7);
+  box-shadow: -32px 0 80px rgba(0,0,0,0.8);
   overflow-y: auto;
+  border-left: 1px solid rgba(255,255,255,0.06);
 }
-
-#pt-navbar .nb-drawer.is-open {
-  transform: translateX(0);
-}
+#pt-navbar .nb-drawer.is-open { transform: translateX(0); }
 
 #pt-navbar .nb-backdrop {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.65);
+  background: rgba(0,0,0,0.7);
   z-index: 590;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
 }
 #pt-navbar .nb-backdrop.is-open { display: block; }
 
-/* drawer header */
+/* drawer header with red accent */
 #pt-navbar .nb-drawer-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--nb-border);
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(220,38,38,0.06) 0%, transparent 60%);
 }
 
 #pt-navbar .nb-drawer-x {
   width: 34px;
   height: 34px;
   background: rgba(255,255,255,0.06);
-  border: none;
-  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
   color: var(--nb-muted);
   font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+#pt-navbar .nb-drawer-x:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--nb-text);
 }
 
 /* drawer links */
-#pt-navbar .nb-drawer-links {
-  flex: 1;
-  padding: 8px 0;
-}
+#pt-navbar .nb-drawer-links { flex: 1; padding: 6px 0; }
 
 #pt-navbar .nb-drawer-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 13px 20px;
+  padding: 14px 20px;
   color: var(--nb-muted);
   text-decoration: none;
   font-size: 14.5px;
   font-weight: 500;
-  border-bottom: 1px solid var(--nb-border);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
   cursor: pointer;
-  transition: background 0.13s, color 0.13s;
+  transition: background 0.13s, color 0.13s, padding-left 0.18s var(--nb-ease);
+  letter-spacing: 0.01em;
 }
-
 #pt-navbar .nb-drawer-row:hover {
-  background: rgba(185,28,28,0.08);
+  background: rgba(220,38,38,0.07);
   color: var(--nb-text);
-}
-
-#pt-navbar .nb-drawer-sub {
-  display: none;
-  background: rgba(0,0,0,0.25);
-}
-#pt-navbar .nb-drawer-sub.is-open { display: block; }
-
-#pt-navbar .nb-drawer-sub a {
-  display: block;
-  padding: 10px 20px 10px 34px;
-  color: var(--nb-muted);
-  text-decoration: none;
-  font-size: 13px;
-  border-bottom: 1px solid var(--nb-border);
-  transition: color 0.13s, background 0.13s;
-}
-#pt-navbar .nb-drawer-sub a:hover {
-  color: var(--nb-text);
-  background: rgba(185,28,28,0.06);
+  padding-left: 24px;
 }
 
 /* drawer footer */
 #pt-navbar .nb-drawer-foot {
   padding: 18px 20px;
-  border-top: 1px solid var(--nb-border);
+  border-top: 1px solid rgba(255,255,255,0.06);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -433,20 +453,36 @@
 }
 
 #pt-navbar .nb-drawer-book {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 44px;
+  height: 46px;
   background: var(--nb-red);
   color: #fff;
   border-radius: 8px;
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
-  transition: background 0.15s;
+  overflow: hidden;
+  transition: background 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 20px var(--nb-red-glow2);
+  letter-spacing: 0.02em;
 }
-#pt-navbar .nb-drawer-book:hover { background: var(--nb-red-hover); }
+#pt-navbar .nb-drawer-book::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -75%;
+  width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transform: skewX(-20deg);
+  animation: nb-shimmer 3.5s ease-in-out infinite;
+}
+#pt-navbar .nb-drawer-book:hover {
+  background: var(--nb-red-dim);
+  box-shadow: 0 6px 28px var(--nb-red-glow);
+}
 
 #pt-navbar .nb-drawer-tel {
   display: flex;
@@ -469,45 +505,25 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-@keyframes nb-slide-down {
-  from { opacity: 0; transform: translateY(-12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
 @media (max-width: 480px) {
-  #pt-navbar .nb-inner {
-    padding: 0 12px;
-  }
-  #pt-navbar .nb-drawer {
-    width: min(280px, 90vw);
-  }
-  #pt-navbar .nb-drawer-row {
-    padding: 14px 16px;
-    font-size: 14px;
-    min-height: 44px;
-  }
-  #pt-navbar .nb-drawer-sub a {
-    padding: 12px 16px 12px 30px;
-    font-size: 13px;
-    min-height: 44px;
-  }
-  #pt-navbar .nb-drawer-x {
-    width: 40px;
-    height: 40px;
-  }
-  #pt-navbar .nb-icon {
-    width: 40px;
-    height: 40px;
-  }
+  #pt-navbar .nb-inner { padding: 0 12px; }
+  #pt-navbar .nb-drawer { width: min(280px, 90vw); }
+  #pt-navbar .nb-drawer-row { padding: 14px 16px; font-size: 14px; min-height: 44px; }
+  #pt-navbar .nb-drawer-x { width: 40px; height: 40px; }
+  #pt-navbar .nb-icon { width: 40px; height: 40px; }
 }
 
 @media (max-width: 360px) {
-  #pt-navbar .nb-drawer {
-    width: 100vw;
-  }
-  #pt-navbar .nb-inner {
-    padding: 0 10px;
-  }
+  #pt-navbar .nb-drawer { width: 100vw; }
+  #pt-navbar .nb-inner { padding: 0 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pt-navbar .nb-book::before,
+  #pt-navbar .nb-drawer-book::before { animation: none; }
+  #pt-navbar .nb-indicator { transition: none; }
+  #pt-navbar .nb-root::after { transition: none; }
 }
 </style>
 
@@ -544,6 +560,7 @@
 
       {%- comment -%} Desktop nav — frosted pill {%- endcomment -%}
       <div class="nb-links-frost">
+        <div class="nb-indicator" id="nb-indicator"></div>
         <ul class="nb-links" role="list">
           <li class="nb-item">
             <a href="{{ href_about }}" class="nb-link{% if request.path == href_about %} is-active{% endif %}"><span>About us</span></a>
@@ -638,20 +655,49 @@
 
 <script>
 (function () {
-  /* ── elements ── */
-  var root          = document.getElementById('nb-root');
-  var backdrop      = document.getElementById('nb-backdrop');
-  var openBtn       = document.getElementById('nb-open');
-  var closeBtn      = document.getElementById('nb-close');
-  var drawer        = document.getElementById('nb-drawer');
-  /* ── sticky scroll class ── */
+  var root      = document.getElementById('nb-root');
+  var backdrop  = document.getElementById('nb-backdrop');
+  var openBtn   = document.getElementById('nb-open');
+  var closeBtn  = document.getElementById('nb-close');
+  var drawer    = document.getElementById('nb-drawer');
+  var indicator = document.getElementById('nb-indicator');
+  var frost     = indicator && indicator.closest('.nb-links-frost');
+
+  /* ── scroll state ── */
   function onScroll() {
-    if (root) {
-      root.classList.toggle('is-scrolled', window.scrollY > 10);
-    }
+    if (root) root.classList.toggle('is-scrolled', window.scrollY > 10);
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
+
+  /* ── sliding indicator ── */
+  function moveIndicator(el) {
+    if (!indicator || !frost || !el) return;
+    var frostRect = frost.getBoundingClientRect();
+    var elRect    = el.getBoundingClientRect();
+    indicator.style.left  = (elRect.left - frostRect.left) + 'px';
+    indicator.style.width = elRect.width + 'px';
+  }
+
+  if (frost) {
+    var links = frost.querySelectorAll('.nb-link');
+    links.forEach(function (link) {
+      link.addEventListener('mouseenter', function () { moveIndicator(link); });
+    });
+    frost.addEventListener('mouseleave', function () {
+      /* slide back to active if present, else fade out */
+      var active = frost.querySelector('.nb-link.is-active');
+      if (active) {
+        moveIndicator(active);
+      } else {
+        indicator.style.opacity = '0';
+        setTimeout(function () { indicator.style.opacity = ''; }, 200);
+      }
+    });
+    /* init to active link */
+    var active = frost.querySelector('.nb-link.is-active');
+    if (active) moveIndicator(active);
+  }
 
   /* ── drawer ── */
   function openDrawer() {
@@ -666,13 +712,11 @@
     document.body.style.overflow = '';
     if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
   }
-  if (openBtn)   openBtn.addEventListener('click', openDrawer);
-  if (closeBtn)  closeBtn.addEventListener('click', closeDrawer);
-  if (backdrop)  backdrop.addEventListener('click', closeDrawer);
-
-  /* ── Escape key ── */
+  if (openBtn)  openBtn.addEventListener('click', openDrawer);
+  if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+  if (backdrop) backdrop.addEventListener('click', closeDrawer);
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { closeDrawer(); }
+    if (e.key === 'Escape') closeDrawer();
   });
 })();
 </script>
@@ -744,7 +788,7 @@
       "type": "text",
       "id": "phone",
       "label": "Phone number",
-      "default": "(403) 287-1234",
+      "default": "(403) 452-4283",
       "info": "Shown in drawer; used for Contact icon if no contact URL"
     },
     {
