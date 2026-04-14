@@ -584,6 +584,37 @@
 
       /* ── Tab strip marquee auto-scroll ── */
       this.startTabMarquee();
+
+      /* ── Product carousel auto-play ── */
+      this.startCarouselAutoplay();
+    }
+
+    startCarouselAutoplay() {
+      var self = this;
+      var carousel = this.carousel;
+      if (!carousel) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      this._autoplayPaused = false;
+
+      carousel.addEventListener('mouseenter', function() { self._autoplayPaused = true; });
+      carousel.addEventListener('mouseleave', function() { self._autoplayPaused = false; });
+      carousel.addEventListener('touchstart', function() { self._autoplayPaused = true; }, { passive: true });
+      carousel.addEventListener('touchend', function() {
+        setTimeout(function() { self._autoplayPaused = false; }, 1200);
+      });
+
+      this._autoplayInterval = setInterval(function() {
+        if (self._autoplayPaused) return;
+        var maxScroll = carousel.scrollWidth - carousel.offsetWidth;
+        if (carousel.scrollLeft >= maxScroll - 2) {
+          carousel.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          var cardEl = carousel.querySelector('.wheel-brands__card:not([hidden])');
+          var step = cardEl ? (cardEl.offsetWidth + 26) : carousel.offsetWidth * 0.3;
+          carousel.scrollBy({ left: step, behavior: 'smooth' });
+        }
+      }, 3000);
     }
 
     startTabMarquee() {
