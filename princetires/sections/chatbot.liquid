@@ -11,6 +11,10 @@
     --chatbot-height: {{ section.settings.chat_height }}px;
   "
   id="chatbot-{{ section.id }}"
+  data-section-id="{{ section.id }}"
+  data-api-endpoint="{{ section.settings.api_endpoint | escape }}"
+  data-system-prompt="{{ section.settings.system_prompt | escape }}"
+  data-greeting="{{ 'sections.chatbot.greeting' | t | escape }}"
 >
   <div class="chatbot-section__inner page-width">
     <div class="chatbot-section__header">
@@ -265,10 +269,14 @@
 
 {% javascript %}
   (function () {
-    const sectionId = {{ section.id | json }};
-    const apiEndpoint = {{ section.settings.api_endpoint | json }};
-    const systemPrompt = {{ section.settings.system_prompt | json }};
-    const greeting = {{ 'sections.chatbot.greeting' | t | json }};
+    const root = document.currentScript
+      ? document.currentScript.closest('.chatbot-section')
+      : document.querySelector('.chatbot-section');
+
+    const sectionId = root.dataset.sectionId;
+    const apiEndpoint = root.dataset.apiEndpoint;
+    const systemPrompt = root.dataset.systemPrompt;
+    const greeting = root.dataset.greeting;
 
     const messagesEl = document.getElementById('chatbot-messages-' + sectionId);
     const inputEl = document.getElementById('chatbot-input-' + sectionId);
