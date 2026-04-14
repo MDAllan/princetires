@@ -295,6 +295,9 @@
           </div>
         {%- endif -%}
 
+        {%- comment -%} Fitment badge — shows "Fits your [Year Make Model]" for logged-in customers {%- endcomment -%}
+        {%- render 'pt-fitment-badge', product: product -%}
+
         {%- comment -%} Weather-based seasonal warning {%- endcomment -%}
         <div class="ptp__weather-warn" data-ptp-weather-warn data-tire-season="{{ season_tag | downcase }}" hidden>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
@@ -416,7 +419,7 @@
 
         {%- comment -%} CTAs — Book Installation is PRIMARY {%- endcomment -%}
         <div class="ptp__cta-stack">
-          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}">
+          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             Book installation
           </button>
@@ -454,9 +457,6 @@
                   </p>
                 </div>
               {%- endif -%}
-              <div class="loading__spinner hidden">
-                <svg aria-hidden="true" focusable="false" class="spinner" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg"><circle class="path" fill="none" stroke-width="6" cx="33" cy="33" r="30"></circle></svg>
-              </div>
             {%- endform -%}
           </product-form>
         </div>
@@ -887,7 +887,7 @@
         <span class="ptp__sticky-set" data-ptp-sticky-total>${{ set_price | money_without_currency }}</span>
         <span class="ptp__sticky-per">set of 4</span>
       </div>
-      <button type="button" class="ptp__sticky-btn" data-ptp-sticky-add aria-label="Book installation" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}">Book now</button>
+      <button type="button" class="ptp__sticky-btn" data-ptp-sticky-add aria-label="Book installation" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}">Book now</button>
     </div>
   </div>
 </product-info>
@@ -1024,6 +1024,16 @@
   }
   .ptp__add-btn:hover { background: #e5e7eb; }
   .ptp__add-btn:disabled { background: #f9fafb; color: #d1d5db; cursor: not-allowed; }
+  .ptp__add-btn--loading { opacity: 0.65; pointer-events: none; }
+  .ptp__add-btn--loading svg { animation: ptp-spin 0.7s linear infinite; }
+  .ptp__add-btn--success { background: #16a34a !important; color: #fff !important; }
+  .ptp__add-btn--success:hover { background: #15803d !important; }
+  .ptp__add-btn--error { background: #fef2f2 !important; color: #dc2626 !important; }
+
+  /* Cart toast */
+  .ptp-toast { position: fixed; bottom: 1.75rem; left: 50%; transform: translateX(-50%) translateY(10px); background: #111; color: #fff; padding: .75rem 1.25rem; border-radius: 10px; font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 500; display: flex; align-items: center; gap: .5rem; z-index: 99999; opacity: 0; transition: opacity .22s, transform .22s; pointer-events: none; white-space: nowrap; box-shadow: 0 4px 24px rgba(0,0,0,.18); }
+  .ptp-toast--in { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .ptp-toast--error { background: #dc2626; }
   .loading__spinner { display: flex; align-items: center; justify-content: center; padding: 1rem; }
   .loading__spinner.hidden { display: none; }
   .loading__spinner .spinner { width: 2rem; height: 2rem; animation: ptp-spin 0.8s linear infinite; }
@@ -1307,9 +1317,12 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  /* sec — used by all sub-modules below */
+  var sec = document;
+
   var qtyInput = document.querySelector('[data-ptp-qty]');
   var cartTotal = document.querySelector('[data-ptp-cart-total]');
-  var unitPrice = {{ product.price }} / 100;
+  var unitPrice = {{ product.selected_or_first_available_variant.price }} / 100;
 
   function updateTotal() { if (cartTotal && qtyInput) cartTotal.textContent = '$' + (parseInt(qtyInput.value || 1) * unitPrice).toFixed(2); }
   function updateStickyTotal() { var s = document.querySelector('[data-ptp-sticky-total]'); if (s && qtyInput) s.textContent = '$' + (parseInt(qtyInput.value || 1) * unitPrice).toFixed(2); }
@@ -1320,6 +1333,112 @@ document.addEventListener('DOMContentLoaded', function() {
     if (p) p.addEventListener('click', function() { var v = parseInt(qtyInput.value)||1; qtyInput.value=v+1; updateTotal(); updateStickyTotal(); });
     qtyInput.addEventListener('change', function() { updateTotal(); updateStickyTotal(); });
   }
+
+  /* ── Cart count updater ─────────────────────────────────────────────── */
+  function updateCartCount() {
+    fetch('/cart.js', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function(r) { return r.json(); })
+      .then(function(cart) {
+        var count = cart.item_count;
+        var cartLink = document.getElementById('cart-icon-bubble');
+        if (cartLink) {
+          var badge = cartLink.querySelector('.nb-badge');
+          if (count > 0) {
+            if (badge) { badge.textContent = count; }
+            else { badge = document.createElement('span'); badge.className = 'nb-badge'; badge.textContent = count; cartLink.appendChild(badge); }
+          } else if (badge) { badge.remove(); }
+        }
+        var bubble = document.querySelector('.cart-count-bubble span[aria-hidden]');
+        if (bubble) bubble.textContent = count;
+      })
+      .catch(function() {});
+  }
+
+  /* ── Toast notification ─────────────────────────────────────────────── */
+  function showToast(msg, type) {
+    var t = document.createElement('div');
+    t.className = 'ptp-toast' + (type === 'error' ? ' ptp-toast--error' : '');
+    var icon = type === 'error'
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>';
+    t.innerHTML = icon + msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(function() { requestAnimationFrame(function() { t.classList.add('ptp-toast--in'); }); });
+    setTimeout(function() {
+      t.classList.remove('ptp-toast--in');
+      setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 280);
+    }, 3000);
+  }
+
+  /* ── AJAX add-to-cart ────────────────────────────────────────────────── */
+  (function() {
+    var form = document.querySelector('[data-type="add-to-cart-form"]');
+    if (!form) return;
+    var addBtn = form.querySelector('.ptp__add-btn');
+    if (!addBtn) return;
+
+    var cartIconSVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>';
+    var spinnerSVG  = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>';
+    var checkSVG    = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>';
+    var totalEl     = addBtn.querySelector('[data-ptp-cart-total]');
+    var idleTotal   = totalEl ? totalEl.textContent : '';
+    var idleHTML    = cartIconSVG + 'Add to cart — <span data-ptp-cart-total>' + idleTotal + '</span>';
+
+    /* Keep idleHTML in sync when qty changes */
+    var qtyEl = form.querySelector('[name="quantity"]');
+    if (qtyEl) {
+      qtyEl.addEventListener('change', function() {
+        var t2 = addBtn.querySelector('[data-ptp-cart-total]');
+        if (t2) idleHTML = cartIconSVG + 'Add to cart — <span data-ptp-cart-total>' + t2.textContent + '</span>';
+      });
+    }
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var variantId = (form.querySelector('[name="id"]') || {}).value;
+      var qty       = parseInt((form.querySelector('[name="quantity"]') || {}).value) || 1;
+      if (!variantId) return;
+
+      /* Sync idleHTML to current price label before going loading */
+      var t2 = addBtn.querySelector('[data-ptp-cart-total]');
+      if (t2) idleHTML = cartIconSVG + 'Add to cart — <span data-ptp-cart-total>' + t2.textContent + '</span>';
+
+      addBtn.disabled = true;
+      addBtn.classList.add('ptp__add-btn--loading');
+      addBtn.innerHTML = spinnerSVG + ' Adding…';
+
+      fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ id: variantId, quantity: qty })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        addBtn.classList.remove('ptp__add-btn--loading');
+        if (data.status) {
+          addBtn.disabled = false;
+          addBtn.classList.add('ptp__add-btn--error');
+          addBtn.innerHTML = cartIconSVG + (data.description || 'Could not add to cart');
+          showToast(data.description || 'Could not add to cart', 'error');
+          setTimeout(function() { addBtn.classList.remove('ptp__add-btn--error'); addBtn.innerHTML = idleHTML; }, 3000);
+        } else {
+          addBtn.classList.add('ptp__add-btn--success');
+          addBtn.innerHTML = checkSVG + ' Added to cart!';
+          updateCartCount();
+          showToast(qty + ' tire' + (qty > 1 ? 's' : '') + ' added to your cart');
+          setTimeout(function() { addBtn.disabled = false; addBtn.classList.remove('ptp__add-btn--success'); addBtn.innerHTML = idleHTML; }, 2200);
+        }
+      })
+      .catch(function() {
+        addBtn.disabled = false;
+        addBtn.classList.remove('ptp__add-btn--loading');
+        addBtn.classList.add('ptp__add-btn--error');
+        addBtn.innerHTML = cartIconSVG + 'Something went wrong';
+        showToast('Something went wrong. Please try again.', 'error');
+        setTimeout(function() { addBtn.classList.remove('ptp__add-btn--error'); addBtn.innerHTML = idleHTML; }, 3000);
+      });
+    });
+  })();
 
   /* Fitment */
   (function() {

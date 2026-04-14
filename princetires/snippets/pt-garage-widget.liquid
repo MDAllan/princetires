@@ -1,0 +1,271 @@
+{% doc %}
+  Navbar garage widget — shows the customer's default vehicle as a compact chip.
+  Opens a dropdown with quick actions: shop tires, manage garage, add vehicle.
+  Reads vehicle data from localStorage via the garageReady event or window.__ptDefaultVehicle.
+  Only rendered for logged-in customers.
+
+  @example
+  {% render 'pt-garage-widget' %}
+{% enddoc %}
+
+{%- if customer -%}
+<div class="pt-gw" id="pt-gw" data-gw>
+
+  {%- comment -%} Chip button {%- endcomment -%}
+  <button
+    class="pt-gw__chip"
+    id="pt-gw-btn"
+    type="button"
+    aria-haspopup="true"
+    aria-expanded="false"
+    aria-controls="pt-gw-dropdown"
+    aria-label="My garage"
+  >
+    <svg class="pt-gw__car-icon" width="18" height="12" viewBox="0 0 80 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 20 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/>
+      <circle cx="18" cy="24" r="5"/>
+      <circle cx="62" cy="24" r="5"/>
+    </svg>
+    <span class="pt-gw__label" data-gw-label>My garage</span>
+    <svg class="pt-gw__chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
+
+  {%- comment -%} Dropdown {%- endcomment -%}
+  <div class="pt-gw__dropdown" id="pt-gw-dropdown" role="menu" hidden>
+    <div class="pt-gw__vehicle-line" data-gw-vehicle>
+      <span class="pt-gw__vehicle-name" data-gw-vehicle-name>Loading…</span>
+      <span class="pt-gw__vehicle-size" data-gw-vehicle-size></span>
+    </div>
+    <div class="pt-gw__actions">
+      <a class="pt-gw__action pt-gw__action--primary" data-gw-shop href="/collections/tires">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
+        </svg>
+        Shop tires for this car
+      </a>
+      <a class="pt-gw__action" href="/pages/garage">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        Manage my garage
+      </a>
+      <a class="pt-gw__action" href="/pages/garage#add">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add another vehicle
+      </a>
+    </div>
+    <div class="pt-gw__no-vehicle" data-gw-empty hidden>
+      <p>No vehicle saved yet.</p>
+      <a href="/pages/garage" class="pt-gw__action pt-gw__action--primary">Set up my garage</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var gw = document.getElementById('pt-gw');
+  var btn = document.getElementById('pt-gw-btn');
+  var dropdown = document.getElementById('pt-gw-dropdown');
+  var labelEl = gw && gw.querySelector('[data-gw-label]');
+  var vehicleNameEl = gw && gw.querySelector('[data-gw-vehicle-name]');
+  var vehicleSizeEl = gw && gw.querySelector('[data-gw-vehicle-size]');
+  var vehicleLine = gw && gw.querySelector('[data-gw-vehicle]');
+  var emptyEl = gw && gw.querySelector('[data-gw-empty]');
+  var shopLink = gw && gw.querySelector('[data-gw-shop]');
+
+  if (!gw || !btn || !dropdown) return;
+
+  function updateWidget(vehicle) {
+    if (!vehicle) {
+      if (labelEl) labelEl.textContent = 'My garage';
+      if (vehicleLine) vehicleLine.hidden = true;
+      if (emptyEl) emptyEl.hidden = false;
+      return;
+    }
+    var name = vehicle.nickname || (vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model);
+    if (labelEl) labelEl.textContent = name;
+    if (vehicleNameEl) vehicleNameEl.textContent = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model + ' — ' + vehicle.trim;
+    if (vehicleSizeEl) vehicleSizeEl.textContent = vehicle.tireSize;
+    if (vehicleLine) vehicleLine.hidden = false;
+    if (emptyEl) emptyEl.hidden = true;
+    if (shopLink) shopLink.href = '/collections/tires?filter.p.m.custom.tire_size=' + encodeURIComponent(vehicle.tireSize);
+  }
+
+  // Read from window.__ptDefaultVehicle if already set
+  if (window.__ptDefaultVehicle !== undefined) {
+    updateWidget(window.__ptDefaultVehicle);
+  }
+
+  // Listen for garage updates
+  document.addEventListener('garageReady', function (e) {
+    updateWidget(e.detail && e.detail.defaultVehicle ? e.detail.defaultVehicle : null);
+  });
+
+  // Also try reading directly from localStorage on first load (before my-garage.js fires)
+  try {
+    var keys = Object.keys(localStorage).filter(function (k) { return k.startsWith('pt-garage-'); });
+    if (keys.length) {
+      var veh = JSON.parse(localStorage.getItem(keys[0]) || '[]');
+      var def = veh.find(function (v) { return v.isDefault; }) || veh[0] || null;
+      updateWidget(def);
+    }
+  } catch (e) {}
+
+  // Toggle dropdown
+  btn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var isOpen = dropdown.hidden === false;
+    dropdown.hidden = isOpen;
+    btn.setAttribute('aria-expanded', String(!isOpen));
+  });
+
+  // Close on outside click
+  document.addEventListener('click', function (e) {
+    if (!gw.contains(e.target)) {
+      dropdown.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !dropdown.hidden) {
+      dropdown.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+      btn.focus();
+    }
+  });
+})();
+</script>
+
+<style>
+/* ══ Garage Widget ══════════════════════════════════════════ */
+.pt-gw {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Chip button */
+.pt-gw__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem 0.3rem 0.5rem;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1E293B;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+}
+.pt-gw__chip:hover {
+  background: #E8EDF4;
+  border-color: #CBD5E1;
+}
+.pt-gw__car-icon {
+  color: #64748B;
+  flex-shrink: 0;
+}
+.pt-gw__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.pt-gw__chevron {
+  color: #94A3B8;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.pt-gw__chip[aria-expanded="true"] .pt-gw__chevron {
+  transform: rotate(180deg);
+}
+
+/* Dropdown */
+.pt-gw__dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 240px;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  z-index: 400;
+  overflow: hidden;
+  animation: gw-dropdown-in 0.15s ease;
+}
+@keyframes gw-dropdown-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.pt-gw__vehicle-line {
+  padding: 0.625rem 0.875rem 0.5rem;
+  border-bottom: 1px solid #F1F5F9;
+}
+.pt-gw__vehicle-name {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1E293B;
+}
+.pt-gw__vehicle-size {
+  display: block;
+  font-size: 0.75rem;
+  color: #10b981;
+  font-weight: 600;
+  margin-top: 0.125rem;
+}
+.pt-gw__actions {
+  display: flex;
+  flex-direction: column;
+  padding: 0.375rem;
+}
+.pt-gw__action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background 0.12s;
+  cursor: pointer;
+}
+.pt-gw__action:hover { background: #F8FAFC; color: #1E293B; }
+.pt-gw__action--primary {
+  background: rgba(220,38,38,0.06);
+  color: #dc2626;
+  font-weight: 600;
+}
+.pt-gw__action--primary:hover {
+  background: rgba(220,38,38,0.12);
+  color: #b91c1c;
+}
+.pt-gw__no-vehicle {
+  padding: 0.875rem;
+  text-align: center;
+}
+.pt-gw__no-vehicle p {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0 0 0.625rem;
+}
+</style>
+{%- endif -%}

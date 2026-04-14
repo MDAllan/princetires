@@ -1,0 +1,75 @@
+{% doc %}
+  Renders a fitment badge showing whether the current product fits the customer's saved default vehicle.
+  Reads the product's tire_size metafield and compares it against window.__ptDefaultVehicle (set by my-garage.js).
+  Hidden for guests or products with no tire_size metafield.
+
+  @param {product} product - The Shopify product object
+
+  @example
+  {% render 'pt-fitment-badge', product: product %}
+{% enddoc %}
+
+{%- assign tire_size = product.metafields.custom.tire_size | default: '' -%}
+{%- if tire_size != blank -%}
+  <script src="{{ 'pt-fitment-badge.js' | asset_url }}" defer="defer"></script>
+  <div
+    class="pt-fitment-badge"
+    data-fitment-badge
+    data-product-tire-size="{{ tire_size | escape }}"
+    hidden
+    aria-live="polite"
+  >
+    <script type="application/json" data-fitment-product>
+      { "tireSize": {{ tire_size | json }} }
+    </script>
+    <svg class="pt-fitment-badge__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    <span class="pt-fitment-badge__text"></span>
+    <a class="pt-fitment-badge__link" href="/pages/garage" aria-label="Manage your garage"></a>
+  </div>
+
+  {% stylesheet %}
+  .pt-fitment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.9rem 0.4rem 0.7rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin: 0.625rem 0;
+    cursor: default;
+    text-decoration: none;
+    transition: opacity 0.2s;
+    position: relative;
+  }
+  .pt-fitment-badge--fits {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .pt-fitment-badge--may-fit {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+  }
+  .pt-fitment-badge--may-fit .pt-fitment-badge__icon {
+    display: none;
+  }
+  .pt-fitment-badge--may-fit::before {
+    content: '⚠';
+    font-size: 0.8125rem;
+    line-height: 1;
+  }
+  .pt-fitment-badge__link {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .pt-fitment-badge__link:hover ~ .pt-fitment-badge__text,
+  .pt-fitment-badge:hover .pt-fitment-badge__text {
+    text-decoration: underline;
+  }
+  {% endstylesheet %}
+{%- endif -%}

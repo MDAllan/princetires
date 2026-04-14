@@ -35,19 +35,25 @@
 <style>
 /* ═══════════════════════════════════════
    PT-NAVBAR  —  CSS VARS & RESET
+   Palette: Automotive/Car Dealership (ui-ux-pro-max)
+   bg #F8FAFC · text #1E293B · muted #64748B · accent #DC2626
 ═══════════════════════════════════════ */
 #pt-navbar {
-  --nb-h:          70px;
-  --nb-bg-scroll:  rgba(8, 8, 10, 0.92);
-  --nb-border:     rgba(255,255,255,0.07);
-  --nb-text:       #f3f4f6;
-  --nb-muted:      #9ca3af;
-  --nb-red:        #dc2626;
-  --nb-red-dim:    #b91c1c;
-  --nb-red-glow:   rgba(220,38,38,0.35);
-  --nb-red-glow2:  rgba(220,38,38,0.15);
-  --nb-drop-bg:    #0d0d10;
-  --nb-font:       'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --nb-h:          68px;
+  --nb-bg:         #ffffff;
+  --nb-bg-scroll:  rgba(255, 255, 255, 0.97);
+  --nb-border:     #E2E8F0;
+  --nb-text:       #1E293B;
+  --nb-muted:      #64748B;
+  --nb-subtle:     #94A3B8;
+  --nb-red:        #DC2626;
+  --nb-red-dim:    #B91C1C;
+  --nb-red-glow:   rgba(220, 38, 38, 0.30);
+  --nb-red-glow2:  rgba(220, 38, 38, 0.12);
+  --nb-pill-bg:    #F1F5F9;
+  --nb-pill-hover: rgba(30, 41, 59, 0.06);
+  --nb-drawer-bg:  #ffffff;
+  --nb-font:       'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --nb-ease:       cubic-bezier(0.16, 1, 0.3, 1);
   font-family: var(--nb-font);
   position: relative;
@@ -61,21 +67,21 @@
   left: 0;
   right: 0;
   z-index: 300;
-  background: transparent;
-  border-bottom: 1px solid transparent;
+  background: var(--nb-bg);
+  border-bottom: 1px solid var(--nb-border);
   transition:
     background 0.3s var(--nb-ease),
     box-shadow 0.3s var(--nb-ease),
     border-color 0.3s var(--nb-ease);
 }
 
-/* scrolled glass state */
+/* scrolled state — lift with shadow */
 #pt-navbar .nb-root.is-scrolled {
   background: var(--nb-bg-scroll);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 8px 40px rgba(0,0,0,0.55);
-  border-bottom-color: rgba(255,255,255,0.06);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  box-shadow: 0 1px 0 var(--nb-border), 0 4px 24px rgba(15, 23, 42, 0.08);
+  border-bottom-color: transparent;
 }
 
 /* red accent hairline at very bottom on scroll */
@@ -85,14 +91,14 @@
   bottom: 0;
   left: 50%;
   width: 0;
-  height: 1px;
+  height: 2px;
   background: linear-gradient(90deg, transparent, var(--nb-red), transparent);
   transform: translateX(-50%);
   transition: width 0.5s var(--nb-ease);
   pointer-events: none;
 }
 #pt-navbar .nb-root.is-scrolled::after {
-  width: 60%;
+  width: 50%;
 }
 
 /* ── inner row ── */
@@ -121,18 +127,18 @@
   height: 40px;
   width: auto;
   display: block;
-  transition: filter 0.2s;
+  transition: opacity 0.2s;
 }
 #pt-navbar .nb-logo:hover img {
-  filter: drop-shadow(0 0 8px var(--nb-red-glow2));
+  opacity: 0.82;
 }
 
 #pt-navbar .nb-logo__wordmark {
   font-size: 20px;
   font-weight: 800;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.4px;
   line-height: 1;
-  color: #f3f4f6;
+  color: var(--nb-text);
   transition: opacity 0.2s;
 }
 #pt-navbar .nb-logo__wordmark em {
@@ -140,11 +146,11 @@
   font-style: normal;
 }
 #pt-navbar .nb-logo:hover .nb-logo__wordmark {
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 /* ══════════════════════════════════════
-   DESKTOP NAV — frosted pill
+   DESKTOP NAV — clean pill
 ══════════════════════════════════════ */
 #pt-navbar .nb-links-frost {
   position: relative;
@@ -155,11 +161,9 @@
   height: 42px;
   margin-right: 12px;
   padding: 3px 6px;
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.09);
-  border-radius: 6px;
+  background: var(--nb-pill-bg);
+  border: 1px solid var(--nb-border);
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -169,8 +173,8 @@
   top: 3px;
   left: 0;
   height: calc(100% - 6px);
-  background: rgba(255,255,255,0.07);
-  border-radius: 4px;
+  background: rgba(30, 41, 59, 0.07);
+  border-radius: 5px;
   pointer-events: none;
   transition: left 0.22s var(--nb-ease), width 0.22s var(--nb-ease), opacity 0.15s;
   opacity: 0;
@@ -207,12 +211,12 @@
   height: 100%;
   color: var(--nb-muted);
   text-decoration: none;
-  font-size: 14.5px;
-  font-weight: 400;
+  font-size: 14px;
+  font-weight: 500;
   white-space: nowrap;
   letter-spacing: 0.01em;
   transition: color 0.18s var(--nb-ease);
-  border-radius: 4px;
+  border-radius: 5px;
 }
 
 #pt-navbar .nb-item:hover .nb-link,
@@ -231,7 +235,6 @@
   height: 3px;
   border-radius: 50%;
   background: var(--nb-red);
-  box-shadow: 0 0 6px var(--nb-red);
 }
 
 /* ══════════════════════════════════════
@@ -252,16 +255,16 @@
   justify-content: center;
   width: 38px;
   height: 38px;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
   border: none;
   color: var(--nb-muted);
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 #pt-navbar .nb-icon:hover {
-  background: rgba(255,255,255,0.06);
+  background: var(--nb-pill-bg);
   color: var(--nb-text);
 }
 #pt-navbar .nb-icon svg { width: 19px; height: 19px; }
@@ -285,14 +288,13 @@
   padding: 0 3px;
   pointer-events: none;
   line-height: 1;
-  box-shadow: 0 0 8px var(--nb-red-glow2);
 }
 
 /* separator */
 #pt-navbar .nb-sep {
   width: 1px;
   height: 20px;
-  background: rgba(255,255,255,0.1);
+  background: var(--nb-border);
   margin: 0 8px;
   flex-shrink: 0;
 }
@@ -311,14 +313,14 @@
   text-decoration: none;
   font-size: 13.5px;
   font-weight: 600;
-  border-radius: 6px;
+  border-radius: 7px;
   border: none;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   letter-spacing: 0.02em;
   transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
-  box-shadow: 0 2px 16px var(--nb-red-glow2), inset 0 1px 0 rgba(255,255,255,0.15);
+  box-shadow: 0 1px 4px var(--nb-red-glow2), 0 4px 16px var(--nb-red-glow2);
 }
 #pt-navbar .nb-book::before {
   content: '';
@@ -327,13 +329,13 @@
   left: -75%;
   width: 50%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.20), transparent);
   transform: skewX(-20deg);
   animation: nb-shimmer 3s ease-in-out infinite;
 }
 #pt-navbar .nb-book:hover {
   background: var(--nb-red-dim);
-  box-shadow: 0 4px 24px var(--nb-red-glow), inset 0 1px 0 rgba(255,255,255,0.15);
+  box-shadow: 0 4px 20px var(--nb-red-glow);
   transform: translateY(-1px);
 }
 #pt-navbar .nb-book svg { width: 13px; height: 13px; flex-shrink: 0; }
@@ -367,15 +369,15 @@
   position: fixed;
   inset: 0 0 0 auto;
   width: min(300px, 90vw);
-  background: var(--nb-drop-bg);
+  background: var(--nb-drawer-bg);
   z-index: 600;
   transform: translateX(100%);
   transition: transform 0.32s var(--nb-ease);
   display: flex;
   flex-direction: column;
-  box-shadow: -32px 0 80px rgba(0,0,0,0.8);
+  box-shadow: -4px 0 40px rgba(15, 23, 42, 0.12);
   overflow-y: auto;
-  border-left: 1px solid rgba(255,255,255,0.06);
+  border-left: 1px solid var(--nb-border);
 }
 #pt-navbar .nb-drawer.is-open { transform: translateX(0); }
 
@@ -383,44 +385,45 @@
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(15, 23, 42, 0.45);
   z-index: 590;
   backdrop-filter: blur(4px);
 }
 #pt-navbar .nb-backdrop.is-open { display: block; }
 
-/* drawer header with red accent */
+/* drawer header */
 #pt-navbar .nb-drawer-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 18px 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--nb-border);
   flex-shrink: 0;
-  background: linear-gradient(135deg, rgba(220,38,38,0.06) 0%, transparent 60%);
+  background: var(--nb-pill-bg);
 }
 
 #pt-navbar .nb-drawer-x {
   width: 34px;
   height: 34px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--nb-border);
+  border-radius: 7px;
   color: var(--nb-muted);
   font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 #pt-navbar .nb-drawer-x:hover {
-  background: rgba(255,255,255,0.1);
+  background: var(--nb-pill-bg);
   color: var(--nb-text);
+  border-color: #CBD5E1;
 }
 
 /* drawer links */
-#pt-navbar .nb-drawer-links { flex: 1; padding: 6px 0; }
+#pt-navbar .nb-drawer-links { flex: 1; padding: 8px 0; }
 
 #pt-navbar .nb-drawer-row {
   display: flex;
@@ -431,13 +434,13 @@
   text-decoration: none;
   font-size: 14.5px;
   font-weight: 500;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid var(--nb-border);
   cursor: pointer;
   transition: background 0.13s, color 0.13s, padding-left 0.18s var(--nb-ease);
   letter-spacing: 0.01em;
 }
 #pt-navbar .nb-drawer-row:hover {
-  background: rgba(220,38,38,0.07);
+  background: var(--nb-pill-bg);
   color: var(--nb-text);
   padding-left: 24px;
 }
@@ -445,11 +448,12 @@
 /* drawer footer */
 #pt-navbar .nb-drawer-foot {
   padding: 18px 20px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--nb-border);
   display: flex;
   flex-direction: column;
   gap: 10px;
   flex-shrink: 0;
+  background: var(--nb-pill-bg);
 }
 
 #pt-navbar .nb-drawer-book {
@@ -467,7 +471,7 @@
   font-weight: 600;
   overflow: hidden;
   transition: background 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 20px var(--nb-red-glow2);
+  box-shadow: 0 2px 12px var(--nb-red-glow2);
   letter-spacing: 0.02em;
 }
 #pt-navbar .nb-drawer-book::before {
@@ -475,13 +479,13 @@
   position: absolute;
   top: 0; left: -75%;
   width: 50%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
   transform: skewX(-20deg);
   animation: nb-shimmer 3.5s ease-in-out infinite;
 }
 #pt-navbar .nb-drawer-book:hover {
   background: var(--nb-red-dim);
-  box-shadow: 0 6px 28px var(--nb-red-glow);
+  box-shadow: 0 6px 24px var(--nb-red-glow);
 }
 
 #pt-navbar .nb-drawer-tel {
@@ -499,13 +503,8 @@
 #pt-navbar .nb-drawer-tel:hover { color: var(--nb-text); }
 
 /* ══════════════════════════════════════
-   KEYFRAMES
+   RESPONSIVE
 ══════════════════════════════════════ */
-@keyframes nb-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
 @media (max-width: 480px) {
   #pt-navbar .nb-inner { padding: 0 12px; }
   #pt-navbar .nb-drawer { width: min(280px, 90vw); }
@@ -525,6 +524,7 @@
   #pt-navbar .nb-indicator { transition: none; }
   #pt-navbar .nb-root::after { transition: none; }
 }
+
 </style>
 
 <div id="pt-navbar">
@@ -580,10 +580,20 @@
       {%- comment -%} Right-side actions {%- endcomment -%}
       <div class="nb-actions">
 
-        {%- comment -%} Account {%- endcomment -%}
-        {%- if shop.customer_accounts_enabled -%}
-          <a href="{% if customer %}{{ routes.account_url }}{% else %}{{ routes.account_login_url }}{% endif %}" class="nb-icon" aria-label="{% if customer %}Account{% else %}Log in{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        {%- comment -%} Garage/Account icon — garage when logged in, person when guest {%- endcomment -%}
+        {%- if customer -%}
+          <a href="/pages/garage" class="nb-icon nb-icon--garage" aria-label="My garage">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+              <path d="M9 21V12h6v9"/>
+            </svg>
+          </a>
+        {%- else -%}
+          <a href="{{ routes.account_login_url }}" class="nb-icon" aria-label="Sign in">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
           </a>
         {%- endif -%}
 
@@ -625,7 +635,7 @@
           {{- nav_logo | image_url: width: 160 | image_tag: alt: shop.name, style: 'height:30px;width:auto' -}}
         </a>
       {%- else -%}
-        <a href="{{ routes.root_url }}" style="font-size:16px;font-weight:700;color:#E8EAED;text-decoration:none">{{ shop.name }}</a>
+        <a href="{{ routes.root_url }}" style="font-size:16px;font-weight:700;color:#1E293B;text-decoration:none">{{ shop.name }}</a>
       {%- endif -%}
       <button class="nb-drawer-x" id="nb-close" aria-label="Close menu">&times;</button>
     </div>
