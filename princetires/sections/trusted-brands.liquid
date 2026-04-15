@@ -501,10 +501,13 @@
       var clone = origTrack.cloneNode(true);
       clone.removeAttribute('data-brand-tabs-track');
       clone.setAttribute('aria-hidden', 'true');
-      clone.querySelectorAll('button').forEach(function(b) {
+      var origBtns = origTrack.querySelectorAll('button');
+      clone.querySelectorAll('button').forEach(function(b, i) {
         b.setAttribute('tabindex', '-1');
         b.setAttribute('aria-hidden', 'true');
-        b.style.pointerEvents = 'none';
+        b.addEventListener('click', function() {
+          if (origBtns[i]) origBtns[i].click();
+        });
       });
       wrapper.appendChild(clone);
 
@@ -562,8 +565,7 @@
       tab.classList.add('trusted-brands__tab--active');
       tab.setAttribute('aria-selected', 'true');
 
-      /* Scroll active tab into view — only on user clicks, not on init */
-      if (scrollTab) tab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      /* scrollIntoView conflicts with marquee transform — omitted */
 
       if (this.viewAllName) this.viewAllName.textContent = brandName;
       if (this.viewAllLink) {
