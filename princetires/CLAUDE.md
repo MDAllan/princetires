@@ -2,6 +2,12 @@
 
 🚨 MANDATORY: YOU MUST CALL "learn_shopify_api" ONCE WHEN WORKING WITH LIQUID THEMES.
 
+🎨 MANDATORY: FOR EVERY DESIGN, UI, OR STYLING TASK — run the ui-ux-pro-max search script BEFORE implementing:
+```bash
+python3 ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py "<query>" --domain <style|color|typography|ux|product|landing>
+```
+The repo is at `c:\Users\madih\princetires\ui-ux-pro-max-skill\`. Use domain `html-tailwind` stack (default) for Shopify Liquid work.
+
 ## Theme Architecture
 
 **Key principles: focus on generating snippets, blocks, and sections; users may create templates using the theme editor**

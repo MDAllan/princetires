@@ -108,6 +108,179 @@
             {%- endif -%}
 
             <script src="{{ 'show-more.js' | asset_url }}" defer="defer"></script>
+
+            {%- comment -%} ── Tire Width & Ratio custom filters ── {%- endcomment -%}
+            {%- assign pt_width_param  = 'filter.p.m.custom.tire_width' -%}
+            {%- assign pt_profile_param = 'filter.p.m.custom.tire_profile' -%}
+            {%- assign pt_active_width  = request.params[pt_width_param] -%}
+            {%- assign pt_active_profile = request.params[pt_profile_param] -%}
+
+            {%- assign pt_widths  = '145,155,165,175,185,195,205,215,225,235,245,255,265,275,285,295,305,315,325' | split: ',' -%}
+            {%- assign pt_profiles = '25,30,35,40,45,50,55,60,65,70,75,80,85' | split: ',' -%}
+
+            {%- comment -%} Count active tire dimension filters for the badge {%- endcomment -%}
+            {%- assign pt_dim_active = 0 -%}
+            {%- if pt_active_width != blank -%}{%- assign pt_dim_active = pt_dim_active | plus: 1 -%}{%- endif -%}
+            {%- if pt_active_profile != blank -%}{%- assign pt_dim_active = pt_dim_active | plus: 1 -%}{%- endif -%}
+
+            <details
+              id="Details-pt-tire-dims-{{ section.id }}"
+              class="{% if filter_type == 'horizontal' %}disclosure-has-popup facets__disclosure{% else %}facets__disclosure-vertical{% endif %} js-filter pt-tire-dims"
+              data-index="0"
+              open
+            >
+              <summary class="facets__summary caption-large focus-offset">
+                <div>
+                  <span class="facets__summary-label">
+                    Tire Size
+                    {%- if filter_type == 'vertical' -%}
+                      <span class="facets__selected{% if pt_dim_active == 0 %} hidden{% endif %}">
+                        ({{ pt_dim_active }})
+                      </span>
+                    {%- endif -%}
+                  </span>
+                  {{- 'icon-caret.svg' | inline_asset_content -}}
+                </div>
+              </summary>
+
+              <div class="parent-display {% if filter_type == 'horizontal' %}facets__display{% else %}facets__display-vertical{% endif %} pt-tire-dims__panel">
+
+                {%- comment -%} ── Width ── {%- endcomment -%}
+                <p class="pt-tire-dims__label">Width</p>
+                <div class="pt-tire-dims__pills" role="group" aria-label="Tire width">
+                  {%- for w in pt_widths -%}
+                    {%- assign is_active = false -%}
+                    {%- if pt_active_width == w -%}{%- assign is_active = true -%}{%- endif -%}
+                    <button
+                      type="button"
+                      class="pt-tire-dims__pill{% if is_active %} pt-tire-dims__pill--active{% endif %}"
+                      data-pt-filter-param="{{ pt_width_param | escape }}"
+                      data-pt-filter-value="{{ w }}"
+                      aria-pressed="{{ is_active }}"
+                    >{{ w }}</button>
+                  {%- endfor -%}
+                </div>
+
+                {%- comment -%} ── Ratio / Profile ── {%- endcomment -%}
+                <p class="pt-tire-dims__label" style="margin-top:1.2rem">Ratio</p>
+                <div class="pt-tire-dims__pills" role="group" aria-label="Tire profile ratio">
+                  {%- for p in pt_profiles -%}
+                    {%- assign is_active = false -%}
+                    {%- if pt_active_profile == p -%}{%- assign is_active = true -%}{%- endif -%}
+                    <button
+                      type="button"
+                      class="pt-tire-dims__pill{% if is_active %} pt-tire-dims__pill--active{% endif %}"
+                      data-pt-filter-param="{{ pt_profile_param | escape }}"
+                      data-pt-filter-value="{{ p }}"
+                      aria-pressed="{{ is_active }}"
+                    >{{ p }}</button>
+                  {%- endfor -%}
+                </div>
+
+                {%- comment -%} Hidden inputs — Shopify's facets.js reads these to build the AJAX URL {%- endcomment -%}
+                {%- if pt_active_width != blank -%}
+                  <input type="hidden" name="{{ pt_width_param }}" value="{{ pt_active_width | escape }}" class="pt-tire-dims__input" data-pt-input="width">
+                {%- else -%}
+                  <input type="hidden" name="{{ pt_width_param }}" value="" class="pt-tire-dims__input" data-pt-input="width" disabled>
+                {%- endif -%}
+                {%- if pt_active_profile != blank -%}
+                  <input type="hidden" name="{{ pt_profile_param }}" value="{{ pt_active_profile | escape }}" class="pt-tire-dims__input" data-pt-input="profile">
+                {%- else -%}
+                  <input type="hidden" name="{{ pt_profile_param }}" value="" class="pt-tire-dims__input" data-pt-input="profile" disabled>
+                {%- endif -%}
+
+                {%- if pt_dim_active > 0 -%}
+                  <facet-remove>
+                    <a
+                      href="{{ results_url }}{%- for filter in results.filters -%}{%- for v in filter.active_values -%}&{{ filter.param_name | url_encode }}={{ v.value | url_encode }}{%- endfor -%}{%- endfor -%}"
+                      class="facets__reset link underlined-link"
+                      style="margin-top:0.8rem;display:inline-block;font-size:1.2rem"
+                    >Clear size filters</a>
+                  </facet-remove>
+                {%- endif -%}
+              </div>
+            </details>
+
+            <style>
+              .pt-tire-dims__panel { padding: 1rem 1.2rem 1.4rem; }
+              .pt-tire-dims__label {
+                font-size: 1.1rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: rgba(var(--color-foreground), 0.65);
+                margin: 0 0 0.7rem;
+              }
+              .pt-tire-dims__pills {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+              }
+              .pt-tire-dims__pill {
+                padding: 0.35rem 0.85rem;
+                border: 1px solid rgba(var(--color-foreground), 0.2);
+                border-radius: 3px;
+                background: transparent;
+                font-size: 1.2rem;
+                font-family: inherit;
+                color: rgb(var(--color-foreground));
+                cursor: pointer;
+                transition: background 0.15s, border-color 0.15s, color 0.15s;
+                line-height: 1.4;
+              }
+              .pt-tire-dims__pill:hover {
+                border-color: rgba(var(--color-foreground), 0.5);
+                background: rgba(var(--color-foreground), 0.05);
+              }
+              .pt-tire-dims__pill--active {
+                background: rgb(var(--color-foreground));
+                color: rgb(var(--color-background));
+                border-color: rgb(var(--color-foreground));
+              }
+              .pt-tire-dims__pill--active:hover {
+                opacity: 0.85;
+              }
+            </style>
+
+            <script>
+              (function() {
+                var form = document.getElementById('FacetFiltersForm') || document.getElementById('FacetFiltersFormMobile');
+                if (!form) return;
+
+                form.querySelectorAll('.pt-tire-dims__pill').forEach(function(btn) {
+                  btn.addEventListener('click', function() {
+                    var param = btn.dataset.ptFilterParam;
+                    var val   = btn.dataset.ptFilterValue;
+                    var isActive = btn.getAttribute('aria-pressed') === 'true';
+
+                    /* Find the matching hidden input */
+                    var inputKey = param.includes('tire_width') ? 'width' : 'profile';
+                    var input = form.querySelector('[data-pt-input="' + inputKey + '"]');
+
+                    if (isActive) {
+                      /* Deselect — disable so it's not submitted */
+                      if (input) { input.value = ''; input.disabled = true; }
+                      btn.setAttribute('aria-pressed', 'false');
+                      btn.classList.remove('pt-tire-dims__pill--active');
+                    } else {
+                      /* Deselect siblings in same group */
+                      btn.closest('.pt-tire-dims__pills').querySelectorAll('.pt-tire-dims__pill--active').forEach(function(sib) {
+                        sib.classList.remove('pt-tire-dims__pill--active');
+                        sib.setAttribute('aria-pressed', 'false');
+                      });
+                      /* Select this one */
+                      if (input) { input.value = val; input.disabled = false; }
+                      btn.setAttribute('aria-pressed', 'true');
+                      btn.classList.add('pt-tire-dims__pill--active');
+                    }
+
+                    /* Trigger Shopify's AJAX facet reload */
+                    form.dispatchEvent(new Event('input', { bubbles: true }));
+                  });
+                });
+              })();
+            </script>
+
             {% comment %} Filters for both horizontal and vertical filter {% endcomment %}
             {%- for filter in results.filters -%}
               {% liquid

@@ -114,11 +114,55 @@
       "highPrice": {{ product.price_max | money_without_currency | strip_html | json }},
       "offerCount": {{ product.variants.size | json }},
       "availability": "https://schema.org/{% if product.available %}InStock{% else %}OutOfStock{% endif %}",
+      "priceValidUntil": "{{ 'now' | date: '%Y' }}-12-31",
       "seller": {
         "@type": "Organization",
         "name": {{ shop.name | json }}
+      },
+      "shippingDetails": {
+        "@type": "OfferShippingDetails",
+        "shippingRate": {
+          "@type": "MonetaryAmount",
+          "value": "0",
+          "currency": {{ cart.currency.iso_code | json }}
+        },
+        "shippingDestination": {
+          "@type": "DefinedRegion",
+          "addressCountry": "CA"
+        },
+        "deliveryTime": {
+          "@type": "ShippingDeliveryTime",
+          "handlingTime": {
+            "@type": "QuantitativeValue",
+            "minValue": 1,
+            "maxValue": 2,
+            "unitCode": "DAY"
+          },
+          "transitTime": {
+            "@type": "QuantitativeValue",
+            "minValue": 3,
+            "maxValue": 5,
+            "unitCode": "DAY"
+          }
+        }
+      },
+      "hasMerchantReturnPolicy": {
+        "@type": "MerchantReturnPolicy",
+        "applicableCountry": "CA",
+        "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+        "merchantReturnDays": 30,
+        "returnMethod": "https://schema.org/ReturnByMail",
+        "returnFees": "https://schema.org/FreeReturn"
       }
     },
+    {%- if product.metafields.reviews.rating.value != blank -%}
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": {{ product.metafields.reviews.rating.value.rating | json }},
+        "bestRating": {{ product.metafields.reviews.rating.value.scale_max | json }},
+        "ratingCount": {{ product.metafields.reviews.rating_count | default: 1 | json }}
+      },
+    {%- endif -%}
     {%- if product.metafields.custom.mpn != blank -%}
       "mpn": {{ product.metafields.custom.mpn | json }},
     {%- endif -%}

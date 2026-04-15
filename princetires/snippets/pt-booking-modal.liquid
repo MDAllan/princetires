@@ -38,14 +38,20 @@
     {%- comment -%} Step 1 {%- endcomment -%}
     <div class="bk-page" id="bk-page-1">
 
-      <div class="bk-tire-row">
-        <div class="bk-tire-name" id="bk-tire-name-display">Tire</div>
-        <span class="bk-tire-badge" id="bk-tire-size-display">—</span>
-      </div>
-
-      <div class="bk-tire-row">
-        <div class="bk-tire-name" id="bk-vehicle-display-name">Vehicle</div>
-        <span class="bk-tire-badge bk-tire-badge--gray" id="bk-vehicle-display-price">—</span>
+      <div class="bk-order-card">
+        <div class="bk-order-header">
+          <div class="bk-order-tire-info">
+            <div class="bk-order-tire-name" id="bk-tire-name-display">Tire</div>
+            <span class="bk-tire-badge" id="bk-tire-size-display">—</span>
+          </div>
+          <div class="bk-order-veh-info">
+            <span id="bk-vehicle-display-name">Vehicle</span>
+            <span id="bk-vehicle-display-price">—</span>
+          </div>
+        </div>
+        <div class="bk-order-lines" id="bk-order-lines"></div>
+        <div class="bk-order-total-row" id="bk-order-total-row"></div>
+        <p class="bk-order-note">Est. price · confirmed at time of service</p>
       </div>
 
       {%- comment -%} Hidden elements kept for JS compatibility {%- endcomment -%}
@@ -53,7 +59,17 @@
       <div id="bk-vehicle-section" hidden><div class="bk-vehicle-grid" id="bk-vehicles"></div></div>
 
       <p class="bk-label">Tires</p>
-      <div class="bk-qty-grid" id="bk-qty-grid"></div>
+      <select class="bk-qty-select" id="bk-qty-select">
+        <option value="1">1 tire</option>
+        <option value="2">2 tires</option>
+        <option value="3">3 tires</option>
+        <option value="4" selected>4 tires</option>
+        <option value="5">5 tires</option>
+        <option value="6">6 tires</option>
+        <option value="7">7 tires</option>
+        <option value="8">8 tires</option>
+      </select>
+      <div id="bk-qty-grid" hidden></div>
 
       <p class="bk-label">Add-ons</p>
       <div class="bk-addons">
@@ -69,7 +85,7 @@
         </label>
       </div>
 
-      <div class="bk-price-box" id="bk-price-box"></div>
+      <div id="bk-price-box" hidden></div>
       <button class="bk-next-btn" onclick="bkGoTo(2)">Pick a time &rarr;</button>
     </div>
 
@@ -146,21 +162,21 @@
 
 <style>
 /* ── Layout ── */
-.bk-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
+.bk-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.25rem 1.5rem}
 .bk-overlay[hidden]{display:none}
-.bk-modal{position:relative;background:#fff;border-radius:14px;max-width:390px;width:100%;max-height:86vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.12);animation:bk-up .22s ease-out;font-family:'Outfit',sans-serif;color:#111}
+.bk-modal{position:relative;background:#fff;border-radius:14px;max-width:440px;width:100%;max-height:86vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.12);animation:bk-up .22s ease-out;font-family:'Outfit',sans-serif;color:#111}
 @keyframes bk-up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── Header ── */
-.bk-header{display:flex;align-items:center;gap:.75rem;padding:.9rem 1rem .75rem;border-bottom:1px solid #f3f4f6}
-.bk-header-title{font-size:.8rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;flex:1}
+.bk-header{display:flex;align-items:center;gap:.75rem;padding:.9rem 1.25rem .75rem;border-bottom:1px solid #f3f4f6}
+.bk-header-title{font-size:1rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;flex:1}
 .bk-close{background:none;border:none;color:#9ca3af;cursor:pointer;padding:4px;display:flex;border-radius:6px;transition:color .15s}
 .bk-close:hover{color:#111}
 
 /* ── Stepper (dots) ── */
 .bk-stepper{display:flex;align-items:center;gap:.3rem;transition:opacity .3s}
 .bk-step{display:flex;align-items:center}
-.bk-step-circle{width:22px;height:22px;border-radius:50%;border:1.5px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:600;color:#d1d5db;transition:all .2s}
+.bk-step-circle{width:26px;height:26px;border-radius:50%;border:1.5px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:600;color:#d1d5db;transition:all .2s}
 .bk-step-circle--active{background:#dc2626;border-color:#dc2626;color:#fff}
 .bk-step-circle--done{background:#16a34a;border-color:#16a34a;color:#fff}
 .bk-step-label{display:none}
@@ -168,23 +184,23 @@
 .bk-step-line--done{background:#16a34a}
 
 /* ── Page content ── */
-.bk-page{padding:1rem 1rem 1.1rem}
+.bk-page{padding:1rem 1.25rem 1.25rem}
 
 /* ── Tire row ── */
 .bk-tire-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;padding-bottom:.9rem;border-bottom:1px solid #f3f4f6}
-.bk-tire-name{font-size:.9rem;font-weight:600;color:#111;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:.5rem}
-.bk-tire-badge{font-size:.78rem;font-weight:600;color:#dc2626;background:#fef2f2;padding:.2rem .55rem;border-radius:20px;flex-shrink:0;white-space:nowrap}
+.bk-tire-name{font-size:1.1rem;font-weight:600;color:#111;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:.5rem}
+.bk-tire-badge{font-size:1rem;font-weight:600;color:#dc2626;background:#fef2f2;padding:.2rem .6rem;border-radius:20px;flex-shrink:0;white-space:nowrap}
 .bk-tire-badge--gray{color:#6b7280;background:#f3f4f6}
 
 /* ── Saved vehicle ── */
-.bk-saved-vehicle{display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:#374151;margin-bottom:.8rem;padding:.5rem .7rem;background:#f0fdf4;border-radius:8px}
+.bk-saved-vehicle{display:flex;align-items:center;gap:.4rem;font-size:1rem;color:#374151;margin-bottom:.8rem;padding:.5rem .7rem;background:#f0fdf4;border-radius:8px}
 .bk-saved-vehicle[hidden]{display:none}
-.bk-link-btn{background:none;border:none;color:#F5820B;font-family:'Outfit',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;padding:0;margin-left:auto;text-decoration:underline;text-underline-offset:2px}
+.bk-link-btn{background:none;border:none;color:#F5820B;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;padding:0;margin-left:auto;text-decoration:underline;text-underline-offset:2px}
 
 /* ── Section label ── */
-.bk-label{font-size:.72rem;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin:.9rem 0 .4rem}
+.bk-label{font-size:.95rem;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin:.9rem 0 .4rem}
 .bk-label:first-of-type{margin-top:0}
-.bk-hours-note{font-size:.75rem;color:#9ca3af;margin:.6rem 0 0;text-align:center}
+.bk-hours-note{font-size:1rem;color:#9ca3af;margin:.6rem 0 0;text-align:center}
 .bk-optional{color:#9ca3af;font-weight:400}
 
 /* ── Vehicle chips ── */
@@ -196,50 +212,59 @@
 .bk-vehicle-card--active{border-color:#dc2626;background:#fef2f2}
 .bk-vehicle-card--active .bk-vehicle-name{color:#dc2626}
 .bk-vehicle-icon{display:none}
-.bk-vehicle-name{font-size:.78rem;font-weight:500;color:#374151}
+.bk-vehicle-name{font-size:1rem;font-weight:500;color:#374151}
 .bk-vehicle-card--active .bk-vehicle-name{color:#dc2626;font-weight:600}
 .bk-vehicle-price{display:none}
 
-/* ── Qty grid ── */
-.bk-qty-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem}
-.bk-qty-btn{padding:.55rem .4rem;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-family:'Outfit',sans-serif;font-size:.88rem;font-weight:500;color:#374151;cursor:pointer;text-align:center;transition:all .15s}
-.bk-qty-btn:hover{border-color:#dc2626}
-.bk-qty-btn--active{border-color:#dc2626;background:#fef2f2;color:#dc2626}
-.bk-qty-input{width:100%;border:none;background:transparent;font-family:'Outfit',sans-serif;font-size:.88rem;font-weight:500;text-align:center;outline:none;color:#374151;padding:0}
-.bk-qty-input::placeholder{color:#9ca3af}
-.bk-qty-btn--active .bk-qty-input{color:#dc2626}
+/* ── Qty dropdown ── */
+.bk-qty-select{width:100%;padding:.7rem .85rem;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:500;color:#111;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;transition:border-color .15s}
+.bk-qty-select:focus,.bk-qty-select:hover{border-color:#dc2626}
 
 /* ── Addons ── */
 .bk-addons{display:flex;flex-direction:column}
-.bk-addon{display:flex;align-items:center;gap:.5rem;padding:.5rem 0;border-bottom:1px solid #f3f4f6;cursor:pointer;font-size:.85rem;color:#374151;transition:color .15s}
+.bk-addon{display:flex;align-items:center;gap:.5rem;padding:.65rem 0;border-bottom:1px solid #f3f4f6;cursor:pointer;font-size:1.05rem;color:#374151;transition:color .15s}
 .bk-addon:last-child{border-bottom:none}
-.bk-addon input{accent-color:#dc2626;flex-shrink:0;width:15px;height:15px;cursor:pointer}
-.bk-addon-name{flex:1;font-size:.85rem;font-weight:500;color:#374151}
+.bk-addon input{accent-color:#dc2626;flex-shrink:0;width:19px;height:19px;cursor:pointer}
+.bk-addon-name{flex:1;font-size:1.05rem;font-weight:500;color:#374151}
 .bk-addon--active .bk-addon-name{color:#111}
-.bk-addon-price{flex-shrink:0;color:#9ca3af;font-size:.78rem;font-weight:500}
+.bk-addon-price{flex-shrink:0;color:#9ca3af;font-size:1rem;font-weight:500}
 .bk-addon--active .bk-addon-price{color:#dc2626}
 
 /* ── Price box ── */
-.bk-price-box{margin-top:.9rem;padding-top:.8rem;border-top:1px solid #f3f4f6;font-size:.85rem}
-.bk-price-row{display:flex;justify-content:space-between;padding:.18rem 0;color:#9ca3af;font-size:.8rem}
-.bk-price-row--total{color:#111;font-weight:700;font-size:.9rem;padding-top:.4rem;margin-top:.25rem;border-top:1px solid #f3f4f6}
+.bk-price-box{margin-top:.9rem;padding-top:.8rem;border-top:1px solid #f3f4f6;font-size:1.05rem}
+.bk-price-row{display:flex;justify-content:space-between;padding:.25rem 0;color:#9ca3af;font-size:1rem}
+.bk-price-row--total{color:#111;font-weight:700;font-size:1.1rem;padding-top:.4rem;margin-top:.25rem;border-top:1px solid #f3f4f6}
 .bk-price-row--total .bk-price-val{color:#16a34a}
-.bk-price-note{font-size:.72rem;color:#9ca3af;margin-top:.4rem;text-align:center}
+.bk-price-note{font-size:.95rem;color:#9ca3af;margin-top:.4rem;text-align:center}
+
+/* ── Order summary card (Step 1) ── */
+.bk-order-card{background:#f7f7f8;border-radius:10px;padding:.85rem 1rem .65rem;margin-bottom:.9rem}
+.bk-order-header{display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;padding-bottom:.7rem;margin-bottom:.65rem;border-bottom:1px solid #e5e7eb}
+.bk-order-tire-info{min-width:0;flex:1}
+.bk-order-tire-name{font-size:1rem;font-weight:700;color:#111;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-order-veh-info{text-align:right;flex-shrink:0}
+.bk-order-veh-info span:first-child{display:block;font-size:.85rem;color:#6b7280}
+.bk-order-veh-info span:last-child{display:block;font-size:.85rem;font-weight:600;color:#374151}
+.bk-order-lines{display:flex;flex-direction:column;gap:.15rem;margin-bottom:.5rem}
+.bk-order-row{display:flex;justify-content:space-between;font-size:.95rem;color:#6b7280;padding:.1rem 0}
+.bk-order-total-row{display:flex;justify-content:space-between;border-top:1.5px solid #d1d5db;padding-top:.55rem;font-size:1.05rem;font-weight:700;color:#111}
+.bk-order-total-val{color:#16a34a;font-size:1.1rem;font-weight:700}
+.bk-order-note{font-size:.8rem;color:#9ca3af;text-align:center;margin:.45rem 0 0;padding-top:.4rem;border-top:1px solid #ececec}
 
 /* ── Buttons ── */
-.bk-next-btn{display:block;width:100%;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:1rem;transition:background .15s;text-align:center}
+.bk-next-btn{display:block;width:100%;padding:13px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:600;cursor:pointer;margin-top:1rem;transition:background .15s;text-align:center}
 .bk-next-btn:hover{background:#b91c1c}
 .bk-next-btn:disabled{opacity:.4;cursor:not-allowed}
-.bk-back-btn{padding:10px 16px;border:1.5px solid #e5e7eb;background:#fff;color:#6b7280;font-family:'Outfit',sans-serif;font-size:.88rem;font-weight:500;border-radius:8px;cursor:pointer;transition:all .15s}
+.bk-back-btn{padding:13px 18px;border:1.5px solid #e5e7eb;background:#fff;color:#6b7280;font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:500;border-radius:8px;cursor:pointer;transition:all .15s}
 .bk-back-btn:hover{border-color:#d1d5db;color:#111}
 .bk-nav-row{display:flex;gap:.5rem;margin-top:1rem}
 .bk-nav-row .bk-next-btn{flex:1;margin-top:0}
-.bk-confirm-btn{flex:1;padding:10px;background:#16a34a;border:none;color:#fff;font-family:'Outfit',sans-serif;font-size:.9rem;font-weight:600;border-radius:8px;cursor:pointer;transition:background .15s}
+.bk-confirm-btn{flex:1;padding:13px;background:#16a34a;border:none;color:#fff;font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:600;border-radius:8px;cursor:pointer;transition:background .15s}
 .bk-confirm-btn:hover:not(:disabled){background:#15803d}
 .bk-confirm-btn:disabled{opacity:.5;cursor:not-allowed}
 
 /* ── Form error ── */
-.bk-form-error{background:#fef2f2;border-radius:7px;padding:.6rem .8rem;font-size:.82rem;color:#dc2626;margin-top:.7rem}
+.bk-form-error{background:#fef2f2;border-radius:7px;padding:.6rem .8rem;font-size:1rem;color:#dc2626;margin-top:.7rem}
 .bk-form-error[hidden]{display:none}
 .bk-field--error input,.bk-field--error textarea{border-color:#dc2626!important}
 
@@ -248,26 +273,26 @@
 .bk-week-arrow{width:30px;height:30px;border:1.5px solid #e5e7eb;border-radius:7px;background:#fff;font-size:1.2rem;color:#374151;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .bk-week-arrow:hover{border-color:#dc2626;color:#dc2626}
 .bk-week-arrow:disabled{opacity:.3;cursor:not-allowed}
-.bk-week-label{font-size:.85rem;font-weight:500;color:#111}
+.bk-week-label{font-size:1.05rem;font-weight:500;color:#111}
 .bk-day-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem;margin-bottom:.9rem}
-.bk-day-card{padding:.4rem 0;border:1.5px solid #f3f4f6;border-radius:8px;text-align:center;cursor:pointer;transition:all .15s;background:#fff}
+.bk-day-card{padding:.45rem 0;border:1.5px solid #f3f4f6;border-radius:8px;text-align:center;cursor:pointer;transition:all .15s;background:#fff}
 .bk-day-card:hover:not(.bk-day-card--past){border-color:#dc2626}
 .bk-day-card--today{border-color:#e5e7eb;background:#fafafa}
 .bk-day-card--today .bk-day-num{color:#dc2626}
 .bk-day-card--past{opacity:.3;cursor:not-allowed;background:#fafafa}
 .bk-day-card--active{border-color:#dc2626;background:#fef2f2}
 .bk-day-card--active .bk-day-name,.bk-day-card--active .bk-day-num{color:#dc2626}
-.bk-day-name{font-size:.65rem;color:#9ca3af}
-.bk-day-num{font-size:.9rem;font-weight:600;color:#111}
+.bk-day-name{font-size:.85rem;color:#9ca3af}
+.bk-day-num{font-size:1.1rem;font-weight:600;color:#111}
 .bk-time-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.3rem}
-.bk-time-slot{padding:.42rem;border:1.5px solid #f3f4f6;border-radius:7px;text-align:center;font-size:.78rem;color:#374151;cursor:pointer;transition:all .15s;background:#fff}
+.bk-time-slot{padding:.55rem;border:1.5px solid #f3f4f6;border-radius:7px;text-align:center;font-size:1rem;color:#374151;cursor:pointer;transition:all .15s;background:#fff}
 .bk-time-slot:hover{border-color:#dc2626;color:#dc2626}
 .bk-time-slot--active{border-color:#dc2626;background:#fef2f2;color:#dc2626;font-weight:600}
 .bk-time-slot--booked{background:#fafafa;color:#d1d5db;text-decoration:line-through;cursor:not-allowed;border-color:#f3f4f6}
 
 /* ── Step 3 summary ── */
 .bk-summary{padding-bottom:.8rem;margin-bottom:.8rem;border-bottom:1px solid #f3f4f6}
-.bk-summary-row{display:flex;justify-content:space-between;padding:.22rem 0;font-size:.82rem}
+.bk-summary-row{display:flex;justify-content:space-between;padding:.3rem 0;font-size:1.05rem}
 .bk-summary-row:last-child{border-bottom:none}
 .bk-summary-label{color:#9ca3af}
 .bk-summary-val{color:#111;font-weight:600;text-align:right;max-width:60%}
@@ -276,26 +301,32 @@
 /* ── Form ── */
 .bk-form{display:flex;flex-direction:column;gap:.6rem}
 .bk-form-row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
-.bk-field label{display:block;font-size:.75rem;font-weight:500;color:#6b7280;margin-bottom:.2rem}
-.bk-field input,.bk-field textarea{width:100%;padding:.55rem .75rem;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Outfit',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box;color:#111;transition:border-color .15s}
+.bk-field label{display:block;font-size:1rem;font-weight:500;color:#6b7280;margin-bottom:.3rem}
+.bk-field input,.bk-field textarea{width:100%;padding:.7rem .85rem;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Outfit',sans-serif;font-size:1.1rem;outline:none;box-sizing:border-box;color:#111;transition:border-color .15s}
 .bk-field input:focus,.bk-field textarea:focus{border-color:#dc2626}
 .bk-field textarea{resize:none}
 
 /* ── Done page ── */
 .bk-done-icon{width:44px;height:44px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .7rem}
-.bk-done-title{font-size:1.1rem;font-weight:700;color:#111;text-align:center;margin:0 0 .2rem}
-.bk-done-sub{font-size:.82rem;color:#9ca3af;text-align:center;margin:0 0 .9rem}
+.bk-done-title{font-size:1.4rem;font-weight:700;color:#111;text-align:center;margin:0 0 .2rem}
+.bk-done-sub{font-size:1.05rem;color:#9ca3af;text-align:center;margin:0 0 .9rem}
 .bk-done-card{padding:.7rem 0;margin-bottom:.9rem;border-top:1px solid #f3f4f6;border-bottom:1px solid #f3f4f6}
 .bk-done-actions{display:flex;gap:.5rem}
-.bk-cal-btn{flex:1;padding:9px;border:1.5px solid #e5e7eb;background:#fff;color:#374151;font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;border-radius:8px;cursor:pointer;transition:all .15s}
+.bk-cal-btn{flex:1;padding:12px;border:1.5px solid #e5e7eb;background:#fff;color:#374151;font-family:'Outfit',sans-serif;font-weight:600;font-size:1.05rem;border-radius:8px;cursor:pointer;transition:all .15s}
 .bk-cal-btn:hover{border-color:#16a34a;color:#16a34a}
-.bk-done-btn{flex:1;padding:9px;border:none;background:#16a34a;color:#fff;font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;border-radius:8px;cursor:pointer;transition:background .15s}
+.bk-done-btn{flex:1;padding:12px;border:none;background:#16a34a;color:#fff;font-family:'Outfit',sans-serif;font-weight:600;font-size:1.05rem;border-radius:8px;cursor:pointer;transition:background .15s}
 .bk-done-btn:hover{background:#15803d}
+
+/* ── Tablet ── */
+@media(max-width:640px){
+  .bk-overlay{padding:1rem}
+  .bk-modal{max-width:100%}
+}
 
 /* ── Mobile ── */
 @media(max-width:480px){
-  .bk-modal{border-radius:14px 14px 0 0;max-height:92vh;align-self:flex-end}
-  .bk-overlay{align-items:flex-end;padding:0}
+  .bk-modal{border-radius:14px 14px 0 0;max-height:92vh;align-self:flex-end;margin:0 12px;width:calc(100% - 24px)}
+  .bk-overlay{align-items:flex-end;padding:0 0 0 0}
   .bk-form-row{grid-template-columns:1fr}
   .bk-time-grid{grid-template-columns:repeat(3,1fr)}
 }
@@ -306,7 +337,7 @@
   var BOOKING_API = 'https://prince-tires-booking.vercel.app/api/book';
   var AVAILABILITY_API = 'https://prince-tires-booking.vercel.app/api/availability';
 
-  var st = { tireName: '', tireSize: '', vehicle: 'passenger', qty: 4, tpms: false, disposal: true, date: null, time: null, savedVehicle: null };
+  var st = { tireName: '', tireSize: '', tirePrice: 0, vehicle: 'passenger', qty: 4, tpms: false, disposal: true, date: null, time: null, savedVehicle: null };
   var wk = 0;
 
   var vehs = [
@@ -340,12 +371,13 @@
   }
 
   function calcPrice() {
+    var tp = st.tirePrice > 0 ? st.tirePrice * st.qty : 0;
     var i = vehPrice() * st.qty;
     var t = st.tpms ? 75 * st.qty : 0;
     var d = st.disposal ? 5 * st.qty : 0;
-    var s = i + t + d;
+    var s = tp + i + t + d;
     var g = s * 0.05;
-    return { install: i, tpms: t, disposal: d, subtotal: s, gst: g, total: s + g };
+    return { tires: tp, install: i, tpms: t, disposal: d, subtotal: s, gst: g, total: s + g };
   }
 
   function autoDetectVehicle(tireSize, garage) {
@@ -373,18 +405,23 @@
     return 'passenger';
   }
 
-  // ── Render: price estimate ───────────────────────────────────────────────
+  // ── Render: order summary card (Step 1) ─────────────────────────────────
   function renderPrice() {
     var c = calcPrice();
+    var linesEl = document.getElementById('bk-order-lines');
+    var totalEl = document.getElementById('bk-order-total-row');
+    if (!linesEl || !totalEl) return;
+
     var h = '';
-    h += '<div class="bk-price-row"><span>Installation (' + st.qty + ' × $' + vehPrice() + ')</span><span>$' + c.install.toFixed(2) + '</span></div>';
-    if (st.tpms) h += '<div class="bk-price-row"><span>TPMS sensors (' + st.qty + ' × $75)</span><span>$' + c.tpms.toFixed(2) + '</span></div>';
-    if (st.disposal) h += '<div class="bk-price-row"><span>Tire disposal (' + st.qty + ' × $5)</span><span>$' + c.disposal.toFixed(2) + '</span></div>';
-    h += '<div class="bk-price-row"><span>Subtotal</span><span>$' + c.subtotal.toFixed(2) + '</span></div>';
-    h += '<div class="bk-price-row"><span>GST (5%)</span><span>$' + c.gst.toFixed(2) + '</span></div>';
-    h += '<div class="bk-price-row bk-price-row--total"><span>Total (incl. GST)</span><span class="bk-price-val">$' + c.total.toFixed(2) + '</span></div>';
-    h += '<p class="bk-price-note">Final price confirmed at time of service</p>';
-    document.getElementById('bk-price-box').innerHTML = h;
+    if (st.tirePrice > 0) {
+      h += '<div class="bk-order-row"><span>' + st.qty + ' tire' + (st.qty !== 1 ? 's' : '') + ' × $' + st.tirePrice.toFixed(2) + '</span><span>$' + c.tires.toFixed(2) + '</span></div>';
+    }
+    h += '<div class="bk-order-row"><span>Installation × ' + st.qty + ' ($' + vehPrice() + '/tire)</span><span>$' + c.install.toFixed(2) + '</span></div>';
+    if (st.tpms) h += '<div class="bk-order-row"><span>TPMS sensors × ' + st.qty + '</span><span>+$' + c.tpms.toFixed(2) + '</span></div>';
+    if (st.disposal) h += '<div class="bk-order-row"><span>Tire disposal × ' + st.qty + '</span><span>+$' + c.disposal.toFixed(2) + '</span></div>';
+    h += '<div class="bk-order-row"><span>GST (5%)</span><span>$' + c.gst.toFixed(2) + '</span></div>';
+    linesEl.innerHTML = h;
+    totalEl.innerHTML = '<span>Total (incl. GST)</span><span class="bk-order-total-val">$' + c.total.toFixed(2) + '</span>';
   }
 
   // ── Render: vehicle display (read-only) ──────────────────────────────────
@@ -394,32 +431,20 @@
     var priceEl = document.getElementById('bk-vehicle-display-price');
     if (nameEl) nameEl.textContent = v ? v.name : 'Vehicle';
     if (priceEl) priceEl.textContent = v && v.price ? '$' + v.price + '/tire' : 'Ask us';
+    renderPrice();
   }
 
-  // ── Render: qty buttons ──────────────────────────────────────────────────
+  // ── Render: qty dropdown ─────────────────────────────────────────────────
   function renderQty() {
-    var opts = [1, 2, 4, 'Other'];
-    document.getElementById('bk-qty-grid').innerHTML = opts.map(function (q) {
-      var isOther = q === 'Other';
-      var isActive = isOther ? (st.qty === 3 || st.qty > 4) : st.qty === q;
-      if (isOther) {
-        return '<div class="bk-qty-btn' + (isActive ? ' bk-qty-btn--active' : '') + '" data-q="Other">'
-          + '<input type="number" class="bk-qty-input" placeholder="Other" min="1" max="20" value="' + (isActive ? st.qty : '') + '" data-qty-other></div>';
-      }
-      return '<button class="bk-qty-btn' + (isActive ? ' bk-qty-btn--active' : '') + '" data-q="' + q + '">'
-        + '<strong>' + q + '</strong><span style="font-size:.75rem;color:#9ca3af;display:block">tire' + (q > 1 ? 's' : '') + '</span></button>';
-    }).join('');
-
-    document.querySelectorAll('.bk-qty-btn[data-q]:not([data-q="Other"])').forEach(function (el) {
-      el.addEventListener('click', function () { st.qty = parseInt(this.dataset.q); renderQty(); renderPrice(); });
-    });
-
-    var oi = document.querySelector('[data-qty-other]');
-    if (oi) {
-      oi.addEventListener('input', function () { var n = parseInt(this.value); if (n > 0) { st.qty = n; renderPrice(); } });
-      oi.addEventListener('focus', function () {
-        this.closest('.bk-qty-btn').classList.add('bk-qty-btn--active');
-        document.querySelectorAll('.bk-qty-btn:not([data-q="Other"])').forEach(function (b) { b.classList.remove('bk-qty-btn--active'); });
+    var sel = document.getElementById('bk-qty-select');
+    if (!sel) return;
+    sel.value = String(st.qty);
+    if (!sel._wired) {
+      sel._wired = true;
+      sel.addEventListener('change', function () {
+        st.qty = parseInt(this.value);
+        renderPrice();
+        try { localStorage.setItem('pt-booking-qty', String(st.qty)); } catch (e) {}
       });
     }
   }
@@ -480,12 +505,18 @@
     }
     document.getElementById('bk-time-grid').innerHTML = '<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Checking availability…</p>';
     var booked = [];
+    var allDayBlocked = false;
     try {
       var ds = st.date.toISOString().split('T')[0];
       var r = await fetch(AVAILABILITY_API + '?date=' + ds);
       var data = await r.json();
       booked = data.booked || [];
+      allDayBlocked = data.allDayBlocked || false;
     } catch (e) {}
+    if (allDayBlocked) {
+      document.getElementById('bk-time-grid').innerHTML = '<p style="color:#dc2626;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">Not available this day — please pick another date.</p>';
+      return;
+    }
     document.getElementById('bk-time-grid').innerHTML = slots.map(function (s) {
       var isBooked = booked.indexOf(s) > -1;
       return '<div class="bk-time-slot' + (st.time === s ? ' bk-time-slot--active' : '') + (isBooked ? ' bk-time-slot--booked' : '') + '" data-time="' + s + '"' + (isBooked ? ' title="Already booked"' : '') + '>' + s + '</div>';
@@ -513,6 +544,10 @@
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire</span><span class="bk-summary-val">' + (st.tireSize || '—') + ' × ' + st.qty + '</span></div>';
     if (addons.length) h += '<div class="bk-summary-row"><span class="bk-summary-label">Add-ons</span><span class="bk-summary-val">' + addons.join(', ') + '</span></div>';
+    if (st.tirePrice > 0) h += '<div class="bk-summary-row"><span class="bk-summary-label">Tires</span><span class="bk-summary-val">$' + c.tires.toFixed(2) + '</span></div>';
+    h += '<div class="bk-summary-row"><span class="bk-summary-label">Installation</span><span class="bk-summary-val">$' + c.install.toFixed(2) + '</span></div>';
+    if (st.tpms) h += '<div class="bk-summary-row"><span class="bk-summary-label">TPMS sensors</span><span class="bk-summary-val">$' + c.tpms.toFixed(2) + '</span></div>';
+    if (st.disposal) h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire disposal</span><span class="bk-summary-val">$' + c.disposal.toFixed(2) + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Subtotal</span><span class="bk-summary-val">$' + c.subtotal.toFixed(2) + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">GST (5%)</span><span class="bk-summary-val">$' + c.gst.toFixed(2) + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label" style="font-weight:700;color:#111">Total (incl. GST)</span><span class="bk-summary-val bk-summary-val--green">$' + c.total.toFixed(2) + '</span></div>';
@@ -532,6 +567,7 @@
   window.openBookingModal = function (btn) {
     st.tireName = btn.dataset.tireName || 'Tire';
     st.tireSize = btn.dataset.tireSize || '';
+    st.tirePrice = parseInt(btn.dataset.tirePrice || '0') / 100;
     st.tpms = false;
     st.disposal = true;
     st.date = null;

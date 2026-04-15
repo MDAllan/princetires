@@ -40,7 +40,7 @@
         {%- else -%}
           <search-form class="search-modal__form">
         {%- endif -%}
-        <form action="{{ routes.search_url }}" method="get" role="search" class="search search-modal__form">
+        <form action="/collections/tires" method="get" role="search" class="search search-modal__form" id="header-search-form">
           <div class="field">
             <input
               class="search__input field__input"
@@ -106,3 +106,73 @@
     </div>
   </details>
 </details-modal>
+
+<script>
+  (function() {
+    var form = document.getElementById('header-search-form');
+    if (!form) return;
+    var tireSizeRegex = /[Pp]?[LlTtSs]?[Tt]?(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/;
+
+    function getSeasonFilter() {
+      var month = new Date().getMonth() + 1; // 1=Jan ... 12=Dec
+      if (month === 10 || month === 11 || month === 12 || month === 1) {
+        return ['Winter'];
+      } else if (month >= 2 && month <= 4) {
+        return ['All-Weather'];
+      } else {
+        return ['All-Season', 'Summer'];
+      }
+    }
+
+    function applySeasonAndSort(params) {
+      var seasons = getSeasonFilter();
+      seasons.forEach(function(s) {
+        params.append('filter.p.m.custom.seasonality', s);
+      });
+      params.set('sort_by', 'price-ascending');
+    }
+
+    function navigateWithQuery(q) {
+      var params = new URLSearchParams();
+      var m = q.trim().match(tireSizeRegex);
+      if (m) {
+        params.set('filter.p.m.custom.tire_width', m[1]);
+        params.set('filter.p.m.custom.tire_profile', m[2]);
+        params.set('filter.p.m.custom.rim_diameter', m[3]);
+      } else {
+        params.set('q', q.trim());
+      }
+      applySeasonAndSort(params);
+      window.location.href = '/collections/tires?' + params.toString();
+    }
+
+    function hasValidResults() {
+      var results = document.querySelector('[data-predictive-search]');
+      if (results && results.querySelector('.predictive-search__list-item')) return true;
+      var q = (form.querySelector('input[name="q"]') || {}).value || '';
+      return q.trim().length > 0;
+    }
+
+    form.addEventListener('submit', function(e) {
+      var q = (form.querySelector('input[name="q"]') || {}).value || '';
+      if (q.trim().length > 0) {
+        e.preventDefault();
+        navigateWithQuery(q);
+      }
+    });
+
+    var input = form.querySelector('input[name="q"]');
+    if (input) {
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight' || e.key === 'Enter') {
+          var q = input.value || '';
+          if (q.trim().length > 0 && hasValidResults()) {
+            e.preventDefault();
+            e.stopPropagation();
+            navigateWithQuery(q);
+          }
+        }
+      });
+    }
+  })();
+</script>
