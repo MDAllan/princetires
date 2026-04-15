@@ -81,6 +81,24 @@
           "@type": "SpeakableSpecification",
           "cssSelector": [".abth__heading", ".abth__subtitle"]
         }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "{{ shop.url }}{{ page.url }}#breadcrumb",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{{ shop.url }}"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": {{ section.settings.heading | json }},
+            "item": "{{ shop.url }}{{ page.url }}"
+          }
+        ]
       }
     ]
   }
@@ -148,78 +166,53 @@
 
 {% stylesheet %}
   .abth {
-    position: relative;
-    background: var(--abth-bg, #111);
-    color: var(--abth-text, #fff);
+    background: #fff;
     font-family: 'Outfit', sans-serif;
-    overflow: hidden;
-    min-height: 540px;
-    display: flex;
-    align-items: flex-end;
-    padding-bottom: 0;
+    padding: 7rem 0 0;
   }
 
-  .abth__bg {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-  }
-
-  .abth__bg img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-  }
-
-  .abth__overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      to bottom,
-      rgba(0,0,0,calc(var(--abth-overlay, 0.5) * 0.6)) 0%,
-      rgba(0,0,0,var(--abth-overlay, 0.5)) 100%
-    );
-  }
+  .abth__bg { display: none; }
+  .abth__overlay { display: none; }
 
   .abth__container {
-    position: relative;
-    z-index: 1;
     max-width: 1400px;
     margin: 0 auto;
-    padding: 6rem 6rem 0;
+    padding: 0 6rem;
     width: 100%;
   }
 
   .abth__content {
-    max-width: 720px;
-    padding-bottom: 4rem;
+    max-width: 780px;
+    padding-bottom: 3rem;
   }
 
   .abth__eyebrow {
-    display: inline-block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--abth-accent, #F5820B);
-    margin-bottom: 1rem;
+    display: block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #dc2626;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.5rem;
   }
 
   .abth__heading {
-    font-size: clamp(2rem, 4vw, 3.25rem);
-    font-weight: 800;
-    line-height: 1.1;
-    margin: 0 0 1.25rem;
-    color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3.6rem;
+    font-weight: 700;
+    line-height: 1.05;
+    margin: 0 0 1rem;
+    color: #111;
   }
 
   .abth__subtitle {
-    font-size: 1.0625rem;
-    line-height: 1.65;
-    color: rgba(255,255,255,0.8);
-    margin: 0 0 2.25rem;
-    max-width: 580px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    line-height: 1.7;
+    color: #6b7280;
+    margin: 0 0 2rem;
+    max-width: 600px;
   }
 
   .abth__ctas {
@@ -232,41 +225,40 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    padding: 0.8125rem 1.75rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+    padding: 0.8rem 1.75rem;
     border-radius: 6px;
     text-decoration: none;
     transition: all 0.2s ease;
   }
 
   .abth__btn--primary {
-    background: var(--abth-accent, #F5820B);
+    background: #dc2626;
     color: #fff;
   }
 
   .abth__btn--primary:hover {
-    background: #d96e00;
+    background: #b91c1c;
     transform: translateY(-1px);
   }
 
   .abth__btn--secondary {
-    background: rgba(255,255,255,0.12);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.25);
-    backdrop-filter: blur(8px);
+    background: #f9fafb;
+    color: #111;
+    border: 1px solid #e5e7eb;
   }
 
   .abth__btn--secondary:hover {
-    background: rgba(255,255,255,0.2);
+    background: #f0f0f0;
     transform: translateY(-1px);
   }
 
   .abth__stats {
     display: flex;
-    border-top: 1px solid rgba(255,255,255,0.12);
-    background: rgba(0,0,0,0.45);
-    backdrop-filter: blur(12px);
+    border-top: 1px solid #f3f4f6;
+    margin-top: 3rem;
   }
 
   .abth__stat {
@@ -274,9 +266,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
-    padding: 1.75rem 1rem;
-    border-right: 1px solid rgba(255,255,255,0.1);
+    gap: 0.3rem;
+    padding: 1.5rem 1rem;
+    border-right: 1px solid #f3f4f6;
   }
 
   .abth__stat:last-child {
@@ -284,25 +276,27 @@
   }
 
   .abth__stat-value {
-    font-size: 1.875rem;
-    font-weight: 800;
-    color: var(--abth-accent, #F5820B);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #F5820B;
     line-height: 1;
   }
 
   .abth__stat-label {
-    font-size: 0.8125rem;
-    color: rgba(255,255,255,0.65);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: #6b7280;
     text-align: center;
     line-height: 1.3;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 989px) {
     .abth__container {
-      padding: 4rem 2rem 0;
-    }
-    .abth__content {
-      padding-bottom: 3rem;
+      padding: 0 4rem;
     }
     .abth__stats {
       flex-wrap: wrap;
@@ -310,10 +304,10 @@
     .abth__stat {
       flex: 1 1 50%;
       border-right: none;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      border-bottom: 1px solid #f3f4f6;
     }
     .abth__stat:nth-child(odd) {
-      border-right: 1px solid rgba(255,255,255,0.1);
+      border-right: 1px solid #f3f4f6;
     }
     .abth__stat:last-child,
     .abth__stat:nth-last-child(2):nth-child(odd) {
@@ -321,17 +315,26 @@
     }
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 749px) {
+    .abth {
+      padding: 5rem 0 0;
+    }
     .abth__heading {
-      font-size: 2rem;
+      font-size: clamp(2.2rem, 8vw, 3.6rem);
     }
     .abth__container {
-      padding: 3rem 1.5rem 0;
+      padding: 0 2rem;
+    }
+    .abth__subtitle {
+      font-size: 1.25rem;
     }
     .abth__stat {
-      flex: 1 1 100%;
+      flex: 1 1 50%;
       border-right: none;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .abth__stat:nth-child(odd) {
+      border-right: 1px solid #f3f4f6;
     }
     .abth__stat:last-child {
       border-bottom: none;
@@ -445,7 +448,7 @@
       "type": "text",
       "id": "phone",
       "label": "Phone number",
-      "default": "+1-403-000-0000"
+      "default": "+1-403-452-4283"
     },
     {
       "type": "text",
