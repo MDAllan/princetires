@@ -492,241 +492,153 @@
 {% endstylesheet %}
 
 {% javascript %}
-  class WheelBrandsSwitcher {
-    constructor(section) {
-      this.section = section;
-      this.carousel = section.querySelector('[data-wheel-carousel]');
-      this.track = section.querySelector('[data-wheel-track]');
-      this.prevBtn = section.querySelector('[data-wheel-prev]');
-      this.nextBtn = section.querySelector('[data-wheel-next]');
-      this.viewAllLink = section.querySelector('[data-wb-view-all]');
-      this.viewAllName = section.querySelector('[data-wb-view-all-name]');
-
-      this.tabsScroll = section.querySelector('[data-wb-tabs-scroll]');
-      this.tabsPrev = section.querySelector('[data-wb-tabs-prev]');
-      this.tabsNext = section.querySelector('[data-wb-tabs-next]');
-      this.tabs = section.querySelectorAll('.wheel-brands__tabs-track .wheel-brands__tab');
-      this.cards = section.querySelectorAll('[data-wheel-card-brand]');
-
-      this.bindEvents();
-      if (this.tabs.length > 0) this.switchBrand(this.tabs[0], false);
+  (function() {
+    /* Inject keyframes once for the wheel tab marquee */
+    if (!document.getElementById('pt-wb-kf')) {
+      var s = document.createElement('style');
+      s.id = 'pt-wb-kf';
+      s.textContent = '@keyframes pt-wb-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}';
+      document.head.appendChild(s);
     }
 
-    bindEvents() {
-      var self = this;
+    document.querySelectorAll('[data-wheel-brands]').forEach(function(section) {
+      var carousel    = section.querySelector('[data-wheel-carousel]');
+      var prevBtn     = section.querySelector('[data-wheel-prev]');
+      var nextBtn     = section.querySelector('[data-wheel-next]');
+      var viewAllLink = section.querySelector('[data-wb-view-all]');
+      var viewAllName = section.querySelector('[data-wb-view-all-name]');
+      var tabsScroll  = section.querySelector('[data-wb-tabs-scroll]');
+      var cards       = section.querySelectorAll('[data-wheel-card-brand]');
 
-      /* ── Tab clicks ── */
-      this.tabs.forEach(function(tab) {
-        tab.addEventListener('click', function() { self.switchBrand(tab, true); });
-      });
+      if (!carousel) return;
 
-      /* ── Tab strip swipe (touch + mouse drag) ── */
-      if (this.tabsScroll) {
-        var tabDrag = { active: false, startX: 0, scrollLeft: 0 };
+      /* ── Make carousel scrollable ── */
+      carousel.style.overflowX = 'auto';
+      carousel.style.overflowY = 'hidden';
+      carousel.style.scrollbarWidth = 'none';
+      carousel.style.webkitOverflowScrolling = 'touch';
 
-        this.tabsScroll.addEventListener('mousedown', function(e) {
-          tabDrag.active = true;
-          tabDrag.startX = e.pageX;
-          tabDrag.scrollLeft = self.tabsScroll.scrollLeft;
-          self.tabsScroll.style.cursor = 'grabbing';
-        });
-        this.tabsScroll.addEventListener('mousemove', function(e) {
-          if (!tabDrag.active) return;
-          e.preventDefault();
-          self.tabsScroll.scrollLeft = tabDrag.scrollLeft - (e.pageX - tabDrag.startX);
-        });
-        this.tabsScroll.addEventListener('mouseup', function() { tabDrag.active = false; self.tabsScroll.style.cursor = ''; });
-        this.tabsScroll.addEventListener('mouseleave', function() { tabDrag.active = false; self.tabsScroll.style.cursor = ''; });
+      /* ── switchBrand ── */
+      var origTrackEl = tabsScroll ? tabsScroll.querySelector('.wheel-brands__tabs-track') : null;
 
-        if (this.tabsPrev) {
-          this.tabsPrev.addEventListener('click', function() {
-            self.tabsScroll.scrollBy({ left: -200, behavior: 'smooth' });
+      function switchBrand(brandHandle, brandName) {
+        if (origTrackEl) {
+          origTrackEl.querySelectorAll('[data-wheel-brand]').forEach(function(b) {
+            b.classList.remove('wheel-brands__tab--active');
+            b.setAttribute('aria-selected', 'false');
           });
+          var active = origTrackEl.querySelector('[data-wheel-brand="' + brandHandle + '"]');
+          if (active) { active.classList.add('wheel-brands__tab--active'); active.setAttribute('aria-selected', 'true'); }
         }
-        if (this.tabsNext) {
-          this.tabsNext.addEventListener('click', function() {
-            self.tabsScroll.scrollBy({ left: 200, behavior: 'smooth' });
-          });
-        }
+        if (viewAllName) viewAllName.textContent = brandName;
+        if (viewAllLink) viewAllLink.href = '/search?q=' + encodeURIComponent(brandName) + '&type=product';
+        cards.forEach(function(card) {
+          var match = card.dataset.wheelCardBrand === brandHandle;
+          card.hidden = !match;
+          card.style.display = match ? '' : 'none';
+        });
+        carousel.scrollLeft = 0;
       }
 
-      /* ── Product carousel arrows ── */
-      this.prevBtn.addEventListener('click', function() { self.scrollCarousel(-1); });
-      this.nextBtn.addEventListener('click', function() { self.scrollCarousel(1); });
+      /* ── Tab marquee ── */
+      if (tabsScroll && origTrackEl) {
+        var wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex;align-items:center;gap:1rem;width:max-content';
+        tabsScroll.appendChild(wrapper);
+        wrapper.appendChild(origTrackEl);
 
-      /* ── Product carousel drag ── */
-      var drag = { active: false, startX: 0, scrollLeft: 0 };
-      this.carousel.style.overflowX = 'auto';
-      this.carousel.style.scrollbarWidth = 'none';
+        var clone = origTrackEl.cloneNode(true);
+        clone.setAttribute('aria-hidden', 'true');
+        clone.querySelectorAll('[data-wheel-brand]').forEach(function(b) { b.setAttribute('tabindex', '-1'); });
+        wrapper.appendChild(clone);
 
-      this.track.addEventListener('mousedown', function(e) {
-        drag.active = true;
-        drag.startX = e.pageX;
-        drag.scrollLeft = self.carousel.scrollLeft;
-      });
-      this.track.addEventListener('mousemove', function(e) {
-        if (!drag.active) return;
-        e.preventDefault();
-        self.carousel.scrollLeft = drag.scrollLeft - (e.pageX - drag.startX);
-      });
-      this.track.addEventListener('mouseup', function() { drag.active = false; });
-      this.track.addEventListener('mouseleave', function() { drag.active = false; });
-      this.track.addEventListener('touchstart', function(e) {
-        drag.active = true;
-        drag.startX = e.touches[0].pageX;
-        drag.scrollLeft = self.carousel.scrollLeft;
-      }, { passive: true });
-      this.track.addEventListener('touchmove', function(e) {
-        if (!drag.active) return;
-        self.carousel.scrollLeft = drag.scrollLeft - (e.touches[0].pageX - drag.startX);
-      }, { passive: true });
-      this.track.addEventListener('touchend', function() { drag.active = false; });
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          wrapper.style.animation = 'pt-wb-scroll 24s linear infinite';
+          tabsScroll.addEventListener('mouseenter', function() { wrapper.style.animationPlayState = 'paused'; });
+          tabsScroll.addEventListener('mouseleave', function() { wrapper.style.animationPlayState = 'running'; });
+          tabsScroll.addEventListener('touchstart', function() { wrapper.style.animationPlayState = 'paused'; }, { passive: true });
+          tabsScroll.addEventListener('touchend', function() {
+            setTimeout(function() { wrapper.style.animationPlayState = 'running'; }, 800);
+          });
+        }
 
-      /* ── Tab strip marquee auto-scroll ── */
-      this.startTabMarquee();
+        /* Click delegation — works on both original and clone buttons */
+        tabsScroll.addEventListener('click', function(e) {
+          var btn = e.target.closest('[data-wheel-brand]');
+          if (!btn) return;
+          switchBrand(btn.dataset.wheelBrand, btn.dataset.wheelBrandName);
+        });
+      }
 
-      /* ── Product carousel auto-play ── */
-      this.startCarouselAutoplay();
-    }
+      /* Activate first brand */
+      var firstBtn = origTrackEl ? origTrackEl.querySelector('[data-wheel-brand]') : null;
+      if (firstBtn) switchBrand(firstBtn.dataset.wheelBrand, firstBtn.dataset.wheelBrandName);
 
-    startCarouselAutoplay() {
-      var self = this;
-      var carousel = this.carousel;
-      if (!carousel) return;
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      /* ── Product carousel autoplay ── */
+      var autoplayPaused = false;
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        carousel.addEventListener('mouseenter', function() { autoplayPaused = true; });
+        carousel.addEventListener('mouseleave', function() { autoplayPaused = false; });
+        carousel.addEventListener('touchstart', function() { autoplayPaused = true; }, { passive: true });
+        carousel.addEventListener('touchend', function() { setTimeout(function() { autoplayPaused = false; }, 900); });
 
-      this._autoplayPaused = false;
-
-      carousel.addEventListener('mouseenter', function() { self._autoplayPaused = true; });
-      carousel.addEventListener('mouseleave', function() { self._autoplayPaused = false; });
-      carousel.addEventListener('touchstart', function() { self._autoplayPaused = true; }, { passive: true });
-      carousel.addEventListener('touchend', function() {
-        setTimeout(function() { self._autoplayPaused = false; }, 900);
-      });
-
-      function tick() {
-        if (!self._autoplayPaused) {
-          var maxScroll = carousel.scrollWidth - carousel.offsetWidth;
-          if (maxScroll > 0) {
-            carousel.scrollLeft += 0.5;
-            if (carousel.scrollLeft >= maxScroll - 1) {
-              self._autoplayPaused = true;
-              carousel.scrollTo({ left: 0, behavior: 'smooth' });
-              setTimeout(function() { self._autoplayPaused = false; }, 700);
+        (function tick() {
+          if (!autoplayPaused) {
+            var max = carousel.scrollWidth - carousel.offsetWidth;
+            if (max > 0) {
+              carousel.scrollLeft += 0.5;
+              if (carousel.scrollLeft >= max - 1) {
+                autoplayPaused = true;
+                carousel.scrollTo({ left: 0, behavior: 'smooth' });
+                setTimeout(function() { autoplayPaused = false; }, 700);
+              }
             }
           }
-        }
-        requestAnimationFrame(tick);
+          requestAnimationFrame(tick);
+        }());
       }
-      requestAnimationFrame(tick);
-    }
 
-    startTabMarquee() {
-      var self = this;
-      var scroll = this.tabsScroll;
-      if (!scroll) return;
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-      var origTrack = scroll.querySelector('.wheel-brands__tabs-track');
-      if (!origTrack) return;
-
-      /* Wrap original + clone in a single flex row for seamless loop */
-      var wrapper = document.createElement('div');
-      wrapper.style.cssText = 'display:flex;align-items:center;gap:1rem;width:max-content;will-change:transform';
-
-      scroll.appendChild(wrapper);
-      wrapper.appendChild(origTrack);
-
-      var clone = origTrack.cloneNode(true);
-      clone.setAttribute('aria-hidden', 'true');
-      var origBtns = origTrack.querySelectorAll('button');
-      clone.querySelectorAll('button').forEach(function(b, i) {
-        b.setAttribute('tabindex', '-1');
-        b.setAttribute('aria-hidden', 'true');
-        b.addEventListener('click', function() {
-          if (origBtns[i]) origBtns[i].click();
-        });
+      /* ── Carousel drag / swipe ── */
+      var drag = { on: false, startX: 0, startLeft: 0 };
+      carousel.addEventListener('mousedown', function(e) {
+        drag.on = true; drag.startX = e.pageX; drag.startLeft = carousel.scrollLeft;
+        autoplayPaused = true; carousel.style.cursor = 'grabbing';
       });
-      wrapper.appendChild(clone);
-
-      var pos = 0;
-      this._marqueePaused = false;
-
-      scroll.addEventListener('mouseenter', function() { self._marqueePaused = true; });
-      scroll.addEventListener('mouseleave', function() { self._marqueePaused = false; });
-
-      /* Touch drag: finger follows the strip; auto-scroll resumes after lift */
-      var touchStartX = 0;
-      var touchStartPos = 0;
-      scroll.addEventListener('touchstart', function(e) {
-        self._marqueePaused = true;
-        touchStartX = e.touches[0].clientX;
-        touchStartPos = pos;
+      document.addEventListener('mousemove', function(e) {
+        if (!drag.on) return;
+        e.preventDefault();
+        carousel.scrollLeft = drag.startLeft - (e.pageX - drag.startX);
+      }, { passive: false });
+      document.addEventListener('mouseup', function() {
+        if (!drag.on) return;
+        drag.on = false; autoplayPaused = false; carousel.style.cursor = '';
+      });
+      carousel.addEventListener('touchstart', function(e) {
+        drag.on = true; drag.startX = e.touches[0].pageX; drag.startLeft = carousel.scrollLeft;
+        autoplayPaused = true;
       }, { passive: true });
-      scroll.addEventListener('touchmove', function(e) {
-        var loopAt = origTrack.offsetWidth + 16;
-        var delta = e.touches[0].clientX - touchStartX;
-        var newPos = touchStartPos - delta;
-        pos = ((newPos % loopAt) + loopAt) % loopAt;
-        wrapper.style.transform = 'translateX(-' + pos + 'px)';
+      carousel.addEventListener('touchmove', function(e) {
+        if (!drag.on) return;
+        carousel.scrollLeft = drag.startLeft - (e.touches[0].pageX - drag.startX);
       }, { passive: true });
-      scroll.addEventListener('touchend', function() {
-        setTimeout(function() { self._marqueePaused = false; }, 1000);
+      carousel.addEventListener('touchend', function() {
+        drag.on = false;
+        setTimeout(function() { autoplayPaused = false; }, 900);
       });
 
-      function tick() {
-        if (!self._marqueePaused) {
-          pos += 0.5;
-          /* Loop when we've scrolled one full copy of the original track */
-          var loopAt = origTrack.offsetWidth + 16; /* +16 for the 1rem gap between copies */
-          if (pos >= loopAt) pos = 0;
-          wrapper.style.transform = 'translateX(-' + pos + 'px)';
-        }
-        requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
-    }
-
-    scrollCarousel(dir) {
-      var w = this.carousel.offsetWidth * 0.6;
-      this.carousel.scrollBy({ left: dir * w, behavior: 'smooth' });
-    }
-
-    switchBrand(tab, scrollTab) {
-      var brandHandle = tab.dataset.wheelBrand;
-      var brandName = tab.dataset.wheelBrandName;
-
-      this.tabs.forEach(function(t) {
-        t.classList.remove('wheel-brands__tab--active');
-        t.setAttribute('aria-selected', 'false');
+      /* ── Arrow buttons ── */
+      if (prevBtn) prevBtn.addEventListener('click', function() {
+        autoplayPaused = true;
+        carousel.scrollBy({ left: -carousel.offsetWidth * 0.6, behavior: 'smooth' });
+        setTimeout(function() { autoplayPaused = false; }, 800);
       });
-      tab.classList.add('wheel-brands__tab--active');
-      tab.setAttribute('aria-selected', 'true');
-
-      /* scrollIntoView conflicts with marquee transform — omitted */
-
-      if (this.viewAllName) this.viewAllName.textContent = brandName;
-      if (this.viewAllLink) {
-        this.viewAllLink.href = '/search?q=' + encodeURIComponent(brandName) + '&type=product';
-      }
-
-      this.cards.forEach(function(card) {
-        if (card.dataset.wheelCardBrand === brandHandle) {
-          card.hidden = false;
-          card.style.display = '';
-        } else {
-          card.hidden = true;
-          card.style.display = 'none';
-        }
+      if (nextBtn) nextBtn.addEventListener('click', function() {
+        autoplayPaused = true;
+        carousel.scrollBy({ left: carousel.offsetWidth * 0.6, behavior: 'smooth' });
+        setTimeout(function() { autoplayPaused = false; }, 800);
       });
-
-      this.carousel.scrollLeft = 0;
-    }
-  }
-
-  document.querySelectorAll('[data-wheel-brands]').forEach(function(el) {
-    new WheelBrandsSwitcher(el);
-  });
+    });
+  }());
 {% endjavascript %}
 
 {% schema %}
