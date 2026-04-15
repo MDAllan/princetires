@@ -30,18 +30,35 @@
       </nav>
 
       <div class="pt-header__icons">
-        <a href="{{ routes.account_url }}" class="pt-header__icon" aria-label="{{ 'sections.pt_header.account' | t }}">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
-        </a>
         {%- if customer -%}
-          <a href="/pages/my-garage" class="pt-header__icon pt-header__garage" aria-label="{{ 'sections.pt_header.garage' | t }}" data-garage-customer-id="{{ customer.id }}">
+          <a href="/pages/my-garage" class="pt-header__icon pt-header__garage-link" aria-label="{{ 'sections.pt_header.garage' | t }}" data-garage-customer-id="{{ customer.id }}">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M5 17h14M7.5 17V13L6 9H18L16.5 13V17M9 21H7V19H9V21ZM17 21H15V19H17V21ZM3 13H21"/>
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <path d="M9 22V12h6v10"/>
             </svg>
+            <span class="pt-header__garage-label">{{ 'sections.pt_header.my_garage' | t }}</span>
             <span class="pt-header__garage-count" data-garage-count hidden>0</span>
+          </a>
+          <a href="{{ routes.account_url }}" class="pt-header__icon" aria-label="{{ 'sections.pt_header.account' | t }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </a>
+        {%- else -%}
+          <a href="{{ routes.account_login_url }}" class="pt-header__icon" aria-label="{{ 'sections.pt_header.account' | t }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </a>
+        {%- endif -%}
+        {%- if section.settings.phone_number != blank -%}
+          {%- assign phone_clean = section.settings.phone_number | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
+          <a href="tel:+1{{ phone_clean }}" class="pt-header__icon pt-header__phone" aria-label="{{ 'sections.pt_header.call_us' | t }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.18 6.18l.98-.98a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7a2 2 0 0 1 1.72 2.02z"/>
+            </svg>
           </a>
         {%- endif -%}
         <a href="{{ routes.cart_url }}" class="pt-header__icon pt-header__cart" aria-label="{{ 'sections.pt_header.cart' | t }}">
@@ -58,13 +75,13 @@
     </div>
 
     {%- comment -%} Mobile menu button {%- endcomment -%}
-    <button class="pt-header__menu-btn" aria-label="{{ 'sections.pt_header.menu' | t }}" data-pt-menu-toggle>
+    <button class="pt-header__menu-btn" aria-label="{{ 'sections.pt_header.menu' | t }}" data-pt-menu-toggle aria-expanded="false">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
   </div>
 
   {%- comment -%} Mobile drawer {%- endcomment -%}
-  <div class="pt-header__mobile-menu" data-pt-mobile-menu hidden>
+  <div class="pt-header__mobile-menu" data-pt-mobile-menu>
     <nav class="pt-header__mobile-nav">
       {%- for block in section.blocks -%}
         {%- if block.type == 'nav_link' -%}
@@ -72,11 +89,30 @@
         {%- endif -%}
       {%- endfor -%}
       {%- if customer -%}
-        <a href="/pages/my-garage" class="pt-header__mobile-link">{{ 'sections.pt_header.garage' | t }}</a>
+        <a href="/pages/my-garage" class="pt-header__mobile-link pt-header__mobile-garage">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+          {{ 'sections.pt_header.my_garage' | t }}
+        </a>
+        <a href="{{ routes.account_url }}" class="pt-header__mobile-link">{{ 'sections.pt_header.account' | t }}</a>
+      {%- else -%}
+        <a href="{{ routes.account_login_url }}" class="pt-header__mobile-link">{{ 'customer.login_page.sign_in' | t }}</a>
       {%- endif -%}
     </nav>
   </div>
 </header>
+
+<script>
+  (function() {
+    var toggle = document.querySelector('[data-pt-menu-toggle]');
+    var menu   = document.querySelector('[data-pt-mobile-menu]');
+    if (toggle && menu) {
+      toggle.addEventListener('click', function() {
+        var isOpen = menu.classList.toggle('pt-header__mobile-menu--open');
+        toggle.setAttribute('aria-expanded', String(isOpen));
+      });
+    }
+  })();
+</script>
 
 {% stylesheet %}
   .pt-header {
@@ -171,6 +207,30 @@
     justify-content: center;
     line-height: 1;
   }
+  .pt-header__garage-link {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #dc2626;
+    text-decoration: none;
+    transition: color 0.2s;
+    position: relative;
+  }
+  .pt-header__garage-link:hover {
+    color: #ef4444;
+  }
+  .pt-header__garage-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: none;
+  }
+  @media (min-width: 900px) {
+    .pt-header__garage-label {
+      display: inline;
+    }
+  }
   .pt-header__garage-count {
     position: absolute;
     top: -6px;
@@ -187,6 +247,13 @@
     justify-content: center;
     line-height: 1;
   }
+  .pt-header__mobile-garage {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #dc2626;
+    font-weight: 600;
+  }
   .pt-header__menu-btn {
     display: none;
     background: none;
@@ -199,8 +266,12 @@
     top: 1.25rem;
   }
   .pt-header__mobile-menu {
+    display: none;
     border-top: 1px solid #1f1f1f;
     padding: 1rem 1.5rem;
+  }
+  .pt-header__mobile-menu--open {
+    display: block;
   }
   .pt-header__mobile-nav {
     display: flex;
@@ -213,22 +284,46 @@
     font-size: 0.875rem;
   }
   @media (max-width: 768px) {
+    /* Single row: [☰] [LOGO] [🛒] */
+    .pt-header__container {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+    }
+    .pt-header__menu-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: static;
+      top: auto;
+      right: auto;
+      order: 1;
+      flex: 0 0 32px;
+      padding: 0;
+    }
+    .pt-header__logo-row {
+      order: 2;
+      flex: 1;
+      margin-bottom: 0;
+      justify-content: center;
+    }
+    .pt-header__nav-row {
+      order: 3;
+      flex: 0 0 32px;
+      justify-content: flex-end;
+    }
     .pt-header__nav { display: none; }
-    .pt-header__icons { display: none; }
-    .pt-header__menu-btn { display: block; }
-    .pt-header__nav-row { justify-content: flex-start; }
+    .pt-header__icons {
+      display: flex;
+      position: static;
+    }
+    /* Hide account + garage, keep only cart + phone */
+    .pt-header__icon:not(.pt-header__cart):not(.pt-header__phone) { display: none; }
   }
 {% endstylesheet %}
 
 {% javascript %}
-  const toggle = document.querySelector('[data-pt-menu-toggle]');
-  const menu = document.querySelector('[data-pt-mobile-menu]');
-  if (toggle && menu) {
-    toggle.addEventListener('click', function() {
-      menu.hidden = !menu.hidden;
-    });
-  }
-
   /* Garage badge */
   (function() {
     var badge = document.querySelector('[data-garage-count]');
@@ -290,6 +385,13 @@
       "type": "image_picker",
       "id": "logo",
       "label": "t:sections.pt_header.settings.logo"
+    },
+    {
+      "type": "text",
+      "id": "phone_number",
+      "label": "Phone number",
+      "placeholder": "703-555-1234",
+      "info": "Displays a phone icon next to the cart in the navbar"
     }
   ]
 }
