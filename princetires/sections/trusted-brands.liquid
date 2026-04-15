@@ -462,20 +462,24 @@
       carousel.addEventListener('mouseleave', function() { self._autoplayPaused = false; });
       carousel.addEventListener('touchstart', function() { self._autoplayPaused = true; }, { passive: true });
       carousel.addEventListener('touchend', function() {
-        setTimeout(function() { self._autoplayPaused = false; }, 1200);
+        setTimeout(function() { self._autoplayPaused = false; }, 900);
       });
 
-      this._autoplayInterval = setInterval(function() {
-        if (self._autoplayPaused) return;
-        var maxScroll = carousel.scrollWidth - carousel.offsetWidth;
-        if (carousel.scrollLeft >= maxScroll - 2) {
-          carousel.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-          var cardWidth = carousel.querySelector('.trusted-brands__card:not([hidden])');
-          var step = cardWidth ? (cardWidth.offsetWidth + 26) : carousel.offsetWidth * 0.3;
-          carousel.scrollBy({ left: step, behavior: 'smooth' });
+      function tick() {
+        if (!self._autoplayPaused) {
+          var maxScroll = carousel.scrollWidth - carousel.offsetWidth;
+          if (maxScroll > 0) {
+            carousel.scrollLeft += 0.5;
+            if (carousel.scrollLeft >= maxScroll - 1) {
+              self._autoplayPaused = true;
+              carousel.scrollTo({ left: 0, behavior: 'smooth' });
+              setTimeout(function() { self._autoplayPaused = false; }, 700);
+            }
+          }
         }
-      }, 3000);
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
     }
 
     startTabMarquee() {
