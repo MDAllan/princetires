@@ -270,6 +270,15 @@
         {%- endcase -%}
       {%- endfor -%}
 
+      {%- if section.settings.phone_number != blank -%}
+        {%- assign phone_clean = section.settings.phone_number | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
+        <a href="tel:+1{{ phone_clean }}" class="header__icon header__icon--phone link focus-inset" aria-label="{{ 'sections.header.phone_label' | t }}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.18 6.18l.98-.98a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7a2 2 0 0 1 1.72 2.02z"/>
+          </svg>
+        </a>
+      {%- endif -%}
+
       <a href="{{ routes.cart_url }}" class="header__icon header__icon--cart link focus-inset" id="cart-icon-bubble">
           {% if cart == empty %}
             <span class="svg-wrapper">{{'icon-cart-empty.svg' | inline_asset_content }}</span>
@@ -293,6 +302,18 @@
 {%- if settings.cart_type == "notification" -%}
   {%- render 'cart-notification', color_scheme: section.settings.color_scheme, desktop_menu_type: section.settings.menu_type_desktop -%}
 {%- endif -%}
+
+{% stylesheet %}
+  .header__icon--phone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: currentColor;
+  }
+  .header__icon--phone svg {
+    display: block;
+  }
+{% endstylesheet %}
 
 {% javascript %}
   class StickyHeader extends HTMLElement {
@@ -542,6 +563,13 @@
       ],
       "default": "on-scroll-up",
       "label": "t:sections.header.settings.sticky_header_type.label"
+    },
+    {
+      "type": "text",
+      "id": "phone_number",
+      "label": "Phone number",
+      "info": "Displays a phone icon next to the cart. Enter digits only, e.g. 703-555-1234",
+      "placeholder": "703-555-1234"
     },
     {
       "type": "checkbox",
