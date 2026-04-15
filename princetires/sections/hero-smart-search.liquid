@@ -7,12 +7,6 @@
     --hero-subtitle-opacity: {{ section.settings.subtitle_opacity | divided_by: 100.0 }};
   "
 >
-  <div class="hero-smart-search__bg" aria-hidden="true">
-    <canvas class="hero-smart-search__canvas" data-hero-canvas></canvas>
-    <div class="hero-smart-search__glow"></div>
-    <div class="hero-smart-search__scanlines"></div>
-  </div>
-
   <div class="hero-smart-search__container">
     <div class="hero-smart-search__content">
       {%- if section.settings.heading != blank -%}
@@ -69,7 +63,6 @@
             </div>
             <ul class="hero-smart-search__results-list" role="listbox" data-smart-search-list></ul>
           </div>
-          <p class="hero-smart-search__error" data-smart-search-error aria-live="polite" hidden></p>
         </div>
       </div>
 
@@ -77,11 +70,25 @@
         <div class="hero-smart-search__actions">
           {%- for block in section.blocks -%}
             {%- if block.settings.label != blank -%}
-              <a
-                href="{% if block.settings.phone != blank %}tel:{{ block.settings.phone | remove: ' ' | remove: '-' | remove: '(' | remove: ')' }}{% elsif block.settings.link != blank %}{{ block.settings.link }}{% else %}#{% endif %}"
-                class="hero-smart-search__btn"
-                {{ block.shopify_attributes }}
-              >
+              {%- assign is_service_trigger = false -%}
+              {%- if block.settings.action == 'book_service' -%}
+                {%- assign is_service_trigger = true -%}
+              {%- endif -%}
+
+              {%- if is_service_trigger -%}
+                <button
+                  class="hero-smart-search__btn"
+                  data-book-service
+                  {{ block.shopify_attributes }}
+                >
+              {%- else -%}
+                <a
+                  href="{% if block.settings.phone != blank %}tel:{{ block.settings.phone | remove: ' ' | remove: '-' | remove: '(' | remove: ')' }}{% elsif block.settings.link != blank %}{{ block.settings.link }}{% else %}#{% endif %}"
+                  class="hero-smart-search__btn"
+                  {{ block.shopify_attributes }}
+                >
+              {%- endif -%}
+
                 {%- case block.settings.icon -%}
                   {%- when 'tire' -%}
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -110,7 +117,12 @@
                     </svg>
                 {%- endcase -%}
                 {{ block.settings.label | escape }}
-              </a>
+
+              {%- if is_service_trigger -%}
+                </button>
+              {%- else -%}
+                </a>
+              {%- endif -%}
             {%- endif -%}
           {%- endfor -%}
         </div>
@@ -128,7 +140,8 @@
     "geminiKey": {{ settings.gemini_api_key | json }},
     "minYear": {{ settings.smart_search_min_year | default: 2001 }},
     "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
-    "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }}
+    "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
+    "fallbackPhone": {{ settings.smart_search_fallback_phone | default: '403 452 4283' | json }}
   }
 </script>
 
@@ -136,60 +149,17 @@
   .hero-smart-search {
     background-color: var(--hero-bg, #000000);
     color: var(--hero-text, #ffffff);
-    padding: 14rem 2rem 10rem;
+    padding: 0 2rem 8rem;
     min-height: 85vh;
     display: flex;
     align-items: center;
     width: 100%;
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* ── Futuristic background ── */
-  .hero-smart-search__bg {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .hero-smart-search__canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-
-  .hero-smart-search__glow {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 70% 45% at 50% 100%, rgba(148, 163, 184, 0.12) 0%, transparent 70%),
-      radial-gradient(ellipse 40% 25% at 50% 62%, rgba(100, 116, 139, 0.07) 0%, transparent 60%),
-      radial-gradient(ellipse 30% 20% at 15% 80%, rgba(71, 85, 105, 0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 30% 20% at 85% 80%, rgba(71, 85, 105, 0.08) 0%, transparent 60%);
-    pointer-events: none;
-  }
-
-  .hero-smart-search__scanlines {
-    position: absolute;
-    inset: 0;
-    background-image: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 3px,
-      rgba(0, 0, 0, 0.06) 3px,
-      rgba(0, 0, 0, 0.06) 4px
-    );
-    pointer-events: none;
-    opacity: 0.5;
   }
 
   .hero-smart-search__container {
     width: 100%;
     max-width: 80rem;
     margin: 0 auto;
-    position: relative;
-    z-index: 1;
   }
 
   .hero-smart-search__content {
@@ -520,9 +490,98 @@
   }
 
   .hero-smart-search__error {
-    padding: 0.8rem 1.6rem;
+    padding: 1.2rem 1.6rem;
     font-size: 1.3rem;
+    opacity: 0.6;
+    color: var(--hero-text, #ffffff);
+  }
+
+  .hero-smart-search__fallback {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.4rem 1.6rem;
+    list-style: none;
+  }
+
+  .hero-smart-search__fallback-icon {
+    flex-shrink: 0;
+    width: 3.6rem;
+    height: 3.6rem;
+    background: rgba(245, 130, 11, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #F5820B;
+  }
+
+  .hero-smart-search__fallback-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+  }
+
+  .hero-smart-search__fallback-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .hero-smart-search__fallback-sub {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    color: #6B7280;
+  }
+
+  .hero-smart-search__fallback-phone {
+    flex-shrink: 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #F5820B;
+    text-decoration: none;
+    white-space: nowrap;
+    padding: 0.4rem 1rem;
+    border: 1px solid rgba(245, 130, 11, 0.35);
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+
+  .hero-smart-search__fallback-phone:hover {
+    background: rgba(245, 130, 11, 0.1);
+  }
+
+  .hero-smart-search__trim-prompt {
+    padding: 0.8rem 1.4rem;
+    font-size: 1.2rem;
+    font-family: 'Outfit', sans-serif;
+    color: #F5820B;
+    border-top: 1px solid rgba(245, 130, 11, 0.2);
+    background: rgba(245, 130, 11, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .hero-smart-search__trim-prompt::before {
+    content: '↑';
+    font-size: 1rem;
+    opacity: 0.8;
+  }
+
+  .hero-smart-search__trim-prompt--shake {
+    animation: hero-trim-shake 0.4s ease;
+  }
+
+  @keyframes hero-trim-shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
   }
 
   /* ── Trim results ── */
@@ -629,8 +688,8 @@
 
   @media screen and (max-width: 749px) {
     .hero-smart-search {
-      padding: 5rem 1.6rem 3rem;
-      min-height: auto;
+      padding: 0 1.6rem 4rem;
+      min-height: 80vh;
     }
 
     .hero-smart-search__heading {
@@ -639,6 +698,7 @@
 
     .hero-smart-search__subtitle {
       font-size: 1.3rem;
+      margin-bottom: 2rem;
     }
 
     .hero-smart-search__actions {
@@ -656,8 +716,8 @@
 
   @media screen and (max-width: 480px) {
     .hero-smart-search {
-      padding: 4rem 1.2rem 2.5rem;
-      min-height: 60vh;
+      padding: 0 1.2rem 3rem;
+      min-height: 80vh;
     }
     .hero-smart-search__heading {
       font-size: clamp(2.2rem, 7vw, 2.8rem);
@@ -666,7 +726,7 @@
     }
     .hero-smart-search__subtitle {
       font-size: 1.2rem;
-      margin-bottom: 2.5rem;
+      margin-bottom: 1.5rem;
     }
     .hero-smart-search__search-wrapper {
       max-width: 100%;
@@ -717,7 +777,7 @@
 
   @media screen and (max-width: 360px) {
     .hero-smart-search {
-      padding: 3.5rem 1rem 2rem;
+      padding: 0 1rem 2rem;
     }
     .hero-smart-search__heading {
       font-size: 2rem;
@@ -732,12 +792,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .hero-smart-search__canvas {
-      display: none;
-    }
-    .hero-smart-search__scanlines {
-      display: none;
-    }
     .hero-smart-search__heading-left,
     .hero-smart-search__heading-right {
       animation: none !important;
@@ -761,169 +815,6 @@
 {% endstylesheet %}
 
 <script>
-(function() {
-  var canvas = document.querySelector('[data-hero-canvas]');
-  if (!canvas) return;
-
-  var ctx = canvas.getContext('2d');
-  var W, H, raf;
-  var gridOffset = 0;
-  var particles = [];
-  var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  function resize() {
-    var rect = canvas.parentElement.getBoundingClientRect();
-    W = canvas.width = rect.width;
-    H = canvas.height = rect.height;
-  }
-
-  function initParticles() {
-    particles = [];
-    var count = Math.floor((W * H) / 22000);
-    for (var i = 0; i < count; i++) {
-      particles.push({
-        x: Math.random() * W,
-        y: Math.random() * H,
-        r: Math.random() * 1.4 + 0.3,
-        speed: Math.random() * 0.25 + 0.05,
-        opacity: Math.random() * 0.4 + 0.1
-      });
-    }
-  }
-
-  function drawTireRings(cx, cy, baseR) {
-    /* draws faint concentric tire-ring silhouettes */
-    var rings = [1, 0.72, 0.5]; /* outer sidewall, tread shoulder, inner rim */
-    var opacities = [0.07, 0.05, 0.04];
-    for (var r = 0; r < rings.length; r++) {
-      var radius = baseR * rings[r];
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(148,163,184,' + opacities[r] + ')';
-      ctx.lineWidth = r === 0 ? 18 : 8;
-      ctx.stroke();
-    }
-    /* tread blocks: short radial dashes around the outer ring */
-    var treads = 28;
-    var outerR  = baseR;
-    var innerR  = baseR * 0.84;
-    ctx.lineWidth = 2.5;
-    for (var d = 0; d < treads; d++) {
-      var angle = (d / treads) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
-      ctx.lineTo(cx + Math.cos(angle) * outerR,  cy + Math.sin(angle) * outerR);
-      ctx.strokeStyle = 'rgba(148,163,184,0.055)';
-      ctx.stroke();
-    }
-  }
-
-  function drawGrid(t) {
-    var vx = W / 2;
-    var vy = H * 0.38;
-
-    /* tire ring silhouettes — bottom-left and bottom-right corners */
-    var ringR = Math.min(W, H) * 0.42;
-    drawTireRings(-ringR * 0.3, H + ringR * 0.15, ringR);
-    drawTireRings(W + ringR * 0.3, H + ringR * 0.15, ringR);
-
-    /* vertical converging lines */
-    var cols = 14;
-    ctx.lineWidth = 0.6;
-    for (var i = 0; i <= cols; i++) {
-      var prog = i / cols;
-      var bx = prog * W;
-      var grad = ctx.createLinearGradient(vx, vy, bx, H);
-      grad.addColorStop(0, 'rgba(100,116,139,0)');
-      grad.addColorStop(0.45, 'rgba(100,116,139,0.14)');
-      grad.addColorStop(1, 'rgba(148,163,184,0.28)');
-      ctx.beginPath();
-      ctx.moveTo(vx, vy);
-      ctx.lineTo(bx, H);
-      ctx.strokeStyle = grad;
-      ctx.stroke();
-    }
-
-    /* horizontal lines (perspective, moving) */
-    var rows = 12;
-    var speed = prefersReduced ? 0 : t * 0.012;
-    for (var j = 0; j < rows; j++) {
-      var rawY = (j / rows + (speed % (1 / rows)) * rows) / rows;
-      var perspY = vy + Math.pow(rawY, 2.2) * (H - vy);
-      if (perspY > H) continue;
-      var perspProg = (perspY - vy) / (H - vy);
-      var xl = vx - perspProg * vx;
-      var xr = vx + perspProg * (W - vx);
-      var alpha = perspProg * 0.22;
-      ctx.beginPath();
-      ctx.moveTo(xl, perspY);
-      ctx.lineTo(xr, perspY);
-      ctx.strokeStyle = 'rgba(100,116,139,' + alpha + ')';
-      ctx.lineWidth = 0.5 + perspProg * 0.8;
-      ctx.stroke();
-    }
-
-    /* horizon steel glow line */
-    var horizGrad = ctx.createLinearGradient(0, vy, W, vy);
-    horizGrad.addColorStop(0,    'rgba(148,163,184,0)');
-    horizGrad.addColorStop(0.3,  'rgba(148,163,184,0)');
-    horizGrad.addColorStop(0.5,  'rgba(203,213,225,0.45)');
-    horizGrad.addColorStop(0.7,  'rgba(148,163,184,0)');
-    horizGrad.addColorStop(1,    'rgba(148,163,184,0)');
-    ctx.beginPath();
-    ctx.moveTo(0, vy);
-    ctx.lineTo(W, vy);
-    ctx.strokeStyle = horizGrad;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-
-  function drawParticles() {
-    for (var i = 0; i < particles.length; i++) {
-      var p = particles[i];
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,' + p.opacity + ')';
-      ctx.fill();
-
-      if (!prefersReduced) {
-        p.y -= p.speed;
-        if (p.y + p.r < 0) {
-          p.y = H + p.r;
-          p.x = Math.random() * W;
-        }
-      }
-    }
-  }
-
-  function frame(t) {
-    ctx.clearRect(0, 0, W, H);
-    drawGrid(t);
-    drawParticles();
-    raf = requestAnimationFrame(frame);
-  }
-
-  function init() {
-    resize();
-    initParticles();
-    raf = requestAnimationFrame(frame);
-  }
-
-  var resizeTimer;
-  window.addEventListener('resize', function() {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function() { resize(); initParticles(); }, 150);
-  });
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
-</script>
-
-<script>
 document.addEventListener('DOMContentLoaded', function() {
   class SmartTireSearch {
     constructor(container) {
@@ -933,7 +824,6 @@ document.addEventListener('DOMContentLoaded', function() {
       this.list = container.querySelector('[data-smart-search-list]');
       this.submit = container.querySelector('[data-smart-search-submit]');
       this.loading = container.querySelector('[data-smart-search-loading]');
-      this.errorEl = container.querySelector('[data-smart-search-error]');
       this.selectedIndex = -1;
       this.items = [];
       this.debounceTimer = null;
@@ -943,6 +833,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
       const configEl = document.querySelector('[data-smart-search-config]');
       this.config = configEl ? JSON.parse(configEl.textContent) : {};
+
+      this.awaitingTrim = false;
 
       this.tireSizeRegex = /(?:^|[\s,])([Pp]?[LlTtSs]?[Tt]?\d{3}\/?\d{2,3}[Rr]\d{2}(?:\.\d)?)/;
       this.brands = ['michelin','bridgestone','goodyear','continental','toyo','pirelli','falken','kumho','yokohama','firestone','cooper','bfgoodrich','bf goodrich','general','uniroyal','hankook','nitto','mickey thompson','firemax','linglong','farroad','yeada','fortune','radar','rotalla','haida','carlstar'];
@@ -1042,22 +934,28 @@ document.addEventListener('DOMContentLoaded', function() {
     buildCollectionUrl(params) {
       const base = '/collections/tires';
       const urlParams = new URLSearchParams();
-      if (params.width) urlParams.set('filter.p.m.custom.tire_width', params.width);
-      if (params.profile) urlParams.set('filter.p.m.custom.tire_profile', params.profile);
-      if (params.rim) urlParams.set('filter.p.m.custom.rim_diameter', params.rim);
-      if (!params.width && !params.profile && !params.rim && params.tireSize) {
-        var normalizedSize = params.tireSize.replace(/^[Pp][LlTt]?|^[LlTtSs][Tt]?/, '').trim();
-        var parsedSize = this.normalizeTireSize(normalizedSize);
-        if (parsedSize) {
-          urlParams.set('filter.p.m.custom.tire_width', parsedSize.width);
-          urlParams.set('filter.p.m.custom.tire_profile', parsedSize.aspect);
-          urlParams.set('filter.p.m.custom.rim_diameter', parsedSize.rim);
-        } else {
-          urlParams.set('filter.p.m.custom.tire_size', normalizedSize);
+
+      /* If a full tire size string is passed (e.g. from vehicle lookup "195/65R15"),
+         parse it into components and use individual metafield filters.
+         Strip any P / LT / ST prefix before filtering. */
+      if (params.tireSize) {
+        var sizeStr = String(params.tireSize).replace(/^[Pp]?(?:[Ll][Tt]|[Ss][Tt])?/, '');
+        var pm = sizeStr.match(/(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/);
+        if (pm) {
+          urlParams.set('filter.p.m.custom.tire_width', pm[1]);
+          urlParams.set('filter.p.m.custom.tire_profile', pm[2]);
+          urlParams.set('filter.p.m.custom.rim_diameter', pm[3]);
         }
       }
-      if (params.brand) urlParams.set('filter.p.vendor', params.brand);
-      if (params.season) urlParams.set('filter.p.m.custom.seasonality', params.season);
+
+      /* Individual components take precedence (passed directly from normalizeTireSize) */
+      if (params.width)  urlParams.set('filter.p.m.custom.tire_width',   params.width);
+      if (params.aspect) urlParams.set('filter.p.m.custom.tire_profile',  params.aspect);
+      if (params.rim)    urlParams.set('filter.p.m.custom.rim_diameter',  params.rim);
+
+      if (params.brand)  urlParams.set('filter.p.vendor',                  params.brand);
+      if (params.season) urlParams.set('filter.p.m.custom.seasonality',    params.season);
+
       const qs = urlParams.toString();
       return qs ? base + '?' + qs : base;
     }
@@ -1065,9 +963,8 @@ document.addEventListener('DOMContentLoaded', function() {
     bindEvents() {
       this.input.addEventListener('input', () => this.onInput());
       this.input.addEventListener('keydown', (e) => this.onKeydown(e));
-      this.submit.addEventListener('click', () => this.onSubmitOrNavigate());
+      this.submit.addEventListener('click', () => this.onSubmit());
       this.input.addEventListener('focus', () => {
-        this.clearError();
         if (this.input.value.trim().length >= 2) this.search(this.input.value.trim());
       });
       document.addEventListener('click', (e) => {
@@ -1077,57 +974,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
 
-    showError(msg) {
-      if (!this.errorEl) return;
-      this.errorEl.textContent = msg;
-      this.errorEl.hidden = false;
-      this.results.hidden = true;
-      this.input.setAttribute('aria-invalid', 'true');
-    }
-
-    clearError() {
-      if (!this.errorEl) return;
-      this.errorEl.hidden = true;
-      this.errorEl.textContent = '';
-      this.input.removeAttribute('aria-invalid');
-    }
-
-    looksLikeTireSizeAttempt(query) {
-      return /\d{3}/.test(query);
-    }
-
-    isStandardTireSize(width, aspect, rim) {
-      if (!this._validSizes) this._validSizes = this._buildValidSizes();
-      return this._validSizes.has(parseInt(width,10) + '_' + parseInt(aspect,10) + '_' + parseFloat(rim));
-    }
-
-    _buildValidSizes() {
-      var s = [];
-      function r(rim, pairs) {
-        pairs.forEach(function(p) { s.push(p[0] + '_' + p[1] + '_' + rim); });
-      }
-      r(10,[[165,70]]);
-      r(12,[[135,80],[135,70],[145,80],[145,70],[155,80],[155,75],[155,70],[165,70],[165,60]]);
-      r(13,[[125,80],[135,80],[135,70],[145,80],[145,70],[145,65],[145,60],[155,80],[155,75],[155,70],[155,65],[155,60],[165,80],[165,70],[165,65],[165,60],[165,55],[175,80],[175,75],[175,70],[175,65],[175,60],[175,50],[185,80],[185,75],[185,70],[185,65],[185,60],[185,55],[190,55],[195,70],[205,70],[205,60]]);
-      r(14,[[145,80],[155,80],[155,70],[155,65],[155,60],[155,55],[165,80],[165,75],[165,70],[165,65],[165,60],[165,55],[165,50],[170,65],[175,80],[175,75],[175,70],[175,65],[175,60],[175,50],[185,80],[185,75],[185,70],[185,65],[185,60],[185,55],[185,50],[195,80],[195,75],[195,70],[195,65],[195,60],[195,55],[205,80],[205,75],[205,70],[205,65],[205,60],[205,55],[215,80],[215,75],[215,70],[215,65],[215,60],[225,75],[225,70],[225,60],[235,75],[235,60],[265,60]]);
-      r(15,[[135,70],[145,65],[155,80],[155,70],[155,65],[155,60],[165,80],[165,70],[165,65],[165,60],[165,55],[165,50],[165,45],[175,80],[175,70],[175,65],[175,60],[175,55],[175,50],[185,80],[185,75],[185,70],[185,65],[185,60],[185,55],[185,50],[185,45],[190,65],[190,55],[195,80],[195,75],[195,70],[195,65],[195,60],[195,55],[195,50],[195,45],[205,80],[205,75],[205,70],[205,65],[205,60],[205,55],[205,50],[205,45],[215,80],[215,75],[215,70],[215,65],[215,60],[215,50],[215,90],[220,65],[225,80],[225,75],[225,70],[225,65],[225,60],[225,55],[235,80],[235,75],[235,70],[235,65],[235,60],[245,75],[245,70],[245,60],[255,75],[255,70],[255,60],[265,75],[265,70],[275,60],[275,55]]);
-      r(16,[[115,80],[165,50],[165,45],[175,80],[175,75],[175,65],[175,60],[175,55],[175,50],[185,85],[185,75],[185,70],[185,65],[185,60],[185,55],[185,50],[195,75],[195,70],[195,65],[195,60],[195,55],[195,50],[195,45],[195,40],[205,80],[205,75],[205,70],[205,65],[205,60],[205,55],[205,50],[205,45],[205,40],[215,85],[215,80],[215,75],[215,70],[215,65],[215,60],[215,55],[215,50],[215,45],[215,40],[225,95],[225,75],[225,70],[225,65],[225,60],[225,55],[225,50],[225,45],[225,40],[235,85],[235,80],[235,75],[235,70],[235,65],[235,60],[235,55],[235,50],[245,75],[245,70],[245,65],[245,60],[245,55],[245,50],[255,70],[255,65],[255,60],[255,55],[255,50],[265,75],[265,70],[265,65],[275,70],[275,60],[285,75],[285,70],[285,55]]);
-      r(16.5,[[215,85],[235,85]]);
-      r(17,[[135,50],[175,65],[175,55],[185,50],[185,45],[195,60],[195,55],[195,50],[195,45],[195,40],[205,70],[205,65],[205,60],[205,55],[205,50],[205,45],[205,40],[215,70],[215,65],[215,60],[215,55],[215,50],[215,45],[215,40],[215,35],[225,70],[225,65],[225,60],[225,55],[225,50],[225,45],[225,40],[225,35],[235,80],[235,75],[235,70],[235,65],[235,60],[235,55],[235,50],[235,45],[235,40],[245,75],[245,70],[245,65],[245,60],[245,55],[245,50],[245,45],[245,40],[245,35],[255,75],[255,70],[255,65],[255,60],[255,55],[255,50],[255,45],[255,40],[265,70],[265,65],[265,60],[265,55],[265,40],[275,70],[275,65],[275,60],[275,55],[275,45],[275,40],[285,70],[285,65],[315,70]]);
-      r(17.5,[[205,75],[215,75],[225,80],[225,75]]);
-      r(18,[[175,60],[195,60],[195,55],[195,50],[205,60],[205,55],[205,50],[205,45],[205,40],[205,35],[215,85],[215,65],[215,60],[215,55],[215,50],[215,45],[215,40],[215,35],[225,65],[225,60],[225,55],[225,50],[225,45],[225,40],[225,35],[235,65],[235,60],[235,55],[235,50],[235,45],[235,40],[235,35],[245,75],[245,70],[245,65],[245,60],[245,55],[245,50],[245,45],[245,40],[245,35],[255,70],[255,65],[255,60],[255,55],[255,50],[255,45],[255,40],[255,35],[265,70],[265,65],[265,60],[265,55],[265,50],[265,45],[265,40],[265,35],[275,70],[275,65],[275,60],[275,55],[275,40],[275,35],[285,75],[285,65],[285,60],[285,55],[285,50],[285,45],[285,40],[285,30],[295,30],[305,60],[305,70],[315,30],[325,65]]);
-      r(19,[[155,70],[195,55],[195,50],[195,45],[205,55],[215,50],[215,35],[225,55],[225,50],[225,45],[225,40],[225,35],[225,30],[235,65],[235,60],[235,55],[235,50],[235,45],[235,40],[235,35],[235,30],[245,55],[245,50],[245,45],[245,40],[245,35],[245,30],[255,65],[255,60],[255,55],[255,50],[255,45],[255,40],[255,35],[255,30],[265,60],[265,55],[265,50],[265,45],[265,40],[265,35],[265,30],[275,60],[275,55],[275,50],[275,45],[275,40],[275,35],[275,30],[285,55],[285,45],[285,35],[285,30],[295,45],[295,35],[305,30]]);
-      r(19.5,[[225,70],[245,70],[265,70]]);
-      r(20,[[155,60],[175,55],[195,55],[195,50],[215,45],[225,45],[225,40],[225,35],[225,30],[235,60],[235,55],[235,50],[235,45],[235,40],[235,35],[235,30],[245,60],[245,50],[245,45],[245,40],[245,35],[245,30],[255,60],[255,55],[255,50],[255,45],[255,40],[255,35],[255,30],[265,60],[265,55],[265,50],[265,45],[265,40],[265,35],[265,30],[265,25],[275,65],[275,60],[275,55],[275,50],[275,45],[275,40],[275,35],[275,30],[275,25],[285,65],[285,60],[285,55],[285,50],[285,45],[285,40],[285,35],[285,30],[285,25],[295,60],[295,50],[295,45],[295,40],[295,35],[305,55],[305,45],[305,35],[305,30],[315,40]]);
-      r(21,[[225,45],[225,40],[235,50],[235,45],[245,45],[245,40],[245,35],[245,30],[255,50],[255,45],[255,40],[255,35],[255,30],[265,50],[265,45],[265,40],[265,35],[265,30],[275,55],[275,50],[275,45],[275,40],[275,35],[275,30],[275,25],[285,45],[285,40],[285,35],[285,30],[295,40],[295,35],[295,30]]);
-      r(22,[[225,40],[255,45],[255,40],[255,35],[255,30],[265,50],[265,40],[265,35],[265,30],[275,60],[275,50],[275,45],[275,40],[275,35],[275,30],[285,55],[285,45],[285,40],[285,35],[285,30],[285,25],[295,40],[295,35],[295,30],[305,55],[305,45],[305,40],[305,35],[305,30],[325,55],[325,50]]);
-      r(23,[[255,40],[265,40],[275,35],[285,40],[285,35],[295,35],[305,35]]);
-      r(24,[[275,50],[285,40],[285,35],[295,35],[295,30],[305,35]]);
-      return new Set(s);
-    }
-
     onInput() {
-      this.clearError();
       clearTimeout(this.debounceTimer);
       this.debounceTimer = setTimeout(() => {
         const query = this.input.value.trim();
@@ -1164,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var tireMatch = query.match(this.tireSizeRegex);
       if (tireMatch && tireMatch[1]) {
         var parsed = this.normalizeTireSize(query);
-        if (parsed && this.isStandardTireSize(parsed.width, parsed.aspect, parsed.rim)) {
+        if (parsed) {
           this.handleTireSizeMatch([null, parsed.width, parsed.aspect, parsed.rim], query);
           return;
         }
@@ -1172,14 +1019,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
       /* Try compact/spaced tire size (e.g. "2255517", "225 55 17") */
       var normalized = this.normalizeTireSize(query);
-      if (normalized && this.isStandardTireSize(normalized.width, normalized.aspect, normalized.rim)) {
+      if (normalized) {
         this.handleTireSizeMatch([null, normalized.width, normalized.aspect, normalized.rim], query);
-        return;
-      }
-
-      // Don't pass pure-number queries to vehicle search — they're invalid tire attempts
-      if (this.looksLikeTireSizeAttempt(query)) {
-        this.hideResults();
         return;
       }
 
@@ -1190,6 +1031,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const width = match[1];
       const aspect = match[2] || '';
       const rim = match[3] || '';
+      /* Display label only — P/LT prefix already stripped by normalizeTireSize */
       let sizeStr = width;
       if (aspect) sizeStr += '/' + aspect;
       if (rim) sizeStr += 'R' + rim;
@@ -1201,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', function() {
         type: 'size',
         title: sizeStr + (intent.brand ? ' by ' + intent.brand : ''),
         meta: 'Filter collection' + intentLabel,
-        url: this.buildCollectionUrl({ tireSize: sizeStr, width: width, profile: aspect, rim: rim, brand: intent.brand, season: intent.season }),
+        url: this.buildCollectionUrl({ width: width, aspect: aspect, rim: rim, brand: intent.brand, season: intent.season }),
       }];
 
       if (width && aspect && !rim) {
@@ -1213,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', function() {
               type: 'size',
               title: full,
               meta: 'Filter collection' + intentLabel,
-              url: this.buildCollectionUrl({ tireSize: full, width: width, profile: aspect, rim: r, brand: intent.brand, season: intent.season }),
+              url: this.buildCollectionUrl({ width: width, aspect: aspect, rim: r, brand: intent.brand, season: intent.season }),
             });
           }
         });
@@ -1259,12 +1101,7 @@ document.addEventListener('DOMContentLoaded', function() {
               url: this.buildCollectionUrl({ brand: intent.brand, season: intent.season }),
             }]);
           } else {
-            this.renderResults([{
-              type: 'search',
-              title: 'Search for "' + query + '"',
-              meta: 'Browse all products',
-              url: '/search?q=' + encodeURIComponent(query),
-            }]);
+            this.showFallback(query);
           }
           return;
         }
@@ -1303,12 +1140,7 @@ document.addEventListener('DOMContentLoaded', function() {
             url: this.buildCollectionUrl({ brand: intent.brand, season: intent.season }),
           }]);
         } else {
-          this.renderResults([{
-            type: 'search',
-            title: 'Search for "' + query + '"',
-            meta: 'Browse all products',
-            url: '/search?q=' + encodeURIComponent(query),
-          }]);
+          this.showFallback(query);
         }
       }
     }
@@ -1650,6 +1482,7 @@ document.addEventListener('DOMContentLoaded', function() {
         item.addEventListener('click', () => this.selectResult(item));
       });
 
+      this.awaitingTrim = true;
       this.selectedIndex = -1;
       this.results.hidden = false;
       this.input.setAttribute('aria-expanded', 'true');
@@ -1664,6 +1497,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     renderResults(results) {
       this.loading.hidden = true;
+      this.awaitingTrim = false;
+      this.awaitingSelection = false;
 
       if (results.length === 0) {
         this.hideResults();
@@ -1690,6 +1525,7 @@ document.addEventListener('DOMContentLoaded', function() {
         item.addEventListener('click', () => this.selectResult(item));
       });
 
+      this.awaitingSelection = true;
       this.selectedIndex = -1;
       this.results.hidden = false;
       this.input.setAttribute('aria-expanded', 'true');
@@ -1700,6 +1536,40 @@ document.addEventListener('DOMContentLoaded', function() {
       this.loading.hidden = true;
       this.input.setAttribute('aria-expanded', 'false');
       this.selectedIndex = -1;
+      this.awaitingTrim = false;
+      this.awaitingSelection = false;
+    }
+
+    highlightItem() {
+      this.items.forEach((item, i) => {
+        item.setAttribute('aria-selected', i === this.selectedIndex ? 'true' : 'false');
+      });
+      if (this.selectedIndex >= 0) {
+        this.items[this.selectedIndex].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    selectResult(item) {
+      this.awaitingTrim = false;
+      this.awaitingSelection = false;
+      const url = item.dataset.url;
+      if (url) window.location.href = url;
+    }
+
+    showPrompt(message) {
+      const existing = this.list.querySelector('.hero-smart-search__trim-prompt');
+      if (existing) {
+        existing.textContent = message;
+        existing.classList.remove('hero-smart-search__trim-prompt--shake');
+        void existing.offsetWidth; /* reflow to restart animation */
+        existing.classList.add('hero-smart-search__trim-prompt--shake');
+        return;
+      }
+      const li = document.createElement('li');
+      li.className = 'hero-smart-search__trim-prompt';
+      li.setAttribute('aria-live', 'polite');
+      li.textContent = message;
+      this.list.appendChild(li);
     }
 
     onKeydown(e) {
@@ -1717,105 +1587,67 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         if (this.selectedIndex >= 0 && this.items[this.selectedIndex]) {
           this.selectResult(this.items[this.selectedIndex]);
+        } else if (this.awaitingTrim) {
+          this.showPrompt('Please select your car trim above');
         } else {
-          this.onSubmitOrNavigate();
+          this.onSubmit();
         }
       } else if (e.key === 'Escape') {
         this.hideResults();
       }
     }
 
-    highlightItem() {
-      this.items.forEach((item, i) => {
-        item.setAttribute('aria-selected', i === this.selectedIndex ? 'true' : 'false');
-      });
-      if (this.selectedIndex >= 0) {
-        this.items[this.selectedIndex].scrollIntoView({ block: 'nearest' });
-      }
-    }
-
-    selectResult(item) {
-      const url = item.dataset.url;
-      if (url) window.location.href = url;
-    }
-
-    async validateTireExists(width, profile, rim) {
-      try {
-        const params = new URLSearchParams();
-        params.set('filter.p.m.custom.tire_width', width);
-        params.set('filter.p.m.custom.tire_profile', profile);
-        params.set('filter.p.m.custom.rim_diameter', rim);
-        params.set('sections', 'tire-size-check');
-        const res = await fetch('/collections/tires?' + params.toString());
-        if (!res.ok) return true;
-        const data = await res.json();
-        const count = parseInt((data['tire-size-check'] || '0').trim(), 10);
-        return count > 0;
-      } catch (e) {
-        return true; // fail open on network error
-      }
-    }
-
-    onSubmitOrNavigate() {
-      // If the dropdown is already showing results (tire size already validated by search()),
-      // navigate to the first result immediately without the async inventory check.
-      if (!this.results.hidden && this.items && this.items.length > 0) {
-        this.selectResult(this.items[0]);
+    onSubmit() {
+      if (this.awaitingTrim) {
+        this.showPrompt('Please select your car trim above');
         return;
       }
-      this.onSubmit();
-    }
 
-    async onSubmit() {
       const query = this.input.value.trim();
       if (!query) return;
 
-      this.clearError();
-
-      const tireSize = this.extractTireSize(query);
+      const parsed = this.normalizeTireSize(query);
       const intent = this.parseSearchIntent(query);
-      const looksLikeYear = /^\d{4}\s/.test(query);
 
-      // Format check — only runs on submit
-      if (this.looksLikeTireSizeAttempt(query) && !tireSize && !looksLikeYear) {
-        const looksLikePureNumbers = /^[\d\s\/Rr\-.]+$/.test(query);
-        if (looksLikePureNumbers) {
-          this.showError(query + ' is not a valid tire size.');
-        } else {
-          this.showError('Please enter a valid tire size (e.g. 225/65R17) or car info (e.g. 2024 Toyota RAV4).');
-        }
-        return;
-      }
-
-      if (tireSize) {
-        const normalized = this.normalizeTireSize(tireSize);
-        if (normalized) {
-          // Standard-size check (instant, offline)
-          if (!this.isStandardTireSize(normalized.width, normalized.aspect, normalized.rim)) {
-            this.showError(tireSize + ' is not a standard tire size. Please check the size on your tire\u2019s sidewall.');
-            return;
-          }
-
-          // Inventory check — does our store carry it?
-          this.showError('Checking availability\u2026');
-          const exists = await this.validateTireExists(normalized.width, normalized.aspect, normalized.rim);
-          this.clearError();
-          if (!exists) {
-            this.showError('We don\u2019t carry size ' + tireSize + ' right now. Try browsing our full collection.');
-            return;
-          }
-        }
-      }
-
-      if (tireSize || intent.brand || intent.season) {
+      if (parsed) {
         window.location.href = this.buildCollectionUrl({
-          tireSize: tireSize,
+          width: parsed.width,
+          aspect: parsed.aspect,
+          rim: parsed.rim,
+          brand: intent.brand,
+          season: intent.season,
+        });
+      } else if (intent.brand || intent.season) {
+        window.location.href = this.buildCollectionUrl({
           brand: intent.brand,
           season: intent.season,
         });
       } else {
-        window.location.href = '/collections/tires?q=' + encodeURIComponent(query);
+        this.showFallback(query);
       }
+    }
+
+    showFallback(query) {
+      const phone = this.config.fallbackPhone || '403 452 4283';
+      const phoneClean = phone.replace(/\s/g, '');
+      this.loading.hidden = true;
+      this.awaitingTrim = false;
+      this.awaitingSelection = false;
+
+      this.list.innerHTML =
+        '<li class="hero-smart-search__fallback">' +
+          '<span class="hero-smart-search__fallback-icon">' + this.phoneIcon() + '</span>' +
+          '<span class="hero-smart-search__fallback-text">' +
+            '<span class="hero-smart-search__fallback-title">We couldn\'t find a match</span>' +
+            '<span class="hero-smart-search__fallback-sub">Reach out to our office &mdash; we\'ll help you find the right tire</span>' +
+          '</span>' +
+          '<a href="tel:' + phoneClean + '" class="hero-smart-search__fallback-phone">' + phone + '</a>' +
+        '</li>';
+
+      this.items = [];
+      this.selectedIndex = -1;
+      this.results.hidden = false;
+      this.input.setAttribute('aria-expanded', 'true');
     }
 
     tireIcon() {
@@ -1828,6 +1660,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     searchIcon() {
       return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M16 16L21 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+    }
+
+    phoneIcon() {
+      return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 16.92V19.92C22 20.48 21.56 20.93 21 20.97C20.66 21 20.33 21.01 20 21.01C10.61 21.01 3 13.4 3 3.97C3 3.64 3.01 3.31 3.03 2.97C3.07 2.41 3.52 1.97 4.08 1.97H7.08C7.56 1.97 7.97 2.33 8.03 2.81C8.09 3.33 8.2 3.84 8.37 4.33C8.52 4.76 8.41 5.24 8.08 5.57L6.62 7.03C8.06 9.78 10.22 11.94 12.97 13.38L14.43 11.92C14.76 11.59 15.24 11.48 15.67 11.63C16.16 11.8 16.67 11.91 17.19 11.97C17.67 12.03 18.03 12.44 18.03 12.92V16.92H22Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     }
 
     escapeHtml(text) {
@@ -1845,37 +1681,7 @@ document.addEventListener('DOMContentLoaded', function() {
     new SmartTireSearch(el.closest('.hero-smart-search'));
   });
 
-  /* Pre-fill placeholder from garage default vehicle */
-  (function() {
-    {%- if customer -%}
-      var customerId = {{ customer.id | json }};
-      try {
-        var raw = localStorage.getItem('pt-garage-' + customerId);
-        var vehicles = raw ? JSON.parse(raw) : [];
-        var defaultVehicle = vehicles.find(function(v) { return v.isDefault; });
-        if (defaultVehicle) {
-          var input = document.querySelector('[data-smart-search-input]');
-          if (input) {
-            var label = defaultVehicle.year + ' ' + defaultVehicle.make + ' ' + defaultVehicle.model;
-            if (defaultVehicle.trim) label += ' ' + defaultVehicle.trim;
-            input.setAttribute('placeholder', label + ' (' + defaultVehicle.tireSize + ')');
-          }
-        }
-      } catch(e) {}
-
-      if (typeof subscribe === 'function' && typeof PUB_SUB_EVENTS !== 'undefined') {
-        subscribe(PUB_SUB_EVENTS.garageUpdate, function(data) {
-          var def = (data.vehicles || []).find(function(v) { return v.isDefault; });
-          var input = document.querySelector('[data-smart-search-input]');
-          if (input && def) {
-            var label = def.year + ' ' + def.make + ' ' + def.model;
-            if (def.trim) label += ' ' + def.trim;
-            input.setAttribute('placeholder', label + ' (' + def.tireSize + ')');
-          }
-        });
-      }
-    {%- endif -%}
-  })();
+  /* Garage pre-fill removed — typewriter handles placeholder */
 
   (function() {
     var heading = document.querySelector('[data-hero-heading]');
@@ -2093,6 +1899,16 @@ document.addEventListener('DOMContentLoaded', function() {
           "id": "phone",
           "label": "t:sections.hero_smart_search.blocks.action_button.settings.phone.label",
           "info": "t:sections.hero_smart_search.blocks.action_button.settings.phone.info"
+        },
+        {
+          "type": "select",
+          "id": "action",
+          "label": "Action",
+          "options": [
+            { "value": "link", "label": "Link / Phone" },
+            { "value": "book_service", "label": "Open booking form" }
+          ],
+          "default": "link"
         },
         {
           "type": "select",

@@ -158,6 +158,135 @@
           >
             <div class="loading-overlay gradient"></div>
 
+            {%- comment -%} Mobile tire size quick-filter — visible on phones only {%- endcomment -%}
+            {%- assign pt_mw = request.params['filter.p.m.custom.tire_width'] -%}
+            {%- assign pt_mp = request.params['filter.p.m.custom.tire_profile'] -%}
+            {%- assign pt_widths  = '145,155,165,175,185,195,205,215,225,235,245,255,265,275,285,295,305,315,325' | split: ',' -%}
+            {%- assign pt_profiles = '25,30,35,40,45,50,55,60,65,70,75,80,85' | split: ',' -%}
+
+            <div class="pt-mobile-size-bar medium-hide large-up-hide">
+              <div class="pt-mobile-size-bar__row">
+                <span class="pt-mobile-size-bar__label">Width</span>
+                <div class="pt-mobile-size-bar__pills" id="pt-mob-widths">
+                  {%- for w in pt_widths -%}
+                    {%- assign w_active = false -%}
+                    {%- if pt_mw == w -%}{%- assign w_active = true -%}{%- endif -%}
+                    <button
+                      type="button"
+                      class="pt-mobile-size-bar__pill{% if w_active %} pt-mobile-size-bar__pill--active{% endif %}"
+                      data-pt-mob-param="filter.p.m.custom.tire_width"
+                      data-pt-mob-value="{{ w }}"
+                      aria-pressed="{{ w_active }}"
+                    >{{ w }}</button>
+                  {%- endfor -%}
+                </div>
+              </div>
+              <div class="pt-mobile-size-bar__row">
+                <span class="pt-mobile-size-bar__label">Ratio</span>
+                <div class="pt-mobile-size-bar__pills" id="pt-mob-profiles">
+                  {%- for p in pt_profiles -%}
+                    {%- assign p_active = false -%}
+                    {%- if pt_mp == p -%}{%- assign p_active = true -%}{%- endif -%}
+                    <button
+                      type="button"
+                      class="pt-mobile-size-bar__pill{% if p_active %} pt-mobile-size-bar__pill--active{% endif %}"
+                      data-pt-mob-param="filter.p.m.custom.tire_profile"
+                      data-pt-mob-value="{{ p }}"
+                      aria-pressed="{{ p_active }}"
+                    >{{ p }}</button>
+                  {%- endfor -%}
+                </div>
+              </div>
+              {%- if pt_mw != blank or pt_mp != blank -%}
+                <a href="{{ collection.url }}" class="pt-mobile-size-bar__clear">Clear size</a>
+              {%- endif -%}
+            </div>
+
+            <style>
+              .pt-mobile-size-bar {
+                padding: 1rem 0 0.6rem;
+                margin-bottom: 0.8rem;
+                border-bottom: 1px solid rgba(0,0,0,0.08);
+              }
+              .pt-mobile-size-bar__row {
+                display: flex;
+                align-items: center;
+                gap: 0.8rem;
+                margin-bottom: 0.7rem;
+              }
+              .pt-mobile-size-bar__label {
+                font-size: 1.1rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: rgba(var(--color-foreground), 0.5);
+                white-space: nowrap;
+                min-width: 3.6rem;
+              }
+              .pt-mobile-size-bar__pills {
+                display: flex;
+                gap: 0.4rem;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding-bottom: 2px;
+              }
+              .pt-mobile-size-bar__pills::-webkit-scrollbar { display: none; }
+              .pt-mobile-size-bar__pill {
+                flex-shrink: 0;
+                padding: 0.3rem 0.75rem;
+                border: 1px solid rgba(var(--color-foreground), 0.2);
+                border-radius: 3px;
+                background: transparent;
+                font-size: 1.15rem;
+                font-family: inherit;
+                color: rgb(var(--color-foreground));
+                cursor: pointer;
+                transition: background 0.12s, border-color 0.12s, color 0.12s;
+                white-space: nowrap;
+              }
+              .pt-mobile-size-bar__pill--active {
+                background: rgb(var(--color-foreground));
+                color: rgb(var(--color-background));
+                border-color: rgb(var(--color-foreground));
+              }
+              .pt-mobile-size-bar__clear {
+                display: inline-block;
+                font-size: 1.1rem;
+                color: rgba(var(--color-foreground), 0.5);
+                text-decoration: underline;
+                margin-top: 0.2rem;
+              }
+            </style>
+
+            <script>
+              (function() {
+                var bar = document.querySelector('.pt-mobile-size-bar');
+                if (!bar) return;
+
+                function getParam(key) {
+                  return new URLSearchParams(window.location.search).get(key);
+                }
+
+                function navigate(param, value) {
+                  var sp = new URLSearchParams(window.location.search);
+                  var current = sp.get(param);
+                  if (current === value) {
+                    sp.delete(param);
+                  } else {
+                    sp.set(param, value);
+                  }
+                  window.location.href = window.location.pathname + (sp.toString() ? '?' + sp.toString() : '');
+                }
+
+                bar.querySelectorAll('.pt-mobile-size-bar__pill').forEach(function(btn) {
+                  btn.addEventListener('click', function() {
+                    navigate(btn.dataset.ptMobParam, btn.dataset.ptMobValue);
+                  });
+                });
+              })();
+            </script>
+
             {%- comment -%} Winter season: November (11) through March (3) {%- endcomment -%}
             {%- assign current_month = 'now' | date: '%m' | plus: 0 -%}
             {%- assign is_winter_season = false -%}
@@ -190,10 +319,12 @@
                 {%- for product in collection.products -%}
                   {%- assign is_winter = false -%}
                   {%- for tag in product.tags -%}
-                    {%- if tag | downcase | contains: 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
+                    {%- assign tag_down = tag | downcase -%}
+                    {%- if tag_down contains 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
                   {%- endfor -%}
                   {%- unless is_winter -%}
-                    {%- if product.type | downcase | contains: 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
+                    {%- assign type_down = product.type | downcase -%}
+                    {%- if type_down contains 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
                   {%- endunless -%}
                   {%- if is_winter -%}
                     {%- assign card_render_index = card_render_index | plus: 1 -%}
@@ -227,10 +358,12 @@
                 {%- for product in collection.products -%}
                   {%- assign is_winter = false -%}
                   {%- for tag in product.tags -%}
-                    {%- if tag | downcase | contains: 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
+                    {%- assign tag_down = tag | downcase -%}
+                    {%- if tag_down contains 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
                   {%- endfor -%}
                   {%- unless is_winter -%}
-                    {%- if product.type | downcase | contains: 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
+                    {%- assign type_down = product.type | downcase -%}
+                    {%- if type_down contains 'winter' -%}{%- assign is_winter = true -%}{%- endif -%}
                   {%- endunless -%}
                   {%- unless is_winter -%}
                     {%- assign card_render_index = card_render_index | plus: 1 -%}

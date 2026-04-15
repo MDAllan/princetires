@@ -1,142 +1,830 @@
-{{ 'customer.css' | asset_url | stylesheet_tag }}
+<div class="auth-page">
+  <!-- Left brand panel — garage benefits -->
+  <div class="auth-page__brand">
+    <div class="auth-page__brand-content">
+      <div class="auth-page__brand-top">
+        <a href="{{ routes.root_url }}" class="auth-page__logo">
+          {%- if section.settings.logo != blank -%}
+            {{ section.settings.logo | image_url: width: 240 | image_tag: class: 'auth-page__logo-img' }}
+          {%- else -%}
+            <span class="auth-page__logo-text">{{ shop.name }}</span>
+          {%- endif -%}
+        </a>
+      </div>
 
-{%- style -%}
-  .section-{{ section.id }}-padding {
-    padding-top: {{ section.settings.padding_top | times: 0.75 | round: 0 }}px;
-    padding-bottom: {{ section.settings.padding_bottom | times: 0.75 | round: 0 }}px;
+      <div class="auth-page__benefits">
+        <div class="auth-page__benefits-header">
+          <!-- Garage icon -->
+          <span class="auth-page__benefits-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <path d="M9 22V12h6v10"/>
+            </svg>
+          </span>
+          <h2 class="auth-page__benefits-title">{{ 'customer.auth.garage_benefits_title' | t }}</h2>
+          <p class="auth-page__benefits-desc">{{ 'customer.auth.garage_benefits_desc' | t }}</p>
+        </div>
+
+        <ul class="auth-page__benefits-list">
+          {%- for block in section.blocks -%}
+            <li class="auth-page__benefit" {{ block.shopify_attributes }}>
+              <span class="auth-page__benefit-num">{{ forloop.index }}</span>
+              <div class="auth-page__benefit-text">
+                <strong>{{ block.settings.title }}</strong>
+                {%- if block.settings.description != blank -%}
+                  <span>{{ block.settings.description }}</span>
+                {%- endif -%}
+              </div>
+            </li>
+          {%- endfor -%}
+        </ul>
+      </div>
+
+      <div class="auth-page__brand-bottom">
+        <div class="auth-page__trust">
+          <div class="auth-page__trust-stars">
+            {%- for i in (1..5) -%}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#F5820B"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            {%- endfor -%}
+          </div>
+          <span class="auth-page__trust-text">{{ section.settings.trust_text }}</span>
+        </div>
+        <div class="auth-page__trust-secure">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>{{ 'customer.auth.secure_connection' | t }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right form panel -->
+  <div class="auth-page__form-panel">
+    <div class="auth-page__form-container">
+      <div class="auth-page__form-section">
+
+        <div class="auth-page__form-header">
+          <span class="auth-page__garage-badge">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 17h14M7.5 17V13L6 9H18L16.5 13V17M9 21H7V19H9V21ZM17 21H15V19H17V21ZM3 13H21"/>
+            </svg>
+          </span>
+          <h1 class="auth-page__title">{{ 'customer.auth.create_your_garage' | t }}</h1>
+          <p class="auth-page__subtitle">{{ 'customer.auth.register_subtitle' | t }}</p>
+        </div>
+
+        {%- form 'create_customer', novalidate: 'novalidate' -%}
+          {%- if form.errors -%}
+            <div class="auth-page__error-banner" tabindex="-1" autofocus>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div>
+                <strong>{{ 'templates.contact.form.error_heading' | t }}</strong>
+                <ul>
+                  {%- for field in form.errors -%}
+                    <li>
+                      {%- if field == 'form' -%}
+                        {{ form.errors.messages[field] }}
+                      {%- else -%}
+                        <a href="#RegisterForm-{{ field }}">
+                          {{ form.errors.translated_fields[field] | capitalize }}
+                          {{ form.errors.messages[field] }}
+                        </a>
+                      {%- endif -%}
+                    </li>
+                  {%- endfor -%}
+                </ul>
+              </div>
+            </div>
+          {%- endif -%}
+
+          <div class="auth-page__row">
+            <div class="auth-page__field">
+              <label class="auth-page__label" for="RegisterForm-FirstName">{{ 'customer.register.first_name' | t }}</label>
+              <div class="auth-page__input-wrap">
+                <svg class="auth-page__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <input
+                  class="auth-page__input"
+                  type="text"
+                  name="customer[first_name]"
+                  id="RegisterForm-FirstName"
+                  {% if form.first_name %}value="{{ form.first_name }}"{% endif %}
+                  autocomplete="given-name"
+                  placeholder="{{ 'customer.auth.first_name_placeholder' | t }}"
+                >
+              </div>
+            </div>
+
+            <div class="auth-page__field">
+              <label class="auth-page__label" for="RegisterForm-LastName">{{ 'customer.register.last_name' | t }}</label>
+              <div class="auth-page__input-wrap">
+                <svg class="auth-page__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <input
+                  class="auth-page__input"
+                  type="text"
+                  name="customer[last_name]"
+                  id="RegisterForm-LastName"
+                  {% if form.last_name %}value="{{ form.last_name }}"{% endif %}
+                  autocomplete="family-name"
+                  placeholder="{{ 'customer.auth.last_name_placeholder' | t }}"
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="auth-page__field">
+            <label class="auth-page__label" for="RegisterForm-email">{{ 'customer.register.email' | t }}</label>
+            <div class="auth-page__input-wrap">
+              <svg class="auth-page__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <input
+                class="auth-page__input"
+                type="email"
+                name="customer[email]"
+                id="RegisterForm-email"
+                {% if form.email %}value="{{ form.email }}"{% endif %}
+                spellcheck="false"
+                autocapitalize="off"
+                autocomplete="email"
+                aria-required="true"
+                placeholder="{{ 'customer.auth.email_placeholder' | t }}"
+                {% if form.errors contains 'email' %}
+                  aria-invalid="true"
+                  aria-describedby="RegisterForm-email-error"
+                {% endif %}
+              >
+            </div>
+            {%- if form.errors contains 'email' -%}
+              <span id="RegisterForm-email-error" class="auth-page__error">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                {{ form.errors.translated_fields.email | capitalize }}
+                {{ form.errors.messages.email }}.
+              </span>
+            {%- endif -%}
+          </div>
+
+          <div class="auth-page__field">
+            <label class="auth-page__label" for="RegisterForm-password">{{ 'customer.register.password' | t }}</label>
+            <div class="auth-page__input-wrap">
+              <svg class="auth-page__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input
+                class="auth-page__input auth-page__input--password"
+                type="password"
+                name="customer[password]"
+                id="RegisterForm-password"
+                aria-required="true"
+                placeholder="{{ 'customer.auth.create_password_placeholder' | t }}"
+                {% if form.errors contains 'password' %}
+                  aria-invalid="true"
+                  aria-describedby="RegisterForm-password-error"
+                {% endif %}
+              >
+              <button type="button" class="auth-page__toggle-pw" aria-label="{{ 'customer.auth.show_password' | t }}" data-toggle-password>
+                <svg class="auth-page__eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="auth-page__eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+            {%- if form.errors contains 'password' -%}
+              <span id="RegisterForm-password-error" class="auth-page__error">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                {{ form.errors.translated_fields.password | capitalize }}
+                {{ form.errors.messages.password }}.
+              </span>
+            {%- endif -%}
+
+            <!-- Password strength meter -->
+            <div class="auth-page__pw-strength" data-pw-strength style="display:none;">
+              <div class="auth-page__pw-bar">
+                <div class="auth-page__pw-bar-fill" data-pw-bar></div>
+              </div>
+              <span class="auth-page__pw-label" data-pw-label></span>
+            </div>
+          </div>
+
+          <button type="submit" class="auth-page__btn auth-page__btn--primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            <span class="auth-page__btn-text">{{ 'customer.auth.open_garage' | t }}</span>
+            <svg class="auth-page__btn-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        {%- endform -%}
+
+        <p class="auth-page__terms">
+          {{ 'customer.auth.terms_notice' | t }}
+        </p>
+
+        <div class="auth-page__switch">
+          <span>{{ 'customer.auth.has_account' | t }}</span>
+          <a href="{{ routes.account_login_url }}">{{ 'customer.auth.enter_garage' | t }}</a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+  /* ═══════════════════════════════════════════
+     AUTH PAGE – REGISTER (GARAGE THEMED)
+     ═══════════════════════════════════════════ */
+
+  .auth-page {
+    display: flex;
+    min-height: 100vh;
+    min-height: 100dvh;
+    font-family: 'Outfit', sans-serif;
   }
 
-  @media screen and (min-width: 750px) {
-    .section-{{ section.id }}-padding {
-      padding-top: {{ section.settings.padding_top }}px;
-      padding-bottom: {{ section.settings.padding_bottom }}px;
+  /* ── Left brand panel ── */
+  .auth-page__brand {
+    display: none;
+    width: 45%;
+    max-width: 600px;
+    background: #0a0a0a;
+    position: relative;
+    overflow: hidden;
+  }
+
+  @media (min-width: 900px) {
+    .auth-page__brand {
+      display: flex;
     }
   }
-{%- endstyle -%}
 
-<div class="customer register section-{{ section.id }}-padding">
-  <h1>
-    {{ 'customer.register.title' | t }}
-  </h1>
-  {%- form 'create_customer', novalidate: 'novalidate' -%}
-    {%- if form.errors -%}
-      <h2 class="form__message" tabindex="-1" autofocus>
-        <span class="svg-wrapper">
-          {{- 'icon-error.svg' | inline_asset_content -}}
-        </span>
-        {{ 'templates.contact.form.error_heading' | t }}
-      </h2>
-      <ul>
-        {%- for field in form.errors -%}
-          <li>
-            {%- if field == 'form' -%}
-              {{ form.errors.messages[field] }}
-            {%- else -%}
-              <a href="#RegisterForm-{{ field }}">
-                {{ form.errors.translated_fields[field] | capitalize }}
-                {{ form.errors.messages[field] }}
-              </a>
-            {%- endif -%}
-          </li>
-        {%- endfor -%}
-      </ul>
-    {%- endif -%}
-    <div class="field">
-      <input
-        type="text"
-        name="customer[first_name]"
-        id="RegisterForm-FirstName"
-        {% if form.first_name %}
-          value="{{ form.first_name }}"
-        {% endif %}
-        autocomplete="given-name"
-        placeholder="{{ 'customer.register.first_name' | t }}"
-      >
-      <label for="RegisterForm-FirstName">
-        {{ 'customer.register.first_name' | t }}
-      </label>
-    </div>
-    <div class="field">
-      <input
-        type="text"
-        name="customer[last_name]"
-        id="RegisterForm-LastName"
-        {% if form.last_name %}
-          value="{{ form.last_name }}"
-        {% endif %}
-        autocomplete="family-name"
-        placeholder="{{ 'customer.register.last_name' | t }}"
-      >
-      <label for="RegisterForm-LastName">
-        {{ 'customer.register.last_name' | t }}
-      </label>
-    </div>
-    <div class="field">
-      <input
-        type="email"
-        name="customer[email]"
-        id="RegisterForm-email"
-        {% if form.email %}
-          value="{{ form.email }}"
-        {% endif %}
-        spellcheck="false"
-        autocapitalize="off"
-        autocomplete="email"
-        aria-required="true"
-        {% if form.errors contains 'email' %}
-          aria-invalid="true"
-          aria-describedby="RegisterForm-email-error"
-        {% endif %}
-        placeholder="{{ 'customer.register.email' | t }}"
-      >
-      <label for="RegisterForm-email">
-        {{ 'customer.register.email' | t }}
-      </label>
-    </div>
-    {%- if form.errors contains 'email' -%}
-      <span id="RegisterForm-email-error" class="form__message">
-        <span class="svg-wrapper">
-          {{- 'icon-error.svg' | inline_asset_content -}}
-        </span>
-        {{ form.errors.translated_fields.email | capitalize }}
-        {{ form.errors.messages.email }}.
-      </span>
-    {%- endif -%}
-    <div class="field">
-      <input
-        type="password"
-        name="customer[password]"
-        id="RegisterForm-password"
-        aria-required="true"
-        {% if form.errors contains 'password' %}
-          aria-invalid="true"
-          aria-describedby="RegisterForm-password-error"
-        {% endif %}
-        placeholder="{{ 'customer.register.password' | t }}"
-      >
-      <label for="RegisterForm-password">
-        {{ 'customer.register.password' | t }}
-      </label>
-    </div>
-    {%- if form.errors contains 'password' -%}
-      <span id="RegisterForm-password-error" class="form__message">
-        <span class="svg-wrapper">
-          {{- 'icon-error.svg' | inline_asset_content -}}
-        </span>
-        {{ form.errors.translated_fields.password | capitalize }}
-        {{ form.errors.messages.password }}.
-      </span>
-    {%- endif -%}
-    <button>
-      {{ 'customer.register.submit' | t }}
-    </button>
-  {%- endform -%}
-</div>
+  .auth-page__brand::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60%;
+    background: linear-gradient(to top, rgba(220, 38, 38, 0.04) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .auth-page__brand-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 3.5rem;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+  }
+
+  .auth-page__logo {
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .auth-page__logo-img {
+    max-height: 40px;
+    width: auto;
+  }
+
+  .auth-page__logo-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Benefits section ── */
+  .auth-page__benefits {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 2rem 0;
+  }
+
+  .auth-page__benefits-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .auth-page__benefits-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: rgba(220, 38, 38, 0.12);
+    color: #dc2626;
+    margin-bottom: 1rem;
+  }
+
+  .auth-page__benefits-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.5rem;
+    line-height: 1.15;
+  }
+
+  .auth-page__benefits-desc {
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .auth-page__benefits-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+  }
+
+  .auth-page__benefit {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .auth-page__benefit-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(220, 38, 38, 0.12);
+    color: #dc2626;
+    font-size: 1.2rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  .auth-page__benefit-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .auth-page__benefit-text strong {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .auth-page__benefit-text span {
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.4);
+    line-height: 1.4;
+  }
+
+  /* ── Trust ── */
+  .auth-page__brand-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  .auth-page__trust {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .auth-page__trust-stars {
+    display: flex;
+    gap: 2px;
+  }
+
+  .auth-page__trust-text {
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .auth-page__trust-secure {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .auth-page__trust-secure svg { opacity: 0.6; }
+
+  /* ── Right form panel ── */
+  .auth-page__form-panel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    background: #fff;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .auth-page__form-container {
+    width: 100%;
+    max-width: 460px;
+  }
+
+  .auth-page__form-section {
+    animation: auth-fade-in 0.3s ease;
+  }
+
+  @keyframes auth-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .auth-page__form-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .auth-page__garage-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #fef2f2;
+    color: #dc2626;
+    margin-bottom: 1.2rem;
+  }
+
+  .auth-page__title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 0.5rem;
+    line-height: 1.1;
+  }
+
+  .auth-page__subtitle {
+    font-size: 1.35rem;
+    font-weight: 300;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* ── Name row ── */
+  .auth-page__row {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .auth-page__row .auth-page__field {
+    flex: 1;
+  }
+
+  /* ── Fields ── */
+  .auth-page__field {
+    margin-bottom: 1.5rem;
+  }
+
+  .auth-page__label {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
+
+  .auth-page__input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .auth-page__input {
+    width: 100%;
+    height: 50px;
+    padding: 0 1.4rem 0 3.2rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 400;
+    color: #111;
+    background: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .auth-page__input::placeholder {
+    color: #9ca3af;
+    font-weight: 300;
+  }
+
+  .auth-page__input:focus {
+    background: #fff;
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+  }
+
+  .auth-page__input[aria-invalid="true"] {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08);
+  }
+
+  .auth-page__input--password {
+    padding-right: 3.2rem;
+  }
+
+  .auth-page__input-icon {
+    position: absolute;
+    left: 0.9rem;
+    color: #9ca3af;
+    pointer-events: none;
+    transition: color 0.2s ease;
+    z-index: 1;
+  }
+
+  .auth-page__input:focus ~ .auth-page__input-icon,
+  .auth-page__input-wrap:focus-within .auth-page__input-icon {
+    color: #dc2626;
+  }
+
+  /* ── Password toggle ── */
+  .auth-page__toggle-pw {
+    position: absolute;
+    right: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: color 0.2s ease, background 0.2s ease;
+    padding: 0;
+  }
+
+  .auth-page__toggle-pw:hover {
+    color: #374151;
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  /* ── Password strength ── */
+  .auth-page__pw-strength {
+    margin-top: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .auth-page__pw-bar {
+    flex: 1;
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .auth-page__pw-bar-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 2px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+  }
+
+  .auth-page__pw-label {
+    font-size: 1.1rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 0.3s ease;
+  }
+
+  /* ── Buttons ── */
+  .auth-page__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    height: 52px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .auth-page__btn--primary {
+    background: #dc2626;
+    color: #fff;
+    margin-top: 0.5rem;
+  }
+
+  .auth-page__btn--primary:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.3);
+  }
+
+  .auth-page__btn--primary:active {
+    transform: translateY(0);
+  }
+
+  .auth-page__btn--primary .auth-page__btn-arrow {
+    transition: transform 0.2s ease;
+  }
+
+  .auth-page__btn--primary:hover .auth-page__btn-arrow {
+    transform: translateX(3px);
+  }
+
+  /* ── Terms ── */
+  .auth-page__terms {
+    text-align: center;
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: #9ca3af;
+    margin: 1.2rem 0 0;
+    line-height: 1.5;
+  }
+
+  /* ── Error ── */
+  .auth-page__error-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1.5rem;
+    color: #991b1b;
+    font-size: 1.3rem;
+    line-height: 1.5;
+    animation: auth-shake 0.4s ease;
+  }
+
+  .auth-page__error-banner svg { flex-shrink: 0; margin-top: 0.15rem; }
+  .auth-page__error-banner strong { display: block; font-weight: 600; margin-bottom: 0.3rem; }
+  .auth-page__error-banner ul { margin: 0; padding-left: 1.4rem; }
+  .auth-page__error-banner a { color: #991b1b; text-decoration: underline; }
+
+  @keyframes auth-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  .auth-page__error {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #dc2626;
+    font-size: 1.2rem;
+    margin-top: 0.5rem;
+  }
+
+  .auth-page__error svg { flex-shrink: 0; }
+
+  /* ── Switch ── */
+  .auth-page__switch {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 1.3rem;
+    color: #6b7280;
+  }
+
+  .auth-page__switch a {
+    color: #dc2626;
+    font-weight: 600;
+    text-decoration: none;
+    margin-left: 0.3rem;
+    transition: color 0.2s ease;
+  }
+
+  .auth-page__switch a:hover {
+    color: #b91c1c;
+    text-decoration: underline;
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 899px) {
+    .auth-page { min-height: auto; }
+    .auth-page__form-panel {
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 4rem 2rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .auth-page__form-panel { padding: 3rem 1.6rem; }
+    .auth-page__title { font-size: 2.4rem; }
+    .auth-page__garage-badge { width: 42px; height: 42px; }
+    .auth-page__row { flex-direction: column; gap: 0; }
+    .auth-page__input { height: 48px; font-size: 1.6rem; }
+    .auth-page__btn { height: 48px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .auth-page__form-section,
+    .auth-page__error-banner { animation: none; }
+    .auth-page__btn--primary:hover { transform: none; }
+    .auth-page__pw-bar-fill { transition: none; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function() {
+    var section = document.querySelector('.auth-page');
+    if (!section) return;
+
+    // Password visibility toggle
+    section.querySelectorAll('[data-toggle-password]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var input = this.closest('.auth-page__input-wrap').querySelector('input');
+        var eyeOpen = this.querySelector('.auth-page__eye-open');
+        var eyeClosed = this.querySelector('.auth-page__eye-closed');
+        if (input.type === 'password') {
+          input.type = 'text';
+          eyeOpen.style.display = 'none';
+          eyeClosed.style.display = 'block';
+        } else {
+          input.type = 'password';
+          eyeOpen.style.display = 'block';
+          eyeClosed.style.display = 'none';
+        }
+        input.focus();
+      });
+    });
+
+    // Password strength meter
+    var pwInput = document.getElementById('RegisterForm-password');
+    var strengthWrap = section.querySelector('[data-pw-strength]');
+    var strengthBar = section.querySelector('[data-pw-bar]');
+    var strengthLabel = section.querySelector('[data-pw-label]');
+
+    if (pwInput && strengthWrap && strengthBar && strengthLabel) {
+      pwInput.addEventListener('input', function() {
+        var val = this.value;
+        if (val.length === 0) {
+          strengthWrap.style.display = 'none';
+          return;
+        }
+        strengthWrap.style.display = 'flex';
+
+        var score = 0;
+        if (val.length >= 5) score++;
+        if (val.length >= 8) score++;
+        if (/[A-Z]/.test(val)) score++;
+        if (/[0-9]/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+
+        var levels = [
+          { width: '20%', color: '#ef4444', label: 'Weak' },
+          { width: '40%', color: '#f97316', label: 'Fair' },
+          { width: '60%', color: '#eab308', label: 'Good' },
+          { width: '80%', color: '#22c55e', label: 'Strong' },
+          { width: '100%', color: '#16a34a', label: 'Very strong' }
+        ];
+
+        var level = levels[Math.min(score, 4)];
+        strengthBar.style.width = level.width;
+        strengthBar.style.backgroundColor = level.color;
+        strengthLabel.textContent = level.label;
+        strengthLabel.style.color = level.color;
+      });
+    }
+  })();
+{% endjavascript %}
 
 {% schema %}
 {
   "name": "t:sections.main-register.name",
   "settings": [
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Logo"
+    },
+    {
+      "type": "text",
+      "id": "trust_text",
+      "label": "Trust badge text",
+      "default": "4.9 on Google (500+ reviews)"
+    },
     {
       "type": "header",
       "content": "t:sections.all.padding.section_padding_heading"
@@ -149,7 +837,7 @@
       "step": 4,
       "unit": "px",
       "label": "t:sections.all.padding.padding_top",
-      "default": 36
+      "default": 0
     },
     {
       "type": "range",
@@ -159,7 +847,61 @@
       "step": 4,
       "unit": "px",
       "label": "t:sections.all.padding.padding_bottom",
-      "default": 36
+      "default": 0
+    }
+  ],
+  "blocks": [
+    {
+      "type": "benefit",
+      "name": "Benefit",
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Benefit title"
+        },
+        {
+          "type": "text",
+          "id": "description",
+          "label": "Description"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:sections.main-register.name",
+      "blocks": [
+        {
+          "type": "benefit",
+          "settings": {
+            "title": "Save your vehicles",
+            "description": "Add your cars and get instant tire matches"
+          }
+        },
+        {
+          "type": "benefit",
+          "settings": {
+            "title": "Personalized recommendations",
+            "description": "Get tire suggestions tailored to your ride"
+          }
+        },
+        {
+          "type": "benefit",
+          "settings": {
+            "title": "Track orders & appointments",
+            "description": "Stay on top of deliveries and service bookings"
+          }
+        },
+        {
+          "type": "benefit",
+          "settings": {
+            "title": "Exclusive member pricing",
+            "description": "Access deals only available to garage members"
+          }
+        }
+      ]
     }
   ]
 }

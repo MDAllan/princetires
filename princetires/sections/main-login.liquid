@@ -1,178 +1,838 @@
-{{ 'customer.css' | asset_url | stylesheet_tag }}
-
-{%- style -%}
-  .section-{{ section.id }}-padding {
-    padding-top: {{ section.settings.padding_top | times: 0.75 | round: 0 }}px;
-    padding-bottom: {{ section.settings.padding_bottom | times: 0.75 | round: 0 }}px;
-  }
-
-  @media screen and (min-width: 750px) {
-    .section-{{ section.id }}-padding {
-      padding-top: {{ section.settings.padding_top }}px;
-      padding-bottom: {{ section.settings.padding_bottom }}px;
-    }
-  }
-{%- endstyle -%}
-
 {%- if section.settings.enable_shop_login_button == false -%}
   {%- assign hide_shop_login_button = true -%}
 {%- endif -%}
 
-<div class="customer login section-{{ section.id }}-padding">
-  <h1 id="recover" tabindex="-1">
-    {{ 'customer.recover_password.title' | t }}
-  </h1>
-  <div>
-    <p>
-      {{ 'customer.recover_password.subtext' | t }}
-    </p>
-
-    {%- form 'recover_customer_password' -%}
-      {% assign recover_success = form.posted_successfully? %}
-      <div class="field">
-        <input
-          type="email"
-          value=""
-          name="email"
-          id="RecoverEmail"
-          autocorrect="off"
-          autocapitalize="off"
-          autocomplete="email"
-          {% if form.errors %}
-            aria-invalid="true"
-            aria-describedby="RecoverEmail-email-error"
-            autofocus
-          {% endif %}
-          placeholder="{{ 'customer.login_page.email' | t }}"
-        >
-        <label for="RecoverEmail">
-          {{ 'customer.login_page.email' | t }}
-        </label>
+<div class="auth-page">
+  <!-- Left brand panel — garage themed -->
+  <div class="auth-page__brand">
+    <div class="auth-page__brand-content">
+      <div class="auth-page__brand-top">
+        <a href="{{ routes.root_url }}" class="auth-page__logo">
+          {%- if section.settings.logo != blank -%}
+            {{ section.settings.logo | image_url: width: 240 | image_tag: class: 'auth-page__logo-img' }}
+          {%- else -%}
+            <span class="auth-page__logo-text">{{ shop.name }}</span>
+          {%- endif -%}
+        </a>
       </div>
-      {%- if form.errors -%}
-        <small id="RecoverEmail-email-error" class="form__message">
-          <span class="svg-wrapper">
-            {{- 'icon-error.svg' | inline_asset_content -}}
-          </span>
-          {{ form.errors.messages.form }}
-        </small>
-      {%- endif -%}
 
-      <button>
-        {{ 'customer.login_page.submit' | t }}
-      </button>
+      <div class="auth-page__brand-middle">
+        <!-- Garage door illustration -->
+        <div class="auth-page__garage-art">
+          <svg class="auth-page__garage-svg" viewBox="0 0 200 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Garage structure -->
+            <path d="M20 80 L100 30 L180 80 L180 170 L20 170 Z" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" fill="none"/>
+            <!-- Garage door -->
+            <rect x="50" y="90" width="100" height="80" rx="3" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" fill="rgba(255,255,255,0.02)"/>
+            <!-- Door slats -->
+            <line x1="50" y1="106" x2="150" y2="106" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <line x1="50" y1="122" x2="150" y2="122" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <line x1="50" y1="138" x2="150" y2="138" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <line x1="50" y1="154" x2="150" y2="154" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <!-- Car silhouette inside -->
+            <path d="M68 155 L72 145 L80 140 L120 140 L128 145 L132 155" stroke="rgba(220,38,38,0.3)" stroke-width="1.5" fill="none"/>
+            <circle cx="78" cy="155" r="5" stroke="rgba(220,38,38,0.25)" stroke-width="1.2" fill="none"/>
+            <circle cx="122" cy="155" r="5" stroke="rgba(220,38,38,0.25)" stroke-width="1.2" fill="none"/>
+            <!-- Roof peak accent -->
+            <path d="M100 30 L100 15" stroke="rgba(220,38,38,0.2)" stroke-width="1.5"/>
+            <circle cx="100" cy="12" r="3" fill="rgba(220,38,38,0.15)"/>
+          </svg>
+        </div>
+        <h2 class="auth-page__brand-headline">{{ section.settings.headline }}</h2>
+        <p class="auth-page__brand-desc">{{ section.settings.tagline }}</p>
+      </div>
 
-      <a href="#login">
-        {{ 'customer.login_page.cancel' | t }}
-      </a>
-    {%- endform -%}
+      <div class="auth-page__brand-bottom">
+        <div class="auth-page__trust">
+          <div class="auth-page__trust-stars">
+            {%- for i in (1..5) -%}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#F5820B"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            {%- endfor -%}
+          </div>
+          <span class="auth-page__trust-text">{{ section.settings.trust_text }}</span>
+        </div>
+        <div class="auth-page__trust-secure">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>{{ 'customer.auth.secure_connection' | t }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <h1 id="login" tabindex="-1">
-    {{ 'customer.login_page.title' | t }}
-  </h1>
-  <div>
-    {%- if recover_success == true -%}
-      <h3 class="form__message" tabindex="-1" autofocus>
-        <span class="svg-wrapper">
-          {{- 'icon-success.svg' | inline_asset_content -}}
-        </span>
-        {{ 'customer.recover_password.success' | t }}
-      </h3>
-    {%- endif -%}
-    {%- form 'customer_login', novalidate: 'novalidate' -%}
-      {%- if form.errors -%}
-        <h2 class="form__message" tabindex="-1" autofocus>
-          <span class="visually-hidden">{{ 'accessibility.error' | t }} </span>
-          <span class="svg-wrapper">
-            {{- 'icon-error.svg' | inline_asset_content -}}
-          </span>
-          {{ 'templates.contact.form.error_heading' | t }}
-        </h2>
-        {{ form.errors | default_errors }}
-      {%- endif -%}
+  <!-- Right form panel -->
+  <div class="auth-page__form-panel">
+    <div class="auth-page__form-container">
 
-      {%- if shop.features.login_with_shop_classic_customer_accounts? -%}
-        <section name="sign-in-with-shop-provider">
-          {{ shop | login_button: hide_button: hide_shop_login_button }}
-
-          {%- unless hide_shop_login_button -%}
-            <p>
-              {{ 'customer.login_page.alternate_provider_separator' | t }}
-            </p>
-          {%- endunless -%}
-        </section>
-      {%- endif -%}
-
-      <div class="field">
-        <input
-          type="email"
-          name="customer[email]"
-          id="CustomerEmail"
-          autocomplete="email"
-          autocorrect="off"
-          autocapitalize="off"
-          {% if form.errors contains 'form' %}
-            aria-invalid="true"
-          {% endif %}
-          placeholder="{{ 'customer.login_page.email' | t }}"
-        >
-        <label for="CustomerEmail">
-          {{ 'customer.login_page.email' | t }}
-        </label>
-      </div>
-
-      {%- if form.password_needed -%}
-        <div class="field">
-          <input
-            type="password"
-            value=""
-            name="customer[password]"
-            id="CustomerPassword"
-            autocomplete="current-password"
-            {% if form.errors contains 'form' %}
-              aria-invalid="true"
-            {% endif %}
-            placeholder="{{ 'customer.login_page.password' | t }}"
-          >
-          <label for="CustomerPassword">
-            {{ 'customer.login_page.password' | t }}
-          </label>
+      <!-- Password recovery form (hidden by default) -->
+      <div id="recover-form" class="auth-page__form-section" style="display:none;">
+        <div class="auth-page__form-header">
+          <h1 class="auth-page__title">{{ 'customer.recover_password.title' | t }}</h1>
+          <p class="auth-page__subtitle">{{ 'customer.recover_password.subtext' | t }}</p>
         </div>
 
-        <a href="#recover">
-          {{ 'customer.login_page.forgot_password' | t }}
-        </a>
-      {%- endif -%}
+        {%- form 'recover_customer_password' -%}
+          {% assign recover_success = form.posted_successfully? %}
 
-      <button>
-        {{ 'customer.login_page.sign_in' | t }}
-      </button>
+          <div class="auth-page__field">
+            <label class="auth-page__label" for="RecoverEmail">{{ 'customer.login_page.email' | t }}</label>
+            <div class="auth-page__input-wrap">
+              <svg class="auth-page__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <input
+                class="auth-page__input"
+                type="email"
+                value=""
+                name="email"
+                id="RecoverEmail"
+                autocorrect="off"
+                autocapitalize="off"
+                autocomplete="email"
+                placeholder="{{ 'customer.auth.email_placeholder' | t }}"
+                {% if form.errors %}
+                  aria-invalid="true"
+                  aria-describedby="RecoverEmail-email-error"
+                  autofocus
+                {% endif %}
+              >
+            </div>
+            {%- if form.errors -%}
+              <span id="RecoverEmail-email-error" class="auth-page__error">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                {{ form.errors.messages.form }}
+              </span>
+            {%- endif -%}
+          </div>
 
-      <a href="{{ routes.account_register_url }}">
-        {{ 'customer.login_page.create_account' | t }}
-      </a>
-    {%- endform -%}
-  </div>
+          <button type="submit" class="auth-page__btn auth-page__btn--primary">
+            {{ 'customer.login_page.submit' | t }}
+          </button>
 
-  {%- if shop.checkout.guest_login -%}
-    <div>
-      <hr>
-      <h2>{{ 'customer.login_page.guest_title' | t }}</h2>
+          <button type="button" class="auth-page__btn auth-page__btn--text" data-toggle-recover>
+            {{ 'customer.auth.back_to_login' | t }}
+          </button>
+        {%- endform -%}
+      </div>
 
-      {%- form 'guest_login' -%}
-        <button>
-          {{ 'customer.login_page.guest_continue' | t }}
-        </button>
-      {%- endform -%}
+      <!-- Login form -->
+      <div id="login-form" class="auth-page__form-section">
+        <div class="auth-page__form-header">
+          <!-- Garage icon badge -->
+          <span class="auth-page__garage-badge">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <path d="M9 22V12h6v10"/>
+            </svg>
+          </span>
+          <h1 class="auth-page__title">{{ 'customer.auth.welcome_back' | t }}</h1>
+          <p class="auth-page__subtitle">{{ 'customer.auth.login_subtitle' | t }}</p>
+        </div>
+
+        {%- if recover_success == true -%}
+          <div class="auth-page__success">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>{{ 'customer.recover_password.success' | t }}</span>
+          </div>
+        {%- endif -%}
+
+        {%- form 'customer_login', novalidate: 'novalidate' -%}
+          {%- if form.errors -%}
+            <div class="auth-page__error-banner" tabindex="-1" autofocus>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div>
+                <span class="visually-hidden">{{ 'accessibility.error' | t }} </span>
+                <strong>{{ 'templates.contact.form.error_heading' | t }}</strong>
+                {{ form.errors | default_errors }}
+              </div>
+            </div>
+          {%- endif -%}
+
+          {%- if shop.features.login_with_shop_classic_customer_accounts? -%}
+            {%- unless hide_shop_login_button -%}
+              <div class="auth-page__shop-login">
+                {{ shop | login_button: hide_button: hide_shop_login_button }}
+                <div class="auth-page__divider">
+                  <span>{{ 'customer.login_page.alternate_provider_separator' | t }}</span>
+                </div>
+              </div>
+            {%- endunless -%}
+          {%- endif -%}
+
+          <div class="auth-page__field">
+            <label class="auth-page__label" for="CustomerEmail">{{ 'customer.login_page.email' | t }}</label>
+            <div class="auth-page__input-wrap">
+              <svg class="auth-page__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <input
+                class="auth-page__input"
+                type="email"
+                name="customer[email]"
+                id="CustomerEmail"
+                autocomplete="email"
+                autocorrect="off"
+                autocapitalize="off"
+                placeholder="{{ 'customer.auth.email_placeholder' | t }}"
+                {% if form.errors contains 'form' %}
+                  aria-invalid="true"
+                {% endif %}
+              >
+            </div>
+          </div>
+
+          {%- if form.password_needed -%}
+            <div class="auth-page__field">
+              <label class="auth-page__label" for="CustomerPassword">{{ 'customer.login_page.password' | t }}</label>
+              <div class="auth-page__input-wrap">
+                <svg class="auth-page__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input
+                  class="auth-page__input auth-page__input--password"
+                  type="password"
+                  value=""
+                  name="customer[password]"
+                  id="CustomerPassword"
+                  autocomplete="current-password"
+                  placeholder="{{ 'customer.auth.password_placeholder' | t }}"
+                  {% if form.errors contains 'form' %}
+                    aria-invalid="true"
+                  {% endif %}
+                >
+                <button type="button" class="auth-page__toggle-pw" aria-label="{{ 'customer.auth.show_password' | t }}" data-toggle-password>
+                  <svg class="auth-page__eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg class="auth-page__eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+              <a href="#" class="auth-page__forgot" data-toggle-recover>
+                {{ 'customer.login_page.forgot_password' | t }}
+              </a>
+            </div>
+          {%- endif -%}
+
+          <button type="submit" class="auth-page__btn auth-page__btn--primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            <span class="auth-page__btn-text">{{ 'customer.auth.enter_garage' | t }}</span>
+            <svg class="auth-page__btn-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        {%- endform -%}
+
+        <div class="auth-page__switch">
+          <span>{{ 'customer.auth.no_account' | t }}</span>
+          <a href="{{ routes.account_register_url }}">{{ 'customer.auth.signup_cta' | t }}</a>
+        </div>
+
+        {%- if shop.checkout.guest_login -%}
+          <div class="auth-page__guest">
+            <div class="auth-page__divider">
+              <span>{{ 'customer.login_page.alternate_provider_separator' | t }}</span>
+            </div>
+            {%- form 'guest_login' -%}
+              <button type="submit" class="auth-page__btn auth-page__btn--secondary">
+                {{ 'customer.login_page.guest_continue' | t }}
+              </button>
+            {%- endform -%}
+          </div>
+        {%- endif -%}
+
+      </div>
+
     </div>
-  {%- endif -%}
+  </div>
 </div>
+
+{% stylesheet %}
+  /* ═══════════════════════════════════════════
+     AUTH PAGE – GARAGE-THEMED SPLIT SCREEN
+     ═══════════════════════════════════════════ */
+
+  .auth-page {
+    display: flex;
+    min-height: 100vh;
+    min-height: 100dvh;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  /* ── Left brand panel ── */
+  .auth-page__brand {
+    display: none;
+    width: 45%;
+    max-width: 600px;
+    background: #0a0a0a;
+    position: relative;
+    overflow: hidden;
+  }
+
+  @media (min-width: 900px) {
+    .auth-page__brand {
+      display: flex;
+    }
+  }
+
+  .auth-page__brand::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60%;
+    background: linear-gradient(to top, rgba(220, 38, 38, 0.04) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .auth-page__brand-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 3.5rem;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+  }
+
+  .auth-page__logo {
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .auth-page__logo-img {
+    max-height: 40px;
+    width: auto;
+  }
+
+  .auth-page__logo-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Garage art ── */
+  .auth-page__brand-middle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    text-align: center;
+    gap: 1.5rem;
+  }
+
+  .auth-page__garage-art {
+    width: 180px;
+    height: 160px;
+    opacity: 0.7;
+  }
+
+  .auth-page__garage-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .auth-page__brand-headline {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    line-height: 1.15;
+    letter-spacing: 0.01em;
+  }
+
+  .auth-page__brand-desc {
+    font-size: 1.3rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0;
+    line-height: 1.5;
+    max-width: 280px;
+  }
+
+  .auth-page__brand-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  .auth-page__trust {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .auth-page__trust-stars {
+    display: flex;
+    gap: 2px;
+  }
+
+  .auth-page__trust-text {
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .auth-page__trust-secure {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .auth-page__trust-secure svg {
+    opacity: 0.6;
+  }
+
+  /* ── Right form panel ── */
+  .auth-page__form-panel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    background: #fff;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .auth-page__form-container {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .auth-page__form-section {
+    animation: auth-fade-in 0.3s ease;
+  }
+
+  @keyframes auth-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Header with garage badge ── */
+  .auth-page__form-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .auth-page__garage-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #fef2f2;
+    color: #dc2626;
+    margin-bottom: 1.2rem;
+  }
+
+  .auth-page__title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 0.5rem;
+    line-height: 1.1;
+  }
+
+  .auth-page__subtitle {
+    font-size: 1.35rem;
+    font-weight: 300;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* ── Fields ── */
+  .auth-page__field {
+    margin-bottom: 1.5rem;
+  }
+
+  .auth-page__label {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
+
+  .auth-page__input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .auth-page__input {
+    width: 100%;
+    height: 50px;
+    padding: 0 1.4rem 0 3.2rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 400;
+    color: #111;
+    background: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .auth-page__input::placeholder {
+    color: #9ca3af;
+    font-weight: 300;
+  }
+
+  .auth-page__input:focus {
+    background: #fff;
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+  }
+
+  .auth-page__input[aria-invalid="true"] {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08);
+  }
+
+  .auth-page__input--password {
+    padding-right: 3.2rem;
+  }
+
+  .auth-page__input-icon {
+    position: absolute;
+    left: 0.9rem;
+    color: #9ca3af;
+    pointer-events: none;
+    transition: color 0.2s ease;
+    z-index: 1;
+  }
+
+  .auth-page__input:focus ~ .auth-page__input-icon,
+  .auth-page__input-wrap:focus-within .auth-page__input-icon {
+    color: #dc2626;
+  }
+
+  /* ── Password toggle ── */
+  .auth-page__toggle-pw {
+    position: absolute;
+    right: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: color 0.2s ease, background 0.2s ease;
+    padding: 0;
+  }
+
+  .auth-page__toggle-pw:hover {
+    color: #374151;
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  /* ── Forgot password ── */
+  .auth-page__forgot {
+    display: inline-block;
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: #dc2626;
+    text-decoration: none;
+    margin-top: 0.6rem;
+    transition: color 0.2s ease;
+  }
+
+  .auth-page__forgot:hover {
+    color: #b91c1c;
+    text-decoration: underline;
+  }
+
+  /* ── Buttons ── */
+  .auth-page__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    height: 52px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .auth-page__btn--primary {
+    background: #dc2626;
+    color: #fff;
+    margin-top: 0.5rem;
+  }
+
+  .auth-page__btn--primary:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.3);
+  }
+
+  .auth-page__btn--primary:active {
+    transform: translateY(0);
+  }
+
+  .auth-page__btn--primary .auth-page__btn-arrow {
+    transition: transform 0.2s ease;
+  }
+
+  .auth-page__btn--primary:hover .auth-page__btn-arrow {
+    transform: translateX(3px);
+  }
+
+  .auth-page__btn--secondary {
+    background: transparent;
+    color: #374151;
+    border: 1.5px solid #e5e7eb;
+  }
+
+  .auth-page__btn--secondary:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+  }
+
+  .auth-page__btn--text {
+    background: transparent;
+    color: #6b7280;
+    height: auto;
+    padding: 0.8rem;
+    font-weight: 400;
+    margin-top: 0.5rem;
+  }
+
+  .auth-page__btn--text:hover {
+    color: #111;
+  }
+
+  /* ── Divider ── */
+  .auth-page__divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    color: #9ca3af;
+    font-size: 1.2rem;
+    font-weight: 400;
+  }
+
+  .auth-page__divider::before,
+  .auth-page__divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e5e7eb;
+  }
+
+  /* ── Shop login ── */
+  .auth-page__shop-login {
+    margin-bottom: 0.5rem;
+  }
+
+  /* ── Error & success ── */
+  .auth-page__error-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1.5rem;
+    color: #991b1b;
+    font-size: 1.3rem;
+    line-height: 1.5;
+    animation: auth-shake 0.4s ease;
+  }
+
+  .auth-page__error-banner svg {
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+  }
+
+  .auth-page__error-banner strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+
+  .auth-page__error-banner ul {
+    margin: 0;
+    padding-left: 1.4rem;
+  }
+
+  @keyframes auth-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  .auth-page__error {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #dc2626;
+    font-size: 1.2rem;
+    margin-top: 0.5rem;
+  }
+
+  .auth-page__error svg { flex-shrink: 0; }
+
+  .auth-page__success {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1.5rem;
+    color: #166534;
+    font-size: 1.3rem;
+    line-height: 1.5;
+  }
+
+  .auth-page__success svg { flex-shrink: 0; }
+
+  /* ── Switch link ── */
+  .auth-page__switch {
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 1.3rem;
+    color: #6b7280;
+  }
+
+  .auth-page__switch a {
+    color: #dc2626;
+    font-weight: 600;
+    text-decoration: none;
+    margin-left: 0.3rem;
+    transition: color 0.2s ease;
+  }
+
+  .auth-page__switch a:hover {
+    color: #b91c1c;
+    text-decoration: underline;
+  }
+
+  .auth-page__guest {
+    margin-top: 0.5rem;
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 899px) {
+    .auth-page { min-height: auto; }
+    .auth-page__form-panel {
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 4rem 2rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .auth-page__form-panel { padding: 3rem 1.6rem; }
+    .auth-page__title { font-size: 2.4rem; }
+    .auth-page__garage-badge { width: 42px; height: 42px; }
+    .auth-page__input { height: 48px; font-size: 1.6rem; }
+    .auth-page__btn { height: 48px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .auth-page__form-section,
+    .auth-page__error-banner { animation: none; }
+    .auth-page__btn--primary:hover { transform: none; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function() {
+    var section = document.querySelector('.auth-page');
+    if (!section) return;
+
+    // Password visibility toggle
+    section.querySelectorAll('[data-toggle-password]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var input = this.closest('.auth-page__input-wrap').querySelector('input');
+        var eyeOpen = this.querySelector('.auth-page__eye-open');
+        var eyeClosed = this.querySelector('.auth-page__eye-closed');
+        if (input.type === 'password') {
+          input.type = 'text';
+          eyeOpen.style.display = 'none';
+          eyeClosed.style.display = 'block';
+        } else {
+          input.type = 'password';
+          eyeOpen.style.display = 'block';
+          eyeClosed.style.display = 'none';
+        }
+        input.focus();
+      });
+    });
+
+    // Toggle between login and recover
+    var loginForm = document.getElementById('login-form');
+    var recoverForm = document.getElementById('recover-form');
+    section.querySelectorAll('[data-toggle-recover]').forEach(function(trigger) {
+      trigger.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (loginForm.style.display === 'none') {
+          recoverForm.style.display = 'none';
+          loginForm.style.display = 'block';
+        } else {
+          loginForm.style.display = 'none';
+          recoverForm.style.display = 'block';
+          var emailInput = recoverForm.querySelector('input[type="email"]');
+          if (emailInput) emailInput.focus();
+        }
+      });
+    });
+
+    if (window.location.hash === '#recover') {
+      loginForm.style.display = 'none';
+      recoverForm.style.display = 'block';
+    }
+  })();
+{% endjavascript %}
 
 {% schema %}
 {
   "name": "t:sections.main-login.name",
   "settings": [
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Logo"
+    },
+    {
+      "type": "text",
+      "id": "headline",
+      "label": "Panel headline",
+      "default": "Your garage awaits"
+    },
+    {
+      "type": "text",
+      "id": "tagline",
+      "label": "Panel description",
+      "default": "Save your vehicles, track orders, and get personalized tire recommendations."
+    },
+    {
+      "type": "text",
+      "id": "trust_text",
+      "label": "Trust badge text",
+      "default": "4.9 on Google (500+ reviews)"
+    },
     {
       "type": "checkbox",
       "id": "enable_shop_login_button",
@@ -191,7 +851,7 @@
       "step": 4,
       "unit": "px",
       "label": "t:sections.all.padding.padding_top",
-      "default": 36
+      "default": 0
     },
     {
       "type": "range",
@@ -201,7 +861,7 @@
       "step": 4,
       "unit": "px",
       "label": "t:sections.all.padding.padding_bottom",
-      "default": 36
+      "default": 0
     }
   ]
 }
