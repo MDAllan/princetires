@@ -9,7 +9,8 @@
       "minYear": {{ settings.smart_search_min_year | default: 2001 }},
       "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
       "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
-      "maxVehicles": 10
+      "maxVehicles": 10,
+      "customImage": {% if section.settings.garage_image != blank %}{{ section.settings.garage_image | image_url: width: 160 | json }}{% else %}null{% endif %}
     }
   </script>
 
@@ -101,9 +102,19 @@
 
     {%- comment -%} Empty State {%- endcomment -%}
     <div class="garage__empty" data-garage-empty hidden>
-      <svg width="56" height="56" viewBox="0 0 80 34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="garage__empty-icon">
-        <path d="M4 22 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/><circle cx="18" cy="24" r="5"/><circle cx="62" cy="24" r="5"/>
-      </svg>
+      {%- if section.settings.garage_image != blank -%}
+        <img
+          src="{{ section.settings.garage_image | image_url: width: 200 }}"
+          alt=""
+          class="garage__empty-icon garage__empty-icon--custom"
+          aria-hidden="true"
+          width="120"
+        >
+      {%- else -%}
+        <svg width="56" height="56" viewBox="0 0 80 34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="garage__empty-icon">
+          <path d="M4 22 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/><circle cx="18" cy="24" r="5"/><circle cx="62" cy="24" r="5"/>
+        </svg>
+      {%- endif -%}
       <p class="garage__empty-headline">{{ 'sections.my_garage.empty_headline' | t }}</p>
       <p class="garage__empty-sub">{{ 'sections.my_garage.empty_sub' | t }}</p>
     </div>
@@ -315,6 +326,12 @@
   margin-right: auto;
   color: var(--g-text);
 }
+.garage__empty-icon--custom {
+  opacity: 1;
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+}
 .garage__empty-headline {
   font-family: var(--g-heading);
   font-size: 1.75rem;
@@ -374,6 +391,8 @@
   opacity: 0.18;
 }
 .garage__vehicle-icon { width: 64px; height: auto; color: var(--g-text); }
+.garage__vehicle-icon--custom { opacity: 1; width: 64px; height: auto; object-fit: contain; }
+.garage__card-icon-wrap:has(.garage__vehicle-icon--custom) { opacity: 1; }
 .garage__card-meta { flex: 1; min-width: 0; }
 .garage__card-header {
   display: flex;
@@ -706,6 +725,16 @@
 {
   "name": "t:sections.my_garage.name",
   "settings": [
+    {
+      "type": "header",
+      "content": "Vehicle image"
+    },
+    {
+      "type": "image_picker",
+      "id": "garage_image",
+      "label": "Custom vehicle image",
+      "info": "Upload a GIF, SVG, or image to replace the default car icon on cards and the empty state. Recommended size: 160×80px."
+    },
     {
       "type": "header",
       "content": "t:sections.all.padding.section_padding_heading"

@@ -467,6 +467,10 @@ class MyGarage extends HTMLElement {
   /* ---- Vehicle Icon ---- */
 
   getVehicleIcon(vehicle) {
+    if (this.config.customImage) {
+      return '<img src="' + this.config.customImage + '" class="garage__vehicle-icon garage__vehicle-icon--custom" alt="" aria-hidden="true">';
+    }
+
     var model = (vehicle.model || '').toLowerCase();
     var tireSize = (vehicle.tireSize || '').toLowerCase();
 
