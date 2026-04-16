@@ -18,12 +18,17 @@ class MyGarage extends HTMLElement {
     this.vehicleList = this.querySelector('[data-garage-list]');
     this.emptyState = this.querySelector('[data-garage-empty]');
     this.maxMessage = this.querySelector('[data-garage-max]');
+    this.statsEl = this.querySelector('[data-garage-stats]');
+    this.seasonalEl = this.querySelector('[data-garage-seasonal]');
+    this.activityEl = this.querySelector('[data-garage-activity]');
+    this.activityListEl = this.querySelector('[data-garage-activity-list]');
   }
 
   connectedCallback() {
     this.vehicles = this.loadFromStorage();
     this.populateYearSelect();
     this.bindEvents();
+    this.renderSeasonalTip();
     this.renderVehicles();
     this.publishGarageUpdate();
   }
@@ -506,6 +511,9 @@ class MyGarage extends HTMLElement {
 
     if (this.maxMessage) this.maxMessage.hidden = !atMax;
     this.toggleBtn.disabled = atMax;
+
+    this.renderStats();
+    this.renderActivityFeed();
   }
 
   renderCard(vehicle) {
@@ -723,6 +731,155 @@ class MyGarage extends HTMLElement {
     this.trimSelect.addEventListener('change', this.onTrimChange.bind(this));
     this.saveBtn.addEventListener('click', this.onSaveVehicle.bind(this));
     this.cancelBtn.addEventListener('click', this.toggleAddForm.bind(this, false));
+  }
+
+  /* ---- Dashboard ---- */
+
+  renderStats() {
+    if (!this.statsEl) return;
+    var total = this.vehicles.length;
+    var alerts = this.vehicles.filter(function(v) {
+      var s = this.getStatusForVehicle(v);
+      return s === 'overdue' || s === 'due-soon';
+    }.bind(this)).length;
+
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var nextService = null;
+    this.vehicles.forEach(function(v) {
+      if (!v.reminders) return;
+      ['nextRotation', 'nextWinterSwap', 'nextSummerSwap'].forEach(function(key) {
+        if (!v.reminders[key]) return;
+        var d = new Date(v.reminders[key]);
+        if (d >= today && (!nextService || d < nextService.date)) {
+          nextService = { date: d, label: this.formatShortDate(d) };
+        }
+      }.bind(this));
+    }.bind(this));
+
+    var html = '';
+
+    if (total > 0) {
+      html += '<span class="garage__stat-pill">'
+        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 17h14M7.5 17V13L6 9H18L16.5 13V17"/><circle cx="9" cy="21" r="1.5"/><circle cx="15" cy="21" r="1.5"/></svg>'
+        + total + ' vehicle' + (total !== 1 ? 's' : '')
+        + '</span>';
+    }
+
+    if (alerts > 0) {
+      html += '<span class="garage__stat-pill garage__stat-pill--alert">'
+        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>'
+        + alerts + ' alert' + (alerts !== 1 ? 's' : '')
+        + '</span>';
+    } else if (total > 0) {
+      html += '<span class="garage__stat-pill garage__stat-pill--good">'
+        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>'
+        + 'All good'
+        + '</span>';
+    }
+
+    if (nextService) {
+      html += '<span class="garage__stat-pill garage__stat-pill--next">'
+        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
+        + 'Next: ' + this.escapeHtml(nextService.label)
+        + '</span>';
+    }
+
+    if (this.config.ordersCount > 0) {
+      html += '<span class="garage__stat-pill">'
+        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>'
+        + this.config.ordersCount + ' order' + (this.config.ordersCount !== 1 ? 's' : '')
+        + '</span>';
+    }
+
+    this.statsEl.innerHTML = html;
+  }
+
+  renderSeasonalTip() {
+    if (!this.seasonalEl) return;
+    var month = new Date().getMonth(); // 0 = Jan
+    var tip = null;
+
+    if (month === 9 || month === 10) {
+      tip = {
+        icon: '❄️',
+        label: 'Winter tire season approaching',
+        sub: 'Calgary roads get icy fast. Book your winter swap early — slots fill up by late October.',
+        cta: 'Book swap',
+        href: '/pages/services'
+      };
+    } else if (month === 3 || month === 4) {
+      tip = {
+        icon: '🌱',
+        label: 'Summer swap season',
+        sub: 'Temps are holding above 7°C — time to switch back to summer or all-season tires.',
+        cta: 'Book swap',
+        href: '/pages/services'
+      };
+    } else if (month === 11 || month === 0 || month === 1 || month === 2) {
+      tip = {
+        icon: '🧊',
+        label: 'Cold weather tip',
+        sub: 'Check tire pressure monthly — every 10°C drop loses ~1 PSI. Keep tires inflated to spec.',
+        cta: null,
+        href: null
+      };
+    } else {
+      tip = {
+        icon: '☀️',
+        label: 'Summer maintenance',
+        sub: 'Hot pavement accelerates wear. Rotate every 10,000–12,000 km and check tread before road trips.',
+        cta: 'Shop tires',
+        href: '/collections/tires'
+      };
+    }
+
+    var ctaHtml = tip.cta
+      ? '<a href="' + tip.href + '" class="garage__seasonal-tip-action">' + tip.cta + '</a>'
+      : '';
+
+    this.seasonalEl.innerHTML = '<span class="garage__seasonal-tip-icon">' + tip.icon + '</span>'
+      + '<div class="garage__seasonal-tip-text">'
+        + '<div class="garage__seasonal-tip-label">' + this.escapeHtml(tip.label) + '</div>'
+        + '<div class="garage__seasonal-tip-sub">' + this.escapeHtml(tip.sub) + '</div>'
+      + '</div>'
+      + ctaHtml;
+    this.seasonalEl.hidden = false;
+  }
+
+  renderActivityFeed() {
+    if (!this.activityEl || !this.activityListEl) return;
+
+    var entries = [];
+    this.vehicles.forEach(function(v) {
+      var label = v.year + ' ' + v.make + ' ' + (v.nickname ? '"' + v.nickname + '"' : v.model);
+      (v.maintenance || []).forEach(function(e) {
+        entries.push({ type: e.type, date: e.date, mileage: e.mileage, vehicle: label });
+      });
+    });
+
+    if (entries.length === 0) {
+      this.activityEl.hidden = true;
+      return;
+    }
+
+    entries.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+
+    this.activityEl.hidden = false;
+    this.activityListEl.innerHTML = entries.slice(0, 8).map(function(e) {
+      var kmHtml = e.mileage
+        ? '<span class="garage__activity-km">' + e.mileage.toLocaleString() + ' km</span>'
+        : '';
+      return '<li class="garage__activity-item">'
+        + '<span class="garage__activity-dot"></span>'
+        + '<div class="garage__activity-info">'
+          + '<div class="garage__activity-what">' + this.escapeHtml(this.formatServiceType(e.type)) + '</div>'
+          + '<div class="garage__activity-vehicle">' + this.escapeHtml(e.vehicle) + '</div>'
+        + '</div>'
+        + kmHtml
+        + '<span class="garage__activity-when">' + this.escapeHtml(e.date) + '</span>'
+      + '</li>';
+    }.bind(this)).join('');
   }
 
   /* ---- Helpers ---- */
