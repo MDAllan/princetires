@@ -8,12 +8,13 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const b = req.body;
+  let b = req.body;
+  // Vercel sometimes delivers body as a string — parse it explicitly
+  if (typeof b === 'string') {
+    try { b = JSON.parse(b); } catch (e) { b = null; }
+  }
   if (!b || !b.name || !b.date || !b.time) {
-    return res.status(400).json({
-      error: 'Missing required fields',
-      received: { name: b?.name || null, date: b?.date || null, time: b?.time || null }
-    });
+    return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
