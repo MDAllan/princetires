@@ -12,31 +12,47 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try { verifyAuth(req); } catch (e) { return res.status(401).json({ error: 'Unauthorized' }); }
 
+  let serviceAccountCreds;
+  try {
+    serviceAccountCreds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+  } catch (e) {
+    return res.status(500).json({ error: 'Server misconfiguration: invalid service account key' });
+  }
+
   try {
     const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
-      scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+      credentials: serviceAccountCreds,
+      scopes: ['https://www.googleapis.com/auth/calendar'],
     });
 
     const calendar = google.calendar({ version: 'v3', auth });
 
-    // Fetch past 60 days + next 90 days
-    const timeMin = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
-    const timeMax = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+    // Fetch all history: past 2 years + next 1 year
+    const timeMin = new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString();
+    const timeMax = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
 
-    const resp = await calendar.events.list({
-      calendarId: process.env.GOOGLE_CALENDAR_ID || 'primary',
-      timeMin,
-      timeMax,
-      singleEvents: true,
-      orderBy: 'startTime',
-      maxResults: 500,
-    });
+    // Paginate through all events (Google returns max 2500 per page)
+    let allItems = [];
+    let pageToken = undefined;
+    do {
+      const resp = await calendar.events.list({
+        calendarId: process.env.GOOGLE_CALENDAR_ID || 'primary',
+        timeMin,
+        timeMax,
+        singleEvents: true,
+        orderBy: 'startTime',
+        maxResults: 2500,
+        pageToken,
+      });
+      allItems = allItems.concat(resp.data.items || []);
+      pageToken = resp.data.nextPageToken;
+    } while (pageToken);
 
-    const events = (resp.data.items || []).map(e => ({
+    const events = allItems.map(e => ({
       id:          e.id,
       title:       e.summary || '',
       description: e.description || '',

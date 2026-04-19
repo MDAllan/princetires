@@ -44,11 +44,11 @@ module.exports = async function handler(req, res) {
     let url;
     if (customerId) {
       // Orders for a specific customer
-      url = `customers/${customerId}/orders.json?status=any&limit=50&fields=id,order_number,name,email,created_at,financial_status,fulfillment_status,total_price,line_items,customer`;
+      url = `customers/${customerId}/orders.json?status=any&limit=250&fields=id,order_number,name,email,created_at,financial_status,fulfillment_status,total_price,line_items,customer`;
     } else if (pageInfo) {
-      url = `orders.json?status=any&limit=50&page_info=${pageInfo}&fields=id,order_number,name,email,created_at,financial_status,fulfillment_status,total_price,line_items,customer`;
+      url = `orders.json?status=any&limit=250&page_info=${pageInfo}&fields=id,order_number,name,email,created_at,financial_status,fulfillment_status,total_price,line_items,customer`;
     } else {
-      url = `orders.json?status=any&limit=50&fields=id,order_number,name,email,created_at,financial_status,fulfillment_status,total_price,line_items,customer`;
+      url = `orders.json?status=any&limit=250&fields=id,order_number,name,email,created_at,financial_status,fulfillment_status,total_price,line_items,customer`;
     }
 
     const r = await fetch(`https://${SHOP}/admin/api/2024-10/${url}`, {

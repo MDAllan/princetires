@@ -5,12 +5,20 @@ const CID  = process.env.SHOPIFY_CLIENT_ID;
 const CSEC = process.env.SHOPIFY_CLIENT_SECRET;
 
 async function shopifyToken() {
+  if (process.env.SHOPIFY_ACCESS_TOKEN) return process.env.SHOPIFY_ACCESS_TOKEN;
   const r = await fetch(`https://${SHOP}/admin/oauth/access_token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=client_credentials&client_id=${CID}&client_secret=${CSEC}`
   });
-  return (await r.json()).access_token;
+  const ct = r.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    const text = await r.text();
+    throw new Error(`Shopify token endpoint returned non-JSON (${r.status}): ${text.substring(0, 200)}`);
+  }
+  const d = await r.json();
+  if (!d.access_token) throw new Error('Shopify token failed: ' + JSON.stringify(d));
+  return d.access_token;
 }
 
 async function shopifyReq(token, method, path, body) {
@@ -49,7 +57,7 @@ module.exports = async function handler(req, res) {
 
       const [custData, ordersData, metaData] = await Promise.all([
         shopifyReq(token, 'GET', `customers/${id}.json`),
-        shopifyReq(token, 'GET', `customers/${id}/orders.json?status=any&limit=50`).catch(() => ({ orders: [] })),
+        shopifyReq(token, 'GET', `customers/${id}/orders.json?status=any&limit=250`).catch(() => ({ orders: [] })),
         shopifyReq(token, 'GET', `customers/${id}/metafields.json`)
       ]);
 
