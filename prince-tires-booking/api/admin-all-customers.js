@@ -1,39 +1,34 @@
-const jwt = require('jsonwebtoken');
+'use strict';
+const {
+  setCorsHeaders,
+  setSecurityHeaders,
+  rateLimit,
+  verifyAdminAuth,
+  sanitize,
+} = require('./_lib/security');
 
 const SHOP = 'prince-tires-5560.myshopify.com';
 
 async function shopifyToken() {
   if (process.env.SHOPIFY_ACCESS_TOKEN) return process.env.SHOPIFY_ACCESS_TOKEN;
   const r = await fetch(`https://${SHOP}/admin/oauth/access_token`, {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=client_credentials&client_id=${process.env.SHOPIFY_CLIENT_ID}&client_secret=${process.env.SHOPIFY_CLIENT_SECRET}`
+    body:    `grant_type=client_credentials&client_id=${process.env.SHOPIFY_CLIENT_ID}&client_secret=${process.env.SHOPIFY_CLIENT_SECRET}`,
   });
   const ct = r.headers.get('content-type') || '';
-  if (!ct.includes('application/json')) {
-    const text = await r.text();
-    throw new Error(`Shopify token endpoint returned non-JSON (${r.status}): ${text.substring(0, 200)}`);
-  }
+  if (!ct.includes('application/json')) throw new Error(`Shopify token endpoint non-JSON (${r.status})`);
   const d = await r.json();
-  if (!d.access_token) throw new Error('Shopify token failed: ' + JSON.stringify(d));
+  if (!d.access_token) throw new Error('Shopify token failed');
   return d.access_token;
 }
 
 async function shopifyFetch(token, url) {
   const r = await fetch(url, { headers: { 'X-Shopify-Access-Token': token } });
   const ct = r.headers.get('content-type') || '';
-  if (!ct.includes('application/json')) {
-    const text = await r.text();
-    throw new Error(`Shopify API returned non-JSON (${r.status}): ${text.substring(0, 200)}`);
-  }
+  if (!ct.includes('application/json')) throw new Error(`Shopify API non-JSON (${r.status})`);
   const data = await r.json();
   return { status: r.status, ok: r.ok, data, link: r.headers.get('Link') || '' };
-}
-
-function verifyAuth(req) {
-  const t = (req.headers.authorization || '').replace('Bearer ', '');
-  if (!t) throw new Error('No token');
-  return jwt.verify(t, process.env.ADMIN_JWT_SECRET);
 }
 
 function getParam(req, key) {
@@ -42,18 +37,25 @@ function getParam(req, key) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  setCorsHeaders(req, res, 'GET, OPTIONS');
+  setSecurityHeaders(res);
+
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
+  // A01: authenticate before doing anything else
+  try { verifyAdminAuth(req); } catch {
+    return res.status(401).json({ error: 'Unauthorized.' });
+  }
 
+  if (!rateLimit(req, res, 60, 60_000)) return;
 
   try {
     const token    = await shopifyToken();
-    const query    = getParam(req, 'query');
-    const type     = getParam(req, 'type');
-    const pageInfo = getParam(req, 'page_info');
+    // Sanitize query param before using in Shopify search URL
+    const query    = sanitize(getParam(req, 'query') || '', 100);
+    const type     = sanitize(getParam(req, 'type')  || '', 50);
+    const pageInfo = sanitize(getParam(req, 'page_info') || '', 200);
 
     const fields = 'id,first_name,last_name,email,phone,tags,orders_count,created_at,note,state';
     let url;
@@ -78,22 +80,21 @@ module.exports = async function handler(req, res) {
 
     if (!ok) {
       console.error('Shopify customers error:', status, data);
-      return res.status(500).json({ error: `Shopify API error ${status}`, details: data.errors || data });
+      return res.status(500).json({ error: 'Failed to fetch customers.' });
     }
 
     let customers = data.customers || [];
-
     if (type === 'retail') {
       customers = customers.filter(c => !(c.tags || '').includes('wholesale'));
     }
 
     let nextPageInfo = null;
-    const nextMatch = link.match(/page_info=([^&>]+)[^>]*>;\s*rel="next"/);
+    const nextMatch  = link.match(/page_info=([^&>]+)[^>]*>;\s*rel="next"/);
     if (nextMatch) nextPageInfo = nextMatch[1];
 
     return res.status(200).json({ customers, nextPageInfo, total: customers.length });
   } catch (err) {
     console.error('admin-all-customers error:', err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch customers.' });
   }
 };
