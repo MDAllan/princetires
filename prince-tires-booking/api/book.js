@@ -9,6 +9,7 @@ const {
   sanitizeEmail,
   generateLookupToken,
   verifyLookupToken,
+  generateCancelToken,
 } = require('./_lib/security');
 
 // ── GET /api/book?email=X&token=Y  → upcoming bookings for this customer ──────
@@ -60,29 +61,39 @@ async function handleGet(req, res) {
       timeZone:     'America/Edmonton',
     });
 
-    const emailLower = email.toLowerCase();
+    const emailLower    = email.toLowerCase();
+    const apiBase       = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'https://prince-tires-booking.vercel.app';
+
     const bookings   = (resp.data.items || [])
       .filter(e => e.description && e.description.toLowerCase().includes(emailLower))
       .map(e => {
         const start = new Date(e.start?.dateTime || e.start?.date);
+        let cancelUrl = null;
+        try {
+          const ct = generateCancelToken(e.id);
+          cancelUrl = `${apiBase}/api/cancel?id=${encodeURIComponent(e.id)}&token=${encodeURIComponent(ct)}`;
+        } catch {}
         return {
-          id:       e.id,
-          summary:  e.summary || 'Installation',
-          date:     start.toLocaleDateString('en-CA', {
+          id:        e.id,
+          summary:   e.summary || 'Installation',
+          date:      start.toLocaleDateString('en-CA', {
             timeZone: 'America/Edmonton',
             weekday:  'short',
             month:    'short',
             day:      'numeric',
             year:     'numeric',
           }),
-          time:     start.toLocaleTimeString('en-US', {
+          time:      start.toLocaleTimeString('en-US', {
             timeZone: 'America/Edmonton',
             hour:     'numeric',
             minute:   '2-digit',
             hour12:   true,
           }),
-          location: e.location || '111 42 Ave SW, Calgary, AB',
-          status:   e.status   || 'confirmed',
+          location:  e.location || '111 42 Ave SW, Calgary, AB',
+          status:    e.status   || 'confirmed',
+          cancelUrl,
         };
       });
 
@@ -197,7 +208,7 @@ async function handlePost(req, res) {
 
     const summary = `🛞 Installation — ${name} — ${tireSize} × ${qty} — ${vehicleType}`;
 
-    await calendar.events.insert({
+    const eventInsert = await calendar.events.insert({
       calendarId:  process.env.GOOGLE_CALENDAR_ID || 'primary',
       requestBody: {
         summary,
@@ -207,6 +218,7 @@ async function handlePost(req, res) {
         end:   { dateTime: endDateTime,   timeZone: 'America/Edmonton' },
       },
     });
+    const eventId = eventInsert?.data?.id || null;
 
     // ── Confirmation email (HTML-escaped to prevent XSS in email clients) ─────
     if (email && process.env.RESEND_API_KEY) {
@@ -252,6 +264,13 @@ async function handlePost(req, res) {
               <span style="color:#6b7280">Please arrive 5 minutes early. Bring your existing tires if storing with us.</span>
             </div>
             <p style="font-size:13px;color:#9ca3af;margin:0">Need to change your appointment? Reply to this email or call us.</p>
+            ${eventId ? (() => {
+              let cToken = '';
+              try { cToken = generateCancelToken(eventId); } catch {}
+              return cToken
+                ? `<p style="font-size:13px;color:#9ca3af;margin:12px 0 0">To cancel this appointment: <a href="https://prince-tires-booking.vercel.app/api/cancel?id=${encodeURIComponent(eventId)}&token=${encodeURIComponent(cToken)}" style="color:#dc2626">Cancel booking</a></p>`
+                : '';
+            })() : ''}
           </div>
         </div>`;
 
@@ -279,7 +298,17 @@ async function handlePost(req, res) {
       console.error('lookupToken generation failed (BOOKING_LOOKUP_SECRET missing?):', err.message);
     }
 
-    return res.status(200).json({ success: true, lookupToken });
+    // Generate a cancel token tied to this specific calendar event
+    let cancelToken = null;
+    if (eventId) {
+      try {
+        cancelToken = generateCancelToken(eventId);
+      } catch (err) {
+        console.error('cancelToken generation failed:', err.message);
+      }
+    }
+
+    return res.status(200).json({ success: true, lookupToken, eventId, cancelToken });
   } catch (error) {
     console.error('Google Calendar booking error:', error);
     return res.status(500).json({ error: 'Failed to create booking. Please try again.' });
