@@ -1,0 +1,228 @@
+{%- if section.blocks.size > 0 -%}
+<div class="ptfaq">
+  <div class="ptfaq__container">
+    <h2 class="ptfaq__heading">{{ section.settings.heading | default: 'Frequently asked questions' }}</h2>
+    {%- if section.settings.subheading != blank -%}
+      <p class="ptfaq__subheading">{{ section.settings.subheading }}</p>
+    {%- endif -%}
+
+    <div class="ptfaq__list">
+      {%- for block in section.blocks -%}
+        <details class="ptfaq__item" {{ block.shopify_attributes }}>
+          <summary class="ptfaq__question">
+            {{ block.settings.question }}
+            <svg class="ptfaq__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="ptfaq__answer">
+            {{ block.settings.answer }}
+          </div>
+        </details>
+      {%- endfor -%}
+    </div>
+  </div>
+</div>
+
+{%- comment -%} FAQ Structured Data for SEO {%- endcomment -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {%- for block in section.blocks -%}
+      {
+        "@type": "Question",
+        "name": {{ block.settings.question | json }},
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": {{ block.settings.answer | strip_html | json }}
+        }
+      }{%- unless forloop.last -%},{%- endunless -%}
+    {%- endfor -%}
+  ]
+}
+</script>
+{%- endif -%}
+
+{% stylesheet %}
+  .ptfaq {
+    background: #fafafa;
+    padding: 4rem 0;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .ptfaq__container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  .ptfaq__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 0.5rem;
+    text-align: center;
+  }
+
+  .ptfaq__subheading {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: #6b7280;
+    text-align: center;
+    margin: 0 0 2.5rem;
+  }
+
+  .ptfaq__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .ptfaq__item {
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .ptfaq__item:first-child {
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .ptfaq__question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111;
+    cursor: pointer;
+    list-style: none;
+    gap: 1rem;
+  }
+
+  .ptfaq__question::-webkit-details-marker { display: none; }
+
+  .ptfaq__chevron {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+    color: #9ca3af;
+  }
+
+  .ptfaq__item[open] .ptfaq__chevron {
+    transform: rotate(180deg);
+  }
+
+  .ptfaq__answer {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 300;
+    color: #374151;
+    line-height: 1.7;
+    padding: 0 0 1.4rem;
+  }
+
+  @media (max-width: 768px) {
+    .ptfaq {
+      padding: 3rem 0;
+    }
+    .ptfaq__container {
+      padding: 0 1.6rem;
+    }
+    .ptfaq__heading {
+      font-size: 1.8rem;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Collection FAQ",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Frequently asked questions"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Everything you need to know about buying tires"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "faq_item",
+      "name": "FAQ item",
+      "settings": [
+        {
+          "type": "text",
+          "id": "question",
+          "label": "Question",
+          "default": "How do I find the right tire size?"
+        },
+        {
+          "type": "richtext",
+          "id": "answer",
+          "label": "Answer",
+          "default": "<p>Your tire size is printed on the sidewall of your current tires. It looks like 225/65R17. You can also find it on the sticker inside your driver's door jamb, or use our smart search to look up your vehicle by year, make, and model.</p>"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collection FAQ",
+      "blocks": [
+        {
+          "type": "faq_item",
+          "settings": {
+            "question": "How do I find the right tire size?",
+            "answer": "<p>Your tire size is printed on the sidewall of your current tires. It looks like 225/65R17. You can also find it on the sticker inside your driver's door jamb, or use our smart search to look up your vehicle by year, make, and model.</p>"
+          }
+        },
+        {
+          "type": "faq_item",
+          "settings": {
+            "question": "What is the difference between all-season and winter tires?",
+            "answer": "<p>All-season tires are designed to perform in a variety of conditions including dry, wet, and light snow. Winter tires use a softer rubber compound and deeper tread patterns specifically engineered for ice, snow, and cold temperatures below 7°C. For Canadian winters, dedicated winter tires provide significantly better traction and shorter stopping distances.</p>"
+          }
+        },
+        {
+          "type": "faq_item",
+          "settings": {
+            "question": "Do you offer tire installation?",
+            "answer": "<p>Yes! We offer professional tire installation at our location. You can book an installation appointment directly from any product page using the \"Book Installation\" button. Installation includes mounting, balancing, valve stems, and a complimentary alignment check.</p>"
+          }
+        },
+        {
+          "type": "faq_item",
+          "settings": {
+            "question": "What does the speed rating mean?",
+            "answer": "<p>The speed rating indicates the maximum speed a tire can safely sustain. Common ratings include S (180 km/h), T (190 km/h), H (210 km/h), V (240 km/h), and W (270 km/h). Always match or exceed your vehicle manufacturer's recommended speed rating.</p>"
+          }
+        },
+        {
+          "type": "faq_item",
+          "settings": {
+            "question": "How often should I replace my tires?",
+            "answer": "<p>Most tires should be replaced every 5-6 years or when tread depth reaches 2/32\". You can check tread depth with the penny test — insert a penny with Lincoln's head facing down. If you can see the top of his head, it's time for new tires. Uneven wear, bulges, or cracks also indicate replacement is needed.</p>"
+          }
+        },
+        {
+          "type": "faq_item",
+          "settings": {
+            "question": "Do you offer a price match guarantee?",
+            "answer": "<p>Yes, we offer a price match guarantee. If you find the same tire at a lower price from an authorized retailer, we'll match that price. Just show us the competitor's current advertised price at the time of purchase.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

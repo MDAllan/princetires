@@ -172,7 +172,7 @@
     {%- comment -%} Breadcrumb {%- endcomment -%}
     <nav class="ptp__breadcrumb" aria-label="Breadcrumb">
       <ol class="ptp__breadcrumb-list">
-        <li><a href="/">{{ 'general.breadcrumbs.home' | t | default: 'Home' }}</a></li>
+        <li><a href="{{ routes.root_url }}">{{ 'general.breadcrumbs.home' | t | default: 'Home' }}</a></li>
         {%- if product.collections.size > 0 -%}
           {%- assign col = product.collections | first -%}
           <li><a href="{{ col.url }}">{{ col.title }}</a></li>
@@ -221,7 +221,7 @@
     <div class="ptp__fitment" data-ptp-fitment hidden>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
       <span>Fits your <strong data-ptp-fitment-vehicle></strong></span>
-      <a href="/collections/tires" class="ptp__fitment-change">Change vehicle</a>
+      <a href="{{ routes.collections_url }}/tires" class="ptp__fitment-change">Change vehicle</a>
     </div>
 
     {%- comment -%} Two-Column Layout {%- endcomment -%}
@@ -391,7 +391,6 @@
             {%- assign install_per_tire = section.settings.install_cost_per_tire | default: '30' | times: 100 -%}
             {%- assign disposal_per_tire = section.settings.disposal_cost_per_tire | default: '5' | times: 100 -%}
             {%- assign service_per_tire = install_per_tire | plus: disposal_per_tire -%}
-            {%- assign installed_set_price = set_price | plus: service_per_tire | times: 4 | divided_by: 100 -%}
             {%- comment -%} set_price is already price*4 in cents, service needs *4 too {%- endcomment -%}
             {%- assign service_total = service_per_tire | times: 4 -%}
             {%- assign installed_total = set_price | plus: service_total -%}
@@ -858,9 +857,9 @@
         {%- comment -%} Browse & Share Links {%- endcomment -%}
         <div class="ptp__links-row">
           <div class="ptp__links">
-            <a href="/collections/tires?filter.p.vendor={{ product.vendor | url_encode }}" class="ptp__link">More from {{ product.vendor }}</a>
+            <a href="{{ routes.collections_url }}/tires?filter.p.vendor={{ product.vendor | url_encode }}" class="ptp__link">More from {{ product.vendor }}</a>
             {%- if tire_size != blank -%}
-              <a href="/collections/tires?filter.p.m.custom.tire_size={{ tire_size | url_encode }}" class="ptp__link">Compare {{ tire_size }} tires</a>
+              <a href="{{ routes.collections_url }}/tires?filter.p.m.custom.tire_size={{ tire_size | url_encode }}" class="ptp__link">Compare {{ tire_size }} tires</a>
             {%- endif -%}
           </div>
           <div class="ptp__share" data-ptp-share>

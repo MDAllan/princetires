@@ -8,7 +8,7 @@
 
     {%- comment -%} Breadcrumb {%- endcomment -%}
     <nav class="pt-article__breadcrumb" aria-label="{{ 'general.breadcrumbs.label' | t }}">
-      <a href="/" class="pt-article__crumb">{{ 'general.breadcrumbs.home' | t }}</a>
+      <a href="{{ routes.root_url }}" class="pt-article__crumb">{{ 'general.breadcrumbs.home' | t }}</a>
       <span class="pt-article__crumb-sep" aria-hidden="true">/</span>
       <a href="{{ blog.url }}" class="pt-article__crumb">{{ blog.title | escape }}</a>
       <span class="pt-article__crumb-sep" aria-hidden="true">/</span>
@@ -168,7 +168,7 @@
           <h2 class="pt-article__comments-heading" id="Comments-{{ article.id }}" tabindex="-1">
             {{ 'blogs.article.comments' | t: count: article.comments_count }}
           </h2>
-          {%- assign anchorId = '#Comments-' | append: article.id -%}
+          {%- assign anchor_id = '#Comments-' | append: article.id -%}
           {% paginate article.comments by 5 %}
             <div class="pt-article__comments-list">
               {%- if comment.status == 'pending' and comment.content -%}
@@ -190,7 +190,7 @@
               {%- endfor -%}
             </div>
             {%- if paginate.pages > 1 -%}
-              {%- render 'pagination', paginate: paginate, anchor: anchorId -%}
+              {%- render 'pagination', paginate: paginate, anchor: anchor_id -%}
             {%- endif -%}
           {% endpaginate %}
         {%- endif -%}

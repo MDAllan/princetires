@@ -16,12 +16,14 @@
     {%- assign tire_blocks = section.blocks | where: "type", "tire_card" -%}
 
     {%- if brand_blocks.size > 0 -%}
-      <div class="trusted-brands__tabs-wrap">
-        <button class="trusted-brands__tabs-arrow trusted-brands__tabs-arrow--left" data-tabs-prev aria-label="{{ 'general.accessibility.previous' | t }}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-
-        <div class="trusted-brands__tabs-scroll" data-brand-tabs-scroll>
+      <style>
+        @keyframes tb-marquee {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+      </style>
+      <div class="trusted-brands__marquee" data-brand-marquee>
+        <div class="trusted-brands__marquee-inner">
           <div class="trusted-brands__tabs-track" role="tablist" data-brand-tabs-track>
             {%- for block in brand_blocks -%}
               <button
@@ -40,11 +42,24 @@
               </button>
             {%- endfor -%}
           </div>
+          <div class="trusted-brands__tabs-track" aria-hidden="true">
+            {%- for block in brand_blocks -%}
+              <button
+                class="trusted-brands__tab"
+                tabindex="-1"
+                aria-hidden="true"
+                data-brand="{{ block.settings.name | handleize }}"
+                data-brand-name="{{ block.settings.name | escape }}"
+              >
+                {%- if block.settings.logo != blank -%}
+                  {{ block.settings.logo | image_url: height: 28 | image_tag: class: "trusted-brands__tab-logo", alt: block.settings.name }}
+                {%- else -%}
+                  <span class="trusted-brands__tab-text">{{ block.settings.name }}</span>
+                {%- endif -%}
+              </button>
+            {%- endfor -%}
+          </div>
         </div>
-
-        <button class="trusted-brands__tabs-arrow trusted-brands__tabs-arrow--right" data-tabs-next aria-label="{{ 'general.accessibility.next' | t }}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
       </div>
     {%- endif -%}
 
@@ -89,11 +104,124 @@
     </div>
 
     <div class="trusted-brands__footer">
-      <a href="/collections/all" class="trusted-brands__view-all" data-brand-view-all>
+      <a href="{{ routes.all_products_collection_url }}" class="trusted-brands__view-all" data-brand-view-all>
         {{ 'sections.trusted_brands.view_all' | t }} <span data-brand-view-all-name>{{ brand_blocks.first.settings.name }}</span> →
       </a>
     </div>
   </div>
+
+  <script>
+  (function() {
+    var section    = document.currentScript.closest('[data-trusted-brands]');
+    if (!section) return;
+
+    var marqueeEl    = section.querySelector('[data-brand-marquee]');
+    var marqueeInner = marqueeEl && marqueeEl.querySelector('.trusted-brands__marquee-inner');
+    var tabsTrack    = section.querySelector('[data-brand-tabs-track]');
+    var carousel     = section.querySelector('[data-brand-carousel]');
+    var prevBtn      = section.querySelector('[data-carousel-prev]');
+    var nextBtn      = section.querySelector('[data-carousel-next]');
+    var viewAllLink  = section.querySelector('[data-brand-view-all]');
+    var viewAllName  = section.querySelector('[data-brand-view-all-name]');
+
+    if (!carousel) return;
+
+    function switchBrand(brandHandle, brandName) {
+      var cards = section.querySelectorAll('[data-tire-brand]');
+      if (marqueeEl) {
+        marqueeEl.querySelectorAll('[data-brand]').forEach(function(b) {
+          var isActive = b.dataset.brand === brandHandle;
+          b.classList.toggle('trusted-brands__tab--active', isActive);
+          b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+      }
+      if (viewAllName) viewAllName.textContent = brandName;
+      if (viewAllLink) viewAllLink.href = '/search?q=' + encodeURIComponent(brandName) + '&type=product';
+      cards.forEach(function(card) {
+        card.style.display = card.dataset.tireBrand === brandHandle ? 'flex' : 'none';
+      });
+      carousel.scrollLeft = 0;
+    }
+
+    if (marqueeEl && marqueeInner) {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        marqueeInner.style.animationPlayState = 'paused';
+      } else {
+        marqueeEl.addEventListener('mouseenter', function() { marqueeInner.style.animationPlayState = 'paused'; });
+        marqueeEl.addEventListener('mouseleave', function() { marqueeInner.style.animationPlayState = 'running'; });
+        marqueeEl.addEventListener('touchstart', function() { marqueeInner.style.animationPlayState = 'paused'; }, { passive: true });
+        marqueeEl.addEventListener('touchend', function() { setTimeout(function() { marqueeInner.style.animationPlayState = 'running'; }, 800); });
+      }
+      marqueeEl.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-brand]');
+        if (!btn) return;
+        switchBrand(btn.dataset.brand, btn.dataset.brandName);
+      });
+    }
+
+    var firstBtn = tabsTrack && tabsTrack.querySelector('[data-brand]');
+    if (firstBtn) switchBrand(firstBtn.dataset.brand, firstBtn.dataset.brandName);
+
+    var autoplayPaused = false;
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      carousel.addEventListener('mouseenter', function() { autoplayPaused = true; });
+      carousel.addEventListener('mouseleave', function() { autoplayPaused = false; });
+      carousel.addEventListener('touchstart', function() { autoplayPaused = true; }, { passive: true });
+      carousel.addEventListener('touchend', function() { setTimeout(function() { autoplayPaused = false; }, 900); });
+      (function tick() {
+        if (!autoplayPaused) {
+          var max = carousel.scrollWidth - carousel.offsetWidth;
+          if (max > 0) {
+            carousel.scrollLeft += 0.5;
+            if (carousel.scrollLeft >= max - 1) {
+              autoplayPaused = true;
+              carousel.scrollTo({ left: 0, behavior: 'smooth' });
+              setTimeout(function() { autoplayPaused = false; }, 700);
+            }
+          }
+        }
+        requestAnimationFrame(tick);
+      }());
+    }
+
+    var drag = { on: false, startX: 0, startLeft: 0 };
+    carousel.addEventListener('mousedown', function(e) {
+      drag.on = true; drag.startX = e.pageX; drag.startLeft = carousel.scrollLeft;
+      autoplayPaused = true; carousel.style.cursor = 'grabbing';
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!drag.on) return;
+      e.preventDefault();
+      carousel.scrollLeft = drag.startLeft - (e.pageX - drag.startX);
+    }, { passive: false });
+    document.addEventListener('mouseup', function() {
+      if (!drag.on) return;
+      drag.on = false; autoplayPaused = false; carousel.style.cursor = '';
+    });
+    carousel.addEventListener('touchstart', function(e) {
+      drag.on = true; drag.startX = e.touches[0].pageX; drag.startLeft = carousel.scrollLeft;
+      autoplayPaused = true;
+    }, { passive: true });
+    carousel.addEventListener('touchmove', function(e) {
+      if (!drag.on) return;
+      carousel.scrollLeft = drag.startLeft - (e.touches[0].pageX - drag.startX);
+    }, { passive: true });
+    carousel.addEventListener('touchend', function() {
+      drag.on = false; setTimeout(function() { autoplayPaused = false; }, 900);
+    });
+
+    if (prevBtn) prevBtn.addEventListener('click', function() {
+      autoplayPaused = true;
+      carousel.scrollBy({ left: -carousel.offsetWidth * 0.6, behavior: 'smooth' });
+      setTimeout(function() { autoplayPaused = false; }, 800);
+    });
+    if (nextBtn) nextBtn.addEventListener('click', function() {
+      autoplayPaused = true;
+      carousel.scrollBy({ left: carousel.offsetWidth * 0.6, behavior: 'smooth' });
+      setTimeout(function() { autoplayPaused = false; }, 800);
+    });
+  }());
+  </script>
 </div>
 
 {% stylesheet %}
@@ -133,18 +261,18 @@
     margin: 0;
   }
 
-  /* ── Swipeable tab bar ── */
-  .trusted-brands__tabs-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
+  /* ── Marquee tab bar ── */
+  .trusted-brands__marquee {
+    overflow: hidden;
     margin-bottom: 3rem;
-    position: relative;
   }
 
-  .trusted-brands__tabs-scroll {
-    flex: 1;
-    overflow: hidden;
+  .trusted-brands__marquee-inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: max-content;
+    animation: tb-marquee 28s linear infinite;
   }
 
   .trusted-brands__tabs-track {
@@ -153,10 +281,6 @@
     gap: 1rem;
     width: max-content;
     padding: 0.4rem 0;
-  }
-
-  .trusted-brands__tabs-arrow {
-    display: none;
   }
 
   .trusted-brands__tab {
@@ -202,10 +326,14 @@
     gap: 1rem;
   }
   .trusted-brands__carousel {
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     flex: 1;
     border-radius: 8px;
   }
+  .trusted-brands__carousel::-webkit-scrollbar { display: none; }
   .trusted-brands__track {
     display: flex;
     gap: 1.6rem;
@@ -276,11 +404,6 @@
     .trusted-brands__card { min-width: 70vw; max-width: 70vw; }
     .trusted-brands__arrow { display: none; }
     .trusted-brands__heading { font-size: 2.2rem; }
-    .trusted-brands__tabs-arrow { display: none; }
-    .trusted-brands__tabs-scroll {
-      mask-image: none;
-      -webkit-mask-image: none;
-    }
   }
 
   @media (max-width: 480px) {
@@ -308,9 +431,6 @@
     .trusted-brands__tab {
       padding: 1rem 1.8rem;
       min-height: 4.4rem;
-    }
-    .trusted-brands__tabs-wrap {
-      margin-bottom: 2rem;
     }
     .trusted-brands__view-all {
       font-size: 1.3rem;
@@ -345,160 +465,6 @@
     }
   }
 {% endstylesheet %}
-
-{% javascript %}
-  (function() {
-    /* Inject keyframes once for the tab marquee */
-    if (!document.getElementById('pt-tb-kf')) {
-      var s = document.createElement('style');
-      s.id = 'pt-tb-kf';
-      s.textContent = '@keyframes pt-tb-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}';
-      document.head.appendChild(s);
-    }
-
-    document.querySelectorAll('[data-trusted-brands]').forEach(function(section) {
-      var carousel   = section.querySelector('[data-brand-carousel]');
-      var track      = section.querySelector('[data-brand-track]');
-      var prevBtn    = section.querySelector('[data-carousel-prev]');
-      var nextBtn    = section.querySelector('[data-carousel-next]');
-      var viewAllLink = section.querySelector('[data-brand-view-all]');
-      var viewAllName = section.querySelector('[data-brand-view-all-name]');
-      var tabsScroll  = section.querySelector('[data-brand-tabs-scroll]');
-      var cards       = section.querySelectorAll('[data-tire-brand]');
-
-      if (!carousel || !track) return;
-
-      /* ── Make carousel scrollable ── */
-      carousel.style.overflowX = 'auto';
-      carousel.style.overflowY = 'hidden';
-      carousel.style.scrollbarWidth = 'none';
-      carousel.style.webkitOverflowScrolling = 'touch';
-
-      /* ── switchBrand ── */
-      var origTrackEl = tabsScroll ? tabsScroll.querySelector('[data-brand-tabs-track]') : null;
-
-      function switchBrand(brandHandle, brandName) {
-        if (origTrackEl) {
-          origTrackEl.querySelectorAll('[data-brand]').forEach(function(b) {
-            b.classList.remove('trusted-brands__tab--active');
-            b.setAttribute('aria-selected', 'false');
-          });
-          var active = origTrackEl.querySelector('[data-brand="' + brandHandle + '"]');
-          if (active) { active.classList.add('trusted-brands__tab--active'); active.setAttribute('aria-selected', 'true'); }
-        }
-        if (viewAllName) viewAllName.textContent = brandName;
-        if (viewAllLink) viewAllLink.href = '/search?q=' + encodeURIComponent(brandName) + '&type=product';
-        cards.forEach(function(card) {
-          var match = card.dataset.tireBrand === brandHandle;
-          card.hidden = !match;
-          card.style.display = match ? '' : 'none';
-        });
-        carousel.scrollLeft = 0;
-      }
-
-      /* ── Tab marquee ── */
-      if (tabsScroll && origTrackEl) {
-        /* Build wrapper: original + clone side-by-side, animated via CSS */
-        var wrapper = document.createElement('div');
-        wrapper.style.cssText = 'display:flex;align-items:center;gap:1rem;width:max-content';
-        tabsScroll.appendChild(wrapper);
-        wrapper.appendChild(origTrackEl);
-
-        var clone = origTrackEl.cloneNode(true);
-        clone.removeAttribute('data-brand-tabs-track');
-        clone.setAttribute('aria-hidden', 'true');
-        clone.querySelectorAll('[data-brand]').forEach(function(b) { b.setAttribute('tabindex', '-1'); });
-        wrapper.appendChild(clone);
-
-        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          wrapper.style.animation = 'pt-tb-scroll 24s linear infinite';
-          tabsScroll.addEventListener('mouseenter', function() { wrapper.style.animationPlayState = 'paused'; });
-          tabsScroll.addEventListener('mouseleave', function() { wrapper.style.animationPlayState = 'running'; });
-          tabsScroll.addEventListener('touchstart', function() { wrapper.style.animationPlayState = 'paused'; }, { passive: true });
-          tabsScroll.addEventListener('touchend', function() {
-            setTimeout(function() { wrapper.style.animationPlayState = 'running'; }, 800);
-          });
-        }
-
-        /* Click delegation — works on both original and clone buttons */
-        tabsScroll.addEventListener('click', function(e) {
-          var btn = e.target.closest('[data-brand]');
-          if (!btn) return;
-          switchBrand(btn.dataset.brand, btn.dataset.brandName);
-        });
-      }
-
-      /* Activate first brand */
-      var firstBtn = origTrackEl ? origTrackEl.querySelector('[data-brand]') : null;
-      if (firstBtn) switchBrand(firstBtn.dataset.brand, firstBtn.dataset.brandName);
-
-      /* ── Product carousel autoplay ── */
-      var autoplayPaused = false;
-      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        carousel.addEventListener('mouseenter', function() { autoplayPaused = true; });
-        carousel.addEventListener('mouseleave', function() { autoplayPaused = false; });
-        carousel.addEventListener('touchstart', function() { autoplayPaused = true; }, { passive: true });
-        carousel.addEventListener('touchend', function() { setTimeout(function() { autoplayPaused = false; }, 900); });
-
-        (function tick() {
-          if (!autoplayPaused) {
-            var max = carousel.scrollWidth - carousel.offsetWidth;
-            if (max > 0) {
-              carousel.scrollLeft += 0.5;
-              if (carousel.scrollLeft >= max - 1) {
-                autoplayPaused = true;
-                carousel.scrollTo({ left: 0, behavior: 'smooth' });
-                setTimeout(function() { autoplayPaused = false; }, 700);
-              }
-            }
-          }
-          requestAnimationFrame(tick);
-        }());
-      }
-
-      /* ── Carousel drag / swipe ── */
-      var drag = { on: false, startX: 0, startLeft: 0 };
-      carousel.addEventListener('mousedown', function(e) {
-        drag.on = true; drag.startX = e.pageX; drag.startLeft = carousel.scrollLeft;
-        autoplayPaused = true;
-        carousel.style.cursor = 'grabbing';
-      });
-      document.addEventListener('mousemove', function(e) {
-        if (!drag.on) return;
-        e.preventDefault();
-        carousel.scrollLeft = drag.startLeft - (e.pageX - drag.startX);
-      }, { passive: false });
-      document.addEventListener('mouseup', function() {
-        if (!drag.on) return;
-        drag.on = false; autoplayPaused = false; carousel.style.cursor = '';
-      });
-      carousel.addEventListener('touchstart', function(e) {
-        drag.on = true; drag.startX = e.touches[0].pageX; drag.startLeft = carousel.scrollLeft;
-        autoplayPaused = true;
-      }, { passive: true });
-      carousel.addEventListener('touchmove', function(e) {
-        if (!drag.on) return;
-        carousel.scrollLeft = drag.startLeft - (e.touches[0].pageX - drag.startX);
-      }, { passive: true });
-      carousel.addEventListener('touchend', function() {
-        drag.on = false;
-        setTimeout(function() { autoplayPaused = false; }, 900);
-      });
-
-      /* ── Arrow buttons ── */
-      if (prevBtn) prevBtn.addEventListener('click', function() {
-        autoplayPaused = true;
-        carousel.scrollBy({ left: -carousel.offsetWidth * 0.6, behavior: 'smooth' });
-        setTimeout(function() { autoplayPaused = false; }, 800);
-      });
-      if (nextBtn) nextBtn.addEventListener('click', function() {
-        autoplayPaused = true;
-        carousel.scrollBy({ left: carousel.offsetWidth * 0.6, behavior: 'smooth' });
-        setTimeout(function() { autoplayPaused = false; }, 800);
-      });
-    });
-  }());
-{% endjavascript %}
 
 {% schema %}
 {

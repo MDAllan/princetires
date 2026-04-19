@@ -1,0 +1,1030 @@
+{% doc %}
+  3-step service booking modal for Prince Tires.
+  Triggered by any element with [data-book-service] and optional [data-service-name].
+  Include once in layout/theme.liquid before </body>.
+
+  @example
+  {% render 'pt-service-booking-modal' %}
+{% enddoc %}
+
+<div class="bk-overlay" id="sb-overlay" hidden>
+  <div class="bk-modal" role="dialog" aria-modal="true" aria-label="Book a service">
+
+    <div class="bk-header">
+      <span class="bk-header-title">Book a service</span>
+      <div class="bk-stepper" id="sb-stepper">
+        <div class="bk-step" data-sb-step="1"><div class="bk-step-circle bk-step-circle--active">1</div></div>
+        <div class="bk-step-line" data-sb-line="1"></div>
+        <div class="bk-step" data-sb-step="2"><div class="bk-step-circle">2</div></div>
+        <div class="bk-step-line" data-sb-line="2"></div>
+        <div class="bk-step" data-sb-step="3"><div class="bk-step-circle">3</div></div>
+      </div>
+      <button class="bk-close" onclick="closeServiceModal()" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    {%- comment -%} Step 1: Service → Vehicle + sub-options {%- endcomment -%}
+    <div class="bk-page" id="sb-page-1">
+
+      <p class="bk-label">What service do you need?</p>
+      <div class="sb-service-grid" id="sb-service-grid"></div>
+
+      {%- comment -%} Revealed after service is selected {%- endcomment -%}
+      <div id="sb-details-section" hidden>
+
+        <p class="bk-label" style="margin-top:1.1rem">Vehicle type</p>
+        <div class="sb-veh-scroll">
+          <div class="bk-vehicle-grid" id="sb-vehicles"></div>
+        </div>
+
+        {%- comment -%} Flat repair sub-options {%- endcomment -%}
+        <div id="sb-repair-section" hidden>
+          <p class="bk-label" style="margin-top:1.1rem">Repair type</p>
+          <div class="sb-repair-grid" id="sb-repair-grid"></div>
+        </div>
+
+        {%- comment -%} Qty selector for installation & TPMS {%- endcomment -%}
+        <div id="sb-qty-section" hidden>
+          <p class="bk-label" id="sb-qty-label" style="margin-top:1.1rem">How many tires?</p>
+          <select class="bk-qty-select" id="sb-qty-select"></select>
+        </div>
+
+        {%- comment -%} Add-ons: installation + seasonal only {%- endcomment -%}
+        <div id="sb-addons-section" hidden>
+          <p class="bk-label" style="margin-top:1.1rem">Add-ons</p>
+          <div class="bk-addons" id="sb-addons"></div>
+        </div>
+
+        {%- comment -%} Price estimate with GST breakdown {%- endcomment -%}
+        <div class="sb-price-box" id="sb-price-box" hidden>
+          <div class="sb-price-row">
+            <span class="sb-price-label">Subtotal</span>
+            <span class="sb-price-sub" id="sb-price-sub"></span>
+          </div>
+          <div class="sb-price-row">
+            <span class="sb-price-label">GST (5%)</span>
+            <span class="sb-price-gst" id="sb-price-gst"></span>
+          </div>
+          <div class="sb-price-divider"></div>
+          <div class="sb-price-row">
+            <span class="sb-price-label sb-price-total-label">Estimated total</span>
+            <span class="sb-price-amount" id="sb-price-amount"></span>
+          </div>
+          <p class="sb-price-note" id="sb-price-note"></p>
+        </div>
+
+      </div>
+
+      <button class="bk-next-btn" id="sb-next-1" onclick="sbGoTo(2)" style="margin-top:1.2rem" disabled>Pick a time &rarr;</button>
+    </div>
+
+    {%- comment -%} Step 2: Date + Time {%- endcomment -%}
+    <div class="bk-page" id="sb-page-2" hidden>
+      <div class="bk-week-nav">
+        <button class="bk-week-arrow" id="sb-prev-week">&#8249;</button>
+        <span class="bk-week-label" id="sb-week-label"></span>
+        <button class="bk-week-arrow" id="sb-next-week">&#8250;</button>
+      </div>
+      <div class="bk-day-strip" id="sb-day-strip"></div>
+
+      <p class="bk-label">Time</p>
+      <div class="bk-time-grid" id="sb-time-grid"></div>
+      <p class="bk-hours-note">Mon–Sat 9:30–5:30 · Sun 10:00–3:30</p>
+
+      <div class="bk-nav-row">
+        <button class="bk-back-btn" onclick="sbGoTo(1)">&larr; Back</button>
+        <button class="bk-next-btn" id="sb-next-2" onclick="sbGoTo(3)" disabled>Your details &rarr;</button>
+      </div>
+    </div>
+
+    {%- comment -%} Step 3: Contact {%- endcomment -%}
+    <div class="bk-page" id="sb-page-3" hidden>
+      <div class="bk-summary" id="sb-summary"></div>
+
+      <div class="bk-form">
+        <div class="bk-form-row">
+          <div class="bk-field" id="sb-field-name">
+            <label for="sb-name">Name</label>
+            <input type="text" id="sb-name" placeholder="Jane Smith" autocomplete="name">
+          </div>
+          <div class="bk-field" id="sb-field-phone">
+            <label for="sb-phone">Phone</label>
+            <input type="tel" id="sb-phone" placeholder="(403) 555-0123" autocomplete="tel">
+          </div>
+        </div>
+        <div class="bk-field" id="sb-field-email">
+          <label for="sb-email">Email</label>
+          <input type="email" id="sb-email" placeholder="jane@email.com" autocomplete="email">
+        </div>
+        <div class="bk-field">
+          <label for="sb-notes">Notes <span class="bk-optional">(optional)</span></label>
+          <textarea id="sb-notes" rows="2" placeholder="Year, make & model — anything we should know…"></textarea>
+        </div>
+      </div>
+
+      <div class="bk-form-error" id="sb-form-error" hidden></div>
+
+      <div class="bk-nav-row">
+        <button class="bk-back-btn" onclick="sbGoTo(2)">&larr; Back</button>
+        <button class="bk-confirm-btn" id="sb-confirm-btn" onclick="sbSubmit()">Confirm booking</button>
+      </div>
+    </div>
+
+    {%- comment -%} Done {%- endcomment -%}
+    <div class="bk-page" id="sb-page-done" hidden>
+      <div class="bk-done-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+      </div>
+      <h2 class="bk-done-title">You're booked!</h2>
+      <p class="bk-done-sub">See you at Prince Tires — 111 42 Ave SW, Calgary.</p>
+      <div class="bk-done-card" id="sb-done-card"></div>
+      <div class="bk-done-actions">
+        <button class="bk-cal-btn" onclick="sbDownloadICS()">Add to calendar</button>
+        <button class="bk-done-btn" onclick="closeServiceModal()">Done</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+/* ── Service chip grid ── */
+.sb-service-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .4rem;
+}
+
+/* ── Chip wrapper (positions tooltip + info btn) ── */
+.sb-chip-wrap {
+  position: relative;
+}
+
+/* ── Info button ── */
+.sb-info-btn {
+  position: absolute;
+  top: .45rem;
+  right: .45rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid #d1d5db;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 0;
+  line-height: 1;
+  transition: border-color .15s, color .15s, background .15s;
+  z-index: 1;
+}
+.sb-info-btn:hover,
+.sb-info-btn--active {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+/* ── Tooltip ── */
+.sb-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #1f2937;
+  color: #f9fafb;
+  font-family: 'Outfit', sans-serif;
+  font-size: .82rem;
+  line-height: 1.45;
+  padding: .6rem .75rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  z-index: 10;
+  pointer-events: none;
+}
+.sb-tooltip--open {
+  display: block;
+  animation: sb-tip-in .15s ease-out;
+}
+/* Arrow */
+.sb-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 1.2rem;
+  border: 5px solid transparent;
+  border-top-color: #1f2937;
+}
+@keyframes sb-tip-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sb-service-chip {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .75rem 1.8rem .75rem .75rem;
+  width: 100%;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  font-size: .95rem;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  text-align: left;
+  transition: border-color .15s, background .15s, color .15s;
+  line-height: 1.25;
+}
+
+.sb-service-chip:hover { border-color: #dc2626; color: #dc2626; }
+
+.sb-service-chip--active {
+  border-color: #dc2626;
+  background: #fef2f2;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.sb-service-chip svg { flex-shrink: 0; opacity: .65; }
+.sb-service-chip--active svg { opacity: 1; }
+
+.sb-chip-text { display: flex; flex-direction: column; gap: .1rem; }
+.sb-chip-price {
+  font-size: .8rem;
+  font-weight: 400;
+  color: #9ca3af;
+}
+.sb-service-chip--active .sb-chip-price { color: #dc2626; opacity: .8; }
+
+/* ── Vehicle scroll ── */
+.sb-veh-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -.1rem;
+  padding: .1rem .1rem .2rem;
+}
+.sb-veh-scroll::-webkit-scrollbar { display: none; }
+
+/* ── Repair type grid ── */
+.sb-repair-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .4rem; }
+
+.sb-repair-chip {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  padding: .85rem 1rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  background: #fff;
+  text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.sb-repair-chip:hover { border-color: #dc2626; }
+.sb-repair-chip--active { border-color: #dc2626; background: #fef2f2; }
+
+.sb-repair-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111;
+}
+.sb-repair-chip--active .sb-repair-name { color: #dc2626; }
+
+.sb-repair-desc {
+  font-size: .85rem;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.sb-repair-price {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #16a34a;
+  margin-top: .1rem;
+}
+
+/* ── Price estimate box ── */
+.sb-price-box {
+  margin-top: 1rem;
+  padding: .8rem 1rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+}
+.sb-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sb-price-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: .9rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.sb-price-amount {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #16a34a;
+}
+.sb-price-row + .sb-price-row { margin-top: .25rem; }
+.sb-price-sub, .sb-price-gst {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+.sb-price-divider {
+  border-top: 1px solid #bbf7d0;
+  margin: .5rem 0 .4rem;
+}
+.sb-price-total-label { color: #111827; font-weight: 600; }
+
+.sb-price-note {
+  font-family: 'Outfit', sans-serif;
+  font-size: .8rem;
+  color: #9ca3af;
+  margin: .25rem 0 0;
+}
+
+/* ── Reveal animation ── */
+#sb-details-section:not([hidden]) {
+  animation: sb-fade-in .2s ease-out;
+}
+@keyframes sb-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Mobile ── */
+@media (max-width: 480px) {
+  .sb-service-grid { grid-template-columns: 1fr; }
+  .sb-repair-grid   { grid-template-columns: 1fr; }
+  /* On mobile, prefer tooltip above with full width */
+  .sb-tooltip { font-size: .8rem; }
+}
+</style>
+
+<script>
+(function () {
+  var BOOKING_API = 'https://prince-tires-booking.vercel.app/api/book';
+  var AVAILABILITY_API = 'https://prince-tires-booking.vercel.app/api/availability';
+
+  var sbSt = {
+    service: '',
+    vehicle: 'passenger',
+    savedVehicle: null,
+    repairType: '',
+    qty: 4,
+    addons: { disposal: false, tpms: false },
+    date: null,
+    time: null
+  };
+
+  var sbAddonsList = [
+    { id: 'tpms',     name: 'TPMS sensors',  price: 75, unit: '/sensor' },
+    { id: 'disposal', name: 'Tire disposal',  price: 5,  unit: '/tire'   }
+  ];
+
+  function sbFmtMoney(n) {
+    return '$' + (n % 1 === 0 ? n.toFixed(0) : n.toFixed(2));
+  }
+  var sbWk = 0;
+
+  // ── Services ──────────────────────────────────────────────────────────────
+  var sbServices = [
+    {
+      id: 'installation',
+      name: 'Tire Changeover',
+      priceLabel: 'from $25/tire',
+      desc: 'We mount your new tires onto your rims, balance all wheels, reset your TPMS sensors, torque the lug nuts to spec, and get you road-ready.',
+      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>'
+    },
+    {
+      id: 'balancing',
+      name: 'Wheel Balancing',
+      priceLabel: 'from $60',
+      desc: 'We spin each wheel on a balancer, detect heavy spots, and add weights so there\'s no vibration at highway speed.',
+      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>'
+    },
+    {
+      id: 'rotation',
+      name: 'Tire Rotation',
+      priceLabel: 'from $60',
+      desc: 'We move your tires to different positions so they wear evenly, extending their life and keeping handling balanced.',
+      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1 .25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>'
+    },
+    {
+      id: 'flat_repair',
+      name: 'Flat Repair',
+      priceLabel: 'from $30',
+      desc: 'Plug repair seals a puncture quickly from the outside. Patch repair dismounts the tire for a permanent internal fix.',
+      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'
+    },
+    {
+      id: 'tpms',
+      name: 'TPMS Service',
+      priceLabel: '$75/sensor',
+      desc: 'We replace or reprogram your tire pressure monitoring sensors so your dashboard warning light stays off.',
+      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="7"/><path d="M12 8V6M8 13H6M18 13h-1M9.5 10.5l-1-1M15.5 10.5l1-1"/><circle cx="12" cy="13" r="2" fill="currentColor" stroke="none"/></svg>'
+    },
+    {
+      id: 'seasonal',
+      name: 'Seasonal Swap',
+      priceLabel: 'from $60',
+      desc: 'We swap your stored seasonal tires — already on their own rims — onto your vehicle, torque to spec, and you\'re set. Tires must be pre-mounted on rims.',
+      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>'
+    }
+  ];
+
+  // ── Vehicle types ─────────────────────────────────────────────────────────
+  var sbVehs = [
+    { id: 'passenger', name: 'Sedan' },
+    { id: 'suv',       name: 'SUV / CUV' },
+    { id: 'truck',     name: 'Truck' },
+    { id: 'van',       name: 'Van' },
+    { id: 'electric',  name: 'Electric' },
+    { id: 'dually',    name: 'Dually' },
+    { id: 'trailer',   name: 'Trailer' }
+  ];
+
+  // ── Repair options (flat_repair) ──────────────────────────────────────────
+  var sbRepairOptions = [
+    { id: 'plug', name: 'Plug repair', desc: 'Quick fix from outside', price: 30 },
+    { id: 'patch', name: 'Patch repair', desc: 'Full dismount + internal patch', price: 50 }
+  ];
+
+  // ── Pricing ───────────────────────────────────────────────────────────────
+  var sbInstallPrices   = { passenger: 25, suv: 30, truck: 35, van: 30, electric: 25, dually: 40, trailer: 20 };
+  // Rotation, balancing, and seasonal swap share the same per-vehicle rate
+  var sbServicePrices   = { passenger: 60, suv: 60, truck: 80, van: 60, electric: 60, dually: 100, trailer: 60 };
+
+  function sbCalcPrice() {
+    var s = sbSt.service, v = sbSt.vehicle, q = sbSt.qty;
+    var subtotal = 0, parts = [];
+
+    if (s === 'installation') {
+      var p = sbInstallPrices[v] || 30;
+      subtotal = p * q;
+      parts.push('$' + p + '/tire × ' + q);
+      if (sbSt.addons.disposal) { subtotal += 5 * q; parts.push('disposal'); }
+      if (sbSt.addons.tpms)    { subtotal += 75 * q; parts.push('TPMS ×' + q); }
+
+    } else if (s === 'balancing') {
+      subtotal = sbServicePrices[v] || 60;
+      parts.push('all ' + q + ' wheels');
+
+    } else if (s === 'rotation') {
+      subtotal = sbServicePrices[v] || 60;
+      parts.push(q + ' tire' + (q > 1 ? 's' : ''));
+
+    } else if (s === 'flat_repair') {
+      if (!sbSt.repairType) return null;
+      var opt = sbRepairOptions.find(function (o) { return o.id === sbSt.repairType; });
+      if (!opt) return null;
+      subtotal = opt.price * q;
+      parts.push(opt.name + ' × ' + q + ' tire' + (q > 1 ? 's' : ''));
+
+    } else if (s === 'tpms') {
+      subtotal = 75 * q;
+      parts.push('$75/sensor × ' + q + ' sensor' + (q > 1 ? 's' : ''));
+
+    } else if (s === 'seasonal') {
+      subtotal = sbServicePrices[v] || 60;
+      parts.push(q + ' tire' + (q > 1 ? 's' : ''));
+      if (sbSt.addons.disposal) { subtotal += 5 * q; parts.push('disposal'); }
+      if (sbSt.addons.tpms)    { subtotal += 75 * q; parts.push('TPMS ×' + q); }
+
+    } else {
+      return null;
+    }
+
+    var gst   = subtotal * 0.05;
+    var total = subtotal + gst;
+    return {
+      subtotal: sbFmtMoney(subtotal),
+      gst:      sbFmtMoney(gst),
+      amount:   sbFmtMoney(total),
+      note:     parts.join(' + ') + ' · est. before confirming'
+    };
+  }
+
+  // ── Render: service chips ─────────────────────────────────────────────────
+  function sbRenderServices() {
+    var grid = document.getElementById('sb-service-grid');
+    if (!grid) return;
+    grid.innerHTML = sbServices.map(function (s) {
+      var active = sbSt.service === s.id ? ' sb-service-chip--active' : '';
+      return '<div class="sb-chip-wrap">' +
+        '<button class="sb-service-chip' + active + '" data-svc="' + s.id + '">' +
+          s.icon +
+          '<span class="sb-chip-text"><span>' + s.name + '</span><span class="sb-chip-price">' + s.priceLabel + '</span></span>' +
+        '</button>' +
+        '<button class="sb-info-btn" data-info="' + s.id + '" aria-label="What\'s included" tabindex="0">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>' +
+        '</button>' +
+        '<div class="sb-tooltip" id="sb-tip-' + s.id + '" role="tooltip">' + s.desc + '</div>' +
+      '</div>';
+    }).join('');
+
+    grid.querySelectorAll('.sb-service-chip').forEach(function (el) {
+      el.addEventListener('click', function () {
+        sbSt.service = this.dataset.svc;
+        sbSt.repairType = '';
+        sbSt.addons = { disposal: false, tpms: false };
+        sbRenderServices();
+        sbShowDetails();
+        sbUpdatePrice();
+        sbUpdateNextBtn();
+      });
+    });
+
+    // Info button: toggle tooltip on click/tap; close others first
+    grid.querySelectorAll('.sb-info-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var tip = document.getElementById('sb-tip-' + this.dataset.info);
+        var isOpen = tip.classList.contains('sb-tooltip--open');
+        // Close all tooltips
+        grid.querySelectorAll('.sb-tooltip').forEach(function (t) { t.classList.remove('sb-tooltip--open'); });
+        grid.querySelectorAll('.sb-info-btn').forEach(function (b) { b.classList.remove('sb-info-btn--active'); });
+        if (!isOpen) {
+          tip.classList.add('sb-tooltip--open');
+          this.classList.add('sb-info-btn--active');
+        }
+      });
+    });
+
+    // Click outside closes any open tooltip
+    document.addEventListener('click', function sbCloseTooltips() {
+      grid.querySelectorAll('.sb-tooltip').forEach(function (t) { t.classList.remove('sb-tooltip--open'); });
+      grid.querySelectorAll('.sb-info-btn').forEach(function (b) { b.classList.remove('sb-info-btn--active'); });
+    }, { once: false, capture: false });
+  }
+
+  // ── Show the details section (vehicle + sub-options) ──────────────────────
+  function sbShowDetails() {
+    var section = document.getElementById('sb-details-section');
+    if (!sbSt.service) { section.hidden = true; return; }
+    section.hidden = false;
+
+    // Trailer not valid for balancing or seasonal changeover — reset to passenger
+    var sbNoTrailer = ['balancing', 'seasonal'];
+    if (sbNoTrailer.indexOf(sbSt.service) > -1 && sbSt.vehicle === 'trailer') {
+      sbSt.vehicle = 'passenger';
+    }
+
+    // Vehicle chips
+    sbRenderVehicles();
+
+    // Repair options (flat_repair only)
+    var repairSec = document.getElementById('sb-repair-section');
+    repairSec.hidden = sbSt.service !== 'flat_repair';
+    if (sbSt.service === 'flat_repair') sbRenderRepair();
+
+    // Qty selector — always shown for any service
+    document.getElementById('sb-qty-section').hidden = false;
+    sbRenderQty();
+
+    // Add-ons (installation + seasonal only)
+    var hasAddons = sbSt.service === 'installation' || sbSt.service === 'seasonal';
+    document.getElementById('sb-addons-section').hidden = !hasAddons;
+    if (hasAddons) sbRenderAddons();
+  }
+
+  // ── Render: vehicle chips ─────────────────────────────────────────────────
+  function sbRenderVehicles() {
+    var grid = document.getElementById('sb-vehicles');
+    if (!grid) return;
+    // Trailers don't get balancing or seasonal changeover
+    var sbNoTrailerSvcs = ['balancing', 'seasonal'];
+    var vehs = sbNoTrailerSvcs.indexOf(sbSt.service) > -1
+      ? sbVehs.filter(function (v) { return v.id !== 'trailer'; })
+      : sbVehs;
+    grid.innerHTML = vehs.map(function (v) {
+      var active = sbSt.vehicle === v.id ? ' bk-vehicle-card--active' : '';
+      return '<button class="bk-vehicle-card' + active + '" data-veh="' + v.id + '"><span class="bk-vehicle-name">' + v.name + '</span></button>';
+    }).join('');
+    grid.querySelectorAll('.bk-vehicle-card').forEach(function (el) {
+      el.addEventListener('click', function () {
+        sbSt.vehicle = this.dataset.veh;
+        sbRenderVehicles();
+        sbRenderQty();
+        sbUpdatePrice();
+        try { localStorage.setItem('pt-booking-vehicle', sbSt.vehicle); } catch (e) {}
+      });
+    });
+  }
+
+  // ── Render: repair type chips ─────────────────────────────────────────────
+  function sbRenderRepair() {
+    var grid = document.getElementById('sb-repair-grid');
+    if (!grid) return;
+    grid.innerHTML = sbRepairOptions.map(function (o) {
+      var active = sbSt.repairType === o.id ? ' sb-repair-chip--active' : '';
+      return '<button class="sb-repair-chip' + active + '" data-repair="' + o.id + '">' +
+        '<span class="sb-repair-name">' + o.name + '</span>' +
+        '<span class="sb-repair-desc">' + o.desc + '</span>' +
+        '<span class="sb-repair-price">$' + o.price + '</span>' +
+        '</button>';
+    }).join('');
+    grid.querySelectorAll('.sb-repair-chip').forEach(function (el) {
+      el.addEventListener('click', function () {
+        sbSt.repairType = this.dataset.repair;
+        sbRenderRepair();
+        sbUpdatePrice();
+        sbUpdateNextBtn();
+      });
+    });
+  }
+
+  // ── Render: add-ons (installation + seasonal) ────────────────────────────
+  function sbRenderAddons() {
+    var container = document.getElementById('sb-addons');
+    if (!container) return;
+    container.innerHTML = sbAddonsList.map(function (a) {
+      var active = sbSt.addons[a.id] ? ' bk-addon--active' : '';
+      var checked = sbSt.addons[a.id] ? ' checked' : '';
+      return '<label class="bk-addon' + active + '">' +
+        '<input type="checkbox" data-addon="' + a.id + '"' + checked + '>' +
+        '<span class="bk-addon-name">' + a.name + '</span>' +
+        '<span class="bk-addon-price">+$' + a.price + a.unit + '</span>' +
+        '</label>';
+    }).join('');
+    container.querySelectorAll('input[data-addon]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        sbSt.addons[this.dataset.addon] = this.checked;
+        var lbl = this.closest('.bk-addon');
+        lbl.classList.toggle('bk-addon--active', this.checked);
+        sbUpdatePrice();
+      });
+    });
+  }
+
+  // ── Render: qty selector ──────────────────────────────────────────────────
+  function sbRenderQty() {
+    var sel = document.getElementById('sb-qty-select');
+    var lbl = document.getElementById('sb-qty-label');
+    if (!sel) return;
+    var isTpms = sbSt.service === 'tpms';
+    var max = isTpms ? 4 : 8;
+    lbl.textContent = isTpms ? 'How many sensors?' : 'How many tires?';
+    if (!sel._sbWired) {
+      sel._sbWired = true;
+      sel.addEventListener('change', function () {
+        sbSt.qty = parseInt(this.value);
+        sbUpdatePrice();
+      });
+    }
+    // Rebuild options if max changed
+    if (sel.dataset.max !== String(max)) {
+      sel.dataset.max = String(max);
+      var html = '';
+      for (var i = 1; i <= max; i++) {
+        html += '<option value="' + i + '"' + (i === sbSt.qty ? ' selected' : '') + '>' + i + (isTpms ? ' sensor' : ' tire') + (i > 1 ? 's' : '') + '</option>';
+      }
+      sel.innerHTML = html;
+    }
+    sel.value = String(Math.min(sbSt.qty, max));
+  }
+
+  // ── Update price box ──────────────────────────────────────────────────────
+  function sbUpdatePrice() {
+    var box = document.getElementById('sb-price-box');
+    var pr = sbCalcPrice();
+    if (!pr) { box.hidden = true; return; }
+    box.hidden = false;
+    document.getElementById('sb-price-sub').textContent    = pr.subtotal;
+    document.getElementById('sb-price-gst').textContent    = pr.gst;
+    document.getElementById('sb-price-amount').textContent = pr.amount;
+    document.getElementById('sb-price-note').textContent   = pr.note;
+  }
+
+  // ── Enable / disable next button ──────────────────────────────────────────
+  function sbUpdateNextBtn() {
+    var ok = !!sbSt.service;
+    if (sbSt.service === 'flat_repair') ok = ok && !!sbSt.repairType;
+    document.getElementById('sb-next-1').disabled = !ok;
+  }
+
+  // ── Render: week + day strip ──────────────────────────────────────────────
+  function sbRenderWeek() {
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var start = new Date(today);
+    start.setDate(start.getDate() - start.getDay() + 1 + sbWk * 7);
+    var dn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    var mn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    var end = new Date(start); end.setDate(end.getDate() + 6);
+    document.getElementById('sb-week-label').textContent = start.getDate() + ' ' + mn[start.getMonth()] + ' – ' + end.getDate() + ' ' + mn[end.getMonth()];
+    document.getElementById('sb-prev-week').disabled = sbWk <= 0;
+
+    var h = '';
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(start); d.setDate(d.getDate() + i);
+      var isPast = d < today;
+      var isToday = d.getTime() === today.getTime();
+      var isActive = sbSt.date && d.toDateString() === sbSt.date.toDateString();
+      var cls = 'bk-day-card' + (isPast ? ' bk-day-card--past' : '') + (isToday ? ' bk-day-card--today' : '') + (isActive ? ' bk-day-card--active' : '');
+      var localDate = d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'')+(d.getMonth()+1) + '-' + (d.getDate()<10?'0':'')+d.getDate();
+      h += '<div class="' + cls + '" data-date="' + localDate + '"><div class="bk-day-name">' + dn[i] + '</div><div class="bk-day-num">' + d.getDate() + '</div></div>';
+    }
+    document.getElementById('sb-day-strip').innerHTML = h;
+
+    document.querySelectorAll('#sb-day-strip .bk-day-card:not(.bk-day-card--past)').forEach(function (el) {
+      el.addEventListener('click', function () {
+        sbSt.date = new Date(this.dataset.date + 'T12:00:00');
+        sbSt.time = null;
+        document.getElementById('sb-next-2').disabled = true;
+        sbRenderWeek();
+        sbRenderTimes();
+      });
+    });
+  }
+
+  // ── Render: time slots ────────────────────────────────────────────────────
+  async function sbRenderTimes() {
+    if (!sbSt.date) {
+      document.getElementById('sb-time-grid').innerHTML = '<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Select a day above</p>';
+      return;
+    }
+    var isSun = sbSt.date.getDay() === 0;
+    var startH = isSun ? 10 : 9, startM = isSun ? 0 : 30, endH = isSun ? 15 : 17, endM = 30;
+    var slots = [];
+    for (var h = startH; h <= endH; h++) {
+      for (var m = (h === startH ? startM : 0); m < 60; m += 30) {
+        if (h === endH && m > endM) break;
+        var hr = h > 12 ? h - 12 : h;
+        slots.push(hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM'));
+      }
+    }
+    document.getElementById('sb-time-grid').innerHTML = '<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Checking availability…</p>';
+    var booked = [], allDayBlocked = false;
+    try {
+      var _da = sbSt.date;
+      var _dateParam = _da.getFullYear() + '-' + (_da.getMonth()+1<10?'0':'') + (_da.getMonth()+1) + '-' + (_da.getDate()<10?'0':'') + _da.getDate();
+      var r = await fetch(AVAILABILITY_API + '?date=' + _dateParam);
+      var data = await r.json();
+      booked = data.booked || [];
+      allDayBlocked = data.allDayBlocked || false;
+    } catch (e) {}
+    if (allDayBlocked) {
+      document.getElementById('sb-time-grid').innerHTML = '<p style="color:#dc2626;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">Not available this day — please pick another date.</p>';
+      return;
+    }
+    document.getElementById('sb-time-grid').innerHTML = slots.map(function (s) {
+      var isBooked = booked.indexOf(s) > -1;
+      return '<div class="bk-time-slot' + (sbSt.time === s ? ' bk-time-slot--active' : '') + (isBooked ? ' bk-time-slot--booked' : '') + '" data-time="' + s + '"' + (isBooked ? ' title="Already booked"' : '') + '>' + s + '</div>';
+    }).join('');
+    document.querySelectorAll('#sb-time-grid .bk-time-slot:not(.bk-time-slot--booked)').forEach(function (el) {
+      el.addEventListener('click', function () {
+        sbSt.time = this.dataset.time;
+        sbRenderTimes();
+        document.getElementById('sb-next-2').disabled = false;
+      });
+    });
+  }
+
+  // ── Render: step 3 summary ────────────────────────────────────────────────
+  function sbRenderSummary() {
+    var svc = sbServices.find(function (s) { return s.id === sbSt.service; });
+    var veh = sbVehs.find(function (v) { return v.id === sbSt.vehicle; });
+    var pr = sbCalcPrice();
+    var ds = sbSt.date ? sbSt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + sbSt.time : '';
+    var vehLabel = sbSt.savedVehicle
+      ? (sbSt.savedVehicle.year + ' ' + sbSt.savedVehicle.make + ' ' + sbSt.savedVehicle.model + (sbSt.savedVehicle.trim ? ' ' + sbSt.savedVehicle.trim : ''))
+      : (veh ? veh.name : '');
+
+    var h = '';
+    h += '<div class="bk-summary-row"><span class="bk-summary-label">Service</span><span class="bk-summary-val">' + (svc ? svc.name : '—') + '</span></div>';
+    if (sbSt.service === 'flat_repair' && sbSt.repairType) {
+      var ro = sbRepairOptions.find(function (o) { return o.id === sbSt.repairType; });
+      if (ro) h += '<div class="bk-summary-row"><span class="bk-summary-label">Type</span><span class="bk-summary-val">' + ro.name + '</span></div>';
+    }
+    h += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
+    h += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
+    if (pr) h += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
+    document.getElementById('sb-summary').innerHTML = h;
+  }
+
+  // ── Step navigation ───────────────────────────────────────────────────────
+  window.sbGoTo = function (step) {
+    [1, 2, 3].forEach(function (s) { document.getElementById('sb-page-' + s).hidden = s !== step; });
+    document.getElementById('sb-page-done').hidden = true;
+    document.getElementById('sb-stepper').style.opacity = '1';
+
+    [1, 2, 3].forEach(function (s) {
+      var ci = document.querySelector('[data-sb-step="' + s + '"] .bk-step-circle');
+      var li = document.querySelector('[data-sb-line="' + s + '"]');
+      ci.className = 'bk-step-circle';
+      if (li) li.className = 'bk-step-line';
+      if (s < step) {
+        ci.className = 'bk-step-circle bk-step-circle--done'; ci.innerHTML = '&#10003;';
+        if (li) li.className = 'bk-step-line bk-step-line--done';
+      } else if (s === step) {
+        ci.className = 'bk-step-circle bk-step-circle--active'; ci.textContent = s;
+      } else { ci.textContent = s; }
+    });
+
+    if (step === 2) {
+      if (!sbSt.date) { var t = new Date(); t.setHours(0, 0, 0, 0); sbSt.date = t; }
+      sbRenderWeek(); sbRenderTimes();
+    }
+    if (step === 3) sbRenderSummary();
+  };
+
+  // ── Open modal ────────────────────────────────────────────────────────────
+  window.openServiceModal = function (btn) {
+    var pre = (btn.dataset.serviceName || '').toLowerCase();
+
+    // Match pre-selected service by name
+    sbSt.service = '';
+    if (pre) {
+      var keywords = { installation: ['install'], balancing: ['balanc'], rotation: ['rotat'], flat_repair: ['flat', 'repair'], tpms: ['tpms', 'sensor'], seasonal: ['season', 'changeover', 'swap'] };
+      Object.keys(keywords).forEach(function (id) {
+        keywords[id].forEach(function (kw) { if (pre.indexOf(kw) > -1) sbSt.service = id; });
+      });
+    }
+
+    sbSt.repairType = '';
+    sbSt.qty = 4;
+    sbSt.vehicle = 'passenger';
+    sbSt.savedVehicle = null;
+    sbSt.date = null;
+    sbSt.time = null;
+    sbWk = 0;
+
+    // Load saved vehicle
+    try {
+      var gKeys = Object.keys(localStorage).filter(function (k) { return k.startsWith('pt-garage-'); });
+      for (var i = 0; i < gKeys.length; i++) {
+        var gv = JSON.parse(localStorage.getItem(gKeys[i]));
+        var gd = (gv || []).find(function (v) { return v.isDefault; });
+        if (gd) { sbSt.savedVehicle = gd; break; }
+      }
+      var lv = localStorage.getItem('pt-booking-vehicle');
+      if (lv && sbVehs.find(function (v) { return v.id === lv; })) sbSt.vehicle = lv;
+    } catch (e) {}
+
+    // Prefill contact
+    try {
+      var cust = window.__bkCustomer || {};
+      var saved = JSON.parse(localStorage.getItem('pt-booking-contact') || 'null');
+      document.getElementById('sb-name').value = cust.name || (saved && saved.name) || '';
+      document.getElementById('sb-phone').value = cust.phone || (saved && saved.phone) || '';
+      document.getElementById('sb-email').value = cust.email || (saved && saved.email) || '';
+      document.getElementById('sb-notes').value = '';
+    } catch (e) {}
+
+    sbRenderServices();
+    if (sbSt.service) { sbShowDetails(); sbUpdatePrice(); }
+    sbUpdateNextBtn();
+
+    sbGoTo(1);
+    document.getElementById('sb-overlay').hidden = false;
+    document.body.style.overflow = 'hidden';
+  };
+
+  // ── Close modal ───────────────────────────────────────────────────────────
+  window.closeServiceModal = function () {
+    document.getElementById('sb-overlay').hidden = true;
+    document.body.style.overflow = '';
+  };
+
+  // ── Submit booking ────────────────────────────────────────────────────────
+  window.sbSubmit = async function () {
+    var name = document.getElementById('sb-name').value.trim();
+    var phone = document.getElementById('sb-phone').value.trim();
+    var email = document.getElementById('sb-email').value.trim();
+    var notes = document.getElementById('sb-notes').value.trim();
+    var errEl = document.getElementById('sb-form-error');
+    ['sb-field-name', 'sb-field-phone', 'sb-field-email'].forEach(function (id) { document.getElementById(id).classList.remove('bk-field--error'); });
+    errEl.hidden = true;
+
+    var missing = [];
+    if (!name) { document.getElementById('sb-field-name').classList.add('bk-field--error'); missing.push('full name'); }
+    if (!phone) { document.getElementById('sb-field-phone').classList.add('bk-field--error'); missing.push('phone number'); }
+    if (!email || email.indexOf('@') < 1) { document.getElementById('sb-field-email').classList.add('bk-field--error'); missing.push('email address'); }
+    if (missing.length) { errEl.textContent = 'Please fill in your ' + missing.join(', ') + '.'; errEl.hidden = false; return; }
+
+    // Guard: date and time must be set (defensive — buttons should enforce this)
+    if (!sbSt.date || !sbSt.time) {
+      errEl.textContent = 'Please select a date and time before confirming.';
+      errEl.hidden = false;
+      return;
+    }
+
+    var btn = document.getElementById('sb-confirm-btn');
+    btn.disabled = true; btn.textContent = 'Booking…';
+
+    var svc = sbServices.find(function (s) { return s.id === sbSt.service; });
+    var veh = sbVehs.find(function (v) { return v.id === sbSt.vehicle; });
+    var pr = sbCalcPrice();
+
+    var sbParseAmt = function (str) { return str ? parseFloat(str.replace('$', '')) || 0 : 0; };
+
+    // Build date string using local time to avoid UTC day-shift
+    var d = sbSt.date;
+    var dateStr = d.getFullYear() + '-' +
+      (d.getMonth() + 1 < 10 ? '0' : '') + (d.getMonth() + 1) + '-' +
+      (d.getDate() < 10 ? '0' : '') + d.getDate();
+
+    try {
+      var payload = {
+        bookType: 'service',
+        serviceName: svc ? svc.name : 'Service',
+        repairType: sbSt.repairType || '',
+        qty: sbSt.qty,
+        tpms: sbSt.addons.tpms || false,
+        disposal: sbSt.addons.disposal || false,
+        name: name, phone: phone, email: email, notes: notes,
+        vehicleType: sbSt.vehicle,
+        vehicleYear: sbSt.savedVehicle ? (sbSt.savedVehicle.year || '') : '',
+        vehicleMake: sbSt.savedVehicle ? (sbSt.savedVehicle.make || '') : '',
+        vehicleModel: sbSt.savedVehicle ? (sbSt.savedVehicle.model || '') : '',
+        vehicleTrim: sbSt.savedVehicle ? (sbSt.savedVehicle.trim || '') : '',
+        date: dateStr,
+        time: sbSt.time,
+        subtotal: pr ? sbParseAmt(pr.subtotal) : 0,
+        gst:      pr ? sbParseAmt(pr.gst)      : 0,
+        total:    pr ? sbParseAmt(pr.amount)    : 0
+      };
+
+      var res = await fetch(BOOKING_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!res.ok) { var ed = await res.json().catch(function () { return {}; }); throw new Error(ed.error || 'Booking failed'); }
+
+      try {
+        localStorage.setItem('pt-booking-contact', JSON.stringify({ name: name, phone: phone, email: email, savedAt: new Date().toISOString() }));
+        localStorage.setItem('pt-booking-vehicle', sbSt.vehicle);
+      } catch (ex) {}
+
+      // Done card
+      var ds = sbSt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + sbSt.time;
+      var vehLabel = sbSt.savedVehicle ? (sbSt.savedVehicle.year + ' ' + sbSt.savedVehicle.make + ' ' + sbSt.savedVehicle.model) : (veh ? veh.name : '');
+      var doneH = '';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Service</span><span class="bk-summary-val">' + (svc ? svc.name : '—') + '</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">111 42 Ave SW, Calgary, AB</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">(403) 452-4283</span></div>';
+      if (vehLabel) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
+      if (pr) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
+      document.getElementById('sb-done-card').innerHTML = doneH;
+
+      [1, 2, 3].forEach(function (s) { document.getElementById('sb-page-' + s).hidden = true; });
+      document.getElementById('sb-page-done').hidden = false;
+      document.getElementById('sb-stepper').style.opacity = '0';
+
+      if (typeof confetti === 'function') {
+        var co = ['#16a34a', '#22c55e', '#F5820B', '#ffffff', '#dc2626', '#bbf7d0'];
+        confetti({ particleCount: 80, spread: 70, origin: { y: .6 }, colors: co });
+        setTimeout(function () { confetti({ particleCount: 40, angle: 60, spread: 55, origin: { x: 0 }, colors: co }); }, 200);
+        setTimeout(function () { confetti({ particleCount: 40, angle: 120, spread: 55, origin: { x: 1 }, colors: co }); }, 400);
+      }
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Confirm booking';
+      errEl.textContent = err.message && err.message.length < 120 ? err.message : 'Something went wrong. Please try again or call (403) 452-4283.';
+      errEl.hidden = false;
+    }
+  };
+
+  // ── ICS download ──────────────────────────────────────────────────────────
+  window.sbDownloadICS = function () {
+    var svc = sbServices.find(function (s) { return s.id === sbSt.service; });
+    var tm = sbSt.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    var h = parseInt(tm[1]), m = parseInt(tm[2]);
+    if (tm[3].toUpperCase() === 'PM' && h < 12) h += 12;
+    if (tm[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    var _d = sbSt.date;
+    var _dstr = _d.getFullYear() + '' +
+      (_d.getMonth() + 1 < 10 ? '0' : '') + (_d.getMonth() + 1) +
+      (_d.getDate() < 10 ? '0' : '') + _d.getDate();
+    var ds = _dstr;
+    var ts = (h < 10 ? '0' : '') + h + (m < 10 ? '0' : '') + m + '00';
+    var eh = h + 1;
+    var te = (eh < 10 ? '0' : '') + eh + (m < 10 ? '0' : '') + m + '00';
+    var ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART;TZID=America/Edmonton:' + ds + 'T' + ts + '\nDTEND;TZID=America/Edmonton:' + ds + 'T' + te + '\nSUMMARY:' + (svc ? svc.name : 'Service') + ' at Prince Tires\nLOCATION:111 42 Ave SW\\, Calgary\\, AB T2G 0G3\nDESCRIPTION:' + (svc ? svc.name : 'Service') + ' appointment\nEND:VEVENT\nEND:VCALENDAR';
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+    a.download = 'prince-tires-service.ics';
+    a.click();
+  };
+
+  // ── Event listeners ───────────────────────────────────────────────────────
+  document.getElementById('sb-prev-week').addEventListener('click', function () { if (sbWk > 0) { sbWk--; sbRenderWeek(); } });
+  document.getElementById('sb-next-week').addEventListener('click', function () { sbWk++; sbRenderWeek(); });
+  document.getElementById('sb-overlay').addEventListener('click', function (e) { if (e.target === this) closeServiceModal(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !document.getElementById('sb-overlay').hidden) closeServiceModal(); });
+  document.addEventListener('click', function (e) { var b = e.target.closest('[data-book-service]'); if (b) openServiceModal(b); });
+})();
+</script>

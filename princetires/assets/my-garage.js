@@ -22,12 +22,14 @@ class MyGarage extends HTMLElement {
     this.seasonalEl = this.querySelector('[data-garage-seasonal]');
     this.activityEl = this.querySelector('[data-garage-activity]');
     this.activityListEl = this.querySelector('[data-garage-activity-list]');
+    this.historyListEl = this.querySelector('[data-garage-history-list]');
   }
 
   connectedCallback() {
     this.vehicles = this.loadFromStorage();
     this.populateYearSelect();
     this.bindEvents();
+    this.initTabs();
     this.renderSeasonalTip();
     this.renderVehicles();
     this.publishGarageUpdate();
@@ -41,10 +43,33 @@ class MyGarage extends HTMLElement {
     try {
       var raw = localStorage.getItem(this.storageKey);
       var parsed = raw ? JSON.parse(raw) : [];
-      // Migrate legacy vehicles that lack maintenance/reminders
+      var todayBase = new Date();
+      todayBase.setHours(0, 0, 0, 0);
+      // Migrate legacy vehicles and refresh stale reminder dates
       return parsed.map(function(v) {
         if (!v.maintenance) v.maintenance = [];
         if (!v.reminders) v.reminders = null; // will be set on first service log
+        if (v.reminders) {
+          // Push any past reminder dates to the next reasonable future date
+          var rotDate = v.reminders.nextRotation ? new Date(v.reminders.nextRotation) : null;
+          if (rotDate && rotDate < todayBase) {
+            var nextRot = new Date(todayBase);
+            nextRot.setMonth(nextRot.getMonth() + 6);
+            v.reminders.nextRotation = nextRot.toISOString().split('T')[0];
+          }
+          var wswDate = v.reminders.nextWinterSwap ? new Date(v.reminders.nextWinterSwap) : null;
+          if (wswDate && wswDate < todayBase) {
+            var ws = new Date(todayBase.getFullYear(), 9, 1); // Oct 1
+            if (ws <= todayBase) ws.setFullYear(ws.getFullYear() + 1);
+            v.reminders.nextWinterSwap = ws.toISOString().split('T')[0];
+          }
+          var sswDate = v.reminders.nextSummerSwap ? new Date(v.reminders.nextSummerSwap) : null;
+          if (sswDate && sswDate < todayBase) {
+            var ss = new Date(todayBase.getFullYear(), 4, 1); // May 1
+            if (ss <= todayBase) ss.setFullYear(ss.getFullYear() + 1);
+            v.reminders.nextSummerSwap = ss.toISOString().split('T')[0];
+          }
+        }
         return v;
       });
     } catch (e) {
@@ -298,6 +323,89 @@ class MyGarage extends HTMLElement {
     return map[type] || type;
   }
 
+  /* ---- Bookings tab ---- */
+
+  async loadBookings() {
+    var listEl = this.querySelector('[data-gbk-list]');
+    var subEl  = this.querySelector('[data-gbk-sub]');
+    if (!listEl) return;
+
+    var apiUrl = this.config.bookingApiUrl;
+    var email  = this.config.customerEmail;
+
+    if (!apiUrl || !email) {
+      listEl.innerHTML = '<div class="gbk-configure">'
+        + '<p class="gbk-configure-title">Not configured</p>'
+        + '<p class="gbk-configure-sub">Set the Booking API URL in the theme editor to show your appointments.</p>'
+        + '</div>';
+      return;
+    }
+
+    // Show loading state
+    listEl.innerHTML = '<div class="gbk-loading"><div class="gbk-spinner"></div><span>Loading your bookings\u2026</span></div>';
+
+    try {
+      // A01: include HMAC lookup token stored at booking time to prevent IDOR.
+      // Token is stored by the booking form after a successful POST /api/book.
+      var lookupToken = localStorage.getItem('pt-book-token-' + email.toLowerCase()) || '';
+      var bookingUrl  = apiUrl.replace(/\/$/, '') + '/api/book?email=' + encodeURIComponent(email);
+      if (lookupToken) bookingUrl += '&token=' + encodeURIComponent(lookupToken);
+      var res = await fetch(bookingUrl);
+      var data = await res.json();
+      // If token rejected, clear stale token from storage
+      if (res.status === 401) { localStorage.removeItem('pt-book-token-' + email.toLowerCase()); data = { bookings: [] }; }
+      var bookings = data.bookings || [];
+
+      if (!bookings.length) {
+        if (subEl) subEl.textContent = 'No upcoming appointments';
+        listEl.innerHTML = '<div class="gbk-empty">'
+          + '<p class="gbk-empty-title">No upcoming bookings</p>'
+          + '<p class="gbk-empty-sub">You don\u2019t have any scheduled installations at the moment.</p>'
+          + '<a href="/pages/services" class="gbk-cta">Book an installation</a>'
+          + '</div>';
+        return;
+      }
+
+      if (subEl) subEl.textContent = bookings.length + ' upcoming ' + (bookings.length === 1 ? 'appointment' : 'appointments');
+
+      listEl.innerHTML = bookings.map(function(bk) {
+        var parts = bk.date.split(', ');
+        var dayPart  = parts.length >= 2 ? parts[1] : bk.date; // e.g. "Apr 19"
+        var dateParts = dayPart.trim().split(' ');
+        var month = dateParts[0] || '';
+        var day   = dateParts[1] || '';
+        var statusClass = 'gbk-status--' + (bk.status === 'tentative' ? 'tentative' : bk.status === 'cancelled' ? 'cancelled' : 'confirmed');
+        var statusLabel = bk.status === 'tentative' ? 'Pending' : bk.status === 'cancelled' ? 'Cancelled' : 'Confirmed';
+
+        return '<div class="gbk-card gbk-card--' + (bk.status === 'tentative' ? 'tentative' : bk.status === 'cancelled' ? 'cancelled' : 'confirmed') + '">'
+          + '<div class="gbk-date-col">'
+            + '<div class="gbk-date-day">' + this.escapeHtml(day) + '</div>'
+            + '<div class="gbk-date-month">' + this.escapeHtml(month) + '</div>'
+          + '</div>'
+          + '<div class="gbk-info">'
+            + '<p class="gbk-title-text">' + this.escapeHtml((bk.summary || 'Installation').replace(/^🛞\s*/, '')) + '</p>'
+            + '<div class="gbk-meta">'
+              + '<span class="gbk-meta-item">'
+                + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+                + this.escapeHtml(bk.time)
+              + '</span>'
+              + '<span class="gbk-meta-item">'
+                + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'
+                + this.escapeHtml(bk.location)
+              + '</span>'
+            + '</div>'
+          + '</div>'
+          + '<span class="gbk-status ' + statusClass + '">' + statusLabel + '</span>'
+        + '</div>';
+      }.bind(this)).join('');
+    } catch (e) {
+      listEl.innerHTML = '<div class="gbk-empty">'
+        + '<p class="gbk-empty-title">Couldn\u2019t load bookings</p>'
+        + '<p class="gbk-empty-sub">Please try again or contact us directly.</p>'
+        + '</div>';
+    }
+  }
+
   /* ---- Booking integration ---- */
 
   bookInstallForVehicle(id) {
@@ -514,17 +622,18 @@ class MyGarage extends HTMLElement {
 
     this.renderStats();
     this.renderActivityFeed();
+    this.renderHistoryPanel();
   }
 
   renderCard(vehicle) {
     var status = this.getStatusForVehicle(vehicle);
     var statusLabels = { good: 'All good', 'due-soon': 'Service due', overdue: 'Action needed' };
-    var defaultClass = vehicle.isDefault ? ' garage__card--default' : '';
-    var defaultBadge = vehicle.isDefault ? '<span class="garage__badge">Default</span>' : '';
-    var nickname = vehicle.nickname ? '<span class="garage__nickname">' + this.escapeHtml(vehicle.nickname) + '</span>' : '';
     var title = this.escapeHtml(vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model);
     var icon = this.getVehicleIcon(vehicle);
     var reminders = this.getActiveReminders(vehicle);
+    var nickname = vehicle.nickname
+      ? vehicle.nickname.replace(/\b\w/g, function(c) { return c.toUpperCase(); })
+      : '';
 
     var reminderHtml = reminders.map(function(r) {
       return '<div class="garage__reminder garage__reminder--' + r.urgency + '">'
@@ -539,63 +648,74 @@ class MyGarage extends HTMLElement {
       : '';
 
     var maintHtml = this.renderMaintenancePanel(vehicle);
-
     var orderHistoryHtml = '<div class="garage__orders" data-orders-panel data-vehicle-size="' + this.escapeAttr(vehicle.tireSize) + '" hidden></div>';
 
-    return '<li class="garage__card' + defaultClass + '" data-vehicle-id="' + this.escapeAttr(vehicle.id) + '">'
+    // Default badge: solid red pill if default, subtle clickable outline if not
+    var defaultBadge = vehicle.isDefault
+      ? '<span class="garage__badge garage__badge--active">Default</span>'
+      : '<button type="button" class="garage__badge garage__badge--inactive" data-action="default" data-id="' + this.escapeAttr(vehicle.id) + '">Set default</button>';
 
-      // Identity zone
+    return '<li class="garage__card' + (vehicle.isDefault ? ' garage__card--default' : '') + '" data-vehicle-id="' + this.escapeAttr(vehicle.id) + '">'
+
+      // ── Identity ──
       + '<div class="garage__card-identity">'
         + '<div class="garage__card-icon-wrap">' + icon + '</div>'
         + '<div class="garage__card-meta">'
-          + '<div class="garage__card-header">'
-            + defaultBadge + nickname
+          + '<div class="garage__card-row1">'
+            + '<h3 class="garage__card-title">' + title + '</h3>'
             + '<span class="garage__status garage__status--' + status + '">' + this.escapeHtml(statusLabels[status]) + '</span>'
           + '</div>'
-          + '<h3 class="garage__card-title">' + title + '</h3>'
+          + (nickname ? '<p class="garage__card-nickname">\u201c' + this.escapeHtml(nickname) + '\u201d</p>' : '')
           + '<p class="garage__card-trim">' + this.escapeHtml(vehicle.trim) + '</p>'
-          + '<span class="garage__size-chip">' + this.escapeHtml(vehicle.tireSize) + '</span>'
+          + '<div class="garage__card-footer-row">'
+            + '<span class="garage__size-chip">' + this.escapeHtml(vehicle.tireSize) + '</span>'
+            + defaultBadge
+          + '</div>'
         + '</div>'
       + '</div>'
 
-      // Reminders
+      // ── Reminders ──
       + (reminderHtml ? '<div class="garage__reminders">' + reminderHtml + '</div>' : '')
 
-      // Upsell strip
-      + '<div class="garage__upsell-strip">'
-        + '<a href="/collections/accessories?q=tpms" class="garage__upsell-btn">'
-          + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
-          + 'TPMS sensors'
-        + '</a>'
-        + '<button type="button" class="garage__upsell-btn garage__upsell-btn--primary" data-action="book-install" data-id="' + this.escapeAttr(vehicle.id) + '">'
-          + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
-          + 'Book install'
-        + '</button>'
-        + '<a href="/pages/services#alignment" class="garage__upsell-btn">'
-          + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10"/></svg>'
-          + 'Alignment'
-        + '</a>'
-      + '</div>'
-
-      // Primary actions
+      // ── Actions ──
       + '<div class="garage__card-actions">'
-        + '<a href="/collections/tires?filter.p.m.custom.tire_size=' + encodeURIComponent(vehicle.tireSize) + '" class="garage__action garage__action--shop">'
-          + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>'
-          + ' Shop tires'
-        + '</a>'
-        + (!vehicle.isDefault ? '<button type="button" class="garage__action garage__action--default" data-action="default" data-id="' + this.escapeAttr(vehicle.id) + '">Set default</button>' : '')
-        + '<button type="button" class="garage__action garage__action--nickname" data-action="nickname" data-id="' + this.escapeAttr(vehicle.id) + '">' + (vehicle.nickname ? 'Edit name' : 'Add name') + '</button>'
-        + '<button type="button" class="garage__action garage__action--log" data-action="toggle-maint" data-id="' + this.escapeAttr(vehicle.id) + '">Log service</button>'
-        + '<button type="button" class="garage__action garage__action--orders" data-action="toggle-orders" data-id="' + this.escapeAttr(vehicle.id) + '">Order history</button>'
-        + '<button type="button" class="garage__action garage__action--remove" data-action="remove" data-id="' + this.escapeAttr(vehicle.id) + '">Remove</button>'
+
+        // Row 1: two equal primary CTAs
+        + '<div class="garage__actions-primary">'
+          + '<a href="/collections/tires?filter.p.m.custom.tire_size=' + encodeURIComponent(vehicle.tireSize) + '" class="garage__action-btn garage__action-btn--red">'
+            + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>'
+            + 'Shop tires'
+          + '</a>'
+          + '<a href="#" class="garage__action-btn garage__action-btn--outline" data-action="book-install" data-id="' + this.escapeAttr(vehicle.id) + '">'
+            + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
+            + 'Book install'
+          + '</a>'
+        + '</div>'
+
+        // Row 2: always exactly 4 chips
+        + '<div class="garage__actions-secondary">'
+          + '<button type="button" class="garage__action-chip" data-action="toggle-maint" data-id="' + this.escapeAttr(vehicle.id) + '">'
+            + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>'
+            + 'Log service'
+          + '</button>'
+          + '<button type="button" class="garage__action-chip" data-action="toggle-orders" data-id="' + this.escapeAttr(vehicle.id) + '">'
+            + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>'
+            + 'Orders'
+          + '</button>'
+          + '<button type="button" class="garage__action-chip" data-action="nickname" data-id="' + this.escapeAttr(vehicle.id) + '">'
+            + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
+            + (nickname ? 'Rename' : 'Name it')
+          + '</button>'
+          + '<button type="button" class="garage__action-chip garage__action-chip--danger" data-action="remove" data-id="' + this.escapeAttr(vehicle.id) + '">'
+            + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+            + 'Remove'
+          + '</button>'
+        + '</div>'
+
       + '</div>'
 
       + lastMaintHtml
-
-      // Expandable maintenance panel
       + maintHtml
-
-      // Expandable order history panel
       + orderHistoryHtml
 
     + '</li>';
@@ -733,6 +853,29 @@ class MyGarage extends HTMLElement {
     this.cancelBtn.addEventListener('click', this.toggleAddForm.bind(this, false));
   }
 
+  initTabs() {
+    var self = this;
+    var tabs   = Array.from(this.querySelectorAll('[data-garage-tab]'));
+    var panels = Array.from(this.querySelectorAll('[data-tab-panel]'));
+    if (!tabs.length || !panels.length) return;
+
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        var target = tab.dataset.garageTab;
+        // update active class
+        tabs.forEach(function(t) { t.classList.remove('g-tab--active'); });
+        tab.classList.add('g-tab--active');
+        // show matching panel, hide rest
+        panels.forEach(function(p) {
+          p.hidden = (p.dataset.tabPanel !== target);
+        });
+        // populate panels on demand
+        if (target === 'history') self.renderHistoryPanel();
+        if (target === 'bookings') self.loadBookings();
+      });
+    });
+  }
+
   /* ---- Dashboard ---- */
 
   renderStats() {
@@ -757,42 +900,22 @@ class MyGarage extends HTMLElement {
       }.bind(this));
     }.bind(this));
 
-    var html = '';
+    var orders = this.config.ordersCount || 0;
+    var nextLabel = nextService ? this.escapeHtml(nextService.label) : '—';
+    var alertMod = alerts > 0 ? ' garage__stat-card--alert' : '';
 
-    if (total > 0) {
-      html += '<span class="garage__stat-pill">'
-        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 17h14M7.5 17V13L6 9H18L16.5 13V17"/><circle cx="9" cy="21" r="1.5"/><circle cx="15" cy="21" r="1.5"/></svg>'
-        + total + ' vehicle' + (total !== 1 ? 's' : '')
-        + '</span>';
+    function card(num, label, mod) {
+      return '<div class="garage__stat-card' + (mod || '') + '">'
+        + '<span class="garage__stat-num">' + num + '</span>'
+        + '<span class="garage__stat-label">' + label + '</span>'
+        + '</div>';
     }
 
-    if (alerts > 0) {
-      html += '<span class="garage__stat-pill garage__stat-pill--alert">'
-        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>'
-        + alerts + ' alert' + (alerts !== 1 ? 's' : '')
-        + '</span>';
-    } else if (total > 0) {
-      html += '<span class="garage__stat-pill garage__stat-pill--good">'
-        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>'
-        + 'All good'
-        + '</span>';
-    }
-
-    if (nextService) {
-      html += '<span class="garage__stat-pill garage__stat-pill--next">'
-        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
-        + 'Next: ' + this.escapeHtml(nextService.label)
-        + '</span>';
-    }
-
-    if (this.config.ordersCount > 0) {
-      html += '<span class="garage__stat-pill">'
-        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>'
-        + this.config.ordersCount + ' order' + (this.config.ordersCount !== 1 ? 's' : '')
-        + '</span>';
-    }
-
-    this.statsEl.innerHTML = html;
+    this.statsEl.innerHTML =
+      card(total, 'Vehicles') +
+      card(alerts, 'Alerts', alertMod) +
+      card(nextLabel, 'Next service', ' garage__stat-card--next') +
+      card(orders, 'Orders');
   }
 
   renderSeasonalTip() {
@@ -808,7 +931,7 @@ class MyGarage extends HTMLElement {
         cta: 'Book swap',
         href: '/pages/services'
       };
-    } else if (month === 3 || month === 4) {
+    } else if (month === 4 || month === 5) {
       tip = {
         icon: '🌱',
         label: 'Summer swap season',
@@ -879,6 +1002,39 @@ class MyGarage extends HTMLElement {
         + kmHtml
         + '<span class="garage__activity-when">' + this.escapeHtml(e.date) + '</span>'
       + '</li>';
+    }.bind(this)).join('');
+  }
+
+  renderHistoryPanel() {
+    if (!this.historyListEl) return;
+
+    var entries = [];
+    this.vehicles.forEach(function(v) {
+      var label = v.year + ' ' + v.make + ' ' + v.model;
+      if (v.nickname) label += ' \u201c' + v.nickname + '\u201d';
+      (v.maintenance || []).forEach(function(e) {
+        entries.push({ type: e.type, date: e.date, mileage: e.mileage, vehicle: label });
+      });
+    });
+
+    if (!entries.length) {
+      this.historyListEl.innerHTML = '<p class="garage__history-empty-msg">No service records yet. Use \u201cLog service\u201d on any vehicle card to get started.</p>';
+      return;
+    }
+
+    entries.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+
+    this.historyListEl.innerHTML = entries.map(function(e) {
+      return '<div class="garage__history-entry">'
+        + '<div class="garage__history-entry-left">'
+          + '<span class="garage__history-type">' + this.escapeHtml(this.formatServiceType(e.type)) + '</span>'
+          + '<span class="garage__history-vehicle">' + this.escapeHtml(e.vehicle) + '</span>'
+        + '</div>'
+        + '<div class="garage__history-entry-right">'
+          + (e.mileage ? '<span class="garage__history-km">' + e.mileage.toLocaleString() + ' km</span>' : '')
+          + '<span class="garage__history-date">' + this.escapeHtml(e.date) + '</span>'
+        + '</div>'
+      + '</div>';
     }.bind(this)).join('');
   }
 

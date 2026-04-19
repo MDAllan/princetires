@@ -1,0 +1,554 @@
+{%- liquid
+  assign has_tires = false
+  assign first_tire = nil
+  for item in cart.items
+    assign t = item.product.type | downcase
+    if t contains 'tire' or t contains 'tyre' or item.product.tags contains 'tire'
+      assign has_tires = true
+      if first_tire == nil
+        assign first_tire = item
+      endif
+    endif
+  endfor
+-%}
+
+<div class="ptc" id="ptc-root" data-section-id="{{ section.id }}">
+  {%- if cart == empty -%}
+
+    {%- comment -%} ── Empty State ── {%- endcomment -%}
+    <div class="ptc__empty">
+      <div class="ptc__empty-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      </div>
+      <h1 class="ptc__empty-title">Your cart is empty</h1>
+      <p class="ptc__empty-sub">Add a set of tires to get started.</p>
+      <a href="{{ routes.all_products_collection_url }}" class="ptc__empty-btn">Shop tires</a>
+    </div>
+
+  {%- else -%}
+
+    {%- comment -%} ── Loaded State ── {%- endcomment -%}
+    <div class="ptc__wrap">
+      <div class="ptc__layout">
+
+        {%- comment -%} ── Items Column ── {%- endcomment -%}
+        <div class="ptc__items-col">
+          <div class="ptc__items-head">
+            <h1 class="ptc__title">Your cart</h1>
+            <span class="ptc__item-count" id="ptc-count">
+              {{ cart.item_count }} {{ cart.item_count | pluralize: 'item', 'items' }}
+            </span>
+          </div>
+
+          <div class="ptc__items" id="ptc-items">
+            {%- for item in cart.items -%}
+              <div class="ptc__item" id="ptc-item-{{ item.variant_id }}" data-variant="{{ item.variant_id }}">
+
+                {%- comment -%} Image {%- endcomment -%}
+                <a href="{{ item.url }}" class="ptc__img-wrap" tabindex="-1" aria-hidden="true">
+                  {%- if item.image -%}
+                    {{ item.image | image_url: width: 160 | image_tag: loading: 'lazy', alt: item.title, class: 'ptc__img', widths: '80, 160' }}
+                  {%- else -%}
+                    <div class="ptc__img-placeholder">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                    </div>
+                  {%- endif -%}
+                </a>
+
+                {%- comment -%} Details {%- endcomment -%}
+                <div class="ptc__item-body">
+                  <div class="ptc__item-top">
+                    <div class="ptc__item-meta">
+                      <a href="{{ item.url }}" class="ptc__item-name">{{ item.product.title }}</a>
+                      {%- unless item.product.has_only_default_variant -%}
+                        <span class="ptc__item-variant">{{ item.variant.title }}</span>
+                      {%- endunless -%}
+                      {%- for p in item.properties -%}
+                        {%- unless p.last == blank -%}
+                          <span class="ptc__item-prop">{{ p.first }}: {{ p.last }}</span>
+                        {%- endunless -%}
+                      {%- endfor -%}
+                      {%- if item.product.metafields.custom.tire_size != blank -%}
+                        <span class="ptc__size-badge">{{ item.product.metafields.custom.tire_size }}</span>
+                      {%- endif -%}
+                    </div>
+                    <div class="ptc__item-prices">
+                      <span class="ptc__line-total" id="ptc-line-{{ item.variant_id }}">{{ item.final_line_price | money }}</span>
+                      {%- if item.original_line_price != item.final_line_price -%}
+                        <span class="ptc__line-original">{{ item.original_line_price | money }}</span>
+                      {%- endif -%}
+                      <span class="ptc__unit-price">{{ item.price | money }} / ea.</span>
+                    </div>
+                  </div>
+
+                  {%- comment -%} Controls row {%- endcomment -%}
+                  <div class="ptc__item-controls">
+                    <div class="ptc__qty" data-variant="{{ item.variant_id }}">
+                      <button class="ptc__qty-btn" type="button" data-dir="-1" aria-label="Decrease quantity">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg>
+                      </button>
+                      <input type="number" class="ptc__qty-input"
+                        value="{{ item.quantity }}"
+                        min="0" max="99"
+                        data-variant="{{ item.variant_id }}"
+                        data-original="{{ item.quantity }}"
+                        aria-label="Quantity for {{ item.title | escape }}">
+                      <button class="ptc__qty-btn" type="button" data-dir="1" aria-label="Increase quantity">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                      </button>
+                    </div>
+
+                    <button class="ptc__remove" type="button" data-variant="{{ item.variant_id }}" aria-label="Remove {{ item.title | escape }}">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                      Remove
+                    </button>
+                  </div>
+
+                  <p class="ptc__item-err" id="ptc-err-{{ item.variant_id }}" hidden></p>
+                </div>
+
+                {%- comment -%} Loading overlay {%- endcomment -%}
+                <div class="ptc__item-overlay" id="ptc-overlay-{{ item.variant_id }}" aria-hidden="true" hidden>
+                  <div class="ptc__spin"></div>
+                </div>
+
+              </div>
+            {%- endfor -%}
+          </div>
+
+          <p class="ptc__cart-err" id="ptc-cart-err" hidden></p>
+        </div>
+
+        {%- comment -%} ── Summary Sidebar ── {%- endcomment -%}
+        <div class="ptc__sidebar">
+          <div class="ptc__summary">
+            <h2 class="ptc__summary-title">Order summary</h2>
+
+            <div class="ptc__summary-rows">
+              {%- for discount in cart.cart_level_discount_applications -%}
+                <div class="ptc__summary-row ptc__summary-row--discount">
+                  <span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                    {{ discount.title }}
+                  </span>
+                  <span>−{{ discount.total_allocated_amount | money }}</span>
+                </div>
+              {%- endfor -%}
+
+              <div class="ptc__summary-row">
+                <span id="ptc-subtotal-label">Subtotal ({{ cart.item_count }} {{ cart.item_count | pluralize: 'item', 'items' }})</span>
+                <span id="ptc-subtotal">{{ cart.total_price | money }}</span>
+              </div>
+              <div class="ptc__summary-row ptc__summary-row--muted">
+                <span>Shipping & taxes calculated at checkout</span>
+              </div>
+            </div>
+
+            <div class="ptc__summary-total">
+              <span>Estimated total</span>
+              <span class="ptc__summary-total-val" id="ptc-total">{{ cart.total_price | money }}</span>
+            </div>
+
+            {%- if has_tires and first_tire != nil -%}
+              <div class="ptc__install-nudge">
+                <div class="ptc__install-nudge-left">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                  <div>
+                    <strong>Include installation?</strong>
+                    <p>Book your tire swap at Prince Tires Calgary.</p>
+                  </div>
+                </div>
+                <button class="ptc__install-btn"
+                  type="button"
+                  onclick="if(typeof openBookingModal==='function')openBookingModal(this)"
+                  data-tire-name="{{ first_tire.product.title | escape }}"
+                  data-tire-size="{{ first_tire.product.metafields.custom.tire_size | default: '' | escape }}"
+                  data-tire-price="{{ first_tire.price }}"
+                  data-vehicle-type="">
+                  Book install
+                </button>
+              </div>
+            {%- endif -%}
+
+            {% form 'cart', cart %}
+              <button type="submit" name="checkout" class="ptc__checkout-btn" id="ptc-checkout-btn">
+                Checkout
+                <svg class="ptc__checkout-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <svg class="ptc__checkout-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="display:none"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
+              </button>
+            {% endform %}
+
+            {%- if additional_checkout_buttons -%}
+              <div class="ptc__dynamic-btns">{{ content_for_additional_checkout_buttons }}</div>
+            {%- endif -%}
+
+            <a href="{{ routes.all_products_collection_url }}" class="ptc__continue">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              Continue shopping
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  {%- endif -%}
+</div>
+
+{% stylesheet %}
+/* ── Root ── */
+.ptc { font-family: 'Outfit', sans-serif; color: #111; background: #fff; }
+.ptc__wrap { max-width: 1200px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+
+/* ── Empty state ── */
+.ptc__empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6rem 1.5rem; text-align: center; }
+.ptc__empty-icon { width: 72px; height: 72px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; color: #9ca3af; }
+.ptc__empty-title { font-size: 1.5rem; font-weight: 700; margin-bottom: .5rem; }
+.ptc__empty-sub { color: #6b7280; font-size: 1.05rem; margin-bottom: 1.5rem; }
+.ptc__empty-btn { display: inline-flex; align-items: center; gap: .5rem; padding: .75rem 1.75rem; background: #dc2626; color: #fff; border-radius: 10px; font-weight: 600; font-size: 1rem; text-decoration: none; transition: background .15s; }
+.ptc__empty-btn:hover { background: #b91c1c; }
+
+/* ── Layout ── */
+.ptc__layout { display: grid; grid-template-columns: 1fr 360px; gap: 2.5rem; align-items: start; }
+@media (max-width: 900px) { .ptc__layout { grid-template-columns: 1fr; } }
+
+/* ── Items header ── */
+.ptc__items-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.25rem; border-bottom: 2px solid #111; padding-bottom: .75rem; }
+.ptc__title { font-size: 1.6rem; font-weight: 700; }
+.ptc__item-count { font-size: .95rem; color: #6b7280; font-weight: 500; }
+
+/* ── Item card ── */
+.ptc__item { position: relative; display: flex; gap: 1.1rem; padding: 1.1rem 0; border-bottom: 1px solid #f0f0f0; transition: opacity .2s; }
+.ptc__item--loading { opacity: .45; pointer-events: none; }
+.ptc__item:last-child { border-bottom: none; }
+.ptc__item--removing { opacity: 0; transform: translateX(-14px); transition: opacity .22s, transform .22s; }
+
+/* Image */
+.ptc__img-wrap { flex-shrink: 0; width: 90px; height: 90px; border-radius: 10px; overflow: hidden; background: #f7f7f8; display: flex; align-items: center; justify-content: center; }
+.ptc__img { width: 100%; height: 100%; object-fit: cover; }
+.ptc__img-placeholder { color: #d1d5db; }
+
+/* Body */
+.ptc__item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .55rem; }
+.ptc__item-top { display: flex; justify-content: space-between; gap: .75rem; }
+.ptc__item-meta { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.ptc__item-name { font-size: 1rem; font-weight: 600; color: #111; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptc__item-name:hover { color: #dc2626; }
+.ptc__item-variant { font-size: .9rem; color: #6b7280; }
+.ptc__item-prop { font-size: .85rem; color: #9ca3af; }
+.ptc__size-badge { display: inline-block; background: #111; color: #fff; font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 5px; letter-spacing: .03em; width: fit-content; }
+
+/* Prices */
+.ptc__item-prices { text-align: right; flex-shrink: 0; }
+.ptc__line-total { display: block; font-size: 1.05rem; font-weight: 700; color: #111; }
+.ptc__line-original { display: block; font-size: .85rem; color: #9ca3af; text-decoration: line-through; }
+.ptc__unit-price { display: block; font-size: .85rem; color: #9ca3af; }
+
+/* Controls */
+.ptc__item-controls { display: flex; align-items: center; gap: .75rem; }
+.ptc__qty { display: flex; align-items: center; border: 1.5px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #fff; }
+.ptc__qty-btn { width: 2.4rem; height: 2.2rem; border: none; background: transparent; cursor: pointer; color: #9ca3af; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
+.ptc__qty-btn:hover:not(:disabled) { color: #111; background: #f9fafb; }
+.ptc__qty-btn:disabled { opacity: .35; cursor: not-allowed; }
+.ptc__qty-input { width: 2.8rem; height: 2.2rem; text-align: center; border: none; background: transparent; font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 600; color: #111; -moz-appearance: textfield; }
+.ptc__qty-input::-webkit-inner-spin-button, .ptc__qty-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.ptc__remove { display: flex; align-items: center; gap: .3rem; background: none; border: none; color: #9ca3af; font-family: 'Outfit', sans-serif; font-size: .9rem; cursor: pointer; padding: .3rem .5rem; border-radius: 6px; transition: color .15s, background .15s; }
+.ptc__remove:hover:not(:disabled) { color: #dc2626; background: #fef2f2; }
+.ptc__remove:disabled { opacity: .4; cursor: not-allowed; }
+.ptc__item-err { font-size: .9rem; color: #dc2626; margin: 0; }
+.ptc__item-err[hidden] { display: none; }
+
+/* Loading overlay */
+.ptc__item-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+.ptc__item-overlay[hidden] { display: none; }
+.ptc__spin { width: 20px; height: 20px; border: 2.5px solid #e5e7eb; border-top-color: #dc2626; border-radius: 50%; animation: ptc-spin .7s linear infinite; }
+@keyframes ptc-spin { to { transform: rotate(360deg); } }
+
+/* Cart error */
+.ptc__cart-err { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: .65rem 1rem; font-size: .95rem; color: #dc2626; margin-top: .75rem; }
+.ptc__cart-err[hidden] { display: none; }
+
+/* ── Sidebar / Summary ── */
+.ptc__sidebar { position: sticky; top: 1.5rem; }
+.ptc__summary { background: #f7f7f8; border-radius: 14px; padding: 1.5rem; }
+.ptc__summary-title { font-size: 1.1rem; font-weight: 700; color: #111; margin-bottom: 1rem; }
+.ptc__summary-rows { border-bottom: 1px solid #e5e7eb; padding-bottom: .9rem; margin-bottom: .9rem; display: flex; flex-direction: column; gap: .45rem; }
+.ptc__summary-row { display: flex; justify-content: space-between; font-size: .95rem; color: #374151; }
+.ptc__summary-row--discount { color: #16a34a; font-weight: 500; }
+.ptc__summary-row--muted { color: #9ca3af; font-size: .85rem; }
+.ptc__summary-total { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 700; color: #111; margin-bottom: 1.25rem; }
+.ptc__summary-total-val { color: #16a34a; }
+
+/* Install nudge */
+.ptc__install-nudge { background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 10px; padding: .85rem .9rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: .65rem; }
+.ptc__install-nudge-left { display: flex; gap: .65rem; align-items: flex-start; }
+.ptc__install-nudge-left strong { font-size: .95rem; color: #111; display: block; }
+.ptc__install-nudge-left p { font-size: .85rem; color: #6b7280; margin: .1rem 0 0; }
+.ptc__install-btn { width: 100%; padding: .6rem; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: .95rem; font-weight: 600; cursor: pointer; transition: background .15s; }
+.ptc__install-btn:hover { background: #b91c1c; }
+
+/* Checkout */
+.ptc__checkout-btn { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; padding: .9rem; background: #dc2626; color: #fff; border: none; border-radius: 10px; font-family: 'Outfit', sans-serif; font-size: 1.05rem; font-weight: 700; text-decoration: none; cursor: pointer; transition: background .15s, opacity .15s; box-shadow: 0 2px 12px rgba(220,38,38,.35); margin-bottom: .75rem; }
+.ptc__checkout-btn:hover:not(:disabled) { background: #b91c1c; }
+.ptc__checkout-btn:disabled { opacity: .7; cursor: not-allowed; }
+.ptc__checkout-btn--loading .ptc__checkout-arrow { display: none !important; }
+.ptc__checkout-btn--loading .ptc__checkout-spinner { display: inline-block !important; animation: ptc-spin .7s linear infinite; }
+
+.ptc__dynamic-btns { margin-bottom: .75rem; }
+.ptc__dynamic-btns .shopify-payment-button__button { border-radius: 10px !important; }
+
+.ptc__continue { display: flex; align-items: center; justify-content: center; gap: .4rem; color: #6b7280; font-size: .9rem; text-decoration: none; transition: color .15s; }
+.ptc__continue:hover { color: #111; }
+
+/* ── Mobile tweaks ── */
+@media (max-width: 500px) {
+  .ptc__wrap { padding: 1.5rem 1rem 4rem; }
+  .ptc__img-wrap { width: 72px; height: 72px; }
+  .ptc__item-top { flex-direction: column; gap: .4rem; }
+  .ptc__item-prices { text-align: left; }
+}
+{% endstylesheet %}
+
+<script>
+(function () {
+  'use strict';
+
+  var ROOT = document.getElementById('ptc-root');
+  if (!ROOT) return;
+
+  /* ── Helpers ─────────────────────────────────────────────────────── */
+
+  function fmt(cents) {
+    return '$' + (cents / 100).toFixed(2);
+  }
+
+  function debounce(fn, ms) {
+    var t;
+    return function () {
+      var args = arguments;
+      var ctx = this;
+      clearTimeout(t);
+      t = setTimeout(function () { fn.apply(ctx, args); }, ms);
+    };
+  }
+
+  function setItemLoading(variantId, on) {
+    var item    = document.getElementById('ptc-item-' + variantId);
+    var overlay = document.getElementById('ptc-overlay-' + variantId);
+    if (item)    item.classList.toggle('ptc__item--loading', on);
+    if (overlay) overlay.hidden = !on;
+    /* Only lock controls for THIS item — other items stay interactive */
+    if (item) {
+      item.querySelectorAll('.ptc__qty-btn, .ptc__qty-input, .ptc__remove').forEach(function (el) {
+        el.disabled = on;
+      });
+    }
+  }
+
+  function showItemError(variantId, msg) {
+    var el = document.getElementById('ptc-err-' + variantId);
+    if (!el) return;
+    el.textContent = msg || '';
+    el.hidden = !msg;
+  }
+
+  function showCartError(msg) {
+    var el = document.getElementById('ptc-cart-err');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.hidden = !msg;
+    if (msg) {
+      clearTimeout(el._t);
+      el._t = setTimeout(function () { el.hidden = true; }, 6000);
+    }
+  }
+
+  function updateCartBadge(count) {
+    var link = document.getElementById('cart-icon-bubble');
+    if (!link) return;
+    var badge = link.querySelector('.nb-badge');
+    if (count > 0) {
+      if (!badge) { badge = document.createElement('span'); badge.className = 'nb-badge'; link.appendChild(badge); }
+      badge.textContent = count;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+
+  /* ── Apply cart state to DOM (without full re-render) ─────────────── */
+  function applyCartState(cart) {
+    /* Update count label */
+    var countEl = document.getElementById('ptc-count');
+    if (countEl) countEl.textContent = cart.item_count + (cart.item_count === 1 ? ' item' : ' items');
+
+    var subtotalLblEl = document.getElementById('ptc-subtotal-label');
+    if (subtotalLblEl) subtotalLblEl.textContent = 'Subtotal (' + cart.item_count + (cart.item_count === 1 ? ' item)' : ' items)');
+
+    /* Subtotal / Total */
+    var sub = document.getElementById('ptc-subtotal');
+    var tot = document.getElementById('ptc-total');
+    if (sub) sub.textContent = fmt(cart.total_price);
+    if (tot) tot.textContent = fmt(cart.total_price);
+
+    /* Line totals */
+    cart.items.forEach(function (item) {
+      var el = document.getElementById('ptc-line-' + item.variant_id);
+      if (el) el.textContent = fmt(item.final_line_price);
+
+      /* Keep original data attr in sync */
+      var input = ROOT.querySelector('[data-variant="' + item.variant_id + '"].ptc__qty-input');
+      if (input) {
+        input.value             = item.quantity;
+        input.dataset.original  = item.quantity;
+      }
+    });
+
+    updateCartBadge(cart.item_count);
+
+    /* If cart is now empty, show empty state by reloading */
+    if (cart.item_count === 0) {
+      window.location.reload();
+    }
+  }
+
+  /* ── Remove item ─────────────────────────────────────────────────── */
+  function removeItem(variantId) {
+    setItemLoading(variantId, true);
+    showItemError(variantId, '');
+    showCartError('');
+
+    var itemEl = document.getElementById('ptc-item-' + variantId);
+
+    fetch('/cart/change.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ id: variantId, quantity: 0 })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (cart) {
+      if (cart.status) {
+        setItemLoading(variantId, false);
+        showCartError(cart.description || 'Could not remove item.');
+        return;
+      }
+      /* Animate out then remove element */
+      if (itemEl) {
+        itemEl.classList.add('ptc__item--removing');
+        setTimeout(function () {
+          if (itemEl.parentNode) itemEl.parentNode.removeChild(itemEl);
+          applyCartState(cart);
+          /* Re-enable controls now that this item is gone */
+          ROOT.querySelectorAll('.ptc__qty-btn, .ptc__qty-input, .ptc__remove').forEach(function (el) {
+            el.disabled = false;
+          });
+        }, 240);
+      } else {
+        applyCartState(cart);
+      }
+    })
+    .catch(function () {
+      setItemLoading(variantId, false);
+      showCartError('Something went wrong. Please try again.');
+    });
+  }
+
+  /* ── Update quantity ─────────────────────────────────────────────── */
+  var _doUpdate = debounce(function (variantId, qty, inputEl) {
+    setItemLoading(variantId, true);
+    showItemError(variantId, '');
+    showCartError('');
+
+    fetch('/cart/change.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ id: variantId, quantity: qty })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (cart) {
+      setItemLoading(variantId, false);
+
+      if (cart.status) {
+        inputEl.value = inputEl.dataset.original;
+        showCartError(cart.description || 'Could not update quantity.');
+        return;
+      }
+
+      /* Check if Shopify clamped the qty (e.g. stock limit) */
+      var actualItem = cart.items.find(function (i) { return String(i.variant_id) === String(variantId); });
+      var actualQty  = actualItem ? actualItem.quantity : 0;
+
+      if (actualItem && actualQty !== qty) {
+        inputEl.value = actualQty;
+        showItemError(variantId, 'Only ' + actualQty + ' available — quantity adjusted.');
+      }
+
+      applyCartState(cart);
+    })
+    .catch(function () {
+      setItemLoading(variantId, false);
+      if (inputEl) inputEl.value = inputEl.dataset.original;
+      showCartError('Something went wrong. Please try again.');
+    });
+  }, 450);
+
+  function updateQty(variantId, qty, inputEl) {
+    if (qty <= 0) {
+      removeItem(variantId);
+    } else {
+      _doUpdate(variantId, qty, inputEl);
+    }
+  }
+
+  /* ── Event delegation ────────────────────────────────────────────── */
+  ROOT.addEventListener('click', function (e) {
+    /* +/- stepper buttons */
+    var qtyBtn = e.target.closest('.ptc__qty-btn');
+    if (qtyBtn && !qtyBtn.disabled) {
+      var wrap   = qtyBtn.closest('.ptc__qty');
+      if (!wrap) return;
+      var vid    = wrap.dataset.variant;
+      var input  = wrap.querySelector('.ptc__qty-input');
+      var dir    = parseInt(qtyBtn.dataset.dir, 10);
+      var newVal = Math.max(0, parseInt(input.value, 10) + dir);
+      input.value = newVal;
+      updateQty(vid, newVal, input);
+      return;
+    }
+
+    /* Remove button */
+    var removeBtn = e.target.closest('.ptc__remove');
+    if (removeBtn && !removeBtn.disabled) {
+      removeItem(removeBtn.dataset.variant);
+      return;
+    }
+  });
+
+  /* Direct qty input change (keyboard / manual entry) */
+  ROOT.addEventListener('change', function (e) {
+    if (!e.target.classList.contains('ptc__qty-input')) return;
+    var vid = e.target.dataset.variant;
+    var qty = parseInt(e.target.value, 10);
+    if (isNaN(qty) || qty < 0) { e.target.value = e.target.dataset.original; return; }
+    updateQty(vid, qty, e.target);
+  });
+
+  /* Checkout button — show spinner, prevent double-submit */
+  var checkoutBtn = document.getElementById('ptc-checkout-btn');
+  if (checkoutBtn) {
+    checkoutBtn.closest('form').addEventListener('submit', function () {
+      checkoutBtn.disabled = true;
+      checkoutBtn.classList.add('ptc__checkout-btn--loading');
+      checkoutBtn.childNodes[0].textContent = 'Redirecting…';
+    });
+  }
+
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Cart",
+  "settings": [],
+  "presets": [{ "name": "Cart" }]
+}
+{% endschema %}

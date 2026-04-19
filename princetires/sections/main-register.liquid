@@ -1,6 +1,7 @@
 <div class="auth-page">
   <!-- Left brand panel — garage benefits -->
   <div class="auth-page__brand">
+    <div class="auth-page__brand-tread" aria-hidden="true"></div>
     <div class="auth-page__brand-content">
       <div class="auth-page__brand-top">
         <a href="{{ routes.root_url }}" class="auth-page__logo">
@@ -62,6 +63,24 @@
     <div class="auth-page__form-container">
       <div class="auth-page__form-section">
 
+        <!-- Account type toggle -->
+        <div class="auth-type-toggle" id="RegTypeToggle">
+          <button type="button" class="auth-type-toggle__btn auth-type-toggle__btn--active" data-type="customer" id="RegTypeCustomer">
+            <span class="auth-type-toggle__icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            </span>
+            My Garage
+          </button>
+          <button type="button" class="auth-type-toggle__btn" data-type="shop" id="RegTypeShop">
+            <span class="auth-type-toggle__icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="9" y1="22" x2="9" y2="12"/><line x1="15" y1="22" x2="15" y2="12"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
+            </span>
+            My Shop
+          </button>
+        </div>
+
+        <!-- Customer: garage registration form (default) -->
+        <div id="RegCustomerPanel">
         <div class="auth-page__form-header">
           <span class="auth-page__garage-badge">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -74,7 +93,7 @@
 
         {%- form 'create_customer', novalidate: 'novalidate' -%}
           {%- if form.errors -%}
-            <div class="auth-page__error-banner" tabindex="-1" autofocus>
+            <div class="auth-page__error-banner" role="alert" tabindex="-1" autofocus>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <div>
                 <strong>{{ 'templates.contact.form.error_heading' | t }}</strong>
@@ -161,6 +180,24 @@
           </div>
 
           <div class="auth-page__field">
+            <label class="auth-page__label" for="RegisterForm-phone">
+              {{ 'customer.auth.phone_label' | t }}
+              <span class="auth-page__label-optional">{{ 'customer.auth.phone_optional' | t }}</span>
+            </label>
+            <div class="auth-page__input-wrap">
+              <svg class="auth-page__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 11.1 19.79 19.79 0 0 1 1.61 2.48 2 2 0 0 1 3.6.34h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 7.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 15.34z"/></svg>
+              <input
+                class="auth-page__input"
+                type="tel"
+                name="customer[phone]"
+                id="RegisterForm-phone"
+                autocomplete="tel"
+                placeholder="{{ 'customer.auth.phone_placeholder' | t }}"
+              >
+            </div>
+          </div>
+
+          <div class="auth-page__field">
             <label class="auth-page__label" for="RegisterForm-password">{{ 'customer.register.password' | t }}</label>
             <div class="auth-page__input-wrap">
               <svg class="auth-page__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -170,6 +207,7 @@
                 name="customer[password]"
                 id="RegisterForm-password"
                 aria-required="true"
+                autocomplete="new-password"
                 placeholder="{{ 'customer.auth.create_password_placeholder' | t }}"
                 {% if form.errors contains 'password' %}
                   aria-invalid="true"
@@ -189,8 +227,14 @@
               </span>
             {%- endif -%}
 
-            <!-- Password strength meter -->
-            <div class="auth-page__pw-strength" data-pw-strength style="display:none;">
+            <!-- Password strength meter — labels via data attrs for translation -->
+            <div class="auth-page__pw-strength" data-pw-strength
+              data-weak="{{ 'customer.auth.pw_strength_weak' | t }}"
+              data-fair="{{ 'customer.auth.pw_strength_fair' | t }}"
+              data-good="{{ 'customer.auth.pw_strength_good' | t }}"
+              data-strong="{{ 'customer.auth.pw_strength_strong' | t }}"
+              data-very-strong="{{ 'customer.auth.pw_strength_very_strong' | t }}"
+              style="display:none;">
               <div class="auth-page__pw-bar">
                 <div class="auth-page__pw-bar-fill" data-pw-bar></div>
               </div>
@@ -198,10 +242,30 @@
             </div>
           </div>
 
-          <button type="submit" class="auth-page__btn auth-page__btn--primary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
-            <span class="auth-page__btn-text">{{ 'customer.auth.open_garage' | t }}</span>
-            <svg class="auth-page__btn-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <!-- Marketing opt-in -->
+          <label class="auth-page__checkbox-label">
+            <input
+              class="auth-page__checkbox"
+              type="checkbox"
+              name="customer[accepts_marketing]"
+              id="RegisterForm-marketing"
+              value="true"
+            >
+            <span class="auth-page__checkbox-box" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="auth-page__checkbox-text">{{ 'customer.auth.marketing_label' | t }}</span>
+          </label>
+
+          <button type="submit" class="auth-page__btn auth-page__btn--primary" data-submit-btn>
+            <span class="auth-page__btn-inner">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+              <span class="auth-page__btn-text">{{ 'customer.auth.open_garage' | t }}</span>
+              <svg class="auth-page__btn-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </span>
+            <span class="auth-page__btn-spinner" aria-hidden="true" style="display:none">
+              <svg class="auth-page__spinner-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            </span>
           </button>
         {%- endform -%}
 
@@ -213,6 +277,50 @@
           <span>{{ 'customer.auth.has_account' | t }}</span>
           <a href="{{ routes.account_login_url }}">{{ 'customer.auth.enter_garage' | t }}</a>
         </div>
+        </div><!-- end #RegCustomerPanel -->
+
+        <!-- Shop: wholesale registration redirect -->
+        <div id="RegShopPanel" style="display:none;">
+          <div class="auth-page__form-header">
+            <span class="auth-page__garage-badge" style="background:#f0f4ff;color:#1e3a8a;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="9" y1="22" x2="9" y2="12"/><line x1="15" y1="22" x2="15" y2="12"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
+            </span>
+            <h1 class="auth-page__title">Register your shop</h1>
+            <p class="auth-page__subtitle">Apply for a wholesale trade account and unlock exclusive pricing for your business.</p>
+          </div>
+
+          <div class="reg-shop-perks">
+            <div class="reg-shop-perk">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Trade discounts from <strong>15% up to 35%</strong></span>
+            </div>
+            <div class="reg-shop-perk">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Fleet & bulk order management</span>
+            </div>
+            <div class="reg-shop-perk">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Dedicated account manager</span>
+            </div>
+            <div class="reg-shop-perk">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Priority fulfilment & stock access</span>
+            </div>
+          </div>
+
+          <a href="/pages/wholesale-register" class="auth-page__btn auth-page__btn--primary reg-shop-btn">
+            <span class="auth-page__btn-inner">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="9" y1="22" x2="9" y2="12"/><line x1="15" y1="22" x2="15" y2="12"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
+              Start wholesale application
+              <svg class="auth-page__btn-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </span>
+          </a>
+
+          <div class="auth-page__switch" style="margin-top:2rem;">
+            <span>Already approved?</span>
+            <a href="{{ routes.account_login_url }}?type=shop">Sign in to your shop</a>
+          </div>
+        </div><!-- end #RegShopPanel -->
 
       </div>
     </div>
@@ -236,7 +344,8 @@
     display: none;
     width: 45%;
     max-width: 600px;
-    background: #0a0a0a;
+    background: #0f172a;
+    background-image: linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #16213e 80%, #1a0e14 100%);
     position: relative;
     overflow: hidden;
   }
@@ -247,15 +356,46 @@
     }
   }
 
+  /* Red spotlight glow from below */
   .auth-page__brand::before {
     content: '';
     position: absolute;
-    bottom: 0;
+    bottom: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120%;
+    height: 55%;
+    background: radial-gradient(ellipse at center bottom, rgba(220, 38, 38, 0.22) 0%, rgba(220, 38, 38, 0.06) 40%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Top accent line */
+  .auth-page__brand::after {
+    content: '';
+    position: absolute;
+    top: 0;
     left: 0;
     right: 0;
-    height: 60%;
-    background: linear-gradient(to top, rgba(220, 38, 38, 0.04) 0%, transparent 100%);
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.6), transparent);
+    z-index: 2;
+  }
+
+  /* Tire tread diagonal texture */
+  .auth-page__brand-tread {
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 14px,
+        rgba(255, 255, 255, 0.018) 14px,
+        rgba(255, 255, 255, 0.018) 15px
+      );
     pointer-events: none;
+    z-index: 0;
   }
 
   .auth-page__brand-content {
@@ -307,16 +447,17 @@
     width: 52px;
     height: 52px;
     border-radius: 14px;
-    background: rgba(220, 38, 38, 0.12);
-    color: #dc2626;
+    background: rgba(220, 38, 38, 0.14);
+    color: #ef4444;
     margin-bottom: 1rem;
+    border: 1px solid rgba(220, 38, 38, 0.2);
   }
 
   .auth-page__benefits-title {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 2.2rem;
     font-weight: 700;
-    color: #fff;
+    color: #f1f5f9;
     margin: 0 0 0.5rem;
     line-height: 1.15;
   }
@@ -324,7 +465,7 @@
   .auth-page__benefits-desc {
     font-size: 1.25rem;
     font-weight: 300;
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(148, 163, 184, 0.7);
     margin: 0;
     line-height: 1.5;
   }
@@ -351,12 +492,13 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: rgba(220, 38, 38, 0.12);
-    color: #dc2626;
+    background: rgba(220, 38, 38, 0.14);
+    color: #ef4444;
     font-size: 1.2rem;
     font-weight: 700;
     flex-shrink: 0;
     margin-top: 0.1rem;
+    border: 1px solid rgba(220, 38, 38, 0.2);
   }
 
   .auth-page__benefit-text {
@@ -368,13 +510,13 @@
   .auth-page__benefit-text strong {
     font-size: 1.3rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(241, 245, 249, 0.9);
   }
 
   .auth-page__benefit-text span {
     font-size: 1.15rem;
     font-weight: 300;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(148, 163, 184, 0.5);
     line-height: 1.4;
   }
 
@@ -399,7 +541,7 @@
   .auth-page__trust-text {
     font-size: 1.2rem;
     font-weight: 400;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(148, 163, 184, 0.6);
   }
 
   .auth-page__trust-secure {
@@ -408,7 +550,7 @@
     gap: 0.5rem;
     font-size: 1.15rem;
     font-weight: 300;
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(148, 163, 184, 0.4);
   }
 
   .auth-page__trust-secure svg { opacity: 0.6; }
@@ -419,7 +561,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 3rem 2rem;
+    padding: 4rem 8rem;
     background: #fff;
     min-height: 100vh;
     min-height: 100dvh;
@@ -488,11 +630,22 @@
   }
 
   .auth-page__label {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-size: 1.25rem;
     font-weight: 500;
     color: #374151;
     margin-bottom: 0.5rem;
+  }
+
+  .auth-page__label-optional {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #9ca3af;
+    background: #f3f4f6;
+    border-radius: 4px;
+    padding: 0.1rem 0.5rem;
   }
 
   .auth-page__input-wrap {
@@ -603,7 +756,67 @@
     font-size: 1.1rem;
     font-weight: 500;
     white-space: nowrap;
+    min-width: 60px;
+    text-align: right;
     transition: color 0.3s ease;
+  }
+
+  /* ── Marketing checkbox ── */
+  .auth-page__checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    cursor: pointer;
+    margin-bottom: 1.5rem;
+    user-select: none;
+  }
+
+  .auth-page__checkbox {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .auth-page__checkbox-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 5px;
+    background: #f9fafb;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    margin-top: 0.1rem;
+  }
+
+  .auth-page__checkbox-box svg {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    color: #fff;
+  }
+
+  .auth-page__checkbox:checked + .auth-page__checkbox-box {
+    background: #dc2626;
+    border-color: #dc2626;
+  }
+
+  .auth-page__checkbox:checked + .auth-page__checkbox-box svg {
+    opacity: 1;
+  }
+
+  .auth-page__checkbox:focus-visible + .auth-page__checkbox-box {
+    outline: 3px solid rgba(220, 38, 38, 0.4);
+    outline-offset: 2px;
+  }
+
+  .auth-page__checkbox-text {
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: #374151;
+    line-height: 1.5;
   }
 
   /* ── Buttons ── */
@@ -622,6 +835,12 @@
     cursor: pointer;
     transition: all 0.2s ease;
     text-decoration: none;
+  }
+
+  .auth-page__btn-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
   }
 
   .auth-page__btn--primary {
@@ -646,6 +865,21 @@
 
   .auth-page__btn--primary:hover .auth-page__btn-arrow {
     transform: translateX(3px);
+  }
+
+  /* Loading state */
+  .auth-page__btn--loading {
+    opacity: 0.75;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .auth-page__spinner-icon {
+    animation: auth-spin 0.8s linear infinite;
+  }
+
+  @keyframes auth-spin {
+    to { transform: rotate(360deg); }
   }
 
   /* ── Terms ── */
@@ -725,12 +959,12 @@
     .auth-page__form-panel {
       min-height: 100vh;
       min-height: 100dvh;
-      padding: 4rem 2rem;
+      padding: 5rem 4rem;
     }
   }
 
   @media (max-width: 480px) {
-    .auth-page__form-panel { padding: 3rem 1.6rem; }
+    .auth-page__form-panel { padding: 4rem 2.5rem; }
     .auth-page__title { font-size: 2.4rem; }
     .auth-page__garage-badge { width: 42px; height: 42px; }
     .auth-page__row { flex-direction: column; gap: 0; }
@@ -743,6 +977,85 @@
     .auth-page__error-banner { animation: none; }
     .auth-page__btn--primary:hover { transform: none; }
     .auth-page__pw-bar-fill { transition: none; }
+    .auth-page__spinner-icon { animation: none; }
+  }
+
+  /* ── Account type toggle ── */
+  .auth-type-toggle {
+    display: flex;
+    background: #f1f5f9;
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 2.4rem;
+    gap: 4px;
+  }
+
+  .auth-type-toggle__btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 42px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.22s ease;
+    white-space: nowrap;
+  }
+
+  .auth-type-toggle__btn:hover:not(.auth-type-toggle__btn--active) {
+    background: rgba(0,0,0,0.04);
+    color: #374151;
+  }
+
+  .auth-type-toggle__btn--active {
+    background: #fff;
+    color: #dc2626;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  }
+
+  .auth-type-toggle__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Shop redirect panel ── */
+  .reg-shop-perks {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.8rem;
+    margin-bottom: 2rem;
+  }
+
+  .reg-shop-perk {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 1.3rem;
+    font-weight: 400;
+    color: #374151;
+    line-height: 1.4;
+  }
+
+  .reg-shop-perk svg { flex-shrink: 0; }
+  .reg-shop-perk strong { font-weight: 700; color: #dc2626; }
+
+  .reg-shop-btn {
+    text-decoration: none;
+    display: flex;
   }
 {% endstylesheet %}
 
@@ -770,13 +1083,21 @@
       });
     });
 
-    // Password strength meter
+    // Password strength meter with translated labels
     var pwInput = document.getElementById('RegisterForm-password');
     var strengthWrap = section.querySelector('[data-pw-strength]');
     var strengthBar = section.querySelector('[data-pw-bar]');
     var strengthLabel = section.querySelector('[data-pw-label]');
 
     if (pwInput && strengthWrap && strengthBar && strengthLabel) {
+      var levels = [
+        { width: '20%', color: '#ef4444', label: strengthWrap.dataset.weak },
+        { width: '40%', color: '#f97316', label: strengthWrap.dataset.fair },
+        { width: '60%', color: '#eab308', label: strengthWrap.dataset.good },
+        { width: '80%', color: '#22c55e', label: strengthWrap.dataset.strong },
+        { width: '100%', color: '#16a34a', label: strengthWrap.dataset.veryStrong }
+      ];
+
       pwInput.addEventListener('input', function() {
         var val = this.value;
         if (val.length === 0) {
@@ -792,14 +1113,6 @@
         if (/[0-9]/.test(val)) score++;
         if (/[^A-Za-z0-9]/.test(val)) score++;
 
-        var levels = [
-          { width: '20%', color: '#ef4444', label: 'Weak' },
-          { width: '40%', color: '#f97316', label: 'Fair' },
-          { width: '60%', color: '#eab308', label: 'Good' },
-          { width: '80%', color: '#22c55e', label: 'Strong' },
-          { width: '100%', color: '#16a34a', label: 'Very strong' }
-        ];
-
         var level = levels[Math.min(score, 4)];
         strengthBar.style.width = level.width;
         strengthBar.style.backgroundColor = level.color;
@@ -807,6 +1120,42 @@
         strengthLabel.style.color = level.color;
       });
     }
+
+    // ── Account type toggle (Customer ↔ Shop) ──
+    var regToggleCustomer = document.getElementById('RegTypeCustomer');
+    var regToggleShop     = document.getElementById('RegTypeShop');
+    var regCustomerPanel  = document.getElementById('RegCustomerPanel');
+    var regShopPanel      = document.getElementById('RegShopPanel');
+
+    function setRegMode(mode) {
+      var isShop = mode === 'shop';
+      if (regToggleCustomer) regToggleCustomer.classList.toggle('auth-type-toggle__btn--active', !isShop);
+      if (regToggleShop)     regToggleShop.classList.toggle('auth-type-toggle__btn--active', isShop);
+      if (regCustomerPanel)  regCustomerPanel.style.display = isShop ? 'none' : 'block';
+      if (regShopPanel)      regShopPanel.style.display      = isShop ? 'block' : 'none';
+    }
+
+    if (regToggleCustomer) regToggleCustomer.addEventListener('click', function() { setRegMode('customer'); });
+    if (regToggleShop)     regToggleShop.addEventListener('click',     function() { setRegMode('shop'); });
+
+    // Pre-select shop tab if ?type=shop
+    if (window.location.search.indexOf('type=shop') !== -1) {
+      setRegMode('shop');
+    }
+
+    // Submit button loading state
+    section.querySelectorAll('form').forEach(function(form) {
+      form.addEventListener('submit', function() {
+        var btn = form.querySelector('[data-submit-btn]');
+        if (!btn) return;
+        var inner = btn.querySelector('.auth-page__btn-inner');
+        var spinner = btn.querySelector('.auth-page__btn-spinner');
+        btn.disabled = true;
+        btn.classList.add('auth-page__btn--loading');
+        if (inner) inner.style.display = 'none';
+        if (spinner) spinner.style.display = 'flex';
+      });
+    });
   })();
 {% endjavascript %}
 

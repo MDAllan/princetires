@@ -1,0 +1,495 @@
+{%- liquid
+  assign faq_blocks = section.blocks | where: 'type', 'faq'
+-%}
+
+{%- if faq_blocks.size > 0 -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "url": "{{ shop.url }}{{ page.url }}",
+  "speakable": {
+    "@type": "SpeakableSpecification",
+    "cssSelector": [".abtfaq__question span", ".abtfaq__answer p"]
+  },
+  "mainEntity": [
+    {%- for block in faq_blocks -%}
+    {
+      "@type": "Question",
+      "name": {{ block.settings.question | json }},
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": {{ block.settings.answer | json }}
+      }
+    }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]
+}
+</script>
+{%- endif -%}
+
+<section
+  class="abtfaq"
+  style="
+    --abtfaq-bg: {{ section.settings.bg_color }};
+    --abtfaq-text: {{ section.settings.text_color }};
+    --abtfaq-accent: {{ section.settings.accent_color }};
+  "
+>
+  <div class="abtfaq__container">
+
+    <div class="abtfaq__header">
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="abtfaq__eyebrow">{{ section.settings.eyebrow }}</span>
+      {%- endif -%}
+      {%- if section.settings.heading != blank -%}
+        <h2 class="abtfaq__heading">{{ section.settings.heading }}</h2>
+      {%- endif -%}
+      {%- if section.settings.subheading != blank -%}
+        <p class="abtfaq__subheading">{{ section.settings.subheading }}</p>
+      {%- endif -%}
+    </div>
+
+    <div class="abtfaq__body">
+      <div class="abtfaq__list">
+        {%- for block in section.blocks -%}
+          {%- if block.type == 'faq' -%}
+            <details class="abtfaq__item" {{ block.shopify_attributes }}>
+              <summary class="abtfaq__question">
+                <span>{{ block.settings.question }}</span>
+                <span class="abtfaq__chevron" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </span>
+              </summary>
+              <div class="abtfaq__answer">
+                <p>{{ block.settings.answer }}</p>
+              </div>
+            </details>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+
+      {%- if section.settings.show_contact_cta -%}
+        <aside class="abtfaq__aside">
+          <div class="abtfaq__aside-inner">
+            <div class="abtfaq__aside-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+            </div>
+            <h3 class="abtfaq__aside-heading">{{ section.settings.aside_heading | default: "Still have questions?" }}</h3>
+            <p class="abtfaq__aside-body">{{ section.settings.aside_body | default: "Our team is happy to help. Reach out any time." }}</p>
+            {%- if section.settings.aside_phone != blank -%}
+              {%- assign pd = section.settings.aside_phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
+              <a href="tel:+1{{ pd }}" class="abtfaq__aside-btn abtfaq__aside-btn--phone">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                {{ section.settings.aside_phone }}
+              </a>
+            {%- endif -%}
+            {%- if section.settings.aside_cta_label != blank -%}
+              <a href="{{ section.settings.aside_cta_link | default: '#' }}" class="abtfaq__aside-btn abtfaq__aside-btn--book">
+                {{ section.settings.aside_cta_label }}
+              </a>
+            {%- endif -%}
+          </div>
+        </aside>
+      {%- endif -%}
+    </div>
+
+  </div>
+</section>
+
+{% stylesheet %}
+  .abtfaq {
+    background: #f9fafb;
+    color: #111;
+    font-family: 'Outfit', sans-serif;
+    padding: 5rem 0;
+  }
+
+  .abtfaq__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+  }
+
+  .abtfaq__header {
+    text-align: center;
+    max-width: 640px;
+    margin: 0 auto 4rem;
+  }
+
+  .abtfaq__eyebrow {
+    display: block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #dc2626;
+    margin-bottom: 0.875rem;
+  }
+
+  .abtfaq__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3.6rem;
+    font-weight: 700;
+    line-height: 1.05;
+    margin: 0 0 1rem;
+    color: #111;
+  }
+
+  .abtfaq__subheading {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    color: #9ca3af;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .abtfaq__body {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 4rem;
+    align-items: start;
+  }
+
+  .abtfaq__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .abtfaq__item {
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .abtfaq__item:first-child {
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .abtfaq__question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: #111;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    transition: color 0.15s ease;
+  }
+
+  .abtfaq__question::-webkit-details-marker {
+    display: none;
+  }
+
+  .abtfaq__question:hover {
+    color: #dc2626;
+  }
+
+  .abtfaq__chevron {
+    flex-shrink: 0;
+    color: #dc2626;
+    transition: transform 0.25s ease;
+  }
+
+  .abtfaq__item[open] .abtfaq__chevron {
+    transform: rotate(180deg);
+  }
+
+  .abtfaq__item[open] .abtfaq__question {
+    color: #dc2626;
+  }
+
+  .abtfaq__answer {
+    padding: 0 2rem 1.75rem 0;
+    animation: faqFadeIn 0.2s ease;
+  }
+
+  .abtfaq__answer p {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 300;
+    line-height: 1.8;
+    color: #6b7280;
+    margin: 0;
+  }
+
+  @keyframes faqFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .abtfaq__aside-inner {
+    background: #111;
+    border-radius: 10px;
+    padding: 2.25rem 1.875rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    position: sticky;
+    top: 2rem;
+  }
+
+  .abtfaq__aside-icon {
+    width: 52px;
+    height: 52px;
+    background: rgba(220,38,38,0.15);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #dc2626;
+  }
+
+  .abtfaq__aside-heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    line-height: 1.15;
+  }
+
+  .abtfaq__aside-body {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .abtfaq__aside-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    padding: 0.875rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .abtfaq__aside-btn--phone {
+    background: rgba(220,38,38,0.12);
+    color: #dc2626;
+    border: 1px solid rgba(220,38,38,0.25);
+  }
+
+  .abtfaq__aside-btn--phone:hover {
+    background: rgba(220,38,38,0.2);
+  }
+
+  .abtfaq__aside-btn--book {
+    background: #F5820B;
+    color: #fff;
+  }
+
+  .abtfaq__aside-btn--book:hover {
+    background: #d96e00;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 1100px) {
+    .abtfaq__body {
+      grid-template-columns: 1fr;
+    }
+    .abtfaq__aside-inner {
+      position: static;
+    }
+    .abtfaq__container {
+      padding: 0 4rem;
+    }
+  }
+
+  @media (max-width: 749px) {
+    .abtfaq {
+      padding: 5rem 0;
+    }
+    .abtfaq__container {
+      padding: 0 2rem;
+    }
+    .abtfaq__answer {
+      padding-right: 0;
+    }
+    .abtfaq__question {
+      font-size: 1.25rem;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "About — FAQ",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "FAQ"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Questions Calgary drivers ask us most"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Straight answers about our tires, services, and how we work."
+    },
+    {
+      "type": "header",
+      "content": "Contact sidebar"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_contact_cta",
+      "label": "Show contact sidebar",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "aside_heading",
+      "label": "Sidebar heading",
+      "default": "Still have questions?"
+    },
+    {
+      "type": "textarea",
+      "id": "aside_body",
+      "label": "Sidebar body",
+      "default": "Our team is happy to help. Give us a call or book a quick appointment."
+    },
+    {
+      "type": "text",
+      "id": "aside_phone",
+      "label": "Phone number",
+      "default": "(403) 452-4283"
+    },
+    {
+      "type": "text",
+      "id": "aside_cta_label",
+      "label": "CTA button label",
+      "default": "Book an appointment"
+    },
+    {
+      "type": "url",
+      "id": "aside_cta_link",
+      "label": "CTA button link"
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text",
+      "default": "#111111"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent",
+      "default": "#F5820B"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "faq",
+      "name": "FAQ item",
+      "settings": [
+        {
+          "type": "text",
+          "id": "question",
+          "label": "Question",
+          "default": "How long does tire installation take?"
+        },
+        {
+          "type": "textarea",
+          "id": "answer",
+          "label": "Answer",
+          "default": "Most standard tire installs take 45–60 minutes. We offer same-day appointments and walk-ins when availability allows."
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "About — FAQ",
+      "blocks": [
+        {
+          "type": "faq",
+          "settings": {
+            "question": "What tire brands does Prince Tires carry?",
+            "answer": "We stock over 50 tire brands including Michelin, Bridgestone, Goodyear, Continental, Pirelli, BF Goodrich, Yokohama, Hankook, General Tire, and more. Whether you need premium, mid-range, or budget tires, we have options for every vehicle and budget."
+          }
+        },
+        {
+          "type": "faq",
+          "settings": {
+            "question": "How long does tire installation take?",
+            "answer": "Most standard tire installations take 45–60 minutes. This includes mounting, balancing, and a safety check. We offer same-day appointments and accept walk-ins based on availability — call ahead to confirm."
+          }
+        },
+        {
+          "type": "faq",
+          "settings": {
+            "question": "Do you carry winter tires for Calgary winters?",
+            "answer": "Yes — winter tires are one of our specialties. We stock a wide selection of winter-rated tires suited to Calgary's climate, including studded and studless options. We recommend switching to winter tires when temperatures consistently drop below 7°C, which in Calgary is typically October through April."
+          }
+        },
+        {
+          "type": "faq",
+          "settings": {
+            "question": "What areas do you serve?",
+            "answer": "We serve all of Calgary — NE, NW, SE, SW, and Downtown — as well as surrounding communities including Airdrie, Cochrane, Okotoks, Chestermere, Crossfield, Strathmore, and High River. Mobile tire service is available in select areas; call to confirm coverage."
+          }
+        },
+        {
+          "type": "faq",
+          "settings": {
+            "question": "Do you offer price matching?",
+            "answer": "Yes. If you find a lower price on the same tire from a local Calgary competitor, bring us the quote and we'll match it. We believe the best price in Calgary should also come with the best service."
+          }
+        },
+        {
+          "type": "faq",
+          "settings": {
+            "question": "Is an appointment required?",
+            "answer": "We recommend booking an appointment to guarantee your time slot, but we do accept walk-ins when space is available. Same-day and next-day appointments are usually available — book online or give us a call."
+          }
+        },
+        {
+          "type": "faq",
+          "settings": {
+            "question": "What is included in your lifetime rotation guarantee?",
+            "answer": "Every set of tires we install comes with free lifetime tire rotations. Simply bring your vehicle in every 8,000–12,000 km and we'll rotate your tires at no charge for the life of the tires. This helps extend tire life and maintain even wear."
+          }
+        },
+        {
+          "type": "faq",
+          "settings": {
+            "question": "Do you service trucks, SUVs, and commercial vehicles?",
+            "answer": "Yes. We service all vehicle types including sedans, crossovers, SUVs, pickup trucks, and light commercial vehicles. Let us know your vehicle year, make, and model when booking so we can confirm we have your size in stock."
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

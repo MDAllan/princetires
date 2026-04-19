@@ -1,0 +1,307 @@
+<section
+  class="abtcta"
+  style="
+    --abtcta-accent: {{ section.settings.accent_color }};
+  "
+>
+  {%- if section.settings.bg_image != blank -%}
+    <div class="abtcta__bg" aria-hidden="true">
+      {{ section.settings.bg_image | image_url: width: 2000 | image_tag: loading: 'lazy', alt: '' }}
+      <div class="abtcta__bg-overlay"></div>
+    </div>
+  {%- endif -%}
+
+  <div class="abtcta__container">
+
+    <div class="abtcta__trust">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'trust' -%}
+          <div class="abtcta__trust-item" {{ block.shopify_attributes }}>
+            <span class="abtcta__trust-value">{{ block.settings.value }}</span>
+            <span class="abtcta__trust-label">{{ block.settings.label }}</span>
+          </div>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+
+    <div class="abtcta__content">
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="abtcta__eyebrow">{{ section.settings.eyebrow }}</span>
+      {%- endif -%}
+      {%- if section.settings.heading != blank -%}
+        <h2 class="abtcta__heading">{{ section.settings.heading }}</h2>
+      {%- endif -%}
+      {%- if section.settings.subheading != blank -%}
+        <p class="abtcta__subheading">{{ section.settings.subheading }}</p>
+      {%- endif -%}
+
+      <div class="abtcta__btns">
+        {%- if section.settings.btn_primary_label != blank -%}
+          <a href="{{ section.settings.btn_primary_link | default: '#' }}" class="abtcta__btn abtcta__btn--primary">
+            {{ section.settings.btn_primary_label }}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        {%- endif -%}
+        {%- if section.settings.phone != blank -%}
+          {%- assign pd = section.settings.phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
+          <a href="tel:+1{{ pd }}" class="abtcta__btn abtcta__btn--phone">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+            {{ section.settings.phone }}
+          </a>
+        {%- endif -%}
+      </div>
+    </div>
+
+  </div>
+</section>
+
+{% stylesheet %}
+  .abtcta {
+    background: #fff;
+    font-family: 'Outfit', sans-serif;
+    padding: 7rem 0;
+  }
+
+  .abtcta__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Trust pills — card-style, matching product section cards */
+  .abtcta__trust {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+    margin-bottom: 5rem;
+  }
+
+  .abtcta__trust-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 1.5rem 1rem;
+    background: #f9fafb;
+    border: 1px solid #f0f0f0;
+    border-radius: 10px;
+  }
+
+  .abtcta__trust-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #dc2626;
+    line-height: 1;
+  }
+
+  .abtcta__trust-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: #9ca3af;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .abtcta__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 640px;
+  }
+
+  .abtcta__eyebrow {
+    display: inline-block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #dc2626;
+    margin-bottom: 1rem;
+  }
+
+  .abtcta__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3.6rem;
+    font-weight: 700;
+    line-height: 1.05;
+    color: #111;
+    margin: 0 0 1.25rem;
+  }
+
+  .abtcta__subheading {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    color: #9ca3af;
+    line-height: 1.65;
+    margin: 0 0 2.5rem;
+  }
+
+  .abtcta__btns {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .abtcta__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+    padding: 0.875rem 1.875rem;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .abtcta__btn--primary {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .abtcta__btn--primary:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(220,38,38,0.2);
+  }
+
+  /* Phone link — text-style like product page CTAs */
+  .abtcta__btn--phone {
+    background: transparent;
+    color: #dc2626;
+    border: none;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    font-weight: 400;
+  }
+
+  .abtcta__btn--phone:hover {
+    color: #b91c1c;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 989px) {
+    .abtcta__container {
+      padding: 0 4rem;
+    }
+  }
+
+  @media (max-width: 749px) {
+    .abtcta {
+      padding: 5rem 0;
+    }
+    .abtcta__container {
+      padding: 0 2rem;
+    }
+    .abtcta__trust {
+      flex-wrap: wrap;
+    }
+    .abtcta__trust-item {
+      flex: 1 1 calc(50% - 0.5rem);
+    }
+    .abtcta__btns {
+      flex-direction: column;
+      width: 100%;
+    }
+    .abtcta__btn--primary {
+      justify-content: center;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "About — CTA banner",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "Get started today"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Ready for new tires? Let's get you set up."
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Same-day appointments available. Honest pricing, certified install, and free lifetime rotations on every set."
+    },
+    {
+      "type": "text",
+      "id": "btn_primary_label",
+      "label": "Primary button label",
+      "default": "Book an appointment"
+    },
+    {
+      "type": "url",
+      "id": "btn_primary_link",
+      "label": "Primary button link"
+    },
+    {
+      "type": "text",
+      "id": "phone",
+      "label": "Phone number",
+      "default": "(403) 452-4283"
+    },
+    {
+      "type": "image_picker",
+      "id": "bg_image",
+      "label": "Background image (optional)"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent color",
+      "default": "#F5820B"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "trust",
+      "name": "Trust signal",
+      "settings": [
+        {
+          "type": "text",
+          "id": "value",
+          "label": "Value",
+          "default": "4.9★"
+        },
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Label",
+          "default": "Google rating"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "About — CTA banner",
+      "blocks": [
+        { "type": "trust", "settings": { "value": "4.9★", "label": "Google rating" } },
+        { "type": "trust", "settings": { "value": "Same-day", "label": "Service available" } },
+        { "type": "trust", "settings": { "value": "50+", "label": "Tire brands" } },
+        { "type": "trust", "settings": { "value": "Free", "label": "Lifetime rotations" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

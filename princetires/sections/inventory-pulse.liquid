@@ -1,3 +1,14 @@
+{%- assign total_inventory = 0 -%}
+{%- paginate collections.all.products by 250 -%}
+  {%- for product in collections.all.products -%}
+    {%- for variant in product.variants -%}
+      {%- if variant.inventory_quantity > 0 -%}
+        {%- assign total_inventory = total_inventory | plus: variant.inventory_quantity -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endfor -%}
+{%- endpaginate -%}
+
 <div class="inv-pulse">
   <div class="inv-pulse__container">
 
@@ -6,7 +17,7 @@
         <span class="inv-pulse__dot"></span>
         <span class="inv-pulse__live-text">{{ section.settings.live_label }}</span>
       </div>
-      <div class="inv-pulse__number" data-count-to="{{ section.settings.tire_count }}">0</div>
+      <div class="inv-pulse__number" data-count-to="{{ total_inventory }}">0</div>
       <div class="inv-pulse__label">{{ section.settings.tire_label }}</div>
     </div>
 

@@ -5,6 +5,7 @@
 <div class="auth-page">
   <!-- Left brand panel — garage themed -->
   <div class="auth-page__brand">
+    <div class="auth-page__brand-tread" aria-hidden="true"></div>
     <div class="auth-page__brand-content">
       <div class="auth-page__brand-top">
         <a href="{{ routes.root_url }}" class="auth-page__logo">
@@ -19,23 +20,38 @@
       <div class="auth-page__brand-middle">
         <!-- Garage door illustration -->
         <div class="auth-page__garage-art">
-          <svg class="auth-page__garage-svg" viewBox="0 0 200 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg class="auth-page__garage-svg" viewBox="0 0 220 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Ground glow -->
+            <ellipse cx="110" cy="192" rx="80" ry="8" fill="rgba(220,38,38,0.12)"/>
             <!-- Garage structure -->
-            <path d="M20 80 L100 30 L180 80 L180 170 L20 170 Z" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" fill="none"/>
-            <!-- Garage door -->
-            <rect x="50" y="90" width="100" height="80" rx="3" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" fill="rgba(255,255,255,0.02)"/>
+            <path d="M22 90 L110 32 L198 90 L198 185 L22 185 Z" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" fill="rgba(255,255,255,0.02)"/>
+            <!-- Roof highlight -->
+            <path d="M22 90 L110 32 L198 90" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"/>
+            <!-- Garage door frame -->
+            <rect x="55" y="102" width="110" height="83" rx="3" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" fill="rgba(255,255,255,0.03)"/>
             <!-- Door slats -->
-            <line x1="50" y1="106" x2="150" y2="106" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <line x1="50" y1="122" x2="150" y2="122" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <line x1="50" y1="138" x2="150" y2="138" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <line x1="50" y1="154" x2="150" y2="154" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <line x1="55" y1="119" x2="165" y2="119" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <line x1="55" y1="136" x2="165" y2="136" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <line x1="55" y1="153" x2="165" y2="153" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <line x1="55" y1="170" x2="165" y2="170" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <!-- Door handle -->
+            <rect x="103" y="139" width="14" height="5" rx="2.5" fill="rgba(220,38,38,0.4)"/>
             <!-- Car silhouette inside -->
-            <path d="M68 155 L72 145 L80 140 L120 140 L128 145 L132 155" stroke="rgba(220,38,38,0.3)" stroke-width="1.5" fill="none"/>
-            <circle cx="78" cy="155" r="5" stroke="rgba(220,38,38,0.25)" stroke-width="1.2" fill="none"/>
-            <circle cx="122" cy="155" r="5" stroke="rgba(220,38,38,0.25)" stroke-width="1.2" fill="none"/>
+            <path d="M72 180 L76 168 L85 162 L135 162 L144 168 L148 180" stroke="rgba(220,38,38,0.5)" stroke-width="1.5" fill="rgba(220,38,38,0.05)"/>
+            <!-- Car windows -->
+            <path d="M84 162 L89 155 L131 155 L136 162" stroke="rgba(220,38,38,0.3)" stroke-width="1" fill="none"/>
+            <!-- Car wheels -->
+            <circle cx="87" cy="180" r="6" stroke="rgba(220,38,38,0.4)" stroke-width="1.5" fill="rgba(220,38,38,0.06)"/>
+            <circle cx="133" cy="180" r="6" stroke="rgba(220,38,38,0.4)" stroke-width="1.5" fill="rgba(220,38,38,0.06)"/>
+            <!-- Headlights glow -->
+            <ellipse cx="148" cy="171" rx="5" ry="3" fill="rgba(245,200,100,0.2)"/>
+            <ellipse cx="72" cy="171" rx="5" ry="3" fill="rgba(245,200,100,0.2)"/>
             <!-- Roof peak accent -->
-            <path d="M100 30 L100 15" stroke="rgba(220,38,38,0.2)" stroke-width="1.5"/>
-            <circle cx="100" cy="12" r="3" fill="rgba(220,38,38,0.15)"/>
+            <path d="M110 32 L110 16" stroke="rgba(220,38,38,0.4)" stroke-width="1.5"/>
+            <circle cx="110" cy="13" r="3.5" fill="rgba(220,38,38,0.3)" stroke="rgba(220,38,38,0.5)" stroke-width="1"/>
+            <!-- Side windows of garage -->
+            <rect x="28" y="110" width="18" height="24" rx="2" stroke="rgba(255,255,255,0.07)" stroke-width="1" fill="none"/>
+            <rect x="174" y="110" width="18" height="24" rx="2" stroke="rgba(255,255,255,0.07)" stroke-width="1" fill="none"/>
           </svg>
         </div>
         <h2 class="auth-page__brand-headline">{{ section.settings.headline }}</h2>
@@ -102,8 +118,11 @@
             {%- endif -%}
           </div>
 
-          <button type="submit" class="auth-page__btn auth-page__btn--primary">
-            {{ 'customer.login_page.submit' | t }}
+          <button type="submit" class="auth-page__btn auth-page__btn--primary" data-submit-btn>
+            <span class="auth-page__btn-inner">{{ 'customer.login_page.submit' | t }}</span>
+            <span class="auth-page__btn-spinner" aria-hidden="true" style="display:none">
+              <svg class="auth-page__spinner-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            </span>
           </button>
 
           <button type="button" class="auth-page__btn auth-page__btn--text" data-toggle-recover>
@@ -114,28 +133,43 @@
 
       <!-- Login form -->
       <div id="login-form" class="auth-page__form-section">
+
+        <!-- Account type toggle -->
+        <div class="auth-type-toggle" id="AuthTypeToggle">
+          <button type="button" class="auth-type-toggle__btn auth-type-toggle__btn--active" data-type="customer" id="AuthTypeCustomer">
+            <span class="auth-type-toggle__icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            </span>
+            My Garage
+          </button>
+          <button type="button" class="auth-type-toggle__btn" data-type="shop" id="AuthTypeShop">
+            <span class="auth-type-toggle__icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="9" y1="22" x2="9" y2="12"/><line x1="15" y1="22" x2="15" y2="12"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
+            </span>
+            My Shop
+          </button>
+        </div>
+
         <div class="auth-page__form-header">
-          <!-- Garage icon badge -->
-          <span class="auth-page__garage-badge">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <path d="M9 22V12h6v10"/>
-            </svg>
+          <span class="auth-page__garage-badge" id="AuthBadgeIcon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" id="AuthIconCustomer"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" id="AuthIconShop" style="display:none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="9" y1="22" x2="9" y2="12"/><line x1="15" y1="22" x2="15" y2="12"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
           </span>
-          <h1 class="auth-page__title">{{ 'customer.auth.welcome_back' | t }}</h1>
-          <p class="auth-page__subtitle">{{ 'customer.auth.login_subtitle' | t }}</p>
+          <h1 class="auth-page__title" id="AuthTitle">{{ 'customer.auth.welcome_back' | t }}</h1>
+          <p class="auth-page__subtitle" id="AuthSubtitle">{{ 'customer.auth.login_subtitle' | t }}</p>
         </div>
 
         {%- if recover_success == true -%}
-          <div class="auth-page__success">
+          <div class="auth-page__success" role="status">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             <span>{{ 'customer.recover_password.success' | t }}</span>
           </div>
         {%- endif -%}
 
         {%- form 'customer_login', novalidate: 'novalidate' -%}
+          <input type="hidden" name="return_to" id="AuthReturnTo" value="/account">
           {%- if form.errors -%}
-            <div class="auth-page__error-banner" tabindex="-1" autofocus>
+            <div class="auth-page__error-banner" role="alert" tabindex="-1" autofocus>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <div>
                 <span class="visually-hidden">{{ 'accessibility.error' | t }} </span>
@@ -204,16 +238,25 @@
             </div>
           {%- endif -%}
 
-          <button type="submit" class="auth-page__btn auth-page__btn--primary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
-            <span class="auth-page__btn-text">{{ 'customer.auth.enter_garage' | t }}</span>
-            <svg class="auth-page__btn-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <button type="submit" class="auth-page__btn auth-page__btn--primary" data-submit-btn>
+            <span class="auth-page__btn-inner">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="AuthBtnIcon"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+              <span class="auth-page__btn-text" id="AuthBtnText">{{ 'customer.auth.enter_garage' | t }}</span>
+              <svg class="auth-page__btn-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </span>
+            <span class="auth-page__btn-spinner" aria-hidden="true" style="display:none">
+              <svg class="auth-page__spinner-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            </span>
           </button>
         {%- endform -%}
 
         <div class="auth-page__switch">
           <span>{{ 'customer.auth.no_account' | t }}</span>
-          <a href="{{ routes.account_register_url }}">{{ 'customer.auth.signup_cta' | t }}</a>
+          <a href="{{ routes.account_register_url }}" id="AuthRegisterLink">{{ 'customer.auth.signup_cta' | t }}</a>
+        </div>
+        <div class="auth-page__switch" id="AuthShopRegisterNote" style="display:none;margin-top:8px;">
+          <span>Want wholesale access?</span>
+          <a href="/pages/wholesale-register" style="color:#dc2626;font-weight:600;margin-left:4px;">Register your shop →</a>
         </div>
 
         {%- if shop.checkout.guest_login -%}
@@ -252,7 +295,8 @@
     display: none;
     width: 45%;
     max-width: 600px;
-    background: #0a0a0a;
+    background: #0f172a;
+    background-image: linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #16213e 80%, #1a0e14 100%);
     position: relative;
     overflow: hidden;
   }
@@ -263,15 +307,46 @@
     }
   }
 
+  /* Red spotlight glow from below */
   .auth-page__brand::before {
     content: '';
     position: absolute;
-    bottom: 0;
+    bottom: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120%;
+    height: 55%;
+    background: radial-gradient(ellipse at center bottom, rgba(220, 38, 38, 0.22) 0%, rgba(220, 38, 38, 0.06) 40%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Top accent line */
+  .auth-page__brand::after {
+    content: '';
+    position: absolute;
+    top: 0;
     left: 0;
     right: 0;
-    height: 60%;
-    background: linear-gradient(to top, rgba(220, 38, 38, 0.04) 0%, transparent 100%);
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.6), transparent);
+    z-index: 2;
+  }
+
+  /* Tire tread diagonal texture */
+  .auth-page__brand-tread {
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 14px,
+        rgba(255, 255, 255, 0.018) 14px,
+        rgba(255, 255, 255, 0.018) 15px
+      );
     pointer-events: none;
+    z-index: 0;
   }
 
   .auth-page__brand-content {
@@ -315,9 +390,9 @@
   }
 
   .auth-page__garage-art {
-    width: 180px;
-    height: 160px;
-    opacity: 0.7;
+    width: 200px;
+    height: 180px;
+    filter: drop-shadow(0 8px 24px rgba(220, 38, 38, 0.18));
   }
 
   .auth-page__garage-svg {
@@ -329,7 +404,7 @@
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 2.4rem;
     font-weight: 700;
-    color: #fff;
+    color: #f1f5f9;
     margin: 0;
     line-height: 1.15;
     letter-spacing: 0.01em;
@@ -338,7 +413,7 @@
   .auth-page__brand-desc {
     font-size: 1.3rem;
     font-weight: 300;
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(148, 163, 184, 0.7);
     margin: 0;
     line-height: 1.5;
     max-width: 280px;
@@ -364,7 +439,7 @@
   .auth-page__trust-text {
     font-size: 1.2rem;
     font-weight: 400;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(148, 163, 184, 0.6);
   }
 
   .auth-page__trust-secure {
@@ -373,7 +448,7 @@
     gap: 0.5rem;
     font-size: 1.15rem;
     font-weight: 300;
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(148, 163, 184, 0.4);
   }
 
   .auth-page__trust-secure svg {
@@ -386,7 +461,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 3rem 2rem;
+    padding: 4rem 8rem;
     background: #fff;
     min-height: 100vh;
     min-height: 100dvh;
@@ -568,6 +643,12 @@
     text-decoration: none;
   }
 
+  .auth-page__btn-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
   .auth-page__btn--primary {
     background: #dc2626;
     color: #fff;
@@ -590,6 +671,21 @@
 
   .auth-page__btn--primary:hover .auth-page__btn-arrow {
     transform: translateX(3px);
+  }
+
+  /* Loading state */
+  .auth-page__btn--loading {
+    opacity: 0.75;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .auth-page__spinner-icon {
+    animation: auth-spin 0.8s linear infinite;
+  }
+
+  @keyframes auth-spin {
+    to { transform: rotate(360deg); }
   }
 
   .auth-page__btn--secondary {
@@ -738,12 +834,12 @@
     .auth-page__form-panel {
       min-height: 100vh;
       min-height: 100dvh;
-      padding: 4rem 2rem;
+      padding: 5rem 4rem;
     }
   }
 
   @media (max-width: 480px) {
-    .auth-page__form-panel { padding: 3rem 1.6rem; }
+    .auth-page__form-panel { padding: 4rem 2.5rem; }
     .auth-page__title { font-size: 2.4rem; }
     .auth-page__garage-badge { width: 42px; height: 42px; }
     .auth-page__input { height: 48px; font-size: 1.6rem; }
@@ -754,11 +850,92 @@
     .auth-page__form-section,
     .auth-page__error-banner { animation: none; }
     .auth-page__btn--primary:hover { transform: none; }
+    .auth-page__spinner-icon { animation: none; }
+  }
+
+  /* ── Account type toggle (Customer / Shop) ── */
+  .auth-type-toggle {
+    display: flex;
+    background: #f1f5f9;
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 2.4rem;
+    gap: 4px;
+  }
+
+  .auth-type-toggle__btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 42px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.22s ease;
+    white-space: nowrap;
+  }
+
+  .auth-type-toggle__btn:hover:not(.auth-type-toggle__btn--active) {
+    background: rgba(0,0,0,0.04);
+    color: #374151;
+  }
+
+  .auth-type-toggle__btn--active {
+    background: #fff;
+    color: #dc2626;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  }
+
+  .auth-type-toggle__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Shop mode: badge turns navy */
+  .auth-page--shop-mode .auth-page__garage-badge {
+    background: #f0f4ff;
+    color: #1e3a8a;
+  }
+
+  /* Shop mode: button turns navy */
+  .auth-page--shop-mode .auth-page__btn--primary {
+    background: #1e293b;
+  }
+
+  .auth-page--shop-mode .auth-page__btn--primary:hover {
+    background: #0f172a;
+    box-shadow: 0 6px 20px rgba(30,41,59,0.3);
+  }
+
+  .auth-page--shop-mode .auth-page__input:focus {
+    border-color: #1e3a8a;
+    box-shadow: 0 0 0 3px rgba(30,58,138,0.08);
+  }
+
+  .auth-page--shop-mode .auth-page__forgot,
+  .auth-page--shop-mode .auth-page__switch a {
+    color: #1e3a8a;
+  }
+
+  .auth-page--shop-mode .auth-page__forgot:hover,
+  .auth-page--shop-mode .auth-page__switch a:hover {
+    color: #1e40af;
   }
 {% endstylesheet %}
 
 {% javascript %}
   (function() {
+    function initAuthPage() {
     var section = document.querySelector('.auth-page');
     if (!section) return;
 
@@ -781,7 +958,7 @@
       });
     });
 
-    // Toggle between login and recover
+    // Toggle between login and recover — with auto-fill email
     var loginForm = document.getElementById('login-form');
     var recoverForm = document.getElementById('recover-form');
     section.querySelectorAll('[data-toggle-recover]').forEach(function(trigger) {
@@ -793,8 +970,13 @@
         } else {
           loginForm.style.display = 'none';
           recoverForm.style.display = 'block';
-          var emailInput = recoverForm.querySelector('input[type="email"]');
-          if (emailInput) emailInput.focus();
+          // Auto-fill email from login field into recover field
+          var loginEmail = document.getElementById('CustomerEmail');
+          var recoverEmail = document.getElementById('RecoverEmail');
+          if (loginEmail && recoverEmail && loginEmail.value) {
+            recoverEmail.value = loginEmail.value;
+          }
+          if (recoverEmail) recoverEmail.focus();
         }
       });
     });
@@ -802,6 +984,83 @@
     if (window.location.hash === '#recover') {
       loginForm.style.display = 'none';
       recoverForm.style.display = 'block';
+    }
+
+    // ── Account type toggle (Customer ↔ Shop) ──
+    var toggleCustomer = document.getElementById('AuthTypeCustomer');
+    var toggleShop     = document.getElementById('AuthTypeShop');
+    var returnToInput  = document.getElementById('AuthReturnTo');
+    var titleEl        = document.getElementById('AuthTitle');
+    var subtitleEl     = document.getElementById('AuthSubtitle');
+    var btnTextEl      = document.getElementById('AuthBtnText');
+    var btnIconEl      = document.getElementById('AuthBtnIcon');
+    var iconCustomer   = document.getElementById('AuthIconCustomer');
+    var iconShop       = document.getElementById('AuthIconShop');
+    var registerLink   = document.getElementById('AuthRegisterLink');
+    var shopNote       = document.getElementById('AuthShopRegisterNote');
+    var authSwitchRow  = registerLink ? registerLink.closest('.auth-page__switch') : null;
+
+    var shopIconSVGPaths = '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="9" y1="22" x2="9" y2="12"/><line x1="15" y1="22" x2="15" y2="12"/><line x1="3" y1="13" x2="21" y2="13"/>';
+    var garageIconSVGPaths = '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>';
+
+    function setMode(mode) {
+      var isShop = mode === 'shop';
+
+      // Toggle button active state
+      toggleCustomer.classList.toggle('auth-type-toggle__btn--active', !isShop);
+      toggleShop.classList.toggle('auth-type-toggle__btn--active', isShop);
+
+      // Visual mode class on root
+      section.classList.toggle('auth-page--shop-mode', isShop);
+
+      // return_to destination
+      if (returnToInput) returnToInput.value = isShop ? '/pages/wholesale-portal' : '/account';
+
+      // Badge icon
+      if (iconCustomer) iconCustomer.style.display = isShop ? 'none' : 'block';
+      if (iconShop)     iconShop.style.display     = isShop ? 'block' : 'none';
+
+      // Heading
+      if (titleEl)    titleEl.textContent    = isShop ? 'Wholesale sign in' : 'Welcome back';
+      if (subtitleEl) subtitleEl.textContent = isShop
+        ? 'Access trade pricing, fleet orders & your shop dashboard.'
+        : 'Sign in to your garage and manage your vehicles & orders.';
+
+      // Button icon & label
+      if (btnIconEl) btnIconEl.innerHTML = isShop ? shopIconSVGPaths : garageIconSVGPaths;
+      if (btnTextEl) btnTextEl.textContent = isShop ? 'Enter my shop' : 'Enter my garage';
+
+      // Register link row
+      if (authSwitchRow) authSwitchRow.style.display = isShop ? 'none' : '';
+      if (shopNote)      shopNote.style.display      = isShop ? 'block' : 'none';
+    }
+
+    if (toggleCustomer) toggleCustomer.addEventListener('click', function() { setMode('customer'); });
+    if (toggleShop)     toggleShop.addEventListener('click',     function() { setMode('shop'); });
+
+    // Initialise — if URL has ?type=shop, pre-select shop tab
+    if (window.location.search.indexOf('type=shop') !== -1) {
+      setMode('shop');
+    }
+
+    // Submit button loading state
+    section.querySelectorAll('form').forEach(function(form) {
+      form.addEventListener('submit', function() {
+        var btn = form.querySelector('[data-submit-btn]');
+        if (!btn) return;
+        var inner = btn.querySelector('.auth-page__btn-inner');
+        var spinner = btn.querySelector('.auth-page__btn-spinner');
+        btn.disabled = true;
+        btn.classList.add('auth-page__btn--loading');
+        if (inner) inner.style.display = 'none';
+        if (spinner) spinner.style.display = 'flex';
+      });
+    });
+    } // end initAuthPage
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initAuthPage);
+    } else {
+      initAuthPage();
     }
   })();
 {% endjavascript %}

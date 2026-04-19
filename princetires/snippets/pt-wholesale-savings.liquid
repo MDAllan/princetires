@@ -1,0 +1,121 @@
+{% doc %}
+  Renders a wholesale savings badge for approved wholesale customers.
+  Shows the customer's admin-assigned discount percentage and dollar savings
+  on a given product variant.
+
+  Only renders if the customer has the 'wholesale' tag. Safe to include
+  on any product page — outputs nothing for retail customers.
+
+  @param {object} variant - The currently selected product variant
+  @param {number} [retail_price]   - Override the retail price (uses variant.price if omitted)
+
+  @example
+  {% render 'pt-wholesale-savings', variant: product.selected_or_first_available_variant %}
+  {% render 'pt-wholesale-savings', variant: product.selected_or_first_available_variant, retail_price: product.compare_at_price %}
+{% enddoc %}
+
+{%- liquid
+  assign whs_show = false
+  if customer
+    if customer.tags contains 'wholesale'
+      assign whs_show = true
+    endif
+  endif
+-%}
+
+{%- if whs_show -%}
+
+{%- liquid
+  assign whs_price = retail_price | default: variant.price
+
+  assign whs_tier_pct = 0
+  assign whs_discount_meta = customer.metafields.custom.wholesale_discount
+  if whs_discount_meta
+    assign whs_tier_pct = whs_discount_meta.value | plus: 0
+  endif
+
+  assign whs_savings_cents = whs_price | times: whs_tier_pct | divided_by: 100
+  assign whs_wholesale_price = whs_price | minus: whs_savings_cents
+-%}
+
+{%- if whs_tier_pct > 0 -%}
+<div class="pt-whs-badge">
+  <div class="pt-whs-badge__inner">
+    <div class="pt-whs-badge__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="pt-whs-badge__content">
+      <span class="pt-whs-badge__title">Your wholesale price</span>
+      <span class="pt-whs-badge__price">
+        {{ whs_wholesale_price | money }}
+        <span class="pt-whs-badge__savings">Save {{ whs_savings_cents | money }} ({{ whs_tier_pct }}% off)</span>
+      </span>
+    </div>
+  </div>
+  <div class="pt-whs-badge__retail">
+    Retail: <s>{{ whs_price | money }}</s>
+  </div>
+</div>
+{%- endif -%}
+
+<style>
+.pt-whs-badge {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1.5px solid #86efac;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-family: 'Outfit', sans-serif;
+}
+.pt-whs-badge__inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.pt-whs-badge__icon {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  background: #16a34a;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pt-whs-badge__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #15803d;
+  display: block;
+  margin-bottom: 2px;
+}
+.pt-whs-badge__price {
+  font-size: 18px;
+  font-weight: 700;
+  color: #14532d;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pt-whs-badge__savings {
+  font-size: 12px;
+  font-weight: 600;
+  color: #16a34a;
+  background: rgba(22,163,74,0.1);
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+.pt-whs-badge__retail {
+  font-size: 12px;
+  color: #4b7a5e;
+  font-weight: 300;
+  padding-left: 38px;
+}
+.pt-whs-badge__retail s { color: #6b7280; }
+</style>
+
+{%- endif -%}

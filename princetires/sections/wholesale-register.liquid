@@ -1,0 +1,1476 @@
+{%- comment -%}
+  Prince Tires — Wholesale Registration
+  Two flows:
+    A) Guest → {% form 'create_customer' %} with wholesale data in customer[note]
+               Redirects to /pages/wholesale on success (shows pending state there)
+    B) Logged-in → {% form 'contact' %} notifies admin for manual review + tagging
+
+  Customer note format (for admin to identify applicants in Shopify):
+    "WHOLESALE: Business=X | Type=Y | GST=Z | Phone=P | Volume=V"
+{%- endcomment -%}
+
+{%- liquid
+  assign show_account_form = false
+  assign show_upgrade_form = false
+  if customer
+    assign show_upgrade_form = true
+  else
+    assign show_account_form = true
+  endif
+-%}
+
+<style>
+/* ═══════════════════════════════════════════
+   WHOLESALE REGISTER — Prince Tires
+   Red #DC2626 · Dark #1E293B · Outfit + Barlow Condensed
+═══════════════════════════════════════════ */
+.whr-page {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* ── Left panel ── */
+.whr-brand {
+  display: none;
+  width: 42%;
+  max-width: 560px;
+  background: #0f172a;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+@media (min-width: 960px) { .whr-brand { display: flex; } }
+
+.whr-brand::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 55%;
+  background: linear-gradient(to top, rgba(220,38,38,0.06) 0%, transparent 100%);
+  pointer-events: none;
+}
+.whr-brand::after {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 340px; height: 340px;
+  border-radius: 50%;
+  background: rgba(220,38,38,0.06);
+  pointer-events: none;
+}
+
+.whr-brand-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3.5rem;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.whr-logo {
+  text-decoration: none;
+  display: inline-block;
+}
+.whr-logo-img { max-height: 40px; width: auto; }
+.whr-logo-text {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* perks list */
+.whr-perks { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 2.5rem 0; }
+.whr-perks-header { margin-bottom: 2.5rem; }
+.whr-perks-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #dc2626;
+  background: rgba(220,38,38,0.1);
+  border: 1px solid rgba(220,38,38,0.2);
+  padding: 5px 12px;
+  border-radius: 99px;
+  margin-bottom: 16px;
+}
+.whr-perks-badge svg { width:11px; height:11px; }
+.whr-perks-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 10px;
+  line-height: 1.1;
+}
+.whr-perks-sub {
+  font-size: 1.3rem;
+  font-weight: 300;
+  color: rgba(255,255,255,0.4);
+  margin: 0;
+  line-height: 1.6;
+}
+.whr-perks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+}
+.whr-perk {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.2rem;
+}
+.whr-perk-icon {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: rgba(220,38,38,0.1);
+  border: 1px solid rgba(220,38,38,0.15);
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.whr-perk-icon svg { width:16px; height:16px; }
+.whr-perk-body strong {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.88);
+  margin-bottom: 3px;
+}
+.whr-perk-body span {
+  font-size: 1.2rem;
+  font-weight: 300;
+  color: rgba(255,255,255,0.38);
+  line-height: 1.5;
+}
+
+/* brand bottom */
+.whr-brand-bottom {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.whr-brand-bottom-text {
+  font-size: 1.2rem;
+  font-weight: 300;
+  color: rgba(255,255,255,0.3);
+  line-height: 1.5;
+}
+.whr-brand-bottom-text strong { color: rgba(255,255,255,0.5); font-weight: 500; }
+
+/* ── Trust bar on brand panel ── */
+.whr-trust-bar {
+  display: flex;
+  gap: 1.6rem;
+  margin-top: 2rem;
+  padding: 1.4rem 0 0;
+}
+.whr-trust-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.whr-trust-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+.whr-trust-label {
+  font-size: 1rem;
+  font-weight: 300;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+/* ── Right form panel ── */
+.whr-form-panel {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4rem 3rem 4rem;
+  background: #fff;
+  overflow-y: auto;
+}
+.whr-form-container {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.whr-form-section { animation: whr-fade-in 0.3s ease; }
+@keyframes whr-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Step progress indicator ── */
+.whr-steps-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 2.4rem;
+}
+.whr-step-ind {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.whr-step-ind__num {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.whr-step-ind__num--active {
+  background: #dc2626;
+  color: #fff;
+}
+.whr-step-ind__num--done {
+  background: #16a34a;
+  color: #fff;
+}
+.whr-step-ind__num--pending {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border: 1.5px solid #e5e7eb;
+}
+.whr-step-ind__label {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.whr-step-ind__label--active { color: #dc2626; font-weight: 600; }
+.whr-step-ind__connector {
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+  margin: 0 8px;
+  flex-shrink: 0;
+}
+
+/* form header */
+.whr-form-header { margin-bottom: 2rem; }
+.whr-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 99px;
+  margin-bottom: 14px;
+}
+.whr-header-badge svg { width:12px; height:12px; }
+.whr-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(28px, 5vw, 36px);
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 6px;
+  line-height: 1.1;
+}
+.whr-subtitle {
+  font-size: 1.3rem;
+  font-weight: 300;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* section divider */
+.whr-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 1.8rem 0 1.6rem;
+}
+.whr-divider::before,
+.whr-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+.whr-divider span {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #6b7280;
+  white-space: nowrap;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* fields */
+.whr-row {
+  display: flex;
+  gap: 1.2rem;
+}
+.whr-row .whr-field { flex: 1; }
+.whr-field { margin-bottom: 1.4rem; }
+.whr-label {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+.whr-label .whr-required { color: #dc2626; margin-left: 2px; }
+.whr-label .whr-optional {
+  font-weight: 300;
+  color: #9ca3af;
+  font-size: 1.05rem;
+  margin-left: 4px;
+}
+.whr-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.whr-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 1.4rem 0 3.2rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 400;
+  color: #111;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 9px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.whr-input::placeholder { color: #9ca3af; font-weight: 300; }
+.whr-input:focus {
+  background: #fff;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.08);
+}
+.whr-input[aria-invalid="true"] {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.08);
+}
+.whr-input--no-icon { padding-left: 1.4rem; }
+.whr-input--select {
+  cursor: pointer;
+  padding-right: 2.8rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+.whr-input-icon {
+  position: absolute;
+  left: 0.9rem;
+  color: #9ca3af;
+  pointer-events: none;
+  transition: color 0.2s;
+  z-index: 1;
+}
+.whr-input-wrap:focus-within .whr-input-icon { color: #dc2626; }
+
+/* password toggle */
+.whr-toggle-pw {
+  position: absolute;
+  right: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+  padding: 0;
+}
+.whr-toggle-pw:hover { color: #374151; background: rgba(0,0,0,0.04); }
+.whr-input--pw { padding-right: 3.2rem; }
+
+/* password strength */
+.whr-pw-strength {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.whr-pw-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 99px;
+  background: #e5e7eb;
+  transition: background 0.3s;
+}
+.whr-pw-bar--weak   { background: #ef4444; }
+.whr-pw-bar--fair   { background: #f59e0b; }
+.whr-pw-bar--good   { background: #3b82f6; }
+.whr-pw-bar--strong { background: #16a34a; }
+.whr-pw-hint {
+  font-size: 1.05rem;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+/* textarea */
+.whr-textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 1rem 1.4rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 400;
+  color: #111;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 9px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  box-sizing: border-box;
+  resize: vertical;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.whr-textarea::placeholder { color: #9ca3af; font-weight: 300; }
+.whr-textarea:focus {
+  background: #fff;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.08);
+}
+
+/* submit button */
+.whr-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 52px;
+  border: none;
+  border-radius: 10px;
+  background: #dc2626;
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.5rem;
+  letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+}
+.whr-submit::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -75%;
+  width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  transform: skewX(-20deg);
+  animation: whr-shimmer 3s ease-in-out infinite;
+}
+@keyframes whr-shimmer { 0% { left:-75%; } 60% { left:125%; } 100% { left:125%; } }
+.whr-submit:hover { background: #b91c1c; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(220,38,38,0.28); }
+.whr-submit:active { transform: translateY(0); }
+.whr-submit svg { width:17px; height:17px; flex-shrink:0; }
+.whr-submit--loading { pointer-events: none; opacity: 0.8; }
+
+/* error & success */
+.whr-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 1.2rem 1.4rem;
+  margin-bottom: 1.6rem;
+  color: #991b1b;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  animation: whr-shake 0.4s ease;
+}
+@keyframes whr-shake {
+  0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}
+}
+.whr-error-banner svg { flex-shrink:0; margin-top:2px; }
+.whr-error-banner strong { display:block; font-weight:600; margin-bottom:4px; }
+.whr-error-banner ul { margin:4px 0 0; padding-left:1.4rem; }
+.whr-error-banner a { color:#991b1b; text-decoration:underline; }
+
+.whr-success-banner {
+  text-align: center;
+  padding: 2.8rem 2rem;
+  animation: whr-fade-in 0.4s ease;
+}
+.whr-success-icon {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: #f0fdf4;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+}
+.whr-success-icon svg { width:32px;height:32px; }
+.whr-success-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #111;
+  margin: 0 0 10px;
+}
+.whr-success-text {
+  font-size: 13.5px;
+  color: #6b7280;
+  line-height: 1.7;
+  margin: 0 0 24px;
+}
+.whr-success-next {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 22px;
+}
+.whr-success-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #374151;
+}
+.whr-success-step-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* footer note & switch */
+.whr-terms {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 300;
+  color: #9ca3af;
+  margin: 1.2rem 0 0;
+  line-height: 1.6;
+}
+.whr-terms a { color: #dc2626; text-decoration: none; }
+.whr-terms a:hover { text-decoration: underline; }
+.whr-switch {
+  text-align: center;
+  margin-top: 1.4rem;
+  font-size: 1.25rem;
+  color: #6b7280;
+}
+.whr-switch a {
+  color: #dc2626;
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 4px;
+}
+.whr-switch a:hover { text-decoration: underline; }
+
+/* Upgrade banner (logged in) */
+.whr-upgrade-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 13px 16px;
+  margin-bottom: 1.8rem;
+  font-size: 12.5px;
+  color: #1e40af;
+}
+.whr-upgrade-note svg { width:17px;height:17px;flex-shrink:0; }
+
+/* Already applied notice */
+.whr-already-applied {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  padding: 13px 16px;
+  margin-bottom: 1.8rem;
+  font-size: 12.5px;
+  color: #92400e;
+}
+.whr-already-applied svg { width:17px;height:17px;flex-shrink:0;margin-top:1px; }
+
+/* responsive */
+@media (max-width: 959px) {
+  .whr-form-panel { min-height:100vh; min-height:100dvh; padding: 4rem 2.4rem; align-items:flex-start; }
+  .whr-form-container { max-width: 480px; }
+}
+@media (max-width: 520px) {
+  .whr-form-panel { padding: 3rem 1.8rem; }
+  .whr-title { font-size: 2.6rem; }
+  .whr-row { flex-direction: column; gap:0; }
+  .whr-input { height:46px; font-size:1.4rem; }
+  .whr-submit { height:50px; }
+  .whr-steps-indicator { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .whr-form-section, .whr-error-banner { animation:none; }
+  .whr-submit { transition:none; }
+  .whr-submit::before { animation:none; }
+}
+
+/* ── Inline field error ── */
+.whr-inline-error {
+  font-size: 1.05rem;
+  color: #ef4444;
+  margin: 4px 0 0;
+  font-weight: 400;
+  min-height: 14px;
+  display: block;
+}
+/* ── Honeypot trap ── */
+.whr-hp-trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  pointer-events: none;
+}
+</style>
+
+<div class="whr-page">
+
+  {%- comment -%} ── LEFT BRAND PANEL ── {%- endcomment -%}
+  <div class="whr-brand">
+    <div class="whr-brand-content">
+
+      <a href="{{ routes.root_url }}" class="whr-logo">
+        {%- if section.settings.logo != blank -%}
+          {{ section.settings.logo | image_url: width: 240 | image_tag: class: 'whr-logo-img', alt: shop.name }}
+        {%- else -%}
+          <span class="whr-logo-text">{{ shop.name }}</span>
+        {%- endif -%}
+      </a>
+
+      <div class="whr-perks">
+        <div class="whr-perks-header">
+          <div class="whr-perks-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Wholesale Partner Program
+          </div>
+          <h2 class="whr-perks-title">Trade pricing.<br>Built for the pros.</h2>
+          <p class="whr-perks-sub">Join hundreds of Alberta auto businesses already saving with Prince Tires.</p>
+        </div>
+        <ul class="whr-perks-list">
+          <li class="whr-perk">
+            <div class="whr-perk-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <div class="whr-perk-body">
+              <strong>Up to 35% below retail</strong>
+              <span>Volume discounts on all major brands — Michelin, Goodyear, Continental, and more</span>
+            </div>
+          </li>
+          <li class="whr-perk">
+            <div class="whr-perk-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="whr-perk-body">
+              <strong>Approved in 24 hours</strong>
+              <span>Quick review — most applications approved the same business day</span>
+            </div>
+          </li>
+          <li class="whr-perk">
+            <div class="whr-perk-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="whr-perk-body">
+              <strong>Dedicated account manager</strong>
+              <span>Direct phone &amp; email — no hold times, no ticket queues</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="whr-brand-bottom">
+        <div class="whr-trust-bar">
+          <div class="whr-trust-item">
+            <span class="whr-trust-val">500+</span>
+            <span class="whr-trust-label">Partners</span>
+          </div>
+          <div class="whr-trust-item" style="padding-left:1.4rem;border-left:1px solid rgba(255,255,255,0.08)">
+            <span class="whr-trust-val">24hr</span>
+            <span class="whr-trust-label">Approval</span>
+          </div>
+          <div class="whr-trust-item" style="padding-left:1.4rem;border-left:1px solid rgba(255,255,255,0.08)">
+            <span class="whr-trust-val">35%</span>
+            <span class="whr-trust-label">Max savings</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  {%- comment -%} ── RIGHT FORM PANEL ── {%- endcomment -%}
+  <div class="whr-form-panel">
+    <div class="whr-form-container">
+      <div class="whr-form-section">
+
+        {%- comment -%} ─ Upgrade notice for logged-in users ─ {%- endcomment -%}
+        {%- if show_upgrade_form -%}
+          <div class="whr-upgrade-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Signed in as <strong>{{ customer.email }}</strong>. This application will be linked to your existing account.</span>
+          </div>
+        {%- endif -%}
+
+        {%- comment -%} ─ Already applied notice ─ {%- endcomment -%}
+        {%- if customer -%}
+          {%- if customer.tags contains 'wholesale' -%}
+            <div class="whr-already-applied">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <div>Your account already has wholesale access active. <a href="/pages/wholesale" style="color:#92400e;font-weight:600">Go to your wholesale portal →</a></div>
+            </div>
+          {%- elsif customer.note contains 'WHOLESALE:' -%}
+            <div class="whr-already-applied">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <div>You've already submitted an application — it's under review. <a href="/pages/wholesale" style="color:#92400e;font-weight:600">Check your status →</a></div>
+            </div>
+          {%- endif -%}
+        {%- endif -%}
+
+        {%- comment -%} ─ Steps indicator ─ {%- endcomment -%}
+        {%- if show_account_form -%}
+          <div class="whr-steps-indicator">
+            <div class="whr-step-ind">
+              <div class="whr-step-ind__num whr-step-ind__num--active">1</div>
+              <span class="whr-step-ind__label whr-step-ind__label--active">Shop info</span>
+            </div>
+            <div class="whr-step-ind__connector"></div>
+            <div class="whr-step-ind">
+              <div class="whr-step-ind__num whr-step-ind__num--pending">2</div>
+              <span class="whr-step-ind__label">Account</span>
+            </div>
+            <div class="whr-step-ind__connector"></div>
+            <div class="whr-step-ind">
+              <div class="whr-step-ind__num whr-step-ind__num--pending">3</div>
+              <span class="whr-step-ind__label">Review</span>
+            </div>
+          </div>
+        {%- endif -%}
+
+        {%- comment -%} ─ Form header ─ {%- endcomment -%}
+        <div class="whr-form-header">
+          <div class="whr-header-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Wholesale Application
+          </div>
+          <h1 class="whr-title">
+            {%- if show_upgrade_form -%}Upgrade to wholesale{%- else -%}Apply for wholesale access{%- endif -%}
+          </h1>
+          <p class="whr-subtitle">Takes under 3 minutes &middot; Approved within 24 hours &middot; No fees</p>
+        </div>
+
+        {%- comment -%} ════════════════════════════════════════════════
+            FLOW A: GUEST — create_customer form
+            Creates Shopify account + stores wholesale data in customer note
+            On success: redirects to /pages/wholesale (shows pending state)
+        ════════════════════════════════════════════════ {%- endcomment -%}
+
+        {%- if show_account_form -%}
+          {%- form 'create_customer' -%}
+            <input type="hidden" name="return_to" value="/pages/wholesale">
+            {%- comment -%} Honeypot — bots fill this; JS blocks submit if non-empty {%- endcomment -%}
+            <div class="whr-hp-trap" aria-hidden="true">
+              <input type="text" data-whr-hp tabindex="-1" autocomplete="off">
+            </div>
+
+            {%- if form.errors -%}
+              <div class="whr-error-banner" role="alert">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div>
+                  <strong>Please fix the following:</strong>
+                  <ul>
+                    {%- for field in form.errors -%}
+                      <li>{{ form.errors.translated_fields[field] | capitalize }} {{ form.errors.messages[field] }}</li>
+                    {%- endfor -%}
+                  </ul>
+                </div>
+              </div>
+            {%- endif -%}
+
+            {%- comment -%} ─── SECTION 1: Business info ─── {%- endcomment -%}
+            <div class="whr-divider"><span>Business information</span></div>
+
+            <div class="whr-row">
+              <div class="whr-field">
+                <label class="whr-label" for="WhrBusiness">Business name <span class="whr-required">*</span></label>
+                <div class="whr-input-wrap">
+                  <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+                  <input class="whr-input" type="text" id="WhrBusiness" required placeholder="Your shop or company name" data-whr-field="business">
+                </div>
+              </div>
+              <div class="whr-field">
+                <label class="whr-label" for="WhrPhone">Phone <span class="whr-required">*</span></label>
+                <div class="whr-input-wrap">
+                  <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 12 19.79 19.79 0 0 1 1.17 3.39 2 2 0 0 1 3.14 1.22h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16v.92z"/></svg>
+                  <input class="whr-input" type="tel" id="WhrPhone" required autocomplete="tel" placeholder="(403) 555-0100" data-whr-field="phone">
+                </div>
+              </div>
+            </div>
+
+            <div class="whr-row">
+              <div class="whr-field">
+                <label class="whr-label" for="WhrType">Business type <span class="whr-required">*</span></label>
+                <div class="whr-input-wrap">
+                  <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                  <select class="whr-input whr-input--select" id="WhrType" required data-whr-field="type">
+                    <option value="">Select type&hellip;</option>
+                    <option value="Auto repair shop">Auto repair shop</option>
+                    <option value="Tire shop">Tire shop</option>
+                    <option value="Car dealership">Car dealership</option>
+                    <option value="Fleet operator">Fleet operator</option>
+                    <option value="Mobile mechanic">Mobile mechanic</option>
+                    <option value="Service centre">Service centre</option>
+                    <option value="Automotive reseller">Automotive reseller</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div class="whr-field">
+                <label class="whr-label" for="WhrVolume">Monthly volume <span class="whr-optional">(optional)</span></label>
+                <div class="whr-input-wrap">
+                  <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  <select class="whr-input whr-input--select" id="WhrVolume" data-whr-field="volume">
+                    <option value="">Estimate&hellip;</option>
+                    <option value="1-10 tires/month">1–10 tires/month</option>
+                    <option value="11-30 tires/month">11–30 tires/month</option>
+                    <option value="31-100 tires/month">31–100 tires/month</option>
+                    <option value="100+ tires/month">100+ tires/month</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="whr-field">
+              <label class="whr-label" for="WhrGST">GST / Business registration number <span class="whr-optional">(optional — speeds up approval)</span></label>
+              <div class="whr-input-wrap">
+                <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <input class="whr-input" type="text" id="WhrGST" placeholder="e.g. 123456789 RT0001" data-whr-field="gst">
+              </div>
+            </div>
+
+            {%- comment -%} ─── SECTION 2: Account creation ─── {%- endcomment -%}
+            <div class="whr-divider"><span>Create your account</span></div>
+
+            <div class="whr-row">
+              <div class="whr-field">
+                <label class="whr-label" for="WhrFirstName">First name</label>
+                <div class="whr-input-wrap">
+                  <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <input class="whr-input" type="text" name="customer[first_name]" id="WhrFirstName" autocomplete="given-name" placeholder="First name">
+                </div>
+              </div>
+              <div class="whr-field">
+                <label class="whr-label" for="WhrLastName">Last name</label>
+                <div class="whr-input-wrap">
+                  <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <input class="whr-input" type="text" name="customer[last_name]" id="WhrLastName" autocomplete="family-name" placeholder="Last name">
+                </div>
+              </div>
+            </div>
+
+            <div class="whr-field">
+              <label class="whr-label" for="WhrAcctEmail">Email address <span class="whr-required">*</span></label>
+              <div class="whr-input-wrap">
+                <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                <input
+                  class="whr-input"
+                  type="email"
+                  name="customer[email]"
+                  id="WhrAcctEmail"
+                  required
+                  spellcheck="false"
+                  autocapitalize="off"
+                  autocomplete="email"
+                  placeholder="you@yourbusiness.com"
+                >
+              </div>
+            </div>
+
+            <div class="whr-field">
+              <label class="whr-label" for="WhrPassword">Password <span class="whr-required">*</span></label>
+              <div class="whr-input-wrap">
+                <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input
+                  class="whr-input whr-input--pw"
+                  type="password"
+                  name="customer[password]"
+                  id="WhrPassword"
+                  required
+                  placeholder="Minimum 8 characters"
+                  data-whr-pw
+                >
+                <button type="button" class="whr-toggle-pw" aria-label="Toggle password visibility" data-whr-toggle-pw>
+                  <svg class="whr-eye-open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg class="whr-eye-closed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+              <div class="whr-pw-strength" id="WhrPwStrength" style="display:none">
+                <div class="whr-pw-bar" id="WhrPwBar1"></div>
+                <div class="whr-pw-bar" id="WhrPwBar2"></div>
+                <div class="whr-pw-bar" id="WhrPwBar3"></div>
+                <div class="whr-pw-bar" id="WhrPwBar4"></div>
+              </div>
+              <p class="whr-pw-hint" id="WhrPwHint"></p>
+            </div>
+
+            {%- comment -%} Wholesale data goes into customer note — assembled by JS on submit {%- endcomment -%}
+            <input type="hidden" name="customer[note]" id="WhrCustomerNote">
+
+            <button type="submit" class="whr-submit" id="WhrSubmitGuest">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Create account &amp; apply</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+
+          {%- endform -%}
+
+          <p class="whr-terms">
+            By applying you agree to our <a href="/policies/terms-of-service">terms of service</a> and <a href="/policies/privacy-policy">privacy policy</a>. Wholesale pricing is subject to approval.
+          </p>
+          <div class="whr-switch">
+            Already have an account?
+            <a href="{{ routes.account_login_url }}">Sign in instead</a>
+          </div>
+
+        {%- comment -%} ════════════════════════════════════════════════
+            FLOW B: LOGGED-IN — contact form notifies admin
+            Admin manually reviews and tags customer as 'wholesale'
+        ════════════════════════════════════════════════ {%- endcomment -%}
+
+        {%- else -%}
+          {%- form 'contact', id: 'WholesaleApplicationForm', data-customer-email: customer.email, data-customer-id: customer.id -%}
+            {%- comment -%} Honeypot — bots fill this; JS blocks submit if non-empty {%- endcomment -%}
+            <div class="whr-hp-trap" aria-hidden="true">
+              <input type="text" data-whr-hp tabindex="-1" autocomplete="off">
+            </div>
+
+            {%- if form.posted_successfully? -%}
+              <div class="whr-success-banner">
+                <div class="whr-success-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <h2 class="whr-success-title">Application submitted!</h2>
+                <p class="whr-success-text">
+                  We've received your wholesale application for <strong>{{ customer.first_name }}'s</strong> account and will review it within 24 hours.
+                </p>
+                <div class="whr-success-next">
+                  <div class="whr-success-step">
+                    <span class="whr-success-step-num">1</span>
+                    <span>Our team reviews your application — usually same business day</span>
+                  </div>
+                  <div class="whr-success-step">
+                    <span class="whr-success-step-num">2</span>
+                    <span>You receive a confirmation at <strong>{{ customer.email }}</strong> once approved</span>
+                  </div>
+                  <div class="whr-success-step">
+                    <span class="whr-success-step-num">3</span>
+                    <span>Log in to see wholesale pricing applied across the full catalog</span>
+                  </div>
+                </div>
+                <a href="/pages/wholesale" style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 22px;background:#dc2626;color:#fff;border-radius:9px;text-decoration:none;font-size:13.5px;font-weight:600;">
+                  View your wholesale portal
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+              </div>
+
+            {%- else -%}
+
+              {%- if form.errors -%}
+                <div class="whr-error-banner" role="alert">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <div>
+                    <strong>Please fix the following:</strong>
+                    <ul>
+                      {%- for field in form.errors -%}
+                        <li>{{ form.errors.translated_fields[field] | capitalize }} {{ form.errors.messages[field] }}</li>
+                      {%- endfor -%}
+                    </ul>
+                  </div>
+                </div>
+              {%- endif -%}
+
+              <div class="whr-divider"><span>Business information</span></div>
+
+              <div class="whr-row">
+                <div class="whr-field">
+                  <label class="whr-label" for="WhrContactName">Your name <span class="whr-required">*</span></label>
+                  <div class="whr-input-wrap">
+                    <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <input class="whr-input" type="text" name="contact[name]" id="WhrContactName" required autocomplete="name" placeholder="Your name" value="{{ customer.name }}">
+                  </div>
+                </div>
+                <div class="whr-field">
+                  <label class="whr-label" for="WhrPhone2">Phone <span class="whr-required">*</span></label>
+                  <div class="whr-input-wrap">
+                    <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 12 19.79 19.79 0 0 1 1.17 3.39 2 2 0 0 1 3.14 1.22h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16v.92z"/></svg>
+                    <input class="whr-input" type="tel" id="WhrPhone2" required autocomplete="tel" placeholder="(403) 555-0100" data-whr-field="phone">
+                  </div>
+                </div>
+              </div>
+
+              <div class="whr-field">
+                <label class="whr-label" for="WhrEmail2">Business email <span class="whr-required">*</span></label>
+                <div class="whr-input-wrap">
+                  <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                  <input class="whr-input" type="email" name="contact[email]" id="WhrEmail2" required autocomplete="email" spellcheck="false" autocapitalize="off" placeholder="you@yourbusiness.com" value="{{ customer.email }}">
+                </div>
+              </div>
+
+              <div class="whr-field">
+                <label class="whr-label" for="WhrBusiness2">Business name <span class="whr-required">*</span></label>
+                <div class="whr-input-wrap">
+                  <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+                  <input class="whr-input" type="text" id="WhrBusiness2" required placeholder="Your shop or company name" data-whr-field="business">
+                </div>
+              </div>
+
+              <div class="whr-row">
+                <div class="whr-field">
+                  <label class="whr-label" for="WhrType2">Business type <span class="whr-required">*</span></label>
+                  <div class="whr-input-wrap">
+                    <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    <select class="whr-input whr-input--select" id="WhrType2" required data-whr-field="type">
+                      <option value="">Select type&hellip;</option>
+                      <option value="Auto repair shop">Auto repair shop</option>
+                      <option value="Tire shop">Tire shop</option>
+                      <option value="Car dealership">Car dealership</option>
+                      <option value="Fleet operator">Fleet operator</option>
+                      <option value="Mobile mechanic">Mobile mechanic</option>
+                      <option value="Service centre">Service centre</option>
+                      <option value="Automotive reseller">Automotive reseller</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="whr-field">
+                  <label class="whr-label" for="WhrVolume2">Monthly volume <span class="whr-optional">(optional)</span></label>
+                  <div class="whr-input-wrap">
+                    <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    <select class="whr-input whr-input--select" id="WhrVolume2" data-whr-field="volume">
+                      <option value="">Estimate&hellip;</option>
+                      <option value="1-10 tires/month">1–10 tires/month</option>
+                      <option value="11-30 tires/month">11–30 tires/month</option>
+                      <option value="31-100 tires/month">31–100 tires/month</option>
+                      <option value="100+ tires/month">100+ tires/month</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="whr-field">
+                <label class="whr-label" for="WhrGST2">GST / Business registration <span class="whr-optional">(optional)</span></label>
+                <div class="whr-input-wrap">
+                  <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <input class="whr-input" type="text" id="WhrGST2" placeholder="e.g. 123456789 RT0001" data-whr-field="gst">
+                </div>
+              </div>
+
+              <div class="whr-field">
+                <label class="whr-label" for="WhrNotes">Additional notes <span class="whr-optional">(optional)</span></label>
+                <textarea class="whr-textarea" id="WhrNotes" placeholder="Tell us about your business, tire needs, or any questions..." rows="3" data-whr-field="notes"></textarea>
+              </div>
+
+              {%- comment -%} Hidden field — JS assembles the full body string before submit {%- endcomment -%}
+              <input type="hidden" name="contact[body]" id="WhrCompositeBody">
+
+              <button type="submit" class="whr-submit" id="WhrSubmitUpgrade">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Submit wholesale application</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+
+            {%- endif -%}
+
+          {%- endform -%}
+
+          <p class="whr-terms">
+            By applying you agree to our <a href="/policies/terms-of-service">terms of service</a>. Wholesale access is subject to approval.
+          </p>
+          <div class="whr-switch">
+            Want to check your application status?
+            <a href="/pages/wholesale">Go to wholesale portal</a>
+          </div>
+
+        {%- endif -%}
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% javascript %}
+(function() {
+
+  // ── Shorthand helpers ──
+  function $id(id) { return document.getElementById(id); }
+  function $all(sel) { return document.querySelectorAll(sel); }
+  var CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+
+  // ── Phone auto-format (xxx) xxx-xxxx ──
+  function formatPhone(v) {
+    var d = v.replace(/\D/g, '').slice(0, 10);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return '(' + d.slice(0, 3) + ') ' + d.slice(3);
+    return '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6);
+  }
+  $all('[data-whr-field="phone"]').forEach(function(inp) {
+    inp.addEventListener('input', function() {
+      var start = this.selectionStart;
+      var before = this.value.length;
+      this.value = formatPhone(this.value);
+      var diff = this.value.length - before;
+      try { this.setSelectionRange(start + diff, start + diff); } catch(e) {}
+    });
+  });
+
+  // ── Inline validation helpers ──
+  function fieldError(input, msg) {
+    var wrap = input.closest('.whr-field');
+    if (!wrap) return;
+    var err = wrap.querySelector('.whr-inline-error');
+    if (!err) {
+      err = document.createElement('span');
+      err.className = 'whr-inline-error';
+      wrap.appendChild(err);
+    }
+    err.textContent = msg || '';
+    if (msg) {
+      input.setAttribute('aria-invalid', 'true');
+    } else {
+      input.removeAttribute('aria-invalid');
+    }
+  }
+
+  // Email blur validation
+  $all('#WhrAcctEmail, #WhrEmail2').forEach(function(inp) {
+    inp.addEventListener('blur', function() {
+      if (this.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value)) {
+        fieldError(this, 'Please enter a valid email address.');
+      } else {
+        fieldError(this, '');
+      }
+    });
+    inp.addEventListener('input', function() { fieldError(this, ''); });
+  });
+
+  // Phone blur validation
+  $all('[data-whr-field="phone"]').forEach(function(inp) {
+    inp.addEventListener('blur', function() {
+      var d = this.value.replace(/\D/g, '');
+      if (this.value && d.length < 10) {
+        fieldError(this, 'Please enter a valid 10-digit phone number.');
+      } else {
+        fieldError(this, '');
+      }
+    });
+    inp.addEventListener('input', function() { fieldError(this, ''); });
+  });
+
+  // Password blur validation
+  var pwInput = $id('WhrPassword');
+  if (pwInput) {
+    pwInput.addEventListener('blur', function() {
+      if (this.value && this.value.length < 8) {
+        fieldError(this, 'Password must be at least 8 characters.');
+      } else {
+        fieldError(this, '');
+      }
+    });
+    pwInput.addEventListener('input', function() { fieldError(this, ''); });
+  }
+
+  // ── Password visibility toggle ──
+  $all('[data-whr-toggle-pw]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var wrap      = this.closest('.whr-input-wrap');
+      var input     = wrap.querySelector('input');
+      var eyeOpen   = this.querySelector('.whr-eye-open');
+      var eyeClosed = this.querySelector('.whr-eye-closed');
+      if (input.type === 'password') {
+        input.type = 'text';
+        eyeOpen.style.display = 'none';
+        eyeClosed.style.display = 'block';
+      } else {
+        input.type = 'password';
+        eyeOpen.style.display = 'block';
+        eyeClosed.style.display = 'none';
+      }
+      input.focus();
+    });
+  });
+
+  // ── Password strength meter ──
+  var pwStrength = $id('WhrPwStrength');
+  var pwHint     = $id('WhrPwHint');
+  var pwBars     = [$id('WhrPwBar1'), $id('WhrPwBar2'), $id('WhrPwBar3'), $id('WhrPwBar4')];
+  if (pwInput && pwStrength) {
+    pwInput.addEventListener('input', function() {
+      var val = this.value;
+      if (!val) {
+        pwStrength.style.display = 'none';
+        if (pwHint) pwHint.textContent = '';
+        return;
+      }
+      pwStrength.style.display = 'flex';
+      var score = 0;
+      if (val.length >= 8)  score++;
+      if (val.length >= 12) score++;
+      if (/[A-Z]/.test(val) && /[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+      var labels  = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+      var classes = ['', 'whr-pw-bar--weak', 'whr-pw-bar--fair', 'whr-pw-bar--good', 'whr-pw-bar--strong'];
+      var cls = classes[score] || 'whr-pw-bar--weak';
+      pwBars.forEach(function(bar, idx) {
+        bar.className = 'whr-pw-bar';
+        if (idx < score) bar.classList.add(cls);
+      });
+      if (pwHint) pwHint.textContent = score > 0 ? labels[score] + ' password' : '';
+    });
+  }
+
+  // ── Step indicator ──
+  var stepNums   = $all('.whr-step-ind__num');
+  var stepLabels = $all('.whr-step-ind__label');
+
+  function setStep(active) {
+    if (!stepNums.length) return;
+    stepNums.forEach(function(num, i) {
+      var s = i + 1;
+      num.className = 'whr-step-ind__num';
+      if (s < active) {
+        num.classList.add('whr-step-ind__num--done');
+        num.innerHTML = CHECK_SVG;
+      } else if (s === active) {
+        num.classList.add('whr-step-ind__num--active');
+        num.textContent = s;
+      } else {
+        num.classList.add('whr-step-ind__num--pending');
+        num.textContent = s;
+      }
+    });
+    stepLabels.forEach(function(label, i) {
+      label.className = 'whr-step-ind__label';
+      if (i + 1 === active) label.classList.add('whr-step-ind__label--active');
+    });
+  }
+
+  setStep(1);
+
+  // Advance to step 2 when user first focuses an account field
+  ['WhrFirstName', 'WhrLastName', 'WhrAcctEmail', 'WhrPassword'].forEach(function(id) {
+    var el = $id(id);
+    if (el) {
+      el.addEventListener('focus', function() { setStep(2); }, { once: true });
+    }
+  });
+
+  // ── localStorage persistence ──
+  var LS_KEY = 'whr_form_v1';
+  var LS_FIELDS = ['WhrBusiness', 'WhrPhone', 'WhrFirstName', 'WhrLastName',
+                   'WhrAcctEmail', 'WhrType', 'WhrVolume', 'WhrGST'];
+
+  function saveForm() {
+    var data = {};
+    LS_FIELDS.forEach(function(id) {
+      var el = $id(id);
+      if (el) data[id] = el.value;
+    });
+    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
+  }
+
+  function restoreForm() {
+    var saved;
+    try { saved = JSON.parse(localStorage.getItem(LS_KEY)); } catch(e) {}
+    if (!saved) return;
+    LS_FIELDS.forEach(function(id) {
+      var el = $id(id);
+      if (el && saved[id] !== undefined) el.value = saved[id];
+    });
+  }
+
+  restoreForm();
+
+  LS_FIELDS.forEach(function(id) {
+    var el = $id(id);
+    if (el) el.addEventListener('input', saveForm);
+  });
+
+  // ── Honeypot check — blocks submit if trap field was filled (bot) ──
+  function isHoneypotFilled(form) {
+    var hp = form.querySelector('[data-whr-hp]');
+    return hp && hp.value.length > 0;
+  }
+
+  // ── FLOW A: Guest form — build customer[note] from collected fields ──
+  var guestForm = document.querySelector('form[action*="/account"]');
+  if (guestForm) {
+    guestForm.addEventListener('submit', function(e) {
+      if (isHoneypotFilled(this)) { e.preventDefault(); return; }
+
+      setStep(3);
+
+      var f = {};
+      this.querySelectorAll('[data-whr-field]').forEach(function(el) {
+        f[el.dataset.whrField] = el.value.trim();
+      });
+
+      var noteField = $id('WhrCustomerNote');
+      if (noteField) {
+        noteField.value = 'WHOLESALE: Business=' + (f.business || '') +
+          ' | Type=' + (f.type || '') +
+          ' | GST=' + (f.gst || '') +
+          ' | Phone=' + (f.phone || '') +
+          ' | Volume=' + (f.volume || '');
+      }
+
+      try { localStorage.removeItem(LS_KEY); } catch(e) {}
+
+      var btn = $id('WhrSubmitGuest');
+      if (btn) {
+        btn.classList.add('whr-submit--loading');
+        btn.querySelector('span').textContent = 'Creating your account\u2026';
+      }
+    });
+  }
+
+  // ── FLOW B: Logged-in upgrade form — assemble composite body for contact form ──
+  var upgradeForm = $id('WholesaleApplicationForm');
+  if (upgradeForm) {
+    upgradeForm.addEventListener('submit', function(e) {
+      if (isHoneypotFilled(this)) { e.preventDefault(); return; }
+
+      var f = {};
+      this.querySelectorAll('[data-whr-field]').forEach(function(el) {
+        f[el.dataset.whrField] = el.value.trim();
+        el.removeAttribute('name');
+      });
+
+      var body = [
+        '=== WHOLESALE UPGRADE APPLICATION ===',
+        'Business: '  + (f.business || '\u2014'),
+        'Type: '      + (f.type     || '\u2014'),
+        'Phone: '     + (f.phone    || '\u2014'),
+        'Volume: '    + (f.volume   || '\u2014'),
+        'GST/BN: '    + (f.gst     || '\u2014'),
+        'Notes: '     + (f.notes   || '\u2014'),
+        '====================================',
+        'Customer email: ' + (upgradeForm.dataset.customerEmail || ''),
+        'Customer ID: '    + (upgradeForm.dataset.customerId    || '')
+      ].join('\n');
+
+      var composite = $id('WhrCompositeBody');
+      if (composite) composite.value = body;
+
+      var btn = $id('WhrSubmitUpgrade');
+      if (btn) {
+        btn.classList.add('whr-submit--loading');
+        btn.querySelector('span').textContent = 'Submitting application\u2026';
+      }
+    });
+  }
+
+})();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Wholesale Register",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Logo (left panel)"
+    },
+    {
+      "type": "header",
+      "content": "Section padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding top",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding bottom",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Wholesale Register"
+    }
+  ]
+}
+{% endschema %}

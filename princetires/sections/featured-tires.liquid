@@ -264,11 +264,29 @@
   }
 
   .ft__card-season {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
     font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 0.2rem 0.7rem;
+    border-radius: 100px;
+    width: fit-content;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    /* default: neutral */
     color: #6b7280;
-    font-weight: 300;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
   }
+
+  /* Season-specific colors */
+  .ft__card-season--winter    { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+  .ft__card-season--allweather{ color: #0369a1; background: #e0f2fe; border-color: #bae6fd; }
+  .ft__card-season--summer    { color: #b45309; background: #fffbeb; border-color: #fde68a; }
+  .ft__card-season--allseason { color: #15803d; background: #f0fdf4; border-color: #bbf7d0; }
+  .ft__card-season--allterrain{ color: #92400e; background: #fefce8; border-color: #fef08a; }
 
   .ft__card-price {
     font-family: 'Barlow Condensed', sans-serif;
@@ -335,6 +353,16 @@
 {% endstylesheet %}
 
 {% javascript %}
+  // Apply season badge color classes based on text content
+  document.querySelectorAll('.ft__card-season').forEach(function(el) {
+    var text = (el.textContent || '').toLowerCase().replace(/[-\s]+/g, '');
+    if (text.includes('winter'))               el.classList.add('ft__card-season--winter');
+    else if (text.includes('allweather') || text.includes('all-weather')) el.classList.add('ft__card-season--allweather');
+    else if (text.includes('summer'))          el.classList.add('ft__card-season--summer');
+    else if (text.includes('allseason') || text.includes('all-season'))   el.classList.add('ft__card-season--allseason');
+    else if (text.includes('terrain'))         el.classList.add('ft__card-season--allterrain');
+  });
+
   document.querySelectorAll('[data-ft-section]').forEach(function(section) {
     var carousel = section.querySelector('[data-ft-carousel]');
     var track = section.querySelector('[data-ft-track]');
@@ -344,8 +372,8 @@
 
     var paused = false;
 
-    /* ── Seamless infinite loop: clone all cards ── */
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && track) {
+    /* ── Seamless infinite loop: clone all cards — desktop only ── */
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && !window.matchMedia('(max-width: 767px)').matches && track) {
       Array.from(track.children).forEach(function(card) {
         var clone = card.cloneNode(true);
         clone.setAttribute('aria-hidden', 'true');

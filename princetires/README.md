@@ -97,3 +97,32 @@ Ensure that you follow the list of [theme store requirements](https://shopify.de
 ## License
 
 Copyright (c) 2021-present Shopify Inc. See [LICENSE](/LICENSE.md) for further details.
+
+---
+
+## Claude Code Tooling
+
+The following tools are installed in this repo to maximize AI-assisted development with Claude Code.
+
+| Folder | Repo | Purpose |
+|--------|------|---------|
+| [`superpowers/`](superpowers/) | [obra/superpowers](https://github.com/obra/superpowers) | Complete agent methodology: spec → plan → subagent-driven implementation with TDD, YAGNI, and DRY built in. Agents work autonomously for hours without derailing. |
+| [`awesome-claude-code/`](awesome-claude-code/) | [hesreallyhim/awesome-claude-code](https://github.com/hesreallyhim/awesome-claude-code) | Curated list of skills, hooks, agents, and plugins for Claude Code — use as a discovery index for new tools. |
+| [`claude-mem/`](claude-mem/) | [thedotmack/claude-mem](https://github.com/thedotmack/claude-mem) | Persistent memory across sessions via SQLite + vector search. Captures tool usage, compresses observations, and injects relevant context into future sessions. |
+| [`everything-claude-code/`](everything-claude-code/) | [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) | Production-ready agents, skills, hooks, commands, and MCP configs. Includes `/tdd`, `/plan`, `/code-review`, `/e2e` slash commands and session-persistence hooks. |
+| [`get-shit-done/`](get-shit-done/) | [gsd-build/get-shit-done](https://github.com/gsd-build/get-shit-done) | Lightweight meta-prompting and spec-driven development system. Solves context rot — the quality degradation that occurs as Claude fills its context window. |
+| [`n8n-mcp/`](n8n-mcp/) | [czlonkowski/n8n-mcp](https://github.com/czlonkowski/n8n-mcp) | MCP server giving Claude deep knowledge of 1,505 n8n workflow automation nodes — enables building and validating n8n workflows directly from Claude Code. |
+| [`ui-ux-pro-max-skill/`](ui-ux-pro-max-skill/) | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | 50+ design styles, 161 color palettes, 57 font pairings, UX guidelines, and a search script. **Run before every design/UI task** (see CLAUDE.md). |
+
+### Quick usage
+
+```bash
+# UI/UX search before any design task (required by CLAUDE.md)
+python3 ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py "<query>" --domain style
+
+# n8n-mcp — build and start the MCP server
+cd n8n-mcp && npm install && npm run build && npm start
+
+# get-shit-done — install CLI globally
+npm install -g get-shit-done-cc
+```

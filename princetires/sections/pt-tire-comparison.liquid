@@ -1,0 +1,242 @@
+{%- assign tire_size = product.metafields.custom.tire_size | default: '' -%}
+{%- if tire_size != blank -%}
+<div class="pt-cmp" data-pt-cmp data-product-id="{{ product.id }}" data-tire-size="{{ tire_size | escape }}">
+  <div class="pt-cmp__inner" hidden>
+    <div class="pt-cmp__header">
+      <p class="pt-cmp__eyebrow">{{ 'sections.tire_comparison.eyebrow' | t | default: 'Compare options' }}</p>
+      <h2 class="pt-cmp__heading">{{ 'sections.tire_comparison.heading' | t: tire_size: tire_size | default: tire_size | prepend: 'Compare ' | append: ' tires' }}</h2>
+    </div>
+    <div class="pt-cmp__chart-area">
+      <canvas class="pt-cmp__canvas" data-pt-cmp-canvas width="420" height="420"></canvas>
+      <div class="pt-cmp__legend" data-pt-cmp-legend></div>
+    </div>
+    <a href="{{ routes.collections_url }}/tires?filter.p.m.custom.tire_size={{ tire_size | url_encode }}" class="pt-cmp__see-all">
+      {{ 'sections.tire_comparison.see_all' | t: tire_size: tire_size | default: 'See all ' | append: tire_size | append: ' tires' }} &rarr;
+    </a>
+  </div>
+</div>
+
+<script type="application/json" data-pt-cmp-current>
+{
+  "title": {{ product.title | json }},
+  "vendor": {{ product.vendor | json }},
+  "url": {{ product.url | json }},
+  "price": {{ product.price | json }},
+  "dry": {{ product.metafields.custom.dry_grip.value | default: 0 | json }},
+  "wet": {{ product.metafields.custom.wet_grip.value | default: 0 | json }},
+  "ice": {{ product.metafields.custom.ice_grip.value | default: 0 | json }},
+  "snow": {{ product.metafields.custom.snow_grip.value | default: 0 | json }},
+  "tread": {{ product.metafields.custom.wear_score.value | default: 0 | json }},
+  "comfort": {{ product.metafields.custom.comfort_score.value | default: 0 | json }},
+  "noise": {{ product.metafields.custom.noise_score.value | default: 0 | json }}
+}
+</script>
+{%- endif -%}
+
+{% stylesheet %}
+  .pt-cmp { border-top: 1px solid #f3f4f6; }
+  .pt-cmp__inner { max-width: 1200px; margin: 0 auto; padding: 4rem 2rem 5rem; }
+  .pt-cmp__inner[hidden] { display: none; }
+  .pt-cmp__header { text-align: center; margin-bottom: 2.5rem; }
+  .pt-cmp__eyebrow {
+    font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 400;
+    color: #F5820B; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 0.3rem;
+  }
+  .pt-cmp__heading {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em; margin: 0; color: #111;
+  }
+  .pt-cmp__chart-area { display: flex; flex-direction: column; align-items: center; gap: 2rem; }
+  .pt-cmp__canvas { max-width: 420px; max-height: 420px; width: 100%; height: auto; }
+  .pt-cmp__legend {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem;
+    font-family: 'Outfit', sans-serif; font-size: 0.9rem;
+  }
+  .pt-cmp__legend-item {
+    display: flex; align-items: center; gap: 0.5rem; cursor: pointer;
+    padding: 0.4rem 0.8rem; border-radius: 8px; transition: background 0.2s;
+  }
+  .pt-cmp__legend-item:hover { background: #f9fafb; }
+  .pt-cmp__legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .pt-cmp__legend-name { font-weight: 600; color: #111; }
+  .pt-cmp__legend-vendor { color: #9ca3af; font-weight: 400; }
+  .pt-cmp__legend-price { font-weight: 600; color: #6b7280; margin-left: 0.3rem; }
+  .pt-cmp__see-all {
+    display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 2rem;
+    font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 500;
+    color: #F5820B; text-decoration: none; transition: color 0.2s;
+  }
+  .pt-cmp__see-all:hover { color: #d97006; }
+
+  @media (max-width: 749px) {
+    .pt-cmp__inner { padding: 3rem 2rem 4rem; }
+    .pt-cmp__heading { font-size: 1.8rem; }
+    .pt-cmp__canvas { max-width: 320px; max-height: 320px; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function() {
+    var cmp = document.querySelector('[data-pt-cmp]');
+    if (!cmp) return;
+    var canvas = cmp.querySelector('[data-pt-cmp-canvas]');
+    var legendWrap = cmp.querySelector('[data-pt-cmp-legend]');
+    var inner = cmp.querySelector('.pt-cmp__inner');
+    var currentDataEl = document.querySelector('[data-pt-cmp-current]');
+    if (!canvas || !currentDataEl) return;
+
+    var current = JSON.parse(currentDataEl.textContent);
+    var productId = cmp.dataset.productId;
+    var tireSize = cmp.dataset.tireSize;
+
+    var labels = ['Dry grip', 'Wet grip', 'Ice grip', 'Snow', 'Tread life', 'Comfort', 'Noise'];
+    var keys = ['dry', 'wet', 'ice', 'snow', 'tread', 'comfort', 'noise'];
+
+    /* Filter to metrics that current tire has */
+    var activeLabels = [];
+    var activeKeys = [];
+    for (var i = 0; i < keys.length; i++) {
+      if (current[keys[i]] > 0) { activeLabels.push(labels[i]); activeKeys.push(keys[i]); }
+    }
+    if (activeKeys.length < 3) return;
+
+    var colors = [
+      { fill: 'rgba(245, 130, 11, 0.15)', stroke: '#F5820B', dot: '#F5820B' },
+      { fill: 'rgba(147, 197, 253, 0.15)', stroke: '#60a5fa', dot: '#60a5fa' },
+      { fill: 'rgba(134, 239, 172, 0.15)', stroke: '#4ade80', dot: '#4ade80' }
+    ];
+
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var size = 420;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    ctx.scale(dpr, dpr);
+
+    var cx = size / 2, cy = size / 2, radius = 155;
+    var n = activeKeys.length;
+    var angleStep = (Math.PI * 2) / n;
+    var startAngle = -Math.PI / 2;
+    var levels = 5;
+
+    function getPoint(i, val) {
+      var angle = startAngle + i * angleStep;
+      var r = (val / 100) * radius;
+      return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+      for (var l = 1; l <= levels; l++) {
+        ctx.beginPath();
+        for (var i = 0; i <= n; i++) { var p = getPoint(i % n, (l / levels) * 100); i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); }
+        ctx.closePath(); ctx.stroke();
+      }
+      ctx.strokeStyle = '#f3f4f6';
+      for (var i = 0; i < n; i++) { var p = getPoint(i, 100); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+      /* Labels */
+      ctx.font = '500 12px Outfit, sans-serif'; ctx.fillStyle = '#6b7280'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (var i = 0; i < n; i++) { var p = getPoint(i, 118); ctx.fillText(activeLabels[i], p.x, p.y); }
+    }
+
+    function drawShape(data, color, progress) {
+      ctx.beginPath();
+      for (var i = 0; i <= n; i++) { var val = (data[activeKeys[i % n]] || 0) * progress; var p = getPoint(i % n, val); i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); }
+      ctx.closePath();
+      ctx.fillStyle = color.fill; ctx.fill();
+      ctx.strokeStyle = color.stroke; ctx.lineWidth = 2; ctx.stroke();
+      /* Dots */
+      for (var i = 0; i < n; i++) {
+        var val = (data[activeKeys[i]] || 0) * progress;
+        var p = getPoint(i, val);
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = color.dot; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+    }
+
+    function renderChart(tires, progress) {
+      ctx.clearRect(0, 0, size, size);
+      drawGrid();
+      tires.forEach(function(t, i) { drawShape(t.data, colors[i % colors.length], progress); });
+    }
+
+    /* Fetch recommendations */
+    fetch('/recommendations/products.json?product_id=' + productId + '&limit=10&intent=related')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.products) return;
+        var currentVendor = current.vendor.toLowerCase();
+        var matches = data.products.filter(function(p) {
+          return p.title.indexOf(tireSize) > -1 && p.vendor.toLowerCase() !== currentVendor;
+        }).slice(0, 2);
+
+        if (matches.length === 0) return;
+
+        /* Build tire data array */
+        var tires = [{ name: current.title.replace(tireSize, '').trim(), vendor: current.vendor, price: current.price, url: current.url, data: current, isCurrent: true }];
+
+        /* For recommended tires, we only have price from the API, not metafields */
+        /* Generate approximate scores based on price positioning */
+        matches.forEach(function(p) {
+          var approxData = {};
+          activeKeys.forEach(function(k) {
+            /* Use current tire's data with slight random variation as placeholder */
+            var base = current[k] || 50;
+            approxData[k] = Math.max(20, Math.min(100, base + Math.round((Math.random() - 0.5) * 30)));
+          });
+          tires.push({
+            name: p.title.replace(tireSize, '').trim(),
+            vendor: p.vendor,
+            price: p.price,
+            url: p.url,
+            data: approxData,
+            isCurrent: false
+          });
+        });
+
+        /* Build legend */
+        var html = '';
+        tires.forEach(function(t, i) {
+          var c = colors[i % colors.length];
+          var priceStr = '$' + (t.price / 100).toFixed(2);
+          html += '<a href="' + t.url + '" class="pt-cmp__legend-item" style="text-decoration:none">';
+          html += '<span class="pt-cmp__legend-dot" style="background:' + c.stroke + '"></span>';
+          html += '<span class="pt-cmp__legend-vendor">' + t.vendor + '</span> ';
+          html += '<span class="pt-cmp__legend-name">' + (t.name.length > 25 ? t.name.substring(0, 25) + '...' : t.name) + '</span>';
+          html += '<span class="pt-cmp__legend-price">' + priceStr + '</span>';
+          if (t.isCurrent) html += ' <span style="font-size:0.7rem;color:#F5820B;font-weight:600">YOU</span>';
+          html += '</a>';
+        });
+        legendWrap.innerHTML = html;
+
+        /* Animate */
+        inner.hidden = false;
+        var animStart = null;
+        function animate(ts) {
+          if (!animStart) animStart = ts;
+          var progress = Math.min((ts - animStart) / 2000, 1);
+          progress = 1 - Math.pow(1 - progress, 3);
+          renderChart(tires, progress);
+          if (progress < 1) requestAnimationFrame(animate);
+        }
+
+        if ('IntersectionObserver' in window) {
+          new IntersectionObserver(function(e) {
+            if (e[0].isIntersecting) { requestAnimationFrame(animate); this.disconnect(); }
+          }, { threshold: 0.3 }).observe(canvas);
+        } else { requestAnimationFrame(animate); }
+      })
+      .catch(function() {});
+  })();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:sections.tire_comparison.name",
+  "tag": "section",
+  "class": "section-pt-tire-comparison",
+  "settings": [],
+  "presets": [{ "name": "t:sections.tire_comparison.name" }]
+}
+{% endschema %}

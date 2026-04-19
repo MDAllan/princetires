@@ -1,0 +1,248 @@
+{%- liquid
+  assign perf_dry = product.metafields.custom.dry_grip.value | default: 0 | times: 1
+  assign perf_wet = product.metafields.custom.wet_grip.value | default: 0 | times: 1
+  assign perf_ice = product.metafields.custom.ice_grip.value | default: 0 | times: 1
+  assign perf_snow = product.metafields.custom.snow_grip.value | default: 0 | times: 1
+  assign perf_tread = product.metafields.custom.wear_score.value | default: 0 | times: 1
+  assign perf_comfort = product.metafields.custom.comfort_score.value | default: 0 | times: 1
+  assign perf_noise = product.metafields.custom.noise_score.value | default: 0 | times: 1
+
+  assign has_data = false
+  if perf_dry > 0 or perf_wet > 0 or perf_ice > 0 or perf_snow > 0 or perf_tread > 0 or perf_comfort > 0 or perf_noise > 0
+    assign has_data = true
+  endif
+-%}
+
+{%- if has_data -%}
+<div class="pt-radar" data-pt-radar>
+  <div class="pt-radar__inner">
+    <div class="pt-radar__header">
+      <p class="pt-radar__eyebrow">{{ 'sections.performance_radar.eyebrow' | t | default: 'Performance overview' }}</p>
+      <h2 class="pt-radar__heading">{{ 'sections.performance_radar.heading' | t | default: 'How this tire performs' }}</h2>
+    </div>
+    <div class="pt-radar__chart-wrap">
+      <canvas class="pt-radar__canvas" data-pt-radar-canvas width="400" height="400"
+      data-dry="{{ perf_dry }}"
+      data-wet="{{ perf_wet }}"
+      data-ice="{{ perf_ice }}"
+      data-snow="{{ perf_snow }}"
+      data-tread="{{ perf_tread }}"
+      data-comfort="{{ perf_comfort }}"
+      data-noise="{{ perf_noise }}"
+    ></canvas>
+      <div class="pt-radar__legend" data-pt-radar-legend></div>
+    </div>
+  </div>
+</div>
+{%- endif -%}
+
+{% stylesheet %}
+  .pt-radar { border-top: 1px solid #f3f4f6; }
+  .pt-radar__inner { max-width: 1200px; margin: 0 auto; padding: 4rem 2rem 5rem; }
+  .pt-radar__header { text-align: center; margin-bottom: 2.5rem; }
+  .pt-radar__eyebrow {
+    font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 400;
+    color: #F5820B; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 0.3rem;
+  }
+  .pt-radar__heading {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em; margin: 0; color: #111;
+  }
+  .pt-radar__chart-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 2rem;
+  }
+  .pt-radar__canvas { max-width: 380px; max-height: 380px; width: 100%; height: auto; }
+  .pt-radar__legend {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 1.2rem 2rem;
+    font-family: 'Outfit', sans-serif; font-size: 0.9rem; color: #6b7280;
+  }
+  .pt-radar__legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .pt-radar__legend-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #F5820B; flex-shrink: 0;
+  }
+  .pt-radar__legend-val { font-weight: 600; color: #111; }
+
+  @media (max-width: 749px) {
+    .pt-radar__inner { padding: 3rem 2rem 4rem; }
+    .pt-radar__heading { font-size: 1.8rem; }
+    .pt-radar__canvas { max-width: 300px; max-height: 300px; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function() {
+    var canvas = document.querySelector('[data-pt-radar-canvas]');
+    var legendWrap = document.querySelector('[data-pt-radar-legend]');
+    if (!canvas || !legendWrap) return;
+
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var size = 400;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    ctx.scale(dpr, dpr);
+
+    var metrics = [
+      { label: 'Dry grip',   value: parseFloat(canvas.dataset.dry)     || 0 },
+      { label: 'Wet grip',   value: parseFloat(canvas.dataset.wet)     || 0 },
+      { label: 'Ice grip',   value: parseFloat(canvas.dataset.ice)     || 0 },
+      { label: 'Snow',       value: parseFloat(canvas.dataset.snow)    || 0 },
+      { label: 'Tread life', value: parseFloat(canvas.dataset.tread)   || 0 },
+      { label: 'Comfort',    value: parseFloat(canvas.dataset.comfort) || 0 },
+      { label: 'Noise',      value: parseFloat(canvas.dataset.noise)   || 0 }
+    ].filter(function(m) { return m.value > 0; });
+
+    if (metrics.length < 3) return;
+
+    var cx = size / 2;
+    var cy = size / 2;
+    var radius = 150;
+    var n = metrics.length;
+    var angleStep = (Math.PI * 2) / n;
+    var startAngle = -Math.PI / 2;
+    var levels = 5;
+
+    function getPoint(i, val) {
+      var angle = startAngle + i * angleStep;
+      var r = (val / 100) * radius;
+      return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+    }
+
+    /* Draw grid */
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    for (var l = 1; l <= levels; l++) {
+      ctx.beginPath();
+      for (var i = 0; i <= n; i++) {
+        var p = getPoint(i % n, (l / levels) * 100);
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    /* Draw axis lines */
+    ctx.strokeStyle = '#f3f4f6';
+    for (var i = 0; i < n; i++) {
+      var p = getPoint(i, 100);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+
+    /* Animate the data polygon */
+    var animProgress = 0;
+    var animDuration = 2000;
+    var animStart = null;
+
+    function drawData(progress) {
+      /* Filled polygon */
+      ctx.beginPath();
+      for (var i = 0; i <= n; i++) {
+        var val = metrics[i % n].value * progress;
+        var p = getPoint(i % n, val);
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(245, 130, 11, 0.15)';
+      ctx.fill();
+      ctx.strokeStyle = '#F5820B';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      /* Dots at each vertex */
+      for (var i = 0; i < n; i++) {
+        var val = metrics[i].value * progress;
+        var p = getPoint(i, val);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#F5820B';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    function drawLabels(progress) {
+      ctx.font = '500 13px Outfit, sans-serif';
+      ctx.fillStyle = '#6b7280';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (var i = 0; i < n; i++) {
+        var p = getPoint(i, 115);
+        ctx.fillText(metrics[i].label, p.x, p.y);
+      }
+    }
+
+    function animate(ts) {
+      if (!animStart) animStart = ts;
+      var elapsed = ts - animStart;
+      var progress = Math.min(elapsed / animDuration, 1);
+      /* Ease out cubic */
+      progress = 1 - Math.pow(1 - progress, 3);
+
+      /* Clear and redraw grid */
+      ctx.clearRect(0, 0, size, size);
+
+      /* Redraw grid */
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      for (var l = 1; l <= levels; l++) {
+        ctx.beginPath();
+        for (var j = 0; j <= n; j++) {
+          var p = getPoint(j % n, (l / levels) * 100);
+          if (j === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+      ctx.strokeStyle = '#f3f4f6';
+      for (var j = 0; j < n; j++) {
+        var p = getPoint(j, 100);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
+
+      drawData(progress);
+      drawLabels(progress);
+
+      if (progress < 1) requestAnimationFrame(animate);
+    }
+
+    /* Trigger on scroll into view */
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting) {
+          requestAnimationFrame(animate);
+          this.disconnect();
+        }
+      }, { threshold: 0.3 }).observe(canvas);
+    } else {
+      requestAnimationFrame(animate);
+    }
+
+    /* Build legend */
+    var html = '';
+    metrics.forEach(function(m) {
+      html += '<div class="pt-radar__legend-item"><span class="pt-radar__legend-dot"></span>' + m.label + ' <span class="pt-radar__legend-val">' + m.value + '</span></div>';
+    });
+    legendWrap.innerHTML = html;
+  })();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:sections.performance_radar.name",
+  "tag": "section",
+  "class": "section-pt-performance-radar",
+  "settings": [],
+  "presets": [{ "name": "t:sections.performance_radar.name" }]
+}
+{% endschema %}

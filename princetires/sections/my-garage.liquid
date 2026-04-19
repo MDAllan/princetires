@@ -12,7 +12,9 @@
       "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
       "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
       "maxVehicles": 10,
-      "customImage": {% if section.settings.garage_image != blank %}{{ section.settings.garage_image | image_url: width: 160 | json }}{% else %}null{% endif %}
+      "customImage": {% if section.settings.garage_image != blank %}{{ section.settings.garage_image | image_url: width: 160 | json }}{% else %}null{% endif %},
+      "customerEmail": {{ customer.email | json }},
+      "bookingApiUrl": {{ section.settings.booking_api_url | default: '' | json }}
     }
   </script>
 
@@ -39,117 +41,411 @@
     ]
   </script>
 
-  <my-garage class="customer garage section-{{ section.id }}-padding" data-garage>
+  {%- if customer.tags contains 'wholesale' -%}
+    <script>window.location.replace('/pages/wholesale-portal');</script>
+  {%- endif -%}
 
-    <div class="garage__dashboard">
-      <div class="garage__dashboard-top">
-        <div class="garage__dashboard-greeting">
-          <h1 class="garage__dashboard-name">
-            {%- if customer.first_name != blank -%}
-              {{ customer.first_name | escape }}'s Garage
-            {%- else -%}
-              {{ 'sections.my_garage.title' | t }}
-            {%- endif -%}
-          </h1>
-          <p class="garage__subtitle">{{ 'sections.my_garage.subtitle' | t }}</p>
+  <my-garage class="customer account garage section-{{ section.id }}-padding" data-garage>
+
+    <!-- ═══════════════════════════════════════
+         HERO BANNER
+    ═══════════════════════════════════════ -->
+    <div class="garage__hero">
+      <div class="garage__hero-tread" aria-hidden="true"></div>
+      <div class="garage__hero-inner">
+        <div class="garage__hero-left">
+          <div class="garage__hero-badge" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+          </div>
+          <div>
+            <p class="garage__hero-greeting">Welcome back, {{ customer.first_name | escape }}</p>
+            <h1 class="garage__hero-title">
+              {%- if customer.first_name != blank -%}
+                {{ customer.first_name | escape }}'s Garage
+              {%- else -%}
+                {{ 'sections.my_garage.title' | t }}
+              {%- endif -%}
+            </h1>
+            <p class="garage__hero-sub">{{ 'sections.my_garage.subtitle' | t }}</p>
+          </div>
         </div>
-        <div class="garage__dashboard-stats" data-garage-stats></div>
+
+        <!-- Stat cards rendered by JS into this slot -->
+        <div class="garage__stat-cards" data-garage-stats></div>
       </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         TAB BAR
+    ═══════════════════════════════════════ -->
+    <div class="g-tabbar">
+      <div class="g-tabbar__inner">
+        <button type="button" class="g-tab g-tab--active" data-garage-tab="vehicles">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22 L12 13 L22 13 L22 22 Z M7 22 v-5 l2-3 h6 l2 3 v5"/><circle cx="7" cy="21" r="2"/><circle cx="17" cy="21" r="2"/></svg>
+          My Vehicles
+        </button>
+        <button type="button" class="g-tab" data-garage-tab="history">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Service history
+        </button>
+        <button type="button" class="g-tab" data-garage-tab="orders">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+          Order history
+        </button>
+        <button type="button" class="g-tab" data-garage-tab="bookings">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Bookings
+        </button>
+        <button type="button" class="g-tab" data-garage-tab="account">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Account
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         CONTENT AREA
+    ═══════════════════════════════════════ -->
+    <div class="garage__content" data-tab-panel="vehicles">
+
+      <div class="garage__content-toolbar">
+        <p class="garage__max-msg" data-garage-max hidden>
+          {{ 'sections.my_garage.max_reached' | t: max: 10 }}
+        </p>
+        <button type="button" class="garage__add-btn" data-garage-toggle-add
+                aria-expanded="false" aria-controls="garage-add-form">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          {{ 'sections.my_garage.add_vehicle' | t }}
+        </button>
+      </div>
+
+      {%- comment -%} Seasonal tip {%- endcomment -%}
       <div class="garage__seasonal-tip" data-garage-seasonal hidden></div>
-    </div>
 
-    {%- comment -%} Add Vehicle Toggle + Form {%- endcomment -%}
-    <div class="garage__add-section">
-      <button type="button" class="garage__add-btn" data-garage-toggle-add
-              aria-expanded="false" aria-controls="garage-add-form">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        {{ 'sections.my_garage.add_vehicle' | t }}
-      </button>
+      {%- comment -%} Add Vehicle Form {%- endcomment -%}
+      <div class="garage__add-section">
+        <div id="garage-add-form" class="garage__add-form" hidden>
+          <div class="garage__add-form-header">
+            <h2>{{ 'sections.my_garage.add_vehicle' | t }}</h2>
+            <p class="garage__add-form-sub">Select your year, make, model and trim to find the right tires</p>
+          </div>
+          <div class="garage__selects">
+            <div class="garage__field">
+              <label for="garage-year">{{ 'sections.my_garage.year' | t }}</label>
+              <select id="garage-year" data-garage-year>
+                <option value="">{{ 'sections.my_garage.select_year' | t }}</option>
+              </select>
+            </div>
+            <div class="garage__field">
+              <label for="garage-make">{{ 'sections.my_garage.make' | t }}</label>
+              <select id="garage-make" data-garage-make data-placeholder="{{ 'sections.my_garage.select_make' | t }}" disabled>
+                <option value="">{{ 'sections.my_garage.select_make' | t }}</option>
+              </select>
+            </div>
+            <div class="garage__field">
+              <label for="garage-model">{{ 'sections.my_garage.model' | t }}</label>
+              <select id="garage-model" data-garage-model data-placeholder="{{ 'sections.my_garage.select_model' | t }}" disabled>
+                <option value="">{{ 'sections.my_garage.select_model' | t }}</option>
+              </select>
+            </div>
+            <div class="garage__field">
+              <label for="garage-trim">{{ 'sections.my_garage.trim' | t }}</label>
+              <select id="garage-trim" data-garage-trim data-placeholder="{{ 'sections.my_garage.select_trim' | t }}" disabled>
+                <option value="">{{ 'sections.my_garage.select_trim' | t }}</option>
+              </select>
+            </div>
+          </div>
 
-      <p class="garage__max-msg" data-garage-max hidden>
-        {{ 'sections.my_garage.max_reached' | t: max: 10 }}
-      </p>
+          <p class="garage__size-preview" data-garage-size-preview hidden></p>
 
-      <div id="garage-add-form" class="garage__add-form" hidden>
-        <h2>{{ 'sections.my_garage.add_vehicle' | t }}</h2>
-        <div class="garage__selects">
-          <div class="garage__field">
-            <label for="garage-year">{{ 'sections.my_garage.year' | t }}</label>
-            <select id="garage-year" data-garage-year>
-              <option value="">{{ 'sections.my_garage.select_year' | t }}</option>
-            </select>
-          </div>
-          <div class="garage__field">
-            <label for="garage-make">{{ 'sections.my_garage.make' | t }}</label>
-            <select id="garage-make" data-garage-make data-placeholder="{{ 'sections.my_garage.select_make' | t }}" disabled>
-              <option value="">{{ 'sections.my_garage.select_make' | t }}</option>
-            </select>
-          </div>
-          <div class="garage__field">
-            <label for="garage-model">{{ 'sections.my_garage.model' | t }}</label>
-            <select id="garage-model" data-garage-model data-placeholder="{{ 'sections.my_garage.select_model' | t }}" disabled>
-              <option value="">{{ 'sections.my_garage.select_model' | t }}</option>
-            </select>
-          </div>
-          <div class="garage__field">
-            <label for="garage-trim">{{ 'sections.my_garage.trim' | t }}</label>
-            <select id="garage-trim" data-garage-trim data-placeholder="{{ 'sections.my_garage.select_trim' | t }}" disabled>
-              <option value="">{{ 'sections.my_garage.select_trim' | t }}</option>
-            </select>
+          <div class="garage__form-actions">
+            <button type="button" class="garage__save-btn" data-garage-save disabled>
+              {{ 'sections.my_garage.save_vehicle' | t }}
+            </button>
+            <button type="button" class="garage__cancel-btn" data-garage-cancel>
+              {{ 'sections.my_garage.cancel' | t }}
+            </button>
           </div>
         </div>
+      </div>
 
-        <p class="garage__size-preview" data-garage-size-preview hidden></p>
+      {%- comment -%} Empty State {%- endcomment -%}
+      <div class="garage__empty" data-garage-empty hidden>
+        {%- if section.settings.garage_image != blank -%}
+          <img
+            src="{{ section.settings.garage_image | image_url: width: 200 }}"
+            alt=""
+            class="garage__empty-icon garage__empty-icon--custom"
+            aria-hidden="true"
+            width="120"
+            height="120"
+          >
+        {%- else -%}
+          <div class="garage__empty-art" aria-hidden="true">
+            <svg width="64" height="64" viewBox="0 0 80 34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 22 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/><circle cx="18" cy="24" r="5"/><circle cx="62" cy="24" r="5"/>
+            </svg>
+          </div>
+        {%- endif -%}
+        <p class="garage__empty-headline">{{ 'sections.my_garage.empty_headline' | t }}</p>
+        <p class="garage__empty-sub">{{ 'sections.my_garage.empty_sub' | t }}</p>
+        <button type="button" class="garage__empty-cta" data-garage-toggle-add>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add your first vehicle
+        </button>
+      </div>
 
-        <div class="garage__form-actions">
-          <button type="button" class="garage__save-btn" data-garage-save disabled>
-            {{ 'sections.my_garage.save_vehicle' | t }}
-          </button>
-          <button type="button" class="garage__cancel-btn" data-garage-cancel>
-            {{ 'sections.my_garage.cancel' | t }}
-          </button>
+      {%- comment -%} Vehicle Cards {%- endcomment -%}
+      <ul class="garage__vehicles" role="list" data-garage-list></ul>
+
+      {%- comment -%} Activity Feed {%- endcomment -%}
+      <div class="garage__activity" data-garage-activity hidden>
+        <div class="garage__activity-header">
+          <h2 class="garage__activity-title">Recent activity</h2>
+          <span class="garage__activity-sub">Service history across all vehicles</span>
+        </div>
+        <ul class="garage__activity-list" data-garage-activity-list></ul>
+      </div>
+
+    </div><!-- /.garage__content -->
+
+    <!-- ═══════════════════════════════════════
+         BOOKINGS PANEL
+    ═══════════════════════════════════════ -->
+    <div class="garage__content garage__bookings-panel" data-tab-panel="bookings" hidden>
+      <div class="gbk-header">
+        <h2 class="gbk-title">Upcoming appointments</h2>
+        <p class="gbk-sub" data-gbk-sub>Your scheduled installations at Prince Tires</p>
+      </div>
+      <div class="gbk-list" data-gbk-list>
+        <div class="gbk-loading">
+          <div class="gbk-spinner"></div>
+          <span>Loading your bookings…</span>
         </div>
       </div>
     </div>
 
-    {%- comment -%} Empty State {%- endcomment -%}
-    <div class="garage__empty" data-garage-empty hidden>
-      {%- if section.settings.garage_image != blank -%}
-        <img
-          src="{{ section.settings.garage_image | image_url: width: 200 }}"
-          alt=""
-          class="garage__empty-icon garage__empty-icon--custom"
-          aria-hidden="true"
-          width="120"
-        >
+    <!-- ═══════════════════════════════════════
+         ORDER HISTORY PANEL
+    ═══════════════════════════════════════ -->
+    <div class="garage__content garage__orders-panel" data-tab-panel="orders" hidden>
+
+      <div class="goh-header">
+        <h2 class="goh-title">Order history</h2>
+        <p class="goh-sub">
+          {%- if customer.orders_count > 0 -%}
+            {{ customer.orders_count }} {{ customer.orders_count | pluralize: 'order', 'orders' }} total
+            {%- if customer.orders_count > 30 -%}&nbsp;&mdash; showing 30 most recent{%- endif -%}
+          {%- else -%}
+            No orders yet
+          {%- endif -%}
+        </p>
+      </div>
+
+      {%- if customer.orders_count > 0 -%}
+        <div class="goh-orders">
+          {%- for order in customer.orders limit: 30 -%}
+            <div class="goh-order">
+
+              <div class="goh-order-head">
+                <div class="goh-order-head-left">
+                  <span class="goh-order-num">{{ order.name }}</span>
+                  <span class="goh-order-date">{{ order.created_at | date: "%b %d, %Y" }}</span>
+                </div>
+                <div class="goh-order-head-right">
+                  <span class="goh-order-total">{{ order.total_price | money }}</span>
+                  <span class="goh-order-badge goh-order-badge--{{ order.financial_status }}">{{ order.financial_status | capitalize | replace: '_', ' ' }}</span>
+                  {%- if order.fulfillment_status == 'fulfilled' -%}
+                    <span class="goh-order-badge goh-order-badge--fulfilled">Delivered</span>
+                  {%- elsif order.fulfillment_status == 'partial' -%}
+                    <span class="goh-order-badge goh-order-badge--partial">Partial</span>
+                  {%- endif -%}
+                  <a href="{{ order.customer_url }}" class="goh-order-detail">Details</a>
+                </div>
+              </div>
+
+              <div class="goh-items">
+                {%- for item in order.line_items -%}
+                  <div class="goh-item">
+                    <div class="goh-item-img{% unless item.image %} goh-item-img--placeholder{% endunless %}">
+                      {%- if item.image -%}
+                        {{ item.image | image_url: width: 120 | image_tag: loading: 'lazy', alt: item.title }}
+                      {%- else -%}
+                        <svg width="30" height="18" viewBox="0 0 80 30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/><circle cx="18" cy="24" r="5"/><circle cx="62" cy="24" r="5"/></svg>
+                      {%- endif -%}
+                    </div>
+                    <div class="goh-item-info">
+                      <span class="goh-item-title">{{ item.title | escape }}</span>
+                      {%- unless item.variant.title == 'Default Title' -%}
+                        <span class="goh-item-variant">{{ item.variant.title | escape }}</span>
+                      {%- endunless -%}
+                      <span class="goh-item-meta">Qty {{ item.quantity }} &middot; {{ item.price | money }} each</span>
+                    </div>
+                    <a href="{{ item.product.url | default: '#' }}" class="goh-item-reorder">Buy again</a>
+                  </div>
+                {%- endfor -%}
+              </div>
+
+            </div>
+          {%- endfor -%}
+        </div>
       {%- else -%}
-        <svg width="56" height="56" viewBox="0 0 80 34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="garage__empty-icon">
-          <path d="M4 22 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/><circle cx="18" cy="24" r="5"/><circle cx="62" cy="24" r="5"/>
-        </svg>
+        <div class="goh-empty">
+          <svg width="56" height="34" viewBox="0 0 80 30" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/><circle cx="18" cy="24" r="5"/><circle cx="62" cy="24" r="5"/></svg>
+          <p class="goh-empty-title">No orders yet</p>
+          <p class="goh-empty-sub">Your tire and wheel purchases will appear here.</p>
+          <a href="{{ routes.collections_url }}/tires" class="goh-empty-cta">Shop tires</a>
+        </div>
       {%- endif -%}
-      <p class="garage__empty-headline">{{ 'sections.my_garage.empty_headline' | t }}</p>
-      <p class="garage__empty-sub">{{ 'sections.my_garage.empty_sub' | t }}</p>
-    </div>
 
-    {%- comment -%} Vehicle Cards {%- endcomment -%}
-    <ul class="garage__vehicles" role="list" data-garage-list></ul>
+    </div><!-- /.garage__orders-panel -->
 
-    {%- comment -%} Activity Feed {%- endcomment -%}
-    <div class="garage__activity" data-garage-activity hidden>
-      <div class="garage__activity-header">
-        <h2 class="garage__activity-title">Recent activity</h2>
-        <span class="garage__activity-sub">Service history across all vehicles</span>
+    <!-- ═══════════════════════════════════════
+         ACCOUNT PANEL
+    ═══════════════════════════════════════ -->
+    <div class="garage__content garage__account-panel" data-tab-panel="account" hidden>
+
+      {%- comment -%} ── Profile banner ── {%- endcomment -%}
+      <div class="gac-profile-banner">
+        <div class="gac-avatar">{{ customer.first_name | slice: 0, 1 | upcase | default: customer.email | slice: 0, 1 | upcase }}</div>
+        <div class="gac-profile-info">
+          <h2 class="gac-name">{{ customer.first_name | escape }} {{ customer.last_name | escape }}</h2>
+          <p class="gac-email">{{ customer.email | escape }}</p>
+          <p class="gac-since">Member since {{ customer.created_at | date: "%B %Y" }}</p>
+        </div>
+        <div class="gac-profile-stats">
+          <div class="gac-stat">
+            <span class="gac-stat-num">{{ customer.orders_count }}</span>
+            <span class="gac-stat-label">Orders</span>
+          </div>
+          <div class="gac-stat">
+            <span class="gac-stat-num">{{ customer.total_spent | money_without_trailing_zeros }}</span>
+            <span class="gac-stat-label">Total spent</span>
+          </div>
+        </div>
       </div>
-      <ul class="garage__activity-list" data-garage-activity-list></ul>
+
+      {%- comment -%} ── Two-col grid: address + quick links ── {%- endcomment -%}
+      <div class="gac-grid">
+
+        <div class="gac-card">
+          <div class="gac-card-head">
+            <h3 class="gac-card-title">Default address</h3>
+            <a href="{{ routes.account_addresses_url }}" class="gac-card-link">Manage</a>
+          </div>
+          {%- if customer.default_address -%}
+            <address class="gac-address">
+              <strong>{{ customer.default_address.name | escape }}</strong><br>
+              {{ customer.default_address.address1 | escape }}<br>
+              {%- if customer.default_address.address2 != blank -%}
+                {{ customer.default_address.address2 | escape }}<br>
+              {%- endif -%}
+              {{ customer.default_address.city | escape }}, {{ customer.default_address.province_code | escape }} {{ customer.default_address.zip | escape }}<br>
+              {{ customer.default_address.country | escape }}
+              {%- if customer.default_address.phone != blank -%}
+                <br>{{ customer.default_address.phone | escape }}
+              {%- endif -%}
+            </address>
+          {%- else -%}
+            <p class="gac-empty-text">No address saved yet.</p>
+            <a href="{{ routes.account_addresses_url }}" class="gac-text-link">+ Add address</a>
+          {%- endif -%}
+        </div>
+
+        <div class="gac-card">
+          <div class="gac-card-head">
+            <h3 class="gac-card-title">Quick links</h3>
+          </div>
+          <nav class="gac-quick-links">
+            <a href="{{ routes.account_url }}" class="gac-quick-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              <span>Order history</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="gac-chevron" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+            <a href="{{ routes.account_addresses_url }}" class="gac-quick-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>Manage addresses</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="gac-chevron" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+            <a href="{{ routes.collections_url }}/tires" class="gac-quick-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+              <span>Shop tires</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="gac-chevron" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+            <a href="/pages/services" class="gac-quick-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+              <span>Book a service</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="gac-chevron" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+            <a href="{{ routes.collections_url }}/wheels" class="gac-quick-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/></svg>
+              <span>Shop wheels</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="gac-chevron" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+          </nav>
+        </div>
+
+      </div>
+
+      {%- comment -%} ── Recent orders ── {%- endcomment -%}
+      <div class="gac-card gac-card--full">
+        <div class="gac-card-head">
+          <h3 class="gac-card-title">Recent orders</h3>
+          <a href="{{ routes.account_url }}" class="gac-card-link">View all</a>
+        </div>
+        {%- if customer.orders_count > 0 -%}
+          <div class="gac-orders-list">
+            {%- for order in customer.orders limit: 5 -%}
+              <div class="gac-order-row">
+                <div class="gac-order-left">
+                  <span class="gac-order-num">{{ order.name }}</span>
+                  <span class="gac-order-date">{{ order.created_at | date: "%b %d, %Y" }}</span>
+                </div>
+                <div class="gac-order-right">
+                  <span class="gac-order-total">{{ order.total_price | money }}</span>
+                  <span class="gac-order-badge gac-order-badge--{{ order.financial_status }}">{{ order.financial_status | capitalize | replace: '_', ' ' }}</span>
+                  <a href="{{ order.customer_url }}" class="gac-order-view">View</a>
+                </div>
+              </div>
+            {%- endfor -%}
+          </div>
+        {%- else -%}
+          <p class="gac-empty-text">No orders yet. <a href="{{ routes.collections_url }}/tires" class="gac-text-link">Shop tires →</a></p>
+        {%- endif -%}
+      </div>
+
+      {%- comment -%} ── Sign out ── {%- endcomment -%}
+      <div class="gac-footer">
+        <a href="{{ routes.account_logout_url }}" class="gac-signout">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign out
+        </a>
+      </div>
+
+    </div><!-- /.garage__account-panel -->
+
+    <!-- ═══════════════════════════════════════
+         SERVICE HISTORY PANEL
+    ═══════════════════════════════════════ -->
+    <div class="garage__content garage__history-panel" data-tab-panel="history" hidden>
+      <div class="garage__history-header">
+        <h2 class="garage__history-title">Service history</h2>
+        <p class="garage__history-sub">All service records across your vehicles</p>
+      </div>
+      <div class="garage__history-list" data-garage-history-list>
+        <p class="garage__history-empty-msg">No service records yet. Use "Log service" on any vehicle card to get started.</p>
+      </div>
     </div>
 
   </my-garage>
 
 {%- else -%}
   <div class="customer garage garage--guest section-{{ section.id }}-padding">
+    <div class="garage__hero-tread" aria-hidden="true"></div>
     <div class="garage__header">
+      <div class="garage__hero-badge" style="margin: 0 auto 1.5rem; width:56px; height:56px; border-radius:16px;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+      </div>
       <h1>{{ 'sections.my_garage.title' | t }}</h1>
       <p>{{ 'sections.my_garage.login_required' | t }}</p>
       <a href="{{ routes.account_login_url }}" class="garage__login-btn">
@@ -173,55 +469,149 @@
 {%- endstyle -%}
 
 {% stylesheet %}
-/* ══════════════════════════════════
-   MY GARAGE — Prince Tires
-   Matches product page design
-══════════════════════════════════ */
+/* MY GARAGE — complete stylesheet */
+
 .garage {
-  --g-font: 'Outfit', sans-serif;
+  --g-font:    'Outfit', sans-serif;
   --g-heading: 'Barlow Condensed', sans-serif;
-  --g-text: #111;
-  --g-muted: #9ca3af;
-  --g-subtle: #6b7280;
-  --g-bg: #ffffff;
-  --g-bg2: #f7f7f8;
-  --g-border: #f0f0f0;
-  --g-border-soft: #e5e7eb;
-  --g-accent: #F5820B;
-  --g-red: #dc2626;
-  --g-red-hover: #b91c1c;
-  --g-r: 10px;
-  --g-r-sm: 8px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding-left: 2rem;
-  padding-right: 2rem;
+  --g-text:    #111827;
+  --g-muted:   #9ca3af;
+  --g-subtle:  #6b7280;
+  --g-border:  #e5e7eb;
+  --g-red:     #dc2626;
+  --g-red-h:   #b91c1c;
+  --g-inner:   1100px;
+  --g-px:      clamp(20px, 4vw, 48px);
+  display: block;
   font-family: var(--g-font);
   color: var(--g-text);
-  background: var(--g-bg);
+  background: #f9fafb;
+  padding-bottom: 8rem;
 }
 
-/* ── Header ── */
-.garage__header { margin-bottom: 2.5rem; }
-.garage__header h1 {
+/* ══════════════════════════════════════
+   HERO BANNER  — white with red accent
+══════════════════════════════════════ */
+.garage__hero {
+  background: #fff;
+  border-bottom: 1px solid var(--g-border);
+  position: relative;
+  padding: 3.5rem var(--g-px) 3rem;
+}
+
+/* Subtle red left border accent */
+.garage__hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--g-red);
+  border-radius: 0 2px 2px 0;
+}
+
+.garage__hero-tread { display: none; }
+
+.garage__hero-inner {
+  position: relative;
+  max-width: var(--g-inner);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.garage__hero-left {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.garage__hero-badge {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--g-red);
+  flex-shrink: 0;
+}
+
+.garage__hero-greeting {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--g-muted);
+  margin: 0 0 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.garage__hero-title {
   font-family: var(--g-heading);
-  font-size: 3rem;
+  font-size: clamp(2.6rem, 4vw, 3.8rem);
   font-weight: 700;
   color: var(--g-text);
-  margin: 0 0 0.375rem;
-  letter-spacing: 0.02em;
-  line-height: 1.1;
+  margin: 0 0 0.25rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
 }
-.garage__subtitle {
-  font-family: var(--g-font);
+
+.garage__hero-sub {
+  font-size: 1.35rem;
   color: var(--g-muted);
-  font-size: 1rem;
-  font-weight: 300;
   margin: 0;
 }
 
-/* ── Add Vehicle Section ── */
-.garage__add-section { margin-bottom: 2.5rem; }
+/* Stat cards in hero */
+.garage__stat-cards {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-left: auto;
+}
+
+.garage__stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 90px;
+  padding: 0.9rem 1.4rem;
+  background: #fff;
+  border: 1.5px solid var(--g-border);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.garage__stat-num {
+  font-family: var(--g-heading);
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: var(--g-text);
+  line-height: 1;
+}
+
+.garage__stat-label {
+  font-size: 1.05rem;
+  color: var(--g-muted);
+  margin-top: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.garage__stat-card--alert .garage__stat-num { color: var(--g-red); }
+.garage__stat-card--next .garage__stat-num  { font-size: 1.6rem; }
+
+/* Add vehicle button */
 .garage__add-btn {
   display: inline-flex;
   align-items: center;
@@ -229,686 +619,1381 @@
   background: var(--g-red);
   color: #fff;
   border: none;
-  padding: 0.875rem 1.75rem;
-  border-radius: var(--g-r);
+  padding: 0 2rem;
+  border-radius: 8px;
   font-family: var(--g-font);
-  font-size: 1rem;
+  font-size: 1.4rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
-  min-height: 44px;
+  height: 46px;
+  transition: background 0.15s, transform 0.15s;
+  white-space: nowrap;
 }
-.garage__add-btn:hover { background: var(--g-red-hover); }
-.garage__add-btn:disabled { background: var(--g-border-soft); color: var(--g-muted); cursor: not-allowed; }
-.garage__max-msg { color: #d97706; font-size: 0.875rem; margin-top: 0.75rem; }
+.garage__add-btn:hover { background: var(--g-red-h); transform: translateY(-1px); }
+.garage__add-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; transform: none; }
+
+/* ══════════════════════════════════════
+   TAB BAR  — all buttons, no anchor mix
+══════════════════════════════════════ */
+.g-tabbar {
+  background: #fff;
+  border-bottom: 1px solid var(--g-border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.g-tabbar__inner {
+  max-width: var(--g-inner);
+  margin: 0 auto;
+  padding: 0 var(--g-px);
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.g-tabbar__inner::-webkit-scrollbar { display: none; }
+
+.g-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 50px;
+  padding: 0 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  outline: none;
+  cursor: pointer;
+  font-family: var(--g-font);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--g-subtle);
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  box-sizing: border-box;
+  margin-bottom: -1px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.g-tab svg { flex-shrink: 0; }
+.g-tab:hover { color: var(--g-text); }
+.g-tab--active {
+  color: var(--g-red);
+  border-bottom-color: var(--g-red);
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════
+   CONTENT AREA
+══════════════════════════════════════ */
+.garage__content {
+  max-width: var(--g-inner);
+  margin: 0 auto;
+  padding: 2rem var(--g-px) 0;
+}
+
+.garage__content-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.garage__max-msg { color: #d97706; font-size: 1.3rem; flex: 1; margin: 0; }
+
+/* ── Seasonal Tip ── */
+.garage__seasonal-tip {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: #fff;
+  border: 1px solid var(--g-border);
+  border-left: 3px solid var(--g-red);
+  border-radius: 10px;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.garage__seasonal-tip-icon { font-size: 1.6rem; flex-shrink: 0; line-height: 1; }
+.garage__seasonal-tip-text { flex: 1; }
+.garage__seasonal-tip-label { font-weight: 600; color: var(--g-text); margin-bottom: 0.15rem; font-size: 1.35rem; }
+.garage__seasonal-tip-sub { color: var(--g-muted); font-size: 1.25rem; line-height: 1.5; }
+.garage__seasonal-tip-action {
+  flex-shrink: 0;
+  color: var(--g-red);
+  border: 1px solid currentColor;
+  background: transparent;
+  padding: 0.45rem 1.1rem;
+  border-radius: 100px;
+  font-family: var(--g-font);
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.garage__seasonal-tip-action:hover { background: rgba(220,38,38,0.07); }
+
+/* ── Add Vehicle Form ── */
+.garage__add-section { margin-bottom: 3rem; }
 
 .garage__add-form {
-  background: var(--g-bg2);
-  border: 1px solid var(--g-border-soft);
-  border-radius: var(--g-r);
-  padding: 1.75rem;
-  margin-top: 1rem;
-  animation: garage-slide-down 0.2s ease;
+  background: #fff;
+  border: 1px solid var(--g-border);
+  border-radius: 14px;
+  padding: 2.5rem 3rem;
+  margin-top: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  animation: garage-slide-down 0.22s ease;
 }
+
 @keyframes garage-slide-down {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.garage__add-form h2 {
+
+.garage__add-form-header { margin-bottom: 2rem; }
+
+.garage__add-form-header h2 {
   font-family: var(--g-heading);
-  font-size: 1.5rem;
+  font-size: 2.4rem;
   font-weight: 700;
   color: var(--g-text);
-  margin: 0 0 1.25rem;
-  letter-spacing: 0.02em;
+  margin: 0 0 0.4rem;
+  line-height: 1;
 }
+
+.garage__add-form-sub {
+  font-size: 1.3rem;
+  color: var(--g-muted);
+  margin: 0;
+}
+
 .garage__selects {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.875rem;
-  margin-bottom: 1rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.5rem;
 }
-@media (max-width: 700px) { .garage__selects { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 420px) { .garage__selects { grid-template-columns: 1fr; } }
+
+.garage__field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.25rem;
+}
 
 .garage__field label {
-  display: block;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: var(--g-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 0.375rem;
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 0.5rem;
 }
+
 .garage__field select {
   width: 100%;
-  padding: 0.625rem 0.75rem;
-  background: #fff;
-  border: 1.5px solid var(--g-border-soft);
-  border-radius: var(--g-r-sm);
+  height: 48px;
+  padding: 0 2.5rem 0 1.2rem;
+  background: #f8fafc;
+  border: 1.5px solid var(--g-border);
+  border-radius: 8px;
   color: var(--g-text);
   font-family: var(--g-font);
-  font-size: 0.9rem;
-  min-height: 44px;
-  transition: border-color 0.2s;
+  font-size: 1.4rem;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.garage__field select:focus { outline: none; border-color: var(--g-red); }
-.garage__field select:disabled { opacity: 0.45; cursor: not-allowed; background: var(--g-bg2); }
+
+.garage__field select:focus {
+  outline: none;
+  border-color: var(--g-red);
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.07);
+}
+
+.garage__field select:disabled { opacity: 0.35; cursor: not-allowed; }
+
 .garage__size-preview {
-  color: var(--g-accent);
-  font-size: 1rem;
-  font-weight: 700;
-  margin: 0.75rem 0;
-}
-.garage__form-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-top: 1rem;
-}
-.garage__save-btn {
-  background: var(--g-red);
-  color: #fff;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--g-r);
-  font-family: var(--g-font);
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  min-height: 44px;
-  transition: background 0.2s;
-}
-.garage__save-btn:hover { background: var(--g-red-hover); }
-.garage__save-btn:disabled { background: var(--g-border-soft); color: var(--g-muted); cursor: not-allowed; }
-.garage__cancel-btn {
-  background: #fff;
   color: var(--g-subtle);
-  border: 1.5px solid var(--g-border-soft);
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--g-r);
-  font-family: var(--g-font);
-  font-size: 0.9rem;
-  cursor: pointer;
-  min-height: 44px;
-  transition: border-color 0.2s, color 0.2s;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
-.garage__cancel-btn:hover { color: var(--g-text); border-color: #9ca3af; }
+.garage__size-preview::before { content: 'Tire size:'; font-weight: 400; color: var(--g-muted); }
+
+.garage__form-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+.garage__save-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--g-red); color: #fff; border: none;
+  padding: 0 2rem; border-radius: 8px;
+  font-family: var(--g-font); font-size: 1.4rem; font-weight: 600;
+  cursor: pointer; height: 48px; transition: background 0.15s;
+}
+.garage__save-btn:hover { background: var(--g-red-h); }
+.garage__save-btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+
+.garage__cancel-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--g-subtle);
+  border: 1.5px solid var(--g-border);
+  padding: 0 2rem; border-radius: 8px;
+  font-family: var(--g-font); font-size: 1.4rem;
+  cursor: pointer; height: 48px; transition: color 0.15s, border-color 0.15s;
+}
+.garage__cancel-btn:hover { color: var(--g-text); border-color: #94a3b8; }
 
 /* ── Empty State ── */
 .garage__empty {
   text-align: center;
-  padding: 5rem 1rem;
-  color: var(--g-muted);
+  padding: 7rem 2rem;
+  background: #fff;
+  border: 2px dashed var(--g-border);
+  border-radius: 16px;
 }
-.garage__empty-icon {
-  margin-bottom: 1.5rem;
-  opacity: 0.12;
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  color: var(--g-text);
+
+.garage__empty-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: #f1f5f9;
+  margin: 0 auto 1.5rem;
+  color: #94a3b8;
 }
-.garage__empty-icon--custom {
-  opacity: 1;
-  width: 120px;
-  height: auto;
-  object-fit: contain;
-}
+
+.garage__empty-icon { margin: 0 auto 1.5rem; display: block; opacity: 0.1; color: var(--g-text); }
+.garage__empty-icon--custom { opacity: 1; width: 100px; height: auto; object-fit: contain; }
+
 .garage__empty-headline {
   font-family: var(--g-heading);
-  font-size: 1.75rem;
+  font-size: 2.6rem;
   font-weight: 700;
   color: var(--g-text);
   margin: 0 0 0.5rem;
-  letter-spacing: 0.02em;
 }
+
 .garage__empty-sub {
-  font-size: 1rem;
+  font-size: 1.5rem;
   color: var(--g-muted);
-  margin: 0;
+  margin: 0 0 2rem;
 }
+
+.garage__empty-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--g-red);
+  color: #fff;
+  border: none;
+  padding: 0 2.25rem;
+  height: 48px;
+  border-radius: 8px;
+  font-family: var(--g-font);
+  font-size: 1.4rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.garage__empty-cta:hover { background: var(--g-red-h); }
 
 /* ── Vehicle Grid ── */
 .garage__vehicles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 1.25rem;
+  gap: 1.5rem;
   list-style: none;
   padding: 0;
   margin: 0;
 }
-@media (max-width: 480px) { .garage__vehicles { grid-template-columns: 1fr; } }
 
 /* ── Vehicle Card ── */
 .garage__card {
   background: #fff;
   border: 1px solid var(--g-border);
-  border-radius: var(--g-r);
-  padding: 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  transition: box-shadow 0.2s, border-color 0.2s;
+  border-radius: 14px;
+  padding: 2.25rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
   animation: garage-card-in 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
+
 @keyframes garage-card-in {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.garage__card:hover { border-color: var(--g-border-soft); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-.garage__card--default { border-left: 3px solid var(--g-red); }
 
-/* ── Card Identity Zone ── */
+.garage__card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.garage__card--default {
+  border-left: 3px solid var(--g-red);
+}
+
+/* ── Card Identity ── */
 .garage__card-identity {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  align-items: flex-start;
+  gap: 1.1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--g-border);
 }
+
 .garage__card-icon-wrap {
   flex-shrink: 0;
-  width: 64px;
-  height: 36px;
+  width: 66px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.18;
+  background: linear-gradient(135deg, #fef2f2 0%, #f8fafc 100%);
+  border-radius: 10px;
+  border: 1px solid #fecaca;
 }
-.garage__vehicle-icon { width: 64px; height: auto; color: var(--g-text); }
-.garage__vehicle-icon--custom { opacity: 1; width: 64px; height: auto; object-fit: contain; }
-.garage__card-icon-wrap:has(.garage__vehicle-icon--custom) { opacity: 1; }
-.garage__card-meta { flex: 1; min-width: 0; }
-.garage__card-header {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.2rem;
-}
-.garage__badge {
-  background: var(--g-red);
-  color: #fff;
-  font-size: 0.625rem;
-  font-weight: 700;
-  padding: 0.15rem 0.6rem;
-  border-radius: 100px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-}
-.garage__nickname { color: var(--g-muted); font-size: 0.75rem; font-style: italic; }
 
-/* Status pill */
-.garage__status {
-  font-size: 0.625rem;
-  font-weight: 700;
-  padding: 0.15rem 0.6rem;
-  border-radius: 100px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin-left: auto;
+.garage__vehicle-icon { width: 52px; height: auto; color: var(--g-red); opacity: 0.55; }
+.garage__vehicle-icon--custom { opacity: 1; width: 52px; height: auto; object-fit: contain; }
+.garage__card-icon-wrap:has(.garage__vehicle-icon--custom) { background: transparent; border: none; }
+.garage__card-meta { flex: 1; min-width: 0; }
+
+/* Title + status in one row */
+.garage__card-row1 {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.15rem;
 }
-.garage__status--good { background: #f0fdf4; color: #16a34a; }
-.garage__status--due-soon { background: #fffbeb; color: #d97706; }
-.garage__status--overdue { background: #fef2f2; color: #dc2626; }
 
 .garage__card-title {
   font-family: var(--g-heading);
-  font-size: 1.5rem;
+  font-size: 1.9rem;
   font-weight: 700;
   color: var(--g-text);
-  margin: 0 0 0.1rem;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
+  line-height: 1.15;
 }
-.garage__card-trim { color: var(--g-muted); font-size: 0.875rem; margin: 0 0 0.625rem; }
-.garage__size-chip {
-  display: inline-block;
-  background: var(--g-accent);
-  color: #fff;
+
+.garage__card-nickname {
+  color: var(--g-red);
+  font-size: 1.2rem;
+  font-style: italic;
+  font-weight: 500;
+  margin: 0 0 0.15rem;
+}
+
+.garage__card-trim { color: var(--g-muted); font-size: 1.25rem; margin: 0 0 0.65rem; }
+
+/* Size chip + default badge in bottom row */
+.garage__card-footer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.garage__badge {
+  display: inline-flex;
+  align-items: center;
   font-family: var(--g-font);
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 0.2rem 0.65rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.15rem 0.65rem;
   border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.garage__badge--active {
+  background: var(--g-red);
+  color: #fff;
+  border: none;
+  cursor: default;
+}
+
+.garage__badge--inactive {
+  background: transparent;
+  color: var(--g-muted);
+  border: 1px solid var(--g-border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.garage__badge--inactive:hover {
+  border-color: var(--g-red);
+  color: var(--g-red);
+  background: #fef2f2;
+}
+
+.garage__status {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.garage__status--good     { color: #15803d; border: 1px solid #bbf7d0; background: #f0fdf4; }
+.garage__status--due-soon { color: #b45309; border: 1px solid #fde68a; background: #fffbeb; }
+.garage__status--overdue  { color: #dc2626; border: 1px solid #fecaca; background: #fef2f2; }
+
+.garage__size-chip {
+  display: inline-flex;
+  align-items: center;
+  color: var(--g-subtle);
+  font-size: 1.15rem;
+  font-weight: 600;
+  padding: 0.2rem 0.75rem;
+  border-radius: 100px;
+  border: 1px solid var(--g-border);
+  background: #f8fafc;
   letter-spacing: 0.02em;
 }
 
 /* ── Reminders ── */
-.garage__reminders { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.garage__reminders { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; }
+
 .garage__reminder {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--g-r-sm);
-  font-size: 0.85rem;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  font-size: 1.3rem;
   font-weight: 500;
 }
-.garage__reminder--soon { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
-.garage__reminder--overdue { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.garage__reminder--soon    { color: #92400e; border: 1px solid #fde68a; background: #fffbeb; }
+.garage__reminder--overdue { color: #991b1b; border: 1px solid #fecaca; background: #fef2f2; }
 .garage__reminder span { flex: 1; }
+
 .garage__reminder-book {
   background: transparent;
   border: 1px solid currentColor;
   color: inherit;
-  padding: 0.2rem 0.6rem;
+  padding: 0.2rem 0.65rem;
   border-radius: 100px;
-  font-size: 0.7rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s;
-  min-height: 30px;
-}
-.garage__reminder-book:hover { background: rgba(0,0,0,0.06); }
-
-/* ── Upsell Strip ── */
-.garage__upsell-strip {
-  display: flex;
-  gap: 0.375rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
-  padding: 0.75rem 0;
-  border-top: 1px solid var(--g-border);
-  border-bottom: 1px solid var(--g-border);
-}
-.garage__upsell-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.375rem 0.75rem;
-  background: var(--g-bg2);
-  border: 1px solid var(--g-border-soft);
-  border-radius: 100px;
-  color: var(--g-subtle);
   font-family: var(--g-font);
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  min-height: 34px;
+  transition: background 0.15s;
 }
-.garage__upsell-btn:hover { background: #fff; color: var(--g-text); border-color: #9ca3af; }
-.garage__upsell-btn--primary { background: #fef2f2; border-color: #fecaca; color: var(--g-red); }
-.garage__upsell-btn--primary:hover { background: #fee2e2; color: var(--g-red-hover); border-color: #fca5a5; }
+.garage__reminder-book:hover { background: rgba(0,0,0,0.05); }
 
 /* ── Card Actions ── */
-.garage__card-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem; }
-.garage__action {
-  padding: 0.4rem 0.8rem;
-  border-radius: 100px;
+.garage__card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--g-border);
+}
+
+/* Row 1: stacked full-width primary buttons — use .garage prefix to beat Dawn's customer.css */
+.garage__actions-primary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.garage .garage__action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  height: 42px;
+  width: 100%;
+  border-radius: 8px;
   font-family: var(--g-font);
-  font-size: 0.75rem;
+  font-size: 1.3rem;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
-  border: 1px solid transparent;
+  border: none;
   transition: all 0.15s;
-  min-height: 32px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
+  white-space: nowrap;
+  box-sizing: border-box;
+  min-width: 0;
 }
-.garage__action--shop { background: var(--g-red); color: #fff; border-color: var(--g-red); }
-.garage__action--shop:hover { background: var(--g-red-hover); border-color: var(--g-red-hover); color: #fff; }
-.garage__action--default { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-.garage__action--default:hover { background: #dbeafe; }
-.garage__action--nickname,
-.garage__action--log,
-.garage__action--orders { background: var(--g-bg2); color: var(--g-subtle); border-color: var(--g-border-soft); }
-.garage__action--nickname:hover,
-.garage__action--log:hover,
-.garage__action--orders:hover { color: var(--g-text); border-color: #9ca3af; background: #fff; }
-.garage__action--remove { background: #fff; color: var(--g-red); border-color: #fecaca; }
-.garage__action--remove:hover { background: #fef2f2; }
+.garage .garage__action-btn--red {
+  background: var(--g-red);
+  color: #fff;
+}
+.garage .garage__action-btn--red:hover { background: var(--g-red-h); color: #fff; }
 
-/* ── Last service line ── */
+.garage .garage__action-btn--outline {
+  background: transparent;
+  color: var(--g-text);
+  border: 1.5px solid var(--g-border);
+}
+.garage .garage__action-btn--outline:hover { border-color: #9ca3af; background: #f9fafb; }
+
+/* Row 2: always exactly 4 chips — even grid */
+.garage__actions-secondary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.garage__action-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 34px;
+  border-radius: 6px;
+  font-family: var(--g-font);
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  background: #f9fafb;
+  border: 1px solid var(--g-border);
+  color: var(--g-subtle);
+  transition: all 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 0.25rem;
+}
+.garage__action-chip:hover { background: #f3f4f6; color: var(--g-text); border-color: #d1d5db; }
+.garage__action-chip--danger { color: var(--g-red); border-color: #fecaca; background: #fff; }
+.garage__action-chip--danger:hover { background: #fef2f2; }
+
+/* ── Last service ── */
 .garage__last-service {
   color: var(--g-muted);
-  font-size: 0.75rem;
+  font-size: 1.2rem;
   margin: 0.5rem 0 0;
-  padding-top: 0.5rem;
+  padding-top: 0.6rem;
   border-top: 1px solid var(--g-border);
 }
 
-/* ── Maintenance Panel ── */
+/* ── Maintenance & Orders Panels ── */
 .garage__maint-panel, .garage__orders {
-  border-top: 1px solid var(--g-border);
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid var(--g-border);
   margin-top: 1rem;
-  padding-top: 1rem;
+  padding: 1.75rem;
   animation: garage-slide-down 0.2s ease;
 }
+
 .garage__maint-form-title {
   font-family: var(--g-heading);
-  font-size: 1.1rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--g-text);
-  margin: 0 0 0.75rem;
-  letter-spacing: 0.02em;
+  margin: 0 0 1.25rem;
 }
+
 .garage__maint-fields {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.5rem;
+  gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
-@media (max-width: 540px) { .garage__maint-fields { grid-template-columns: 1fr; } }
+
 .garage__maint-select, .garage__maint-input {
   width: 100%;
-  padding: 0.5rem 0.625rem;
+  height: 46px;
+  padding: 0 1rem;
   background: #fff;
-  border: 1.5px solid var(--g-border-soft);
-  border-radius: var(--g-r-sm);
+  border: 1.5px solid var(--g-border);
+  border-radius: 8px;
   color: var(--g-text);
   font-family: var(--g-font);
-  font-size: 0.85rem;
-  min-height: 40px;
-  transition: border-color 0.2s;
+  font-size: 1.4rem;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.15s;
 }
 .garage__maint-select:focus, .garage__maint-input:focus { outline: none; border-color: var(--g-red); }
-.garage__maint-form-actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+
+.garage__maint-form-actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+
 .garage__maint-save {
-  background: #16a34a;
-  color: #fff;
-  border: none;
-  padding: 0.5rem 1.25rem;
-  border-radius: var(--g-r);
-  font-family: var(--g-font);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  min-height: 40px;
-  transition: background 0.15s;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #16a34a; color: #fff; border: none;
+  padding: 0 1.5rem; border-radius: 8px;
+  font-family: var(--g-font); font-size: 1.4rem; font-weight: 600;
+  cursor: pointer; height: 44px; transition: background 0.15s;
 }
 .garage__maint-save:hover { background: #15803d; }
-.garage__maint-cancel {
-  background: #fff;
-  color: var(--g-subtle);
-  border: 1.5px solid var(--g-border-soft);
-  padding: 0.5rem 1.25rem;
-  border-radius: var(--g-r);
-  font-family: var(--g-font);
-  font-size: 0.85rem;
-  cursor: pointer;
-  min-height: 40px;
-  transition: border-color 0.2s, color 0.2s;
-}
-.garage__maint-cancel:hover { border-color: #9ca3af; color: var(--g-text); }
 
-/* Maintenance history */
-.garage__maint-history { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.garage__maint-cancel {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--g-subtle);
+  border: 1px solid var(--g-border);
+  padding: 0 1.5rem; border-radius: 8px;
+  font-family: var(--g-font); font-size: 1.4rem;
+  cursor: pointer; height: 44px; transition: color 0.15s, border-color 0.15s;
+}
+.garage__maint-cancel:hover { color: var(--g-text); border-color: #94a3b8; }
+
+.garage__maint-history { list-style: none; padding: 0; margin: 0; }
 .garage__maint-entry {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--g-border);
-  font-size: 0.85rem;
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 0; border-bottom: 1px solid var(--g-border);
+  font-size: 1.3rem;
 }
 .garage__maint-entry:last-child { border-bottom: none; }
 .garage__maint-entry--empty { color: var(--g-muted); font-style: italic; border: none; }
 .garage__maint-type-label { color: var(--g-text); font-weight: 600; flex: 1; }
 .garage__maint-date-label { color: var(--g-muted); white-space: nowrap; }
 .garage__maint-km-label {
-  color: var(--g-subtle);
-  font-size: 0.75rem;
-  white-space: nowrap;
-  background: var(--g-bg2);
-  padding: 0.125rem 0.4rem;
-  border-radius: 100px;
+  color: var(--g-subtle); font-size: 1.1rem; white-space: nowrap;
+  padding: 0.15rem 0.5rem; border-radius: 100px; border: 1px solid var(--g-border);
 }
 
-/* ── Order History Panel ── */
-.garage__orders-empty { color: var(--g-muted); font-size: 0.875rem; font-style: italic; margin: 0; }
+/* ── Order History ── */
+.garage__orders-empty { color: var(--g-muted); font-size: 1.3rem; font-style: italic; margin: 0; }
 .garage__orders-title {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--g-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 0 0 0.75rem;
+  font-size: 1.1rem; font-weight: 600; color: var(--g-muted);
+  text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 1rem;
 }
+
 .garage__order-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0;
-  border-bottom: 1px solid var(--g-border);
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.8rem 0; border-bottom: 1px solid var(--g-border);
 }
 .garage__order-row:last-child { border-bottom: none; }
 .garage__order-info { flex: 1; min-width: 0; }
 .garage__order-name {
-  display: block;
-  color: var(--g-text);
-  font-size: 0.875rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: block; color: var(--g-text); font-size: 1.4rem; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.garage__order-meta { display: block; color: var(--g-muted); font-size: 0.75rem; margin-top: 0.125rem; }
+.garage__order-meta { display: block; color: var(--g-muted); font-size: 1.2rem; margin-top: 0.15rem; }
 .garage__order-reorder {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: var(--g-red);
-  padding: 0.35rem 0.75rem;
-  border-radius: 100px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: background 0.15s;
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
+  color: var(--g-red); border: 1px solid #fecaca; background: transparent;
+  padding: 0 0.9rem; border-radius: 100px; font-size: 1.2rem; font-weight: 600;
+  text-decoration: none; white-space: nowrap; transition: background 0.15s;
+  height: 32px; display: inline-flex; align-items: center;
 }
-.garage__order-reorder:hover { background: #fee2e2; }
-
-/* ── Guest State ── */
-.garage--guest { text-align: center; padding-top: 5rem; padding-bottom: 5rem; }
-.garage--guest h1 {
-  font-family: var(--g-heading);
-  font-size: 3rem;
-  font-weight: 700;
-  color: var(--g-text);
-  letter-spacing: 0.02em;
-  line-height: 1.1;
-  margin: 0 0 0.75rem;
-}
-.garage--guest p { color: var(--g-muted); margin: 0 0 1.5rem; font-size: 1rem; }
-.garage__login-btn {
-  display: inline-block;
-  background: var(--g-red);
-  color: #fff;
-  text-decoration: none;
-  padding: 0.875rem 2.5rem;
-  border-radius: var(--g-r);
-  font-family: var(--g-font);
-  font-weight: 600;
-  font-size: 1rem;
-  transition: background 0.2s;
-}
-.garage__login-btn:hover { background: var(--g-red-hover); color: #fff; }
-
-/* ── Dashboard Hero ── */
-.garage__dashboard { margin-bottom: 2rem; }
-.garage__dashboard-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
-}
-.garage__dashboard-name {
-  font-family: var(--g-heading);
-  font-size: 3rem;
-  font-weight: 700;
-  color: var(--g-text);
-  margin: 0 0 0.375rem;
-  letter-spacing: 0.02em;
-  line-height: 1.1;
-}
-
-/* ── Stats Pills ── */
-.garage__dashboard-stats {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  align-items: center;
-  padding-top: 0.5rem;
-}
-.garage__stat-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.8rem;
-  border-radius: 100px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  background: var(--g-bg2);
-  border: 1px solid var(--g-border-soft);
-  color: var(--g-subtle);
-  white-space: nowrap;
-}
-.garage__stat-pill--alert {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: var(--g-red);
-}
-.garage__stat-pill--good {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-  color: #16a34a;
-}
-.garage__stat-pill--next {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: #2563eb;
-}
-
-/* ── Seasonal Tip Banner ── */
-.garage__seasonal-tip {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  background: #fafaf9;
-  border: 1px solid var(--g-border-soft);
-  border-left: 3px solid var(--g-accent);
-  border-radius: var(--g-r);
-  font-size: 0.875rem;
-}
-.garage__seasonal-tip-icon { font-size: 1.5rem; flex-shrink: 0; line-height: 1; }
-.garage__seasonal-tip-text { flex: 1; }
-.garage__seasonal-tip-label {
-  font-weight: 700;
-  color: var(--g-text);
-  margin-bottom: 0.15rem;
-}
-.garage__seasonal-tip-sub { color: var(--g-subtle); line-height: 1.4; }
-.garage__seasonal-tip-action {
-  flex-shrink: 0;
-  background: var(--g-accent);
-  color: #fff;
-  border: none;
-  padding: 0.45rem 0.9rem;
-  border-radius: 100px;
-  font-family: var(--g-font);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-decoration: none;
-  cursor: pointer;
-  transition: opacity 0.15s;
-  white-space: nowrap;
-}
-.garage__seasonal-tip-action:hover { opacity: 0.88; color: #fff; }
+.garage__order-reorder:hover { background: #fef2f2; }
 
 /* ── Activity Feed ── */
 .garage__activity {
-  margin-top: 2.5rem;
-  padding-top: 1.75rem;
+  margin-top: 4rem;
+  padding-top: 3rem;
   border-top: 1px solid var(--g-border);
 }
+
 .garage__activity-header {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.5rem;
 }
 .garage__activity-title {
   font-family: var(--g-heading);
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--g-text);
-  margin: 0;
-  letter-spacing: 0.02em;
+  font-size: 2.4rem; font-weight: 700; color: var(--g-text); margin: 0;
 }
-.garage__activity-sub {
-  color: var(--g-muted);
-  font-size: 0.85rem;
-}
-.garage__activity-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
+.garage__activity-sub { color: var(--g-muted); font-size: 1.4rem; }
+.garage__activity-list { list-style: none; padding: 0; margin: 0; }
+
 .garage__activity-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.8rem 0;
-  border-bottom: 1px solid var(--g-border);
-  font-size: 0.875rem;
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 0; border-bottom: 1px solid var(--g-border); font-size: 1.4rem;
 }
 .garage__activity-item:last-child { border-bottom: none; }
 .garage__activity-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--g-accent);
-  flex-shrink: 0;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--g-red); flex-shrink: 0;
 }
 .garage__activity-info { flex: 1; min-width: 0; }
 .garage__activity-what { font-weight: 600; color: var(--g-text); }
-.garage__activity-vehicle {
-  color: var(--g-muted);
-  font-size: 0.78rem;
-  margin-top: 0.1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.garage__activity-vehicle { color: var(--g-muted); font-size: 1.25rem; margin-top: 0.1rem; }
 .garage__activity-km {
-  color: var(--g-subtle);
-  font-size: 0.75rem;
-  background: var(--g-bg2);
-  padding: 0.1rem 0.4rem;
-  border-radius: 100px;
-  white-space: nowrap;
-  flex-shrink: 0;
+  color: var(--g-subtle); font-size: 1.2rem; white-space: nowrap;
+  flex-shrink: 0; border: 1px solid var(--g-border);
+  padding: 0.15rem 0.55rem; border-radius: 100px;
 }
-.garage__activity-when {
-  color: var(--g-muted);
-  white-space: nowrap;
-  font-size: 0.8rem;
+.garage__activity-when { color: var(--g-muted); white-space: nowrap; font-size: 1.3rem; }
+
+/* ── Guest State ── */
+.garage--guest {
+  text-align: center;
+  padding: 8rem var(--g-px);
+  background: #fff;
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* ── Mobile ── */
-@media (max-width: 768px) {
-  .garage { padding-left: 1.25rem; padding-right: 1.25rem; }
-  .garage__card { padding: 1.25rem; }
-  .garage__card-icon-wrap { width: 48px; height: 28px; }
-  .garage__vehicle-icon { width: 48px; }
-  .garage__card-actions { gap: 0.375rem; }
-  .garage__upsell-strip { gap: 0.25rem; }
-  .garage__dashboard-top { flex-direction: column; gap: 0.75rem; }
-  .garage__dashboard-name { font-size: 2.25rem; }
+.garage--guest .garage__header {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.garage--guest h1 {
+  font-family: var(--g-heading);
+  font-size: clamp(3rem, 5vw, 4.5rem);
+  font-weight: 700; color: var(--g-text); margin: 0 0 0.75rem; line-height: 1;
+}
+
+.garage--guest p { color: var(--g-muted); margin: 0 0 2.5rem; font-size: 1.5rem; }
+
+.garage__login-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--g-red); color: #fff; text-decoration: none;
+  padding: 0 2.25rem; height: 50px; border-radius: 8px;
+  font-family: var(--g-font); font-weight: 600; font-size: 1.4rem;
+  transition: background 0.15s, transform 0.15s;
+}
+.garage__login-btn:hover { background: var(--g-red-h); color: #fff; transform: translateY(-1px); }
+
+/* ═══════ RESPONSIVE ═══════ */
+@media (max-width: 900px) {
+  .garage__hero { padding: 2.5rem var(--g-px) 2rem; }
+  .garage__hero-inner { gap: 1.5rem; }
+  .garage__stat-cards { margin-left: 0; }
+}
+
+@media (max-width: 600px) {
+  .garage__hero-left { gap: 1rem; }
+  .garage__hero-title { font-size: 2.6rem; }
+  .garage__hero-badge { width: 42px; height: 42px; border-radius: 10px; }
+  .garage__stat-card { min-width: 70px; padding: 0.7rem 1rem; }
+  .garage__stat-num { font-size: 2.2rem; }
+  .garage__content { padding-top: 2rem; }
+  .garage__add-form { padding: 2rem; }
+  .garage__selects { grid-template-columns: 1fr; }
+  .garage__card { padding: 1.75rem; }
+  .garage__vehicles { grid-template-columns: 1fr; gap: 1rem; }
   .garage__seasonal-tip { flex-wrap: wrap; }
-  .garage__seasonal-tip-action { width: 100%; text-align: center; margin-top: 0.25rem; }
+  .garage__seasonal-tip-action { width: 100%; text-align: center; }
+}
+
+@media (max-width: 480px) {
+  .garage__maint-fields { grid-template-columns: 1fr; }
+  .garage__actions-secondary { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garage__add-form,
+  .garage__card { animation: none; }
+  .garage__add-btn:hover,
+  .garage__login-btn:hover { transform: none; }
+}
+
+/* ══════════════════════════════════════
+   DAWN INTERFERENCE RESET
+   Force margin:0 so customer.css can't
+   add vertical spacing to buttons/links
+══════════════════════════════════════ */
+.garage .garage__action-btn,
+.garage .garage__action-chip,
+.garage .garage__badge--inactive,
+.garage .garage__badge--active,
+.garage .garage__reminder-book,
+.garage .garage__add-btn,
+.garage .garage__save-btn,
+.garage .garage__cancel-btn,
+.garage .garage__empty-cta,
+.garage .garage__maint-save,
+.garage .garage__maint-cancel,
+.garage .garage__login-btn,
+.garage .garage__order-reorder,
+.garage .garage__seasonal-tip-action {
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure both <a> and <button> action buttons are flex and same height */
+.garage .garage__action-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 42px !important;
+  line-height: 1 !important;
+}
+
+/* Ensure chips are consistent */
+.garage .garage__action-chip {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 34px !important;
+  line-height: 1 !important;
+}
+
+/* ══════════════════════════════════════
+   SERVICE HISTORY PANEL
+══════════════════════════════════════ */
+.garage__history-panel {
+  padding-top: 2.5rem;
+}
+
+.garage__history-header {
+  margin-bottom: 2rem;
+}
+
+.garage__history-title {
+  font-family: var(--g-heading);
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: var(--g-text);
+  margin: 0 0 0.4rem;
+  line-height: 1;
+}
+
+.garage__history-sub {
+  color: var(--g-muted);
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.garage__history-list {
+  background: #fff;
+  border: 1px solid var(--g-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.garage__history-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid var(--g-border);
+  gap: 1.25rem;
+}
+.garage__history-entry:last-child { border-bottom: none; }
+
+.garage__history-entry-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.garage__history-entry-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.garage__history-type {
+  font-weight: 600;
+  color: var(--g-text);
+  font-size: 1.4rem;
+}
+
+.garage__history-vehicle {
+  color: var(--g-muted);
+  font-size: 1.25rem;
+}
+
+.garage__history-date {
+  color: var(--g-muted);
+  font-size: 1.3rem;
+  white-space: nowrap;
+}
+
+.garage__history-km {
+  color: var(--g-subtle);
+  font-size: 1.2rem;
+  white-space: nowrap;
+  padding: 0.15rem 0.55rem;
+  border-radius: 100px;
+  border: 1px solid var(--g-border);
+}
+
+.garage__history-empty-msg {
+  color: var(--g-muted);
+  font-size: 1.4rem;
+  text-align: center;
+  padding: 5rem 2rem;
+  margin: 0;
+}
+
+/* ══════════════════════════════════════
+   ORDER HISTORY PANEL  (prefix: goh-)
+══════════════════════════════════════ */
+.garage__orders-panel { padding-top: 2.5rem; }
+
+.goh-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.goh-title {
+  font-family: var(--g-heading);
+  font-size: 2.6rem; font-weight: 700; color: var(--g-text); margin: 0; line-height: 1;
+}
+.goh-sub { color: var(--g-muted); font-size: 1.4rem; margin: 0; }
+
+.goh-orders { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.goh-order {
+  background: #fff;
+  border: 1px solid var(--g-border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.goh-order-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.75rem;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--g-border);
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.goh-order-head-left  { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.goh-order-head-right { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+
+.goh-order-num  { font-family: var(--g-heading); font-size: 1.8rem; font-weight: 700; color: var(--g-text); }
+.goh-order-date { color: var(--g-muted); font-size: 1.3rem; }
+.goh-order-total { font-weight: 700; color: var(--g-text); font-size: 1.4rem; white-space: nowrap; }
+
+.goh-order-badge {
+  font-size: 1.1rem; font-weight: 600;
+  padding: 0.2rem 0.7rem; border-radius: 100px; white-space: nowrap;
+}
+.goh-order-badge--paid              { color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; }
+.goh-order-badge--pending           { color: #b45309; background: #fffbeb; border: 1px solid #fde68a; }
+.goh-order-badge--refunded,
+.goh-order-badge--voided            { color: #6b7280; background: #f3f4f6; border: 1px solid var(--g-border); }
+.goh-order-badge--fulfilled         { color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; }
+.goh-order-badge--partial           { color: #7c3aed; background: #f5f3ff; border: 1px solid #ddd6fe; }
+
+.goh-order-detail {
+  color: var(--g-red); border: 1px solid #fecaca; background: transparent;
+  padding: 0 0.85rem; border-radius: 100px; font-size: 1.2rem; font-weight: 600;
+  text-decoration: none; height: 30px; display: inline-flex; align-items: center;
+  transition: background 0.15s; white-space: nowrap;
+}
+.goh-order-detail:hover { background: #fef2f2; }
+
+.goh-items { display: flex; flex-direction: column; }
+
+.goh-item {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 1.75rem;
+  border-bottom: 1px solid var(--g-border);
+}
+.goh-item:last-child { border-bottom: none; }
+
+.goh-item-img {
+  width: 58px; height: 58px; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--g-border); flex-shrink: 0; background: #f8fafc;
+  display: flex; align-items: center; justify-content: center;
+}
+.goh-item-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.goh-item-img--placeholder { color: #d1d5db; }
+
+.goh-item-info {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 0.2rem;
+}
+.goh-item-title   { font-weight: 600; color: var(--g-text); font-size: 1.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.goh-item-variant { color: var(--g-subtle); font-size: 1.25rem; }
+.goh-item-meta    { color: var(--g-muted); font-size: 1.2rem; }
+
+.goh-item-reorder {
+  flex-shrink: 0; color: var(--g-red); border: 1.5px solid var(--g-red);
+  background: transparent; padding: 0 1.1rem; border-radius: 100px;
+  font-size: 1.25rem; font-weight: 600; text-decoration: none;
+  height: 34px; display: inline-flex; align-items: center;
+  transition: background 0.15s, color 0.15s; white-space: nowrap;
+}
+.goh-item-reorder:hover { background: var(--g-red); color: #fff; }
+
+/* Empty state */
+.goh-empty {
+  text-align: center; padding: 6rem 2rem;
+  background: #fff; border: 2px dashed var(--g-border); border-radius: 14px;
+}
+.goh-empty svg { color: var(--g-border); margin-bottom: 1rem; }
+.goh-empty-title {
+  font-family: var(--g-heading); font-size: 2.2rem; font-weight: 700;
+  color: var(--g-text); margin: 0 0 0.5rem;
+}
+.goh-empty-sub  { color: var(--g-muted); font-size: 1.4rem; margin: 0 0 2rem; }
+.goh-empty-cta {
+  display: inline-flex; align-items: center;
+  background: var(--g-red); color: #fff; text-decoration: none;
+  padding: 0 2rem; height: 46px; border-radius: 8px;
+  font-size: 1.4rem; font-weight: 600; transition: background 0.15s;
+}
+.goh-empty-cta:hover { background: var(--g-red-h); color: #fff; }
+
+/* Dawn reset */
+.garage .goh-order-detail,
+.garage .goh-item-reorder,
+.garage .goh-empty-cta {
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 600px) {
+  .goh-order-head { padding: 1rem 1.25rem; }
+  .goh-item       { padding: 0.9rem 1.25rem; }
+  .goh-item-img   { width: 46px; height: 46px; }
+}
+
+/* ══════════════════════════════════════
+   BOOKINGS PANEL  (prefix: gbk-)
+══════════════════════════════════════ */
+.garage__bookings-panel { padding-top: 2.5rem; }
+
+.gbk-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.gbk-title {
+  font-family: var(--g-heading);
+  font-size: 2.6rem; font-weight: 700; color: var(--g-text); margin: 0; line-height: 1;
+}
+.gbk-sub { color: var(--g-muted); font-size: 1.4rem; margin: 0; }
+
+.gbk-list { display: flex; flex-direction: column; gap: 1rem; }
+
+/* Loading state */
+.gbk-loading {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 4rem 2rem;
+  background: #fff; border: 1px solid var(--g-border); border-radius: 14px;
+  justify-content: center; color: var(--g-muted); font-size: 1.4rem;
+}
+.gbk-spinner {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--g-border); border-top-color: var(--g-red);
+  animation: gbk-spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes gbk-spin { to { transform: rotate(360deg); } }
+
+/* Booking card */
+.gbk-card {
+  background: #fff; border: 1px solid var(--g-border); border-radius: 14px;
+  padding: 1.5rem 1.75rem;
+  display: flex; align-items: center; gap: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  animation: garage-card-in 0.25s ease;
+}
+.gbk-card--confirmed { border-left: 3px solid #16a34a; }
+.gbk-card--tentative  { border-left: 3px solid #d97706; }
+.gbk-card--cancelled  { border-left: 3px solid #9ca3af; opacity: 0.65; }
+
+.gbk-date-col {
+  flex-shrink: 0; text-align: center;
+  background: #f8fafc; border: 1px solid var(--g-border);
+  border-radius: 10px; padding: 0.75rem 1.1rem; min-width: 70px;
+}
+.gbk-date-day   { font-family: var(--g-heading); font-size: 2.4rem; font-weight: 700; color: var(--g-text); line-height: 1; }
+.gbk-date-month { font-size: 1.1rem; font-weight: 500; color: var(--g-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.1rem; }
+
+.gbk-info { flex: 1; min-width: 0; }
+.gbk-title-text { font-family: var(--g-heading); font-size: 1.8rem; font-weight: 700; color: var(--g-text); margin: 0 0 0.3rem; line-height: 1.2; }
+.gbk-meta { color: var(--g-muted); font-size: 1.3rem; display: flex; flex-wrap: wrap; gap: 0 1rem; }
+.gbk-meta-item { display: flex; align-items: center; gap: 0.3rem; }
+
+.gbk-status {
+  flex-shrink: 0; font-size: 1.1rem; font-weight: 600;
+  padding: 0.2rem 0.7rem; border-radius: 100px; white-space: nowrap;
+}
+.gbk-status--confirmed { color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; }
+.gbk-status--tentative { color: #b45309; background: #fffbeb; border: 1px solid #fde68a; }
+.gbk-status--cancelled { color: #6b7280; background: #f3f4f6; border: 1px solid var(--g-border); }
+
+/* Empty / configure states */
+.gbk-empty, .gbk-configure {
+  text-align: center; padding: 5rem 2rem;
+  background: #fff; border: 2px dashed var(--g-border); border-radius: 14px;
+}
+.gbk-empty-title, .gbk-configure-title {
+  font-family: var(--g-heading); font-size: 2.2rem; font-weight: 700;
+  color: var(--g-text); margin: 0 0 0.5rem;
+}
+.gbk-empty-sub, .gbk-configure-sub { color: var(--g-muted); font-size: 1.4rem; margin: 0 0 1.5rem; }
+.gbk-cta {
+  display: inline-flex; align-items: center;
+  background: var(--g-red); color: #fff; text-decoration: none;
+  padding: 0 2rem; height: 44px; border-radius: 8px;
+  font-size: 1.35rem; font-weight: 600; transition: background 0.15s;
+}
+.gbk-cta:hover { background: var(--g-red-h); color: #fff; }
+
+.garage .gbk-cta { margin: 0 !important; box-sizing: border-box !important; }
+
+@media (max-width: 480px) {
+  .gbk-card { flex-wrap: wrap; gap: 1rem; }
+  .gbk-date-col { flex-direction: row; min-width: 0; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.9rem; }
+  .gbk-date-day { font-size: 1.8rem; }
+}
+
+/* ══════════════════════════════════════
+   ACCOUNT PANEL  (prefix: gac-)
+══════════════════════════════════════ */
+.garage__account-panel { padding-top: 2.5rem; }
+
+/* ── Profile banner ── */
+.gac-profile-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: #fff;
+  border: 1px solid var(--g-border);
+  border-radius: 14px;
+  padding: 1.75rem 2rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.gac-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--g-red);
+  color: #fff;
+  font-family: var(--g-heading);
+  font-size: 2.4rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+}
+
+.gac-profile-info { flex: 1; min-width: 0; }
+
+.gac-name {
+  font-family: var(--g-heading);
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--g-text);
+  margin: 0 0 0.2rem;
+  line-height: 1.1;
+}
+
+.gac-email { color: var(--g-muted); font-size: 1.35rem; margin: 0 0 0.15rem; }
+.gac-since { color: var(--g-subtle); font-size: 1.2rem; margin: 0; }
+
+.gac-profile-stats { display: flex; gap: 1rem; margin-left: auto; }
+
+.gac-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1.4rem;
+  background: #f8fafc;
+  border: 1px solid var(--g-border);
+  border-radius: 10px;
+  text-align: center;
+  min-width: 88px;
+}
+
+.gac-stat-num {
+  font-family: var(--g-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--g-text);
+  line-height: 1;
+}
+
+.gac-stat-label {
+  font-size: 1.05rem;
+  color: var(--g-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 0.3rem;
+  white-space: nowrap;
+}
+
+/* ── Two-col grid ── */
+.gac-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Cards ── */
+.gac-card {
+  background: #fff;
+  border: 1px solid var(--g-border);
+  border-radius: 14px;
+  padding: 1.75rem 2rem;
+}
+
+.gac-card--full { margin-bottom: 1.5rem; }
+
+.gac-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--g-border);
+}
+
+.gac-card-title {
+  font-family: var(--g-heading);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--g-text);
+  margin: 0;
+  line-height: 1;
+}
+
+.gac-card-link {
+  color: var(--g-red);
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.gac-card-link:hover { opacity: 0.7; }
+
+/* ── Address ── */
+.gac-address {
+  font-style: normal;
+  color: var(--g-text);
+  font-size: 1.4rem;
+  line-height: 1.75;
+}
+.gac-address strong { font-weight: 600; }
+
+/* ── Quick links ── */
+.gac-quick-links { display: flex; flex-direction: column; }
+
+.gac-quick-link {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.9rem 0;
+  color: var(--g-text);
+  text-decoration: none;
+  font-size: 1.4rem;
+  border-bottom: 1px solid var(--g-border);
+  transition: color 0.15s;
+}
+.gac-quick-link:last-child { border-bottom: none; }
+.gac-quick-link:hover { color: var(--g-red); }
+.gac-quick-link > svg:first-child { color: var(--g-muted); flex-shrink: 0; transition: color 0.15s; }
+.gac-quick-link:hover > svg:first-child { color: var(--g-red); }
+.gac-quick-link span { flex: 1; }
+.gac-chevron { color: var(--g-border); flex-shrink: 0; }
+
+/* ── Orders ── */
+.gac-orders-list { display: flex; flex-direction: column; }
+
+.gac-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--g-border);
+  gap: 1rem;
+}
+.gac-order-row:last-child { border-bottom: none; }
+
+.gac-order-left  { display: flex; flex-direction: column; gap: 0.2rem; }
+.gac-order-right { display: flex; align-items: center; gap: 0.65rem; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+.gac-order-num  { font-weight: 700; color: var(--g-text); font-size: 1.4rem; }
+.gac-order-date { color: var(--g-muted); font-size: 1.25rem; }
+.gac-order-total { font-weight: 600; color: var(--g-text); font-size: 1.4rem; white-space: nowrap; }
+
+.gac-order-badge {
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0.2rem 0.7rem;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.gac-order-badge--paid              { color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; }
+.gac-order-badge--pending           { color: #b45309; background: #fffbeb; border: 1px solid #fde68a; }
+.gac-order-badge--refunded,
+.gac-order-badge--partially_refunded,
+.gac-order-badge--voided            { color: #6b7280; background: #f3f4f6; border: 1px solid var(--g-border); }
+
+.gac-order-view {
+  color: var(--g-red);
+  border: 1px solid #fecaca;
+  background: transparent;
+  padding: 0 0.85rem;
+  border-radius: 100px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s;
+}
+.gac-order-view:hover { background: #fef2f2; }
+
+/* ── Empty / text helpers ── */
+.gac-empty-text { color: var(--g-muted); font-size: 1.4rem; margin: 0.5rem 0; }
+.gac-text-link  { color: var(--g-red); text-decoration: none; font-weight: 600; }
+.gac-text-link:hover { text-decoration: underline; }
+
+/* ── Footer / sign out ── */
+.gac-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem 0 1rem;
+}
+
+.gac-signout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--g-subtle);
+  font-size: 1.3rem;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.gac-signout:hover { color: var(--g-red); }
+
+/* Dawn reset for gac- links */
+.garage .gac-card-link,
+.garage .gac-quick-link,
+.garage .gac-order-view,
+.garage .gac-text-link,
+.garage .gac-signout {
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .gac-profile-banner { flex-direction: column; align-items: flex-start; }
+  .gac-profile-stats  { margin-left: 0; width: 100%; }
+  .gac-stat           { flex: 1; }
+  .gac-grid           { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .gac-order-right { gap: 0.4rem; }
+  .gac-order-badge { display: none; }
 }
 {% endstylesheet %}
 
@@ -916,6 +2001,16 @@
 {
   "name": "t:sections.my_garage.name",
   "settings": [
+    {
+      "type": "header",
+      "content": "Booking system"
+    },
+    {
+      "type": "text",
+      "id": "booking_api_url",
+      "label": "Booking API URL",
+      "info": "Your Vercel booking API base URL, e.g. https://prince-tires-booking.vercel.app"
+    },
     {
       "type": "header",
       "content": "Vehicle image"

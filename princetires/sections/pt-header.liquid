@@ -1,21 +1,17 @@
 <header class="pt-header" data-pt-header>
   <div class="pt-header__container">
-    {%- comment -%} Logo — centered above nav {%- endcomment -%}
-    <div class="pt-header__logo-row">
-      <a href="{{ routes.root_url }}" class="pt-header__logo" aria-label="{{ shop.name }}">
-        {%- if section.settings.logo != blank -%}
-          {{ section.settings.logo | image_url: height: 40 | image_tag: class: "pt-header__logo-img" }}
-        {%- else -%}
-          <div class="pt-header__logo-mark">
-            <span>P</span>
-          </div>
-        {%- endif -%}
-      </a>
-    </div>
 
-    {%- comment -%} Nav row: links centered, account/cart right {%- endcomment -%}
-    <div class="pt-header__nav-row">
-      <nav class="pt-header__nav" aria-label="{{ 'sections.pt_header.navigation' | t }}">
+    {%- comment -%} Logo — left corner {%- endcomment -%}
+    <a href="{{ routes.root_url }}" class="pt-header__logo" aria-label="{{ shop.name }}">
+      {%- if section.settings.logo != blank -%}
+        {{ section.settings.logo | image_url: height: 44 | image_tag: class: "pt-header__logo-img" }}
+      {%- else -%}
+        <div class="pt-header__logo-mark"><span>P</span></div>
+      {%- endif -%}
+    </a>
+
+    {%- comment -%} Nav links — center {%- endcomment -%}
+    <nav class="pt-header__nav" aria-label="{{ 'sections.pt_header.navigation' | t }}">
         {%- for block in section.blocks -%}
           {%- if block.type == 'nav_link' -%}
             <a
@@ -27,24 +23,21 @@
             </a>
           {%- endif -%}
         {%- endfor -%}
-      </nav>
+    </nav>
 
-      <div class="pt-header__icons">
+    {%- comment -%} Icons — right {%- endcomment -%}
+    <div class="pt-header__icons">
         {%- if customer -%}
-          <a href="/pages/my-garage" class="pt-header__icon pt-header__garage-link" aria-label="{{ 'sections.pt_header.garage' | t }}" data-garage-customer-id="{{ customer.id }}">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <path d="M9 22V12h6v10"/>
-            </svg>
-            <span class="pt-header__garage-label">{{ 'sections.pt_header.my_garage' | t }}</span>
-            <span class="pt-header__garage-count" data-garage-count hidden>0</span>
-          </a>
-          <a href="{{ routes.account_url }}" class="pt-header__icon" aria-label="{{ 'sections.pt_header.account' | t }}">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-          </a>
+          {%- if customer.tags contains 'wholesale' -%}
+            <a href="/pages/wholesale-portal" class="pt-header__icon pt-header__garage-link" aria-label="My portal">
+              <span class="pt-header__garage-label">My portal</span>
+            </a>
+          {%- else -%}
+            <a href="{{ routes.account_url }}" class="pt-header__icon pt-header__garage-link" aria-label="{{ 'sections.pt_header.garage' | t }}" data-garage-customer-id="{{ customer.id }}">
+              <span class="pt-header__garage-label">{{ 'sections.pt_header.my_garage' | t }}</span>
+              <span class="pt-header__garage-count" data-garage-count hidden>0</span>
+            </a>
+          {%- endif -%}
         {%- else -%}
           <a href="{{ routes.account_login_url }}" class="pt-header__icon" aria-label="{{ 'sections.pt_header.account' | t }}">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -71,13 +64,24 @@
             <span class="pt-header__cart-count">{{ cart.item_count }}</span>
           {%- endif -%}
         </a>
-      </div>
     </div>
 
-    {%- comment -%} Mobile menu button {%- endcomment -%}
+    {%- comment -%} Mobile hamburger {%- endcomment -%}
     <button class="pt-header__menu-btn" aria-label="{{ 'sections.pt_header.menu' | t }}" data-pt-menu-toggle aria-expanded="false">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
+
+    {%- comment -%} Mobile cart (always visible on mobile) {%- endcomment -%}
+    <a href="{{ routes.cart_url }}" class="pt-header__icon pt-header__cart pt-header__cart-mobile" aria-label="{{ 'sections.pt_header.cart' | t }}">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <path d="M16 10a4 4 0 0 1-8 0"/>
+      </svg>
+      {%- if cart.item_count > 0 -%}
+        <span class="pt-header__cart-count">{{ cart.item_count }}</span>
+      {%- endif -%}
+    </a>
   </div>
 
   {%- comment -%} Mobile drawer {%- endcomment -%}
@@ -89,11 +93,17 @@
         {%- endif -%}
       {%- endfor -%}
       {%- if customer -%}
-        <a href="/pages/my-garage" class="pt-header__mobile-link pt-header__mobile-garage">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
-          {{ 'sections.pt_header.my_garage' | t }}
-        </a>
-        <a href="{{ routes.account_url }}" class="pt-header__mobile-link">{{ 'sections.pt_header.account' | t }}</a>
+        {%- if customer.tags contains 'wholesale' -%}
+          <a href="/pages/wholesale-portal" class="pt-header__mobile-link pt-header__mobile-garage">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M12 12v4"/><path d="M8 12h8"/></svg>
+            My portal
+          </a>
+        {%- else -%}
+          <a href="/pages/garage" class="pt-header__mobile-link pt-header__mobile-garage">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            {{ 'sections.pt_header.my_garage' | t }}
+          </a>
+        {%- endif -%}
       {%- else -%}
         <a href="{{ routes.account_login_url }}" class="pt-header__mobile-link">{{ 'customer.login_page.sign_in' | t }}</a>
       {%- endif -%}
@@ -115,160 +125,191 @@
 </script>
 
 {% stylesheet %}
+  /* ═══════════════════════════════════════════
+     PT-HEADER — Single-row, logo left
+     Palette: OLED black · red #dc2626 · white
+  ═══════════════════════════════════════════ */
   .pt-header {
     background: #000;
     position: sticky;
     top: 0;
     z-index: 100;
+    border-bottom: 1px solid #1a1a1a;
   }
+
+  /* ── Single flex row ── */
   .pt-header__container {
-    max-width: 72rem;
+    max-width: 80rem;
     margin: 0 auto;
-    padding: 1rem 1.5rem 1.25rem;
-  }
-  .pt-header__logo-row {
+    padding: 0 2rem;
+    height: 72px;
     display: flex;
-    justify-content: center;
-    margin-bottom: 1rem;
+    align-items: center;
+    gap: 2rem;
   }
+
+  /* ── Logo — left ── */
   .pt-header__logo {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
     text-decoration: none;
-    display: block;
   }
   .pt-header__logo-img {
-    height: 32px;
+    height: 44px;
     width: auto;
+    display: block;
   }
   .pt-header__logo-mark {
-    width: 32px;
-    height: 32px;
-    background: #fff;
-    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    background: #dc2626;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .pt-header__logo-mark span {
-    color: #000;
-    font-weight: 700;
-    font-size: 14px;
+    color: #fff;
+    font-weight: 800;
+    font-size: 18px;
     line-height: 1;
   }
-  .pt-header__nav-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-  }
+
+  /* ── Nav links — grow to fill, center content ── */
   .pt-header__nav {
+    flex: 1;
     display: flex;
-    gap: 3rem;
     align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
   }
   .pt-header__link {
-    color: #d1d5db;
+    color: #a1a1aa;
     text-decoration: none;
-    font-size: 0.875rem;
-    transition: color 0.2s;
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: color 0.18s, background 0.18s;
+    white-space: nowrap;
   }
   .pt-header__link:hover {
     color: #fff;
+    background: rgba(255,255,255,0.06);
   }
+  .pt-header__link:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+  }
+
+  /* ── Icons — right ── */
   .pt-header__icons {
+    flex-shrink: 0;
     display: flex;
-    gap: 0.75rem;
     align-items: center;
-    position: absolute;
-    right: 0;
+    gap: 0.5rem;
   }
   .pt-header__icon {
-    color: #d1d5db;
-    transition: color 0.2s;
+    color: #a1a1aa;
+    text-decoration: none;
     display: flex;
     align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    transition: color 0.18s, background 0.18s;
     position: relative;
   }
   .pt-header__icon:hover {
     color: #fff;
+    background: rgba(255,255,255,0.08);
   }
+
+  /* Cart badge */
   .pt-header__cart-count {
     position: absolute;
-    top: -6px;
-    right: -8px;
+    top: 4px;
+    right: 4px;
     background: #dc2626;
     color: #fff;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    width: 16px;
+    min-width: 16px;
     height: 16px;
-    border-radius: 50%;
+    border-radius: 99px;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0 3px;
     line-height: 1;
   }
+
+  /* Garage / Portal pill */
   .pt-header__garage-link {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
+    width: auto;
+    padding: 0 14px;
+    gap: 7px;
     color: #dc2626;
-    text-decoration: none;
-    transition: color 0.2s;
-    position: relative;
+    background: rgba(220, 38, 38, 0.08);
+    border: 1px solid rgba(220, 38, 38, 0.25);
   }
   .pt-header__garage-link:hover {
-    color: #ef4444;
+    color: #fff;
+    background: #dc2626;
+    border-color: #dc2626;
   }
   .pt-header__garage-label {
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: 0.85rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    display: none;
-  }
-  @media (min-width: 900px) {
-    .pt-header__garage-label {
-      display: inline;
-    }
+    letter-spacing: 0.06em;
+    white-space: nowrap;
   }
   .pt-header__garage-count {
-    position: absolute;
-    top: -6px;
-    right: -8px;
     background: #dc2626;
     color: #fff;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    width: 16px;
+    min-width: 16px;
     height: 16px;
-    border-radius: 50%;
+    border-radius: 99px;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0 3px;
     line-height: 1;
   }
-  .pt-header__mobile-garage {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #dc2626;
-    font-weight: 600;
-  }
+
+  /* ── Hamburger — hidden on desktop ── */
   .pt-header__menu-btn {
     display: none;
     background: none;
     border: none;
-    color: #d1d5db;
+    color: #a1a1aa;
     cursor: pointer;
     padding: 0;
-    position: absolute;
-    right: 1.5rem;
-    top: 1.25rem;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    flex-shrink: 0;
+    transition: background 0.18s, color 0.18s;
   }
+  .pt-header__menu-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+  }
+
+  /* ── Mobile drawer ── */
   .pt-header__mobile-menu {
     display: none;
-    border-top: 1px solid #1f1f1f;
-    padding: 1rem 1.5rem;
+    border-top: 1px solid #1a1a1a;
+    padding: 1.25rem 1.5rem 1.5rem;
+    background: #000;
   }
   .pt-header__mobile-menu--open {
     display: block;
@@ -276,50 +317,71 @@
   .pt-header__mobile-nav {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.25rem;
   }
   .pt-header__mobile-link {
-    color: #d1d5db;
+    color: #a1a1aa;
     text-decoration: none;
-    font-size: 0.875rem;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    transition: color 0.18s, background 0.18s;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 44px;
   }
+  .pt-header__mobile-link:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.06);
+  }
+  .pt-header__mobile-garage {
+    color: #dc2626;
+    font-weight: 700;
+    background: rgba(220, 38, 38, 0.08);
+  }
+  .pt-header__mobile-garage:hover {
+    color: #fff;
+    background: #dc2626;
+  }
+
+  /* ══════════════════════════
+     MOBILE  (≤ 768px)
+  ══════════════════════════ */
   @media (max-width: 768px) {
-    /* Single row: [☰] [LOGO] [🛒] */
     .pt-header__container {
-      display: flex;
-      flex-wrap: nowrap;
-      align-items: center;
-      padding: 0.75rem 1.25rem;
-    }
-    .pt-header__menu-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: static;
-      top: auto;
-      right: auto;
-      order: 1;
-      flex: 0 0 32px;
-      padding: 0;
-    }
-    .pt-header__logo-row {
-      order: 2;
-      flex: 1;
-      margin-bottom: 0;
-      justify-content: center;
-    }
-    .pt-header__nav-row {
-      order: 3;
-      flex: 0 0 32px;
-      justify-content: flex-end;
+      padding: 0 1rem;
+      height: 60px;
+      gap: 0;
     }
     .pt-header__nav { display: none; }
-    .pt-header__icons {
-      display: flex;
-      position: static;
+    .pt-header__icons { display: none; }
+    .pt-header__menu-btn { display: flex; }
+
+    /* Mobile top row: hamburger | logo (center) | cart */
+    .pt-header__logo {
+      flex: 1;
+      justify-content: center;
     }
-    /* Hide account + garage, keep only cart + phone */
-    .pt-header__icon:not(.pt-header__cart):not(.pt-header__phone) { display: none; }
+  }
+
+  /* Hide mobile cart on desktop */
+  .pt-header__cart-mobile {
+    display: none;
+  }
+  @media (max-width: 768px) {
+    .pt-header__cart-mobile {
+      display: flex;
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pt-header__link,
+    .pt-header__icon,
+    .pt-header__garage-link { transition: none; }
   }
 {% endstylesheet %}
 

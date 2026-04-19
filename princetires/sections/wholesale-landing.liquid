@@ -1,0 +1,2646 @@
+{%- comment -%}
+  Prince Tires — Wholesale section
+  Used by two templates:
+    page.wholesale         → /pages/wholesale        = info landing (always)
+    page.wholesale-portal  → /pages/wholesale-portal = B2B dashboard (wholesale customers only)
+
+  States on info landing (/pages/wholesale):
+    1. Guest                   → Info + Register CTA
+    2. Wholesale customer      → Info + "Go to my portal" CTA
+    3. Pending                 → Info + Pending notice
+    4. Regular logged-in       → Info + Apply CTA
+
+  States on portal (/pages/wholesale-portal):
+    1. Wholesale customer      → Full dashboard
+    2. Anyone else             → Redirect to /pages/wholesale
+{%- endcomment -%}
+
+{%- liquid
+  assign is_wholesale    = false
+  assign is_pending      = false
+  assign is_portal_page  = false
+  if template.suffix == 'wholesale-portal'
+    assign is_portal_page = true
+  endif
+  if customer
+    if customer.tags contains 'wholesale'
+      assign is_wholesale = true
+    elsif customer.note contains 'WHOLESALE:'
+      assign is_pending = true
+    endif
+  endif
+-%}
+
+{%- comment -%} ── Portal page: redirect non-wholesale away ── {%- endcomment -%}
+{%- if is_portal_page -%}
+  {%- unless is_wholesale -%}
+    <script>window.location.replace('/pages/wholesale');</script>
+  {%- endunless -%}
+{%- endif -%}
+
+<style>
+/* ═══════════════════════════════════════════════════
+   WHOLESALE PAGE — Prince Tires
+   Red #DC2626 · Dark #111111 · Fonts: Barlow Condensed + Outfit
+═══════════════════════════════════════════════════ */
+.wh {
+  --red:       #DC2626;
+  --red-dim:   #B91C1C;
+  --red-glow:  rgba(220,38,38,0.18);
+  --red-soft:  #FEF2F2;
+  --dark:      #111111;
+  --navy:      #1a1a1a;
+  --mid:       #334155;
+  --muted:     #64748B;
+  --subtle:    #94A3B8;
+  --border:    #E2E8F0;
+  --surface:   #F8FAFC;
+  --white:     #FFFFFF;
+  --green:     #16A34A;
+  --green-bg:  #F0FDF4;
+  --amber:     #D97706;
+  --amber-bg:  #FFFBEB;
+  --inner:     1100px;
+  --px:        clamp(20px, 4vw, 48px);
+  font-family: 'Outfit', sans-serif;
+  color: var(--navy);
+}
+
+/* ── HERO ── */
+.wh-hero {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 0 var(--px);
+  position: relative;
+  overflow: hidden;
+}
+.wh-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 80% at 100% 60%, rgba(220,38,38,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 0% 0%, rgba(220,38,38,0.03) 0%, transparent 55%);
+  pointer-events: none;
+}
+.wh-hero::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--red);
+  pointer-events: none;
+}
+.wh-hero__inner {
+  max-width: var(--inner);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 72px;
+  align-items: center;
+  padding: 88px 0 104px;
+  position: relative;
+  z-index: 1;
+}
+.wh-hero__left { padding-right: 16px; }
+.wh-hero__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+  background: rgba(220,38,38,0.1);
+  border: 1px solid rgba(220,38,38,0.22);
+  padding: 6px 14px;
+  border-radius: 99px;
+  margin-bottom: 20px;
+}
+.wh-hero__tag svg { width:12px;height:12px; }
+.wh-hero__h1 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(46px, 6.5vw, 80px);
+  font-weight: 800;
+  color: var(--dark);
+  line-height: 0.95;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  margin: 0 0 22px;
+}
+.wh-hero__h1 em { color: var(--red); font-style: normal; }
+.wh-hero__sub {
+  font-size: clamp(15px, 2vw, 18px);
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 520px;
+  margin: 0 0 36px;
+}
+.wh-hero__sub strong { color: var(--mid); font-weight: 600; }
+.wh-hero__cta-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.wh-hero__pending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--amber-bg);
+  border: 1px solid #fcd34d;
+  color: var(--amber);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 16px;
+  border-radius: 99px;
+}
+
+/* ── REGISTER CARD (right side of hero) ── */
+.wh-reg-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 36px 32px;
+  box-shadow: 0 8px 40px rgba(15,23,42,0.10), 0 0 0 1px var(--border);
+  position: relative;
+}
+.wh-reg-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 32px; right: 32px;
+  height: 3px;
+  background: var(--red);
+  border-radius: 0 0 3px 3px;
+}
+.wh-reg-card__head {
+  margin-bottom: 24px;
+  text-align: center;
+}
+.wh-reg-card__icon {
+  width: 56px; height: 56px;
+  background: var(--red-soft);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--red);
+  margin: 0 auto 14px;
+}
+.wh-reg-card__icon svg { width:24px;height:24px; }
+.wh-reg-card__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin: 0 0 6px;
+  letter-spacing: 0.01em;
+}
+.wh-reg-card__sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  font-weight: 300;
+}
+.wh-reg-card__perks {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wh-reg-card__perk {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--mid);
+}
+.wh-reg-card__perk-check {
+  width: 20px; height: 20px;
+  background: var(--green-bg);
+  border-radius: 50%;
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.wh-reg-card__perk-check svg { width:11px;height:11px; }
+.wh-reg-card__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 52px;
+  background: var(--red);
+  color: #fff;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.18s, box-shadow 0.18s;
+  letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.wh-reg-card__btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -75%;
+  width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  transform: skewX(-20deg);
+  animation: wh-shimmer 3s ease-in-out infinite;
+}
+@keyframes wh-shimmer { 0%{left:-75%} 60%{left:125%} 100%{left:125%} }
+.wh-reg-card__btn:hover { background: var(--red-dim); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(220,38,38,0.28); }
+.wh-reg-card__btn svg { width:17px;height:17px; flex-shrink:0; }
+.wh-reg-card__login {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.wh-reg-card__login a { color: var(--red); text-decoration: none; font-weight: 500; }
+.wh-reg-card__login a:hover { text-decoration: underline; }
+.wh-reg-card__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+}
+.wh-reg-card__divider::before,
+.wh-reg-card__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.wh-reg-card__divider span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--subtle);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.wh-reg-card__approval {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.wh-reg-card__approval svg { width:14px;height:14px; color:var(--green); flex-shrink:0; }
+
+/* ── STATS BAR ── */
+.wh-stats-bar {
+  background: var(--red);
+  padding: 0 var(--px);
+}
+.wh-stats-bar__inner {
+  max-width: var(--inner);
+  margin: 0 auto;
+  display: flex;
+  align-items: stretch;
+}
+.wh-stat {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 22px 20px;
+  border-right: 1px solid rgba(255,255,255,0.15);
+  text-align: center;
+}
+.wh-stat:last-child { border-right: none; }
+.wh-stat__val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  display: block;
+  letter-spacing: -0.01em;
+}
+.wh-stat__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 5px;
+  display: block;
+}
+
+/* ── SECTION SHARED ── */
+.wh-section {
+  padding: 80px var(--px);
+}
+.wh-section--alt { background: var(--surface); }
+.wh-section__inner {
+  max-width: var(--inner);
+  margin: 0 auto;
+}
+.wh-section__hd { margin-bottom: 52px; }
+.wh-section__hd--center { text-align: center; }
+.wh-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 10px;
+}
+.wh-h2 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+}
+.wh-lead {
+  font-size: 15.5px;
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 1.75;
+  max-width: 560px;
+}
+.wh-lead--center { margin: 0 auto; text-align: center; }
+
+/* ── BENEFITS ── */
+.wh-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.wh-benefit {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+.wh-benefit::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--red);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s;
+}
+.wh-benefit:hover { box-shadow: 0 8px 32px rgba(15,23,42,0.08); transform: translateY(-3px); border-color: rgba(220,38,38,0.18); }
+.wh-benefit:hover::after { transform: scaleX(1); }
+.wh-benefit__icon {
+  width: 48px; height: 48px;
+  background: var(--red-soft);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--red);
+  margin-bottom: 16px;
+}
+.wh-benefit__icon svg { width:22px;height:22px; }
+.wh-benefit__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin: 0 0 8px;
+}
+.wh-benefit__text {
+  font-size: 13.5px;
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* ── HOW IT WORKS ── */
+.wh-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  position: relative;
+  max-width: 860px;
+  margin: 0 auto;
+}
+.wh-steps::before {
+  content: '';
+  position: absolute;
+  top: 31px;
+  left: calc(12.5% + 16px);
+  right: calc(12.5% + 16px);
+  height: 2px;
+  background: linear-gradient(90deg, var(--red), var(--border), var(--red));
+}
+.wh-step {
+  text-align: center;
+  padding: 0 16px 24px;
+  position: relative;
+}
+.wh-step__num {
+  width: 62px; height: 62px;
+  border-radius: 50%;
+  background: var(--red-soft);
+  color: var(--red);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  position: relative;
+  z-index: 1;
+  border: 3px solid rgba(220,38,38,0.15);
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.wh-step:hover .wh-step__num {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+  transform: scale(1.08);
+}
+.wh-step h4 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin: 0 0 8px;
+  letter-spacing: 0.02em;
+}
+.wh-step p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+/* ── WHO QUALIFIES ── */
+.wh-who-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 48px;
+  align-items: start;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.wh-who__list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.wh-who__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.wh-who__item:hover {
+  border-color: var(--red);
+  box-shadow: 0 4px 16px rgba(220,38,38,0.08);
+}
+.wh-who__item-icon {
+  width: 38px; height: 38px;
+  background: var(--red-soft);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--red);
+  flex-shrink: 0;
+}
+.wh-who__item-icon svg { width:17px;height:17px; }
+.wh-who__item-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--navy);
+  margin: 0 0 3px;
+  display: block;
+}
+.wh-who__item-desc {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-weight: 300;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── CTA BOX (right of who qualifies) ── */
+.wh-cta-box {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--red);
+  border-radius: 20px;
+  padding: 44px 36px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(15,23,42,0.06);
+}
+.wh-cta-box::before {
+  content: '';
+  position: absolute;
+  bottom: -60px; right: -60px;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: rgba(220,38,38,0.04);
+  pointer-events: none;
+}
+.wh-cta-box::after { display: none; }
+.wh-cta-box__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--red);
+  background: var(--red-soft);
+  border: 1px solid rgba(220,38,38,0.2);
+  padding: 5px 12px;
+  border-radius: 99px;
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 1;
+}
+.wh-cta-box__badge svg { width:10px;height:10px; }
+.wh-cta-box__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--dark);
+  margin: 0 0 12px;
+  position: relative;
+  z-index: 1;
+}
+.wh-cta-box__text {
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0 0 28px;
+  position: relative;
+  z-index: 1;
+}
+.wh-cta-box__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 50px;
+  background: var(--red);
+  color: #fff;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.18s, box-shadow 0.18s;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 14px;
+}
+.wh-cta-box__btn:hover { background: var(--red-dim); box-shadow: 0 6px 20px rgba(220,38,38,0.3); }
+.wh-cta-box__btn svg { width:16px;height:16px; flex-shrink:0; }
+.wh-cta-box__note {
+  font-size: 12px;
+  color: var(--subtle);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── FAQ ── */
+.wh-faq { display: flex; flex-direction: column; gap: 0; }
+.wh-faq-item {
+  border-bottom: 1px solid var(--border);
+}
+.wh-faq-item:first-child { border-top: 1px solid var(--border); }
+.wh-faq-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--navy);
+  transition: color 0.15s;
+}
+.wh-faq-btn:hover { color: var(--red); }
+.wh-faq-btn svg { width:18px;height:18px; flex-shrink:0; color:var(--muted); transition: transform 0.22s, color 0.15s; }
+.wh-faq-btn[aria-expanded="true"] svg { transform: rotate(45deg); color: var(--red); }
+.wh-faq-body {
+  display: none;
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 1.75;
+  padding-bottom: 20px;
+  max-width: 700px;
+}
+.wh-faq-body.is-open { display: block; }
+
+/* ── BOTTOM CTA ── */
+.wh-bottom-cta {
+  background: var(--red-soft);
+  border-top: 1px solid rgba(220,38,38,0.12);
+  padding: 96px var(--px);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.wh-bottom-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 80% at 50% 110%, rgba(220,38,38,0.08) 0%, transparent 65%);
+  pointer-events: none;
+}
+.wh-bottom-cta__inner { position: relative; z-index: 1; max-width: 680px; margin: 0 auto; }
+.wh-bottom-cta__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(34px, 5vw, 58px);
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--dark);
+  margin: 0 0 16px;
+  line-height: 1;
+}
+.wh-bottom-cta__title em { color: var(--red); font-style: normal; }
+.wh-bottom-cta__sub {
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--muted);
+  margin: 0 0 36px;
+  line-height: 1.7;
+}
+.wh-bottom-cta__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── SHARED BUTTONS ── */
+.wh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 50px;
+  padding: 0 26px;
+  border-radius: 10px;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.18s;
+  white-space: nowrap;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.01em;
+}
+.wh-btn--red { background: var(--red); color: #fff; box-shadow: 0 4px 16px rgba(220,38,38,0.2); }
+.wh-btn--red:hover { background: var(--red-dim); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(220,38,38,0.3); }
+.wh-btn--ghost { background: #fff; color: var(--mid); border: 1px solid var(--border); }
+.wh-btn--ghost:hover { background: var(--surface); border-color: #cbd5e1; color: var(--navy); }
+.wh-btn svg { width:16px;height:16px;flex-shrink:0; }
+
+/* ── PENDING / UPGRADE / DASHBOARD states ── */
+.wh-state {
+  max-width: 560px;
+  margin: 80px auto;
+  padding: 0 var(--px);
+  text-align: center;
+}
+.wh-state__icon {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 22px;
+}
+.wh-state__icon svg { width:34px;height:34px; }
+.wh-state__icon--amber { background: var(--amber-bg); color: var(--amber); }
+.wh-state__icon--red   { background: var(--red-soft); color: var(--red); }
+.wh-state__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin: 0 0 12px;
+}
+.wh-state__text {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0 0 28px;
+  font-weight: 300;
+}
+.wh-state__card {
+  border-radius: 12px;
+  padding: 18px 22px;
+  text-align: left;
+  font-size: 13.5px;
+  line-height: 1.65;
+  margin-bottom: 28px;
+}
+.wh-state__card--amber { background: var(--amber-bg); border: 1px solid rgba(217,119,6,0.2); color: var(--amber); }
+.wh-state__btns { display:flex;gap:12px;justify-content:center;flex-wrap:wrap; }
+.wh-btn--outline { border: 1.5px solid var(--red); color: var(--red); background: transparent; }
+.wh-btn--outline:hover { background: var(--red); color: #fff; }
+
+/* ── DASHBOARD ── */
+.wh-dash { max-width: var(--inner); margin: 0 auto; padding: 52px var(--px); }
+.wh-dash__hero {
+  background: var(--navy);
+  border-radius: 16px;
+  padding: 32px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.wh-dash__hero::before { content:'';position:absolute;top:-40px;right:-40px;width:220px;height:220px;border-radius:50%;background:rgba(220,38,38,0.08);pointer-events:none; }
+.wh-dash__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--red);
+  background: rgba(220,38,38,0.1);
+  border: 1px solid rgba(220,38,38,0.2);
+  padding: 4px 10px;
+  border-radius: 99px;
+  margin-bottom: 10px;
+}
+.wh-dash__badge svg { width:10px;height:10px; }
+.wh-dash__title { font-family:'Barlow Condensed',sans-serif;font-size:clamp(22px,4vw,34px);font-weight:700;color:#fff;margin:0 0 4px;text-transform:uppercase; }
+.wh-dash__sub { font-size:13px;color:rgba(255,255,255,0.45);margin:0; }
+.wh-dash__actions { display:flex;gap:10px;flex-wrap:wrap;flex-shrink:0; }
+.wh-dash__stats { display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px; }
+.wh-stat-card { background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;align-items:center;gap:14px; }
+.wh-stat-card__icon { width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.wh-stat-card__icon--red   { background:var(--red-soft);color:var(--red); }
+.wh-stat-card__icon--green { background:var(--green-bg);color:var(--green); }
+.wh-stat-card__icon--blue  { background:#EFF6FF;color:#3B82F6; }
+.wh-stat-card__icon--amber { background:var(--amber-bg);color:var(--amber); }
+.wh-stat-card__icon svg { width:18px;height:18px; }
+.wh-stat-card__val { font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;color:var(--navy);line-height:1;display:block; }
+.wh-stat-card__label { font-size:11.5px;color:var(--muted);display:block;margin-top:3px; }
+.wh-dash__grid { display:grid;grid-template-columns:1fr 1fr;gap:20px; }
+.wh-dash__panel { background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden; }
+.wh-dash__panel-head { display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border); }
+.wh-dash__panel-head h3 { font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;color:var(--navy);margin:0;letter-spacing:.02em; }
+.wh-dash__panel-head a { font-size:12px;font-weight:500;color:var(--red);text-decoration:none; }
+.wh-dash__panel-head a:hover { text-decoration:underline; }
+.wh-dash__panel-body { padding:18px 20px; }
+.wh-qlinks { display:flex;flex-direction:column;gap:10px; }
+.wh-qlink { display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;text-decoration:none;transition:border-color .15s,background .15s; }
+.wh-qlink:hover { border-color:var(--red);background:var(--red-soft); }
+.wh-qlink__icon { width:34px;height:34px;background:#fff;border:1px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--red);flex-shrink:0; }
+.wh-qlink__icon svg { width:15px;height:15px; }
+.wh-qlink__label { font-size:13.5px;font-weight:500;color:var(--navy);flex:1; }
+.wh-qlink__arr { color:var(--subtle); }
+.wh-qlink__arr svg { width:13px;height:13px; }
+.wh-mgr { display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface);border-radius:9px;border:1px solid var(--border);margin-bottom:14px; }
+.wh-mgr__av { width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;flex-shrink:0; }
+.wh-mgr__name { font-size:13.5px;font-weight:600;color:var(--navy);margin:0 0 2px;display:block; }
+.wh-mgr__role { font-size:12px;color:var(--muted);margin:0; }
+.wh-contacts { display:flex;flex-direction:column;gap:8px; }
+.wh-contact { display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);text-decoration:none;transition:color .15s; }
+.wh-contact:hover { color:var(--red); }
+.wh-contact svg { width:14px;height:14px;flex-shrink:0; }
+.wh-orders-empty { text-align:center;padding:28px;color:var(--muted);font-size:13.5px; }
+.wh-order-row { display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px; }
+.wh-order-row:last-child { border-bottom:none; }
+.wh-order-num { font-weight:600;color:var(--navy);min-width:70px; }
+.wh-order-num a { color:var(--red);text-decoration:none; }
+.wh-order-date { color:var(--muted);flex:1; }
+.wh-order-total { font-weight:600;color:var(--navy); }
+.wh-order-status { padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600; }
+.wh-order-status--paid    { background:var(--green-bg);color:var(--green); }
+.wh-order-status--pending { background:var(--amber-bg);color:var(--amber); }
+
+/* ── PRICING TIERS ── */
+.wh-tiers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  position: relative;
+  max-width: 980px;
+  margin: 0 auto;
+}
+.wh-tier {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  position: relative;
+}
+.wh-tier:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(15,23,42,0.1); }
+.wh-tier--popular {
+  border-color: var(--red);
+  box-shadow: 0 4px 24px rgba(220,38,38,0.14);
+}
+.wh-tier--popular .wh-tier__header { background: var(--red); }
+.wh-tier--popular .wh-tier__badge { background: rgba(255,255,255,0.2); color: #fff; }
+.wh-tier--popular .wh-tier__discount { color: #fff; }
+.wh-tier--popular .wh-tier__off { color: rgba(255,255,255,0.7); }
+.wh-tier__popular-tag {
+  position: absolute;
+  top: -1px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 0 0 8px 8px;
+  white-space: nowrap;
+  z-index: 2;
+}
+.wh-tier__header {
+  padding: 28px 22px 22px;
+  background: var(--surface);
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.wh-tier__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 99px;
+  margin-bottom: 14px;
+}
+.wh-tier__badge--starter    { background: #f0fdf4; color: #16a34a; }
+.wh-tier__badge--pro        { background: #eff6ff; color: #2563eb; }
+.wh-tier__badge--business   { background: #fef9c3; color: #92400e; }
+.wh-tier__badge--enterprise { background: var(--dark); color: rgba(255,255,255,0.85); }
+.wh-tier__discount {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 52px;
+  font-weight: 800;
+  color: var(--navy);
+  line-height: 1;
+  display: block;
+}
+.wh-tier__off {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 400;
+  display: block;
+  margin-top: 4px;
+}
+.wh-tier__volume {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mid);
+  text-align: center;
+  padding: 12px 22px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.01em;
+}
+.wh-tier__perks {
+  list-style: none;
+  padding: 18px 20px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wh-tier__perk {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--mid);
+  line-height: 1.4;
+}
+.wh-tier__perk-icon {
+  width: 16px; height: 16px;
+  color: var(--green);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.wh-tier__perk-icon svg { width:16px;height:16px; }
+.wh-tier__perk--locked .wh-tier__perk-icon { color: var(--subtle); }
+.wh-tier__perk--locked span { color: var(--subtle); }
+.wh-tier__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 42px;
+  margin: 0 20px 20px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: 'Outfit', sans-serif;
+}
+.wh-tier__cta--primary { background: var(--red); color: #fff; }
+.wh-tier__cta--primary:hover { background: var(--red-dim); box-shadow: 0 4px 14px rgba(220,38,38,0.25); }
+.wh-tier__cta--outline { background: transparent; color: var(--navy); border: 1.5px solid var(--border); }
+.wh-tier__cta--outline:hover { border-color: var(--red); color: var(--red); }
+
+/* ── SAVINGS CALCULATOR ── */
+.wh-calc {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  position: relative;
+  box-shadow: 0 4px 24px rgba(15,23,42,0.06);
+}
+.wh-calc::before { display: none; }
+.wh-calc__left {
+  padding: 48px 44px;
+  position: relative;
+  z-index: 1;
+}
+.wh-calc__right {
+  padding: 48px 44px;
+  background: var(--red-soft);
+  border-left: 1px solid rgba(220,38,38,0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+.wh-calc__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red);
+  display: block;
+  margin-bottom: 10px;
+}
+.wh-calc__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(26px, 3.5vw, 38px);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--dark);
+  margin: 0 0 8px;
+  line-height: 1.1;
+}
+.wh-calc__sub {
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0 0 32px;
+}
+.wh-calc__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.wh-calc__label span { color: var(--dark); font-weight: 700; font-size: 14px; }
+.wh-calc__slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--border);
+  outline: none;
+  margin-bottom: 10px;
+}
+.wh-calc__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--red);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(220,38,38,0.3);
+  border: 3px solid #fff;
+  transition: transform 0.15s;
+}
+.wh-calc__slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.wh-calc__slider::-moz-range-thumb {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--red);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(220,38,38,0.3);
+  border: 3px solid #fff;
+}
+.wh-calc__ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.wh-calc__tick {
+  font-size: 10.5px;
+  color: var(--subtle);
+  font-weight: 400;
+}
+.wh-calc__avg-price {
+  margin-top: 20px;
+}
+.wh-calc__avg-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.wh-calc__avg-inputs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.wh-calc__price-input {
+  height: 38px;
+  padding: 0 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--dark);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  width: 110px;
+  transition: border-color 0.2s;
+}
+.wh-calc__price-input:focus {
+  border-color: var(--red);
+}
+.wh-calc__price-label {
+  font-size: 12px;
+  color: var(--subtle);
+}
+
+/* Result panel */
+.wh-calc__savings-num {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(48px, 7vw, 72px);
+  font-weight: 800;
+  color: var(--red);
+  line-height: 1;
+  display: block;
+  margin-bottom: 6px;
+}
+.wh-calc__savings-label {
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+.wh-calc__tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+.wh-calc__tier-badge--starter  { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.wh-calc__tier-badge--bronze   { background: #fef3c7; color: #78350f; border: 1px solid #fcd34d; }
+.wh-calc__tier-badge--silver   { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+.wh-calc__tier-badge--gold     { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+.wh-calc__tier-badge--platinum { background: #eff6ff; color: #1e40af; border: 1px solid #93c5fd; }
+.wh-calc__tier-badge--elite    { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+.wh-calc__breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.wh-calc__breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+}
+.wh-calc__breakdown-row span:first-child { color: var(--muted); }
+.wh-calc__breakdown-row span:last-child { color: var(--mid); font-weight: 500; }
+.wh-calc__breakdown-row--savings span:last-child { color: var(--green); font-weight: 700; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1140px) {
+  .wh-hero__inner { grid-template-columns: 1fr 380px; gap: 52px; }
+}
+@media (max-width: 1024px) {
+  .wh-tiers { grid-template-columns: repeat(2, 1fr); max-width: 640px; }
+  .wh-calc { grid-template-columns: 1fr; }
+  .wh-calc__right { border-left: none; border-top: 1px solid rgba(220,38,38,0.1); }
+  .wh-benefits { grid-template-columns: repeat(2, 1fr); max-width: 700px; }
+  .wh-who-grid { grid-template-columns: 1fr; max-width: 600px; gap: 32px; }
+  .wh-cta-box { padding: 36px 28px; }
+  .wh-dash__stats { grid-template-columns: repeat(2, 1fr); }
+  .wh-dash__grid { grid-template-columns: 1fr; }
+  .wh-calc__left, .wh-calc__right { padding: 40px 36px; }
+}
+/* Hero stacks at 960px — prevents cramped 2-col at narrow tablet viewports */
+@media (max-width: 960px) {
+  .wh-hero__inner { grid-template-columns: 1fr; gap: 44px; padding: 64px 0 60px; }
+  .wh-hero__left { padding-right: 0; }
+  .wh-reg-card { max-width: 500px; }
+}
+/* Steps switch to 2×2 grid at 900px instead of cramping into 4 columns */
+@media (max-width: 900px) {
+  .wh-steps { grid-template-columns: 1fr 1fr; max-width: 560px; }
+  .wh-steps::before { display: none; }
+}
+@media (max-width: 768px) {
+  .wh-stats-bar__inner { flex-wrap: wrap; }
+  .wh-stat { min-width: 50%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.15); }
+  .wh-stat:nth-child(odd) { border-right: 1px solid rgba(255,255,255,0.15); }
+  .wh-stat:nth-last-child(-n+2) { border-bottom: none; }
+  .wh-section { padding: 60px var(--px); }
+  .wh-dash__hero { flex-direction: column; align-items: flex-start; padding: 26px; }
+  .wh-calc__left, .wh-calc__right { padding: 32px 26px; }
+}
+@media (max-width: 560px) {
+  /* Benefits stay 2-col down to 560px — 1-col only on phones */
+  .wh-benefits { grid-template-columns: 1fr; max-width: 440px; }
+  .wh-hero__inner { padding: 52px 0 48px; }
+  .wh-hero__cta-row { flex-direction: column; align-items: flex-start; }
+  .wh-bottom-cta__actions { flex-direction: column; align-items: center; }
+  .wh-reg-card { padding: 28px 22px; }
+  .wh-steps { grid-template-columns: 1fr; }
+  .wh-steps::before { display: none; }
+  .wh-dash__stats { grid-template-columns: 1fr 1fr; }
+  .wh-tiers { grid-template-columns: 1fr; max-width: 360px; }
+  .wh-calc__left, .wh-calc__right { padding: 28px 20px; }
+  .wh-section { padding: 52px var(--px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wh-benefit, .wh-btn, .wh-reg-card__btn, .wh-step__num { transition: none; }
+  .wh-reg-card__btn::before { animation: none; }
+}
+
+/* ══════════════════════════════════════════════
+   WHOLESALE DASHBOARD — Prince Tires
+   Accent palette: Red #DC2626 · Green #10b981 · Amber #f59e0b
+   Swiss Modernism: strict grid, mathematical spacing, single accent per element
+══════════════════════════════════════════════ */
+
+/* Portal shell */
+.wh-dash-portal { background: #f8fafc; min-height: 100vh; font-family: 'Outfit', sans-serif; }
+
+/* Thin red rule at the very top — brand anchor */
+.wh-dash-portal::before { content: ''; display: block; height: 3px; background: linear-gradient(90deg, #DC2626 0%, #f87171 60%, transparent 100%); }
+
+/* ── Hero ── */
+.wh-dash-hero { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 36px var(--px, 24px) 0; position: relative; overflow: hidden; }
+/* Subtle radial glow behind the title */
+.wh-dash-hero::after { content: ''; position: absolute; top: -60px; left: -40px; width: 340px; height: 260px; background: radial-gradient(ellipse at top left, rgba(220,38,38,.05) 0%, transparent 70%); pointer-events: none; }
+.wh-dash-hero__inner { max-width: var(--inner, 1100px); margin: 0 auto; display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-end; justify-content: space-between; position: relative; z-index: 1; }
+.wh-dash-hero__left { padding-bottom: 28px; }
+
+/* Tier badge — jewel pill */
+.wh-dash-hero__badge { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 5px 14px; border-radius: 100px; margin-bottom: 14px; }
+.wh-dash-hero__badge--bronze   { background: linear-gradient(135deg,#fef3c7,#fde68a); color: #78350f; border: 1px solid #fcd34d; box-shadow: 0 2px 8px rgba(245,158,11,.18); }
+.wh-dash-hero__badge--silver   { background: linear-gradient(135deg,#f1f5f9,#e2e8f0); color: #334155; border: 1px solid #cbd5e1; box-shadow: 0 2px 8px rgba(100,116,139,.12); }
+.wh-dash-hero__badge--gold     { background: linear-gradient(135deg,#fffbeb,#fef3c7); color: #92400e; border: 1px solid #fcd34d; box-shadow: 0 2px 8px rgba(245,158,11,.2); }
+.wh-dash-hero__badge--platinum { background: linear-gradient(135deg,#eff6ff,#dbeafe); color: #1e40af; border: 1px solid #93c5fd; box-shadow: 0 2px 8px rgba(59,130,246,.15); }
+.wh-dash-hero__badge--elite    { background: linear-gradient(135deg,#fef2f2,#fee2e2); color: #991b1b; border: 1px solid #fca5a5; box-shadow: 0 2px 8px rgba(220,38,38,.18); }
+
+.wh-dash-hero__title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(28px,4vw,42px); font-weight: 800; color: #111111; margin: 0 0 5px; line-height: 1.05; letter-spacing: -.01em; }
+.wh-dash-hero__title em { color: #DC2626; font-style: normal; }
+.wh-dash-hero__sub { font-size: 13px; color: #94a3b8; margin: 0; display: flex; align-items: center; gap: 8px; }
+.wh-dash-hero__sub::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+
+/* Stat strip — sits at base of hero, flush */
+.wh-dash-hero__stats { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 28px; border-top: 1px solid #f1f5f9; }
+.wh-dash-stat { padding: 20px 20px 22px; text-align: center; border-right: 1px solid #f1f5f9; position: relative; }
+.wh-dash-stat:last-child { border-right: none; }
+/* Accent bar on hover */
+.wh-dash-stat::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px; border-radius: 2px 2px 0 0; background: #DC2626; opacity: 0; transition: opacity .2s; }
+.wh-dash-stat:hover::after { opacity: 1; }
+.wh-dash-stat__icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+.wh-dash-stat__icon svg { width: 15px; height: 15px; }
+/* Coloured icons per stat (applied via nth-child) */
+.wh-dash-stat:nth-child(1) .wh-dash-stat__icon { background: #fef2f2; color: #DC2626; }
+.wh-dash-stat:nth-child(2) .wh-dash-stat__icon { background: #ecfdf5; color: #10b981; }
+.wh-dash-stat:nth-child(3) .wh-dash-stat__icon { background: #fffbeb; color: #f59e0b; }
+.wh-dash-stat:nth-child(4) .wh-dash-stat__icon { background: #f0f9ff; color: #0ea5e9; }
+.wh-dash-stat__val { display: block; font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 800; color: #111111; line-height: 1; margin-bottom: 3px; }
+.wh-dash-stat:nth-child(3) .wh-dash-stat__val { color: #10b981; } /* savings = green */
+.wh-dash-stat__lbl { display: block; font-size: 10.5px; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+
+/* ── Tab bar ── */
+.wh-dash-tabs { position: sticky; top: 0; z-index: 50; background: #fff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+.wh-dash-tabs__inner { max-width: var(--inner, 1100px); margin: 0 auto; padding: 0 var(--px, 24px); display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.wh-dash-tabs__inner::-webkit-scrollbar { display: none; }
+.wh-dash-tab { flex-shrink: 0; background: none; border: none; cursor: pointer; padding: 15px 22px; font-size: 13px; font-weight: 600; color: #94a3b8; border-bottom: 3px solid transparent; margin-bottom: -1px; transition: color .18s, border-color .18s; text-decoration: none; display: inline-block; letter-spacing: .01em; }
+.wh-dash-tab:hover { color: #374151; }
+.wh-dash-tab--active { color: #111111; border-bottom-color: #DC2626; }
+/* Shop Tires — red pill CTA */
+.wh-dash-tab--link { background: #DC2626; color: #fff !important; border-radius: 8px; margin: 9px 0 9px 8px; padding: 8px 18px; border-bottom: none !important; font-size: 12px; transition: background .18s, transform .15s; }
+.wh-dash-tab--link:hover { background: #b91c1c; transform: translateY(-1px); }
+
+/* ── Content ── */
+.wh-dash-content { max-width: var(--inner, 1100px); margin: 0 auto; padding: 32px var(--px, 24px) 72px; }
+.wh-dash-panel--hidden { display: none; }
+
+/* ── Cards ── */
+.wh-dash-content__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+.wh-dash-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.04); transition: box-shadow .2s, transform .2s; }
+.wh-dash-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.08); transform: translateY(-1px); }
+.wh-dash-card--full { width: 100%; }
+.wh-dash-card--full:hover { transform: none; }
+/* Coloured top accent line on cards */
+.wh-dash-card:first-child { border-top: 3px solid #DC2626; }
+.wh-dash-card:nth-child(2) { border-top: 3px solid #10b981; }
+.wh-dash-card__head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 0; }
+.wh-dash-card__head h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; color: #94a3b8; margin: 0; letter-spacing: .1em; text-transform: uppercase; }
+.wh-dash-card__link { background: none; border: none; cursor: pointer; font-size: 12px; font-weight: 600; color: #DC2626; text-decoration: none; padding: 0; transition: opacity .15s; }
+.wh-dash-card__link:hover { opacity: .75; }
+.wh-dash-card__note { font-size: 11px; color: #94a3b8; }
+.wh-dash-card__note a { color: #DC2626; }
+.wh-dash-card__body { padding: 16px 22px 22px; }
+
+/* ── Tier badge (inline) ── */
+.wh-dash-tier-badge { font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: 3px 10px; border-radius: 100px; }
+.wh-dash-tier-badge--bronze   { background: #fef3c7; color: #78350f; }
+.wh-dash-tier-badge--silver   { background: #f1f5f9; color: #334155; }
+.wh-dash-tier-badge--gold     { background: #fffbeb; color: #92400e; }
+.wh-dash-tier-badge--platinum { background: #eff6ff; color: #1e40af; }
+.wh-dash-tier-badge--elite    { background: #fef2f2; color: #991b1b; }
+
+/* Tier dots */
+.wh-dash-tier-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+.wh-dash-tier-dot--bronze   { background: #f59e0b; }
+.wh-dash-tier-dot--silver   { background: #94a3b8; }
+.wh-dash-tier-dot--gold     { background: #eab308; box-shadow: 0 0 0 2px rgba(234,179,8,.2); }
+.wh-dash-tier-dot--platinum { background: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.2); }
+.wh-dash-tier-dot--elite    { background: #DC2626; box-shadow: 0 0 0 2px rgba(220,38,38,.2); }
+
+/* ── Tier progress card ── */
+.wh-dash-tier-info { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.wh-dash-tier-pct { font-family: 'Barlow Condensed', sans-serif; font-size: 52px; font-weight: 900; color: #DC2626; line-height: 1; letter-spacing: -.02em; }
+.wh-dash-tier-all { font-size: 13px; color: #94a3b8; padding-bottom: 4px; }
+.wh-dash-tier-progress-wrap { margin-bottom: 10px; }
+.wh-dash-tier-progress-labels { display: flex; justify-content: space-between; font-size: 10px; color: #cbd5e1; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.wh-dash-tier-progress { background: #f1f5f9; border-radius: 100px; height: 10px; overflow: hidden; }
+.wh-dash-tier-progress__bar { height: 100%; border-radius: 100px; background: linear-gradient(90deg, #f59e0b 0%, #DC2626 100%); transition: width .9s cubic-bezier(.34,1.56,.64,1); box-shadow: 0 2px 6px rgba(220,38,38,.25); }
+.wh-dash-tier-msg { font-size: 12px; color: #94a3b8; margin: 0; line-height: 1.5; }
+.wh-dash-tier-msg strong { color: #374151; font-weight: 700; }
+
+/* ── Order mini rows ── */
+.wh-dash-order-mini { display: flex; flex-direction: column; gap: 6px; }
+.wh-dash-order-mini-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8fafc; border-radius: 10px; border: 1px solid #f1f5f9; gap: 10px; transition: background .15s, border-color .15s; }
+.wh-dash-order-mini-row:hover { background: #fff; border-color: #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+.wh-dash-order-mini-num { font-size: 13px; font-weight: 700; color: #111111; text-decoration: none; }
+.wh-dash-order-mini-num:hover { color: #DC2626; }
+.wh-dash-order-mini-meta { font-size: 11px; color: #94a3b8; flex: 1; }
+.wh-dash-order-mini-total { font-size: 13px; font-weight: 700; color: #10b981; white-space: nowrap; }
+.wh-dash-empty { font-size: 13px; color: #94a3b8; padding: 24px 0; text-align: center; line-height: 1.6; }
+.wh-dash-empty a { color: #DC2626; font-weight: 600; text-decoration: none; }
+
+/* ── Quick links ── */
+.wh-dash-quicklinks { display: flex; flex-direction: column; margin-bottom: 20px; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.04); }
+.wh-dash-qlink { display: flex; align-items: center; gap: 16px; padding: 15px 20px; text-decoration: none; transition: background .15s; border-bottom: 1px solid #f8fafc; position: relative; }
+.wh-dash-qlink:last-child { border-bottom: none; }
+.wh-dash-qlink::before { content: ''; position: absolute; left: 0; top: 10%; bottom: 10%; width: 3px; border-radius: 0 3px 3px 0; opacity: 0; transition: opacity .18s; }
+/* Per-link accent colours */
+.wh-dash-qlink:nth-child(1)::before { background: #DC2626; }
+.wh-dash-qlink:nth-child(2)::before { background: #f59e0b; }
+.wh-dash-qlink:nth-child(3)::before { background: #10b981; }
+.wh-dash-qlink:hover::before { opacity: 1; }
+.wh-dash-qlink:hover { background: #fafafa; }
+.wh-dash-qlink__icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform .2s; }
+.wh-dash-qlink:hover .wh-dash-qlink__icon { transform: scale(1.08); }
+.wh-dash-qlink:nth-child(1) .wh-dash-qlink__icon { background: #fef2f2; color: #DC2626; }
+.wh-dash-qlink:nth-child(2) .wh-dash-qlink__icon { background: #fffbeb; color: #f59e0b; }
+.wh-dash-qlink:nth-child(3) .wh-dash-qlink__icon { background: #ecfdf5; color: #10b981; }
+.wh-dash-qlink__icon svg { width: 18px; height: 18px; }
+.wh-dash-qlink__body { flex: 1; }
+.wh-dash-qlink__title { display: block; font-size: 14px; font-weight: 600; color: #111111; }
+.wh-dash-qlink__sub { display: block; font-size: 12px; color: #94a3b8; margin-top: 2px; }
+.wh-dash-qlink__arr { width: 16px; height: 16px; color: #cbd5e1; flex-shrink: 0; transition: transform .2s, color .2s; }
+.wh-dash-qlink:hover .wh-dash-qlink__arr { transform: translateX(3px); color: #94a3b8; }
+.wh-dash-qlink--btn { cursor: pointer; background: none; border: none; width: 100%; text-align: left; font-family: 'Outfit', sans-serif; }
+
+/* ── Promo banner ── */
+.wh-dash-promo { background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%); border: 1px solid #fecaca; border-left: 4px solid #DC2626; border-radius: 12px; padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.wh-dash-promo__label { font-size: 13px; font-weight: 700; color: #DC2626; }
+.wh-dash-promo__text { font-size: 13px; color: #6b7280; flex: 1; min-width: 0; }
+.wh-dash-promo__link { font-size: 12px; font-weight: 700; color: #fff; background: #DC2626; padding: 5px 14px; border-radius: 100px; text-decoration: none; white-space: nowrap; transition: background .15s; }
+.wh-dash-promo__link:hover { background: #b91c1c; }
+
+/* ── Order history table ── */
+.wh-dash-order-table { width: 100%; border-collapse: collapse; }
+.wh-dash-order-table th { font-size: 10.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .08em; padding: 0 12px 12px; text-align: left; border-bottom: 2px solid #f1f5f9; }
+.wh-dash-order-table td { font-size: 13px; color: #374151; padding: 13px 12px; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+.wh-dash-order-table tr:last-child td { border-bottom: none; }
+.wh-dash-order-table tr:hover td { background: #fafafa; }
+/* Order # in red, total in green */
+.wh-dash-order-table td:first-child a { color: #DC2626; font-weight: 700; text-decoration: none; }
+.wh-dash-order-table td:first-child a:hover { text-decoration: underline; }
+.wh-dash-order-table td:nth-child(4) { color: #10b981; font-weight: 700; }
+.wh-dash-order-action { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 100px; text-decoration: none !important; transition: all .15s; border: 1.5px solid #e2e8f0; color: #374151; background: #fff; }
+.wh-dash-order-action:hover { border-color: #DC2626; color: #DC2626; background: #fef2f2; }
+
+/* ── Account tab ── */
+.wh-dash-account-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+.wh-dash-biz-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; align-items: center; }
+.wh-dash-biz-list dt { font-size: 10.5px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.wh-dash-biz-list dd { font-size: 13px; color: #111111; margin: 0; font-weight: 500; }
+
+.wh-dash-tier-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wh-dash-tier-table th { font-size: 10.5px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 0 8px 10px 0; text-align: left; border-bottom: 2px solid #f1f5f9; }
+.wh-dash-tier-table td { padding: 9px 8px 9px 0; color: #64748b; border-bottom: 1px solid #f8fafc; }
+.wh-dash-tier-table tr:last-child td { border-bottom: none; }
+.wh-dash-tier-table tr.is-current td { color: #111111; font-weight: 700; }
+.wh-dash-tier-table tr.is-current td:first-child { border-radius: 8px 0 0 8px; padding-left: 10px; background: linear-gradient(90deg, #fef2f2, transparent); }
+.wh-dash-tier-table__disc { color: #64748b; }
+.wh-dash-tier-table tr.is-current .wh-dash-tier-table__disc { color: #DC2626; font-weight: 800; font-size: 14px; }
+.wh-dash-payment-terms { font-size: 11px; color: #94a3b8; margin: 14px 0 0; border-top: 1px solid #f1f5f9; padding-top: 12px; }
+
+.wh-dash-mgr { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.wh-dash-mgr__av { width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(135deg, #DC2626, #b91c1c); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px; color: #fff; flex-shrink: 0; box-shadow: 0 4px 12px rgba(220,38,38,.3); }
+.wh-dash-mgr__name { display: block; font-size: 14px; font-weight: 700; color: #111111; }
+.wh-dash-mgr__role { display: block; font-size: 12px; color: #94a3b8; margin-top: 2px; }
+.wh-dash-mgr__contacts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.wh-dash-contact-btn { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; text-decoration: none; font-size: 13px; font-weight: 600; color: #374151; transition: all .15s; }
+.wh-dash-contact-btn:hover { background: #fef2f2; border-color: #fecaca; color: #DC2626; }
+.wh-dash-contact-btn svg { width: 16px; height: 16px; flex-shrink: 0; color: #DC2626; }
+.wh-dash-signout { display: block; text-align: center; font-size: 13px; font-weight: 600; color: #94a3b8; text-decoration: none; padding: 10px; border: 1.5px dashed #e2e8f0; border-radius: 10px; transition: all .15s; }
+.wh-dash-signout:hover { color: #DC2626; border-color: #fecaca; border-style: solid; }
+
+/* ── Delivery modal ── */
+.wh-delivery-modal { display: none; position: fixed; inset: 0; z-index: 999; }
+.wh-delivery-modal.is-open { display: flex; align-items: center; justify-content: center; padding: 20px; }
+.wh-delivery-modal__overlay { position: fixed; inset: 0; background: rgba(15,23,42,.45); backdrop-filter: blur(3px); }
+.wh-delivery-modal__box { position: relative; z-index: 1; background: #fff; border-radius: 20px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 32px 80px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.04); }
+.wh-delivery-modal__head { padding: 24px 28px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+/* Red strip on modal */
+.wh-delivery-modal__box::before { content: ''; display: block; height: 4px; background: linear-gradient(90deg, #DC2626, #f87171); border-radius: 20px 20px 0 0; }
+.wh-delivery-modal__title { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 800; color: #111111; margin: 0 0 3px; }
+.wh-delivery-modal__sub { font-size: 12px; color: #94a3b8; margin: 0; }
+.wh-delivery-modal__close { width: 32px; height: 32px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #94a3b8; flex-shrink: 0; transition: all .15s; }
+.wh-delivery-modal__close:hover { background: #fef2f2; border-color: #fecaca; color: #DC2626; }
+.wh-delivery-modal__body { padding: 20px 28px 28px; }
+.wh-delivery-field { margin-bottom: 16px; }
+.wh-delivery-label { display: block; font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.wh-delivery-input, .wh-delivery-select { width: 100%; height: 44px; padding: 0 14px; font-family: 'Outfit', sans-serif; font-size: 14px; color: #111; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 9px; outline: none; box-sizing: border-box; transition: border-color .2s, box-shadow .2s; }
+.wh-delivery-input:focus, .wh-delivery-select:focus { border-color: #DC2626; background: #fff; box-shadow: 0 0 0 3px rgba(220,38,38,.06); }
+.wh-delivery-select { cursor: pointer; }
+.wh-delivery-textarea { width: 100%; min-height: 80px; padding: 10px 14px; font-family: 'Outfit', sans-serif; font-size: 14px; color: #111; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 9px; outline: none; box-sizing: border-box; resize: vertical; transition: border-color .2s; }
+.wh-delivery-textarea:focus { border-color: #DC2626; background: #fff; box-shadow: 0 0 0 3px rgba(220,38,38,.06); }
+.wh-delivery-note { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: #6b7280; background: #fffbeb; border: 1px solid #fde68a; border-radius: 9px; padding: 11px 14px; margin-bottom: 16px; }
+.wh-delivery-note::before { content: '💡'; font-size: 14px; flex-shrink: 0; margin-top: -1px; }
+.wh-delivery-note strong { color: #92400e; }
+.wh-delivery-submit { width: 100%; height: 50px; border: none; border-radius: 10px; background: linear-gradient(135deg, #DC2626, #b91c1c); color: #fff; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: all .2s; margin-top: 6px; box-shadow: 0 4px 16px rgba(220,38,38,.25); letter-spacing: .01em; }
+.wh-delivery-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(220,38,38,.3); }
+.wh-delivery-success { text-align: center; padding: 36px 0; }
+.wh-delivery-success__icon { width: 60px; height: 60px; border-radius: 50%; background: #ecfdf5; color: #10b981; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: 0 0 0 8px rgba(16,185,129,.08); }
+.wh-delivery-success p { font-size: 14px; color: #374151; line-height: 1.7; }
+
+/* ── Update form ── */
+.wh-dash-update-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #DC2626; background: none; border: none; cursor: pointer; padding: 0; margin-top: 16px; opacity: .75; transition: opacity .15s; }
+.wh-dash-update-toggle:hover { opacity: 1; }
+.wh-dash-update-form { display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
+.wh-dash-update-form.is-open { display: block; }
+.wh-dash-update-form .wh-delivery-field { margin-bottom: 12px; }
+.wh-dash-update-submit { height: 40px; padding: 0 20px; border: none; border-radius: 8px; background: #DC2626; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: background .15s; }
+.wh-dash-update-submit:hover { background: #b91c1c; }
+.wh-dash-update-cancel { height: 40px; padding: 0 16px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: none; color: #64748b; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all .15s; }
+.wh-dash-update-cancel:hover { border-color: #cbd5e1; color: #374151; }
+
+/* ── Order pagination ── */
+.wh-dash-order-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 18px 20px 4px; border-top: 1px solid #f1f5f9; margin-top: 4px; }
+.wh-dash-order-page-btn { font-size: 13px; font-weight: 600; color: #DC2626; text-decoration: none; padding: 7px 16px; border: 1.5px solid #fecaca; border-radius: 8px; transition: all .15s; white-space: nowrap; }
+.wh-dash-order-page-btn:hover { background: #fef2f2; border-color: #DC2626; }
+.wh-dash-order-page-info { font-size: 12px; color: #94a3b8; font-weight: 500; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .wh-dash-hero__inner { flex-direction: column; align-items: flex-start; }
+  .wh-dash-hero__stats { grid-template-columns: repeat(2, 1fr); width: 100%; }
+  .wh-dash-content__grid { grid-template-columns: 1fr; }
+  .wh-dash-account-grid { grid-template-columns: 1fr; }
+  .wh-dash-card:first-child, .wh-dash-card:nth-child(2) { border-top-width: 3px; }
+}
+@media (max-width: 540px) {
+  .wh-dash-hero__stats { grid-template-columns: repeat(2, 1fr); }
+  .wh-dash-order-table th:nth-child(3), .wh-dash-order-table td:nth-child(3) { display: none; }
+  .wh-dash-tab--link { margin: 8px 0 8px 4px; padding: 7px 14px; }
+}
+</style>
+
+<div class="wh">
+
+{%- if is_portal_page and is_wholesale -%}
+{%- comment -%} ══════════ DASHBOARD ══════════ {%- endcomment -%}
+{%- liquid
+  assign wh_orders = customer.orders_count
+  assign wh_tier_name = 'Bronze'
+  assign wh_tier_pct  = 5
+  assign wh_tier_cls  = 'bronze'
+  assign wh_next_tier_name = 'Silver'
+  if wh_orders >= 81
+    assign wh_tier_name = 'Elite'
+    assign wh_tier_pct  = 25
+    assign wh_tier_cls  = 'elite'
+    assign wh_next_tier_name = ''
+  elsif wh_orders >= 41
+    assign wh_tier_name = 'Platinum'
+    assign wh_tier_pct  = 20
+    assign wh_tier_cls  = 'platinum'
+    assign wh_next_tier_name = 'Elite'
+  elsif wh_orders >= 21
+    assign wh_tier_name = 'Gold'
+    assign wh_tier_pct  = 15
+    assign wh_tier_cls  = 'gold'
+    assign wh_next_tier_name = 'Platinum'
+  elsif wh_orders >= 11
+    assign wh_tier_name = 'Silver'
+    assign wh_tier_pct  = 10
+    assign wh_tier_cls  = 'silver'
+    assign wh_next_tier_name = 'Gold'
+  endif
+  assign wh_bar_pct = 100
+  if wh_tier_cls == 'bronze'
+    assign wh_bar_pct = wh_orders | times: 100 | divided_by: 11
+  elsif wh_tier_cls == 'silver'
+    assign wh_bar_pct = wh_orders | minus: 11 | times: 100 | divided_by: 10
+  elsif wh_tier_cls == 'gold'
+    assign wh_bar_pct = wh_orders | minus: 21 | times: 100 | divided_by: 20
+  elsif wh_tier_cls == 'platinum'
+    assign wh_bar_pct = wh_orders | minus: 41 | times: 100 | divided_by: 40
+  endif
+  if wh_bar_pct > 99
+    assign wh_bar_pct = 99
+  endif
+-%}
+
+{%- paginate customer.orders by 50 -%}
+<script type="application/json" id="wh-order-data">
+  {"orders":[{%- for order in customer.orders -%}{"id":{{ order.id | json }},"number":{{ order.order_number | json }},"date":{{ order.created_at | date: "%Y-%m-%dT%H:%M:%S" | json }},"total":{{ order.total_price | json }},"items":{{ order.line_items.size | json }}}{%- unless forloop.last -%},{%- endunless -%}{%- endfor -%}],"page":{{ paginate.current_page }},"pages":{{ paginate.pages }},"next":{% if paginate.next.url %}"{{ paginate.next.url | escape }}"{% else %}null{% endif %},"prev":{% if paginate.previous.url %}"{{ paginate.previous.url | escape }}"{% else %}null{% endif %},"total":{{ customer.orders_count }}}
+</script>
+
+<div class="wh-dash-portal"
+     data-wh-note="{{ customer.note | escape }}"
+     data-wh-tier-pct="{{ wh_tier_pct }}"
+     data-wh-orders="{{ wh_orders }}">
+
+  <!-- HERO -->
+  <div class="wh-dash-hero">
+    <div class="wh-dash-hero__inner">
+      <div class="wh-dash-hero__left">
+        <div class="wh-dash-hero__badge wh-dash-hero__badge--{{ wh_tier_cls }}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          {{ wh_tier_name }} Partner
+        </div>
+        <h1 class="wh-dash-hero__title">Welcome back, <span data-wh-biz-name>{{ customer.first_name | escape }}</span></h1>
+        <p class="wh-dash-hero__sub">{{ wh_tier_pct }}% trade discount active &middot; {{ customer.email }}</p>
+      </div>
+      <div class="wh-dash-hero__stats">
+        <div class="wh-dash-stat">
+          <span class="wh-dash-stat__val" data-wh-stats="orders-month">—</span>
+          <span class="wh-dash-stat__lbl">Orders this month</span>
+        </div>
+        <div class="wh-dash-stat">
+          <span class="wh-dash-stat__val" data-wh-stats="tires-month">—</span>
+          <span class="wh-dash-stat__lbl">Tires this month</span>
+        </div>
+        <div class="wh-dash-stat">
+          <span class="wh-dash-stat__val" data-wh-stats="savings-month">—</span>
+          <span class="wh-dash-stat__lbl">Est. savings this month</span>
+        </div>
+        <div class="wh-dash-stat">
+          <span class="wh-dash-stat__val">{{ wh_orders }}</span>
+          <span class="wh-dash-stat__lbl">Total orders</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="wh-dash-tabs">
+    <div class="wh-dash-tabs__inner">
+      <button class="wh-dash-tab wh-dash-tab--active" data-wh-tab="dashboard">Dashboard</button>
+      <button class="wh-dash-tab" data-wh-tab="orders">Order history</button>
+      <button class="wh-dash-tab" data-wh-tab="account">Account</button>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="wh-dash-content">
+
+    <!-- Panel: Dashboard -->
+    <div class="wh-dash-panel" data-wh-panel="dashboard">
+      <div class="wh-dash-content__grid">
+
+        <!-- Tier progress card -->
+        <div class="wh-dash-card">
+          <div class="wh-dash-card__head">
+            <h3>Your partner tier</h3>
+            <span class="wh-dash-tier-badge wh-dash-tier-badge--{{ wh_tier_cls }}">{{ wh_tier_name }}</span>
+          </div>
+          <div class="wh-dash-card__body">
+            <div class="wh-dash-tier-info">
+              <span class="wh-dash-tier-pct">{{ wh_tier_pct }}%</span>
+              <span class="wh-dash-tier-all">trade pricing</span>
+            </div>
+            {%- if wh_tier_cls == 'enterprise' -%}
+              <div class="wh-dash-tier-progress">
+                <div class="wh-dash-tier-progress__bar" data-wh-bar-target="100" style="width:0%"></div>
+              </div>
+              <p class="wh-dash-tier-msg">Maximum tier reached — you enjoy the best pricing we offer.</p>
+            {%- else -%}
+              <div class="wh-dash-tier-progress">
+                <div class="wh-dash-tier-progress__bar" data-wh-bar-target="{{ wh_bar_pct }}" style="width:0%"></div>
+              </div>
+              <p class="wh-dash-tier-msg">Next tier: <strong>{{ wh_next_tier_name }}</strong></p>
+            {%- endif -%}
+          </div>
+        </div>
+
+        <!-- Recent orders card -->
+        <div class="wh-dash-card">
+          <div class="wh-dash-card__head">
+            <h3>Recent orders</h3>
+            <button class="wh-dash-card__link" data-wh-tab-switch="orders">See all &rarr;</button>
+          </div>
+          <div class="wh-dash-card__body" id="wh-recent-orders">
+            <div class="wh-dash-empty">Loading orders…</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Quick links -->
+      <div class="wh-dash-quicklinks">
+        <a href="{{ section.settings.shop_url | default: '/collections/tires' }}" class="wh-dash-qlink">
+          <div class="wh-dash-qlink__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <div class="wh-dash-qlink__body">
+            <span class="wh-dash-qlink__title">Shop tires</span>
+            <span class="wh-dash-qlink__sub">Trade pricing applied at checkout</span>
+          </div>
+          <svg class="wh-dash-qlink__arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+        <a href="/pages/contact" class="wh-dash-qlink">
+          <div class="wh-dash-qlink__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="wh-dash-qlink__body">
+            <span class="wh-dash-qlink__title">Request a quote</span>
+            <span class="wh-dash-qlink__sub">Bulk orders, custom sizing</span>
+          </div>
+          <svg class="wh-dash-qlink__arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+        <button class="wh-dash-qlink wh-dash-qlink--btn" id="wh-delivery-open">
+          <div class="wh-dash-qlink__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <div class="wh-dash-qlink__body">
+            <span class="wh-dash-qlink__title">Request delivery</span>
+            <span class="wh-dash-qlink__sub">Order tires delivered to your shop</span>
+          </div>
+          <svg class="wh-dash-qlink__arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+
+      <!-- Promo banner -->
+      {%- if section.settings.promo_text != blank -%}
+      <div class="wh-dash-promo">
+        {%- if section.settings.promo_label != blank -%}
+          <strong class="wh-dash-promo__label">{{ section.settings.promo_label | escape }}</strong>
+        {%- endif -%}
+        <span class="wh-dash-promo__text">{{ section.settings.promo_text | escape }}</span>
+        {%- if section.settings.promo_link != blank -%}
+          <a href="{{ section.settings.promo_link }}" class="wh-dash-promo__link">{{ section.settings.promo_link_text | default: 'Learn more' | escape }} &rarr;</a>
+        {%- endif -%}
+      </div>
+      {%- endif -%}
+    </div>
+
+    <!-- Panel: Order History -->
+    <div class="wh-dash-panel wh-dash-panel--hidden" data-wh-panel="orders">
+      <div class="wh-dash-card wh-dash-card--full">
+        <div class="wh-dash-card__head">
+          <h3>Order history</h3>
+          {%- if paginate.pages > 1 -%}
+            <span class="wh-dash-card__note">Page {{ paginate.current_page }} of {{ paginate.pages }} &middot; {{ customer.orders_count }} total orders</span>
+          {%- else -%}
+            <span class="wh-dash-card__note">{{ customer.orders_count }} order{%- if customer.orders_count != 1 -%}s{%- endif -%} total</span>
+          {%- endif -%}
+        </div>
+        <div class="wh-dash-card__body" id="wh-orders-table">
+          <div class="wh-dash-empty">Loading order history…</div>
+        </div>
+        <div id="wh-orders-pagination" class="wh-dash-order-pagination" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Panel: Account -->
+    <div class="wh-dash-panel wh-dash-panel--hidden" data-wh-panel="account">
+      <div class="wh-dash-account-grid">
+
+        <!-- Business details -->
+        <div class="wh-dash-card">
+          <div class="wh-dash-card__head"><h3>Business details</h3></div>
+          <div class="wh-dash-card__body">
+            <dl class="wh-dash-biz-list">
+              <dt>Business name</dt><dd data-wh-biz="business">—</dd>
+              <dt>Business type</dt><dd data-wh-biz="type">—</dd>
+              <dt>GST number</dt><dd data-wh-biz="gst">—</dd>
+              <dt>Phone</dt><dd data-wh-biz="phone">—</dd>
+              <dt>Monthly volume</dt><dd data-wh-biz="volume">—</dd>
+            </dl>
+            <button class="wh-dash-update-toggle" id="wh-biz-update-toggle">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Update business info
+            </button>
+            <div class="wh-dash-update-form" id="wh-biz-update-form">
+              {%- form 'contact', id: 'WholesaleUpdateForm' -%}
+                {%- if form.posted_successfully? -%}
+                  <p style="font-size:13px;color:#16a34a;font-weight:600;">✓ Update request received. We'll update your account within 1 business day.</p>
+                {%- else -%}
+                  <div class="wh-delivery-field">
+                    <label class="wh-delivery-label" for="wh-upd-biz">Business name</label>
+                    <input class="wh-delivery-input" type="text" id="wh-upd-biz" name="contact[business_name]" placeholder="Your business name">
+                  </div>
+                  <div class="wh-delivery-field">
+                    <label class="wh-delivery-label" for="wh-upd-phone">Phone</label>
+                    <input class="wh-delivery-input" type="tel" id="wh-upd-phone" name="contact[phone]" placeholder="(403) 555-0100">
+                  </div>
+                  <div class="wh-delivery-field">
+                    <label class="wh-delivery-label" for="wh-upd-gst">GST number</label>
+                    <input class="wh-delivery-input" type="text" id="wh-upd-gst" name="contact[gst]" placeholder="e.g. 123456789 RT0001">
+                  </div>
+                  <input type="hidden" name="contact[name]" value="{{ customer.name | escape }}">
+                  <input type="hidden" name="contact[email]" value="{{ customer.email | escape }}">
+                  <input type="hidden" name="contact[body]" value="Business info update request for {{ customer.email }}">
+                  <div style="display:flex;gap:8px;margin-top:4px">
+                    <button type="submit" class="wh-dash-update-submit">Save changes</button>
+                    <button type="button" class="wh-dash-update-cancel" id="wh-biz-update-cancel">Cancel</button>
+                  </div>
+                {%- endif -%}
+              {%- endform -%}
+            </div>
+          </div>
+        </div>
+
+        <!-- Discount tiers -->
+        <div class="wh-dash-card">
+          <div class="wh-dash-card__head"><h3>Discount tiers</h3></div>
+          <div class="wh-dash-card__body">
+            <table class="wh-dash-tier-table">
+              <thead><tr><th>Tier</th><th>Orders</th><th>Discount</th></tr></thead>
+              <tbody>
+                <tr class="{% if wh_tier_cls == 'bronze' %}is-current{% endif %}">
+                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--bronze"></span>Bronze</td><td>1 – 10</td><td class="wh-dash-tier-table__disc">5%</td>
+                </tr>
+                <tr class="{% if wh_tier_cls == 'silver' %}is-current{% endif %}">
+                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--silver"></span>Silver</td><td>11 – 20</td><td class="wh-dash-tier-table__disc">10%</td>
+                </tr>
+                <tr class="{% if wh_tier_cls == 'gold' %}is-current{% endif %}">
+                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--gold"></span>Gold</td><td>21 – 40</td><td class="wh-dash-tier-table__disc">15%</td>
+                </tr>
+                <tr class="{% if wh_tier_cls == 'platinum' %}is-current{% endif %}">
+                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--platinum"></span>Platinum</td><td>41 – 80</td><td class="wh-dash-tier-table__disc">20%</td>
+                </tr>
+                <tr class="{% if wh_tier_cls == 'elite' %}is-current{% endif %}">
+                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--elite"></span>Elite</td><td>81+</td><td class="wh-dash-tier-table__disc">25%</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="wh-dash-payment-terms">Payment terms: {{ section.settings.payment_terms | default: 'Contact your account manager for terms' | escape }}</p>
+          </div>
+        </div>
+
+        <!-- Account manager + sign out -->
+        <div class="wh-dash-card">
+          <div class="wh-dash-card__head"><h3>Account manager</h3></div>
+          <div class="wh-dash-card__body">
+            <div class="wh-dash-mgr">
+              <div class="wh-dash-mgr__av">PT</div>
+              <div>
+                <span class="wh-dash-mgr__name">{{ section.settings.manager_name | default: 'Prince Tires Wholesale Team' | escape }}</span>
+                <span class="wh-dash-mgr__role">Dedicated wholesale support</span>
+              </div>
+            </div>
+            <div class="wh-dash-mgr__contacts">
+              <a href="tel:+14034524283" class="wh-dash-contact-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 12 19.79 19.79 0 0 1 1.17 3.39 2 2 0 0 1 3.14 1.22h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16v.92z"/></svg>
+                {{ section.settings.manager_phone | default: '(403) 452-4283' | escape }}
+              </a>
+              <a href="/pages/contact" class="wh-dash-contact-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                Send a message
+              </a>
+            </div>
+            <a href="{{ routes.account_logout_url }}" class="wh-dash-signout">Sign out</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Delivery Request Modal -->
+  <div class="wh-delivery-modal" id="wh-delivery-modal" role="dialog" aria-modal="true" aria-labelledby="wh-delivery-title">
+    <div class="wh-delivery-modal__overlay" id="wh-delivery-overlay"></div>
+    <div class="wh-delivery-modal__box">
+      <div class="wh-delivery-modal__head">
+        <div>
+          <h2 class="wh-delivery-modal__title" id="wh-delivery-title">Request delivery</h2>
+          <p class="wh-delivery-modal__sub">Our team will confirm pricing and availability within 1 business day</p>
+        </div>
+        <button class="wh-delivery-modal__close" id="wh-delivery-close" aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="wh-delivery-modal__body">
+        <div id="wh-delivery-form-wrap">
+          <div class="wh-delivery-note">
+            <strong>Delivery pricing</strong> is calculated based on your order size and delivery location. Our team will contact you at <strong>{{ customer.email }}</strong> with a confirmed quote before dispatch.
+          </div>
+          {%- form 'contact', id: 'WholesaleDeliveryForm' -%}
+            {%- if form.posted_successfully? -%}
+              <div class="wh-delivery-success">
+                <div class="wh-delivery-success__icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <p><strong>Delivery request sent!</strong><br>We'll contact you at {{ customer.email }} with a quote within 1 business day.</p>
+              </div>
+            {%- else -%}
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-del-tires">Tires needed <span style="color:#DC2626">*</span></label>
+                <input class="wh-delivery-input" type="text" id="wh-del-tires" name="contact[tires]" required placeholder="e.g. 4x Michelin 225/45R17 all-season">
+              </div>
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-del-qty">Quantity <span style="color:#DC2626">*</span></label>
+                <select class="wh-delivery-select" id="wh-del-qty" name="contact[quantity]" required>
+                  <option value="">Select quantity…</option>
+                  <option value="1-4">1–4 tires</option>
+                  <option value="5-10">5–10 tires</option>
+                  <option value="11-25">11–25 tires</option>
+                  <option value="26-50">26–50 tires</option>
+                  <option value="50+">50+ tires</option>
+                </select>
+              </div>
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-del-address">Delivery address <span style="color:#DC2626">*</span></label>
+                <input class="wh-delivery-input" type="text" id="wh-del-address" name="contact[delivery_address]" required placeholder="Shop address or postal code">
+              </div>
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-del-date">Preferred delivery date</label>
+                <input class="wh-delivery-input" type="date" id="wh-del-date" name="contact[preferred_date]">
+              </div>
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-del-notes">Additional notes</label>
+                <textarea class="wh-delivery-textarea" id="wh-del-notes" name="contact[notes]" placeholder="Special requirements, access instructions, etc."></textarea>
+              </div>
+              <input type="hidden" name="contact[name]" value="{{ customer.name | escape }}">
+              <input type="hidden" name="contact[email]" value="{{ customer.email | escape }}">
+              <input type="hidden" name="contact[body]" id="wh-del-hidden-body">
+              <button type="submit" class="wh-delivery-submit">Send delivery request</button>
+            {%- endif -%}
+          {%- endform -%}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{%- endpaginate -%}
+
+{%- else -%}
+{%- comment -%} ══════════ INFO LANDING (all non-portal states) ══════════ {%- endcomment -%}
+
+{%- comment -%} ── HERO + REGISTER CARD ── {%- endcomment -%}
+<div class="wh-hero">
+  <div class="wh-hero__inner">
+    <div class="wh-hero__left">
+      <div class="wh-hero__tag">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Wholesale Partner Program
+      </div>
+      <h1 class="wh-hero__h1">
+        Register your<br>shop for<br><em>wholesale</em><br>tire prices
+      </h1>
+      <p class="wh-hero__sub">
+        Are you an <strong>auto shop, mechanic, dealership, or fleet manager?</strong> Get exclusive trade pricing on all major tire brands. Apply in minutes, approved within 24 hours.
+      </p>
+      <div class="wh-hero__cta-row">
+        {%- if is_wholesale -%}
+          <a href="/pages/wholesale-portal" class="wh-btn wh-btn--red" style="height:52px;padding:0 30px;font-size:15px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Go to my portal
+          </a>
+        {%- elsif is_pending -%}
+          <div class="wh-hero__pending-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Application under review — we'll email you within 24 hours
+          </div>
+        {%- elsif customer -%}
+          <a href="/pages/wholesale-register" class="wh-btn wh-btn--red" style="height:52px;padding:0 30px;font-size:15px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            Apply for wholesale access
+          </a>
+        {%- else -%}
+          <a href="/pages/wholesale-register" class="wh-btn wh-btn--red" style="height:52px;padding:0 30px;font-size:15px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            Register as a wholesale partner
+          </a>
+          <a href="{{ routes.account_login_url }}" class="wh-btn wh-btn--ghost" style="height:52px">Already have an account?</a>
+        {%- endif -%}
+      </div>
+    </div>
+
+    {%- comment -%} ── REGISTRATION CARD ── {%- endcomment -%}
+    <div class="wh-reg-card">
+      <div class="wh-reg-card__head">
+        <div class="wh-reg-card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h2 class="wh-reg-card__title">What you get as a partner</h2>
+        <p class="wh-reg-card__sub">Instant access once approved</p>
+      </div>
+      <ul class="wh-reg-card__perks">
+        <li class="wh-reg-card__perk">
+          <span class="wh-reg-card__perk-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><strong>Trade pricing</strong> on all major brands</span>
+        </li>
+        <li class="wh-reg-card__perk">
+          <span class="wh-reg-card__perk-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><strong>Dedicated account manager</strong> — direct line, no hold times</span>
+        </li>
+        <li class="wh-reg-card__perk">
+          <span class="wh-reg-card__perk-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><strong>Same-day fulfillment</strong> on in-stock items</span>
+        </li>
+        <li class="wh-reg-card__perk">
+          <span class="wh-reg-card__perk-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span><strong>Fleet installation booking</strong> around your schedule</span>
+        </li>
+      </ul>
+
+      {%- if is_wholesale -%}
+        <a href="/pages/wholesale-portal" class="wh-reg-card__btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Go to my wholesale portal
+        </a>
+        <div class="wh-reg-card__approval">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          You're an approved wholesale partner
+        </div>
+      {%- elsif is_pending -%}
+        <div class="wh-reg-card__approval" style="background:#fffbeb;border-color:#fcd34d;color:#92400e;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Application under review — check your email
+        </div>
+      {%- else -%}
+        <a href="/pages/wholesale-register" class="wh-reg-card__btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          Register my shop — it's free
+        </a>
+        <div class="wh-reg-card__divider"><span>or</span></div>
+        <div class="wh-reg-card__approval">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Approved within 24 hours — no fees, no contracts
+        </div>
+        <p class="wh-reg-card__login" style="margin-top:14px">
+          Already a partner? <a href="{{ routes.account_login_url }}">Sign in here</a>
+        </p>
+      {%- endif -%}
+    </div>
+
+  </div>
+</div>
+
+{%- comment -%} ── STATS BAR ── {%- endcomment -%}
+<div class="wh-stats-bar">
+  <div class="wh-stats-bar__inner">
+    <div class="wh-stat">
+      <span class="wh-stat__val">{{ section.settings.stat_1_val | default: '500+' | escape }}</span>
+      <span class="wh-stat__label">{{ section.settings.stat_1_label | default: 'Trade partners' | escape }}</span>
+    </div>
+    <div class="wh-stat">
+      <span class="wh-stat__val">{{ section.settings.stat_2_val | default: '40k+' | escape }}</span>
+      <span class="wh-stat__label">{{ section.settings.stat_2_label | default: 'Tires in stock' | escape }}</span>
+    </div>
+    <div class="wh-stat">
+      <span class="wh-stat__val">{{ section.settings.stat_3_val | default: '500+' | escape }}</span>
+      <span class="wh-stat__label">{{ section.settings.stat_3_label | default: 'Products available' | escape }}</span>
+    </div>
+    <div class="wh-stat">
+      <span class="wh-stat__val">{{ section.settings.stat_4_val | default: '24hr' | escape }}</span>
+      <span class="wh-stat__label">{{ section.settings.stat_4_label | default: 'Approval time' | escape }}</span>
+    </div>
+  </div>
+</div>
+
+{%- comment -%} ── REGISTER CTA ── {%- endcomment -%}
+<div class="wh-section wh-section--alt">
+  <div class="wh-section__inner">
+    <div class="wh-section__hd wh-section__hd--center">
+      <span class="wh-eyebrow">Wholesale pricing</span>
+      <h2 class="wh-h2">Register your shop</h2>
+      <p class="wh-lead wh-lead--center">Apply for a wholesale account and our team will review your application. Once approved, you will receive a personalized discount code with pricing tailored to your business.</p>
+    </div>
+    <div style="text-align:center;margin-top:24px;">
+      <a href="/pages/wholesale-register" class="wh-btn wh-btn--red" style="height:52px;padding:0 32px;font-size:15px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Apply for wholesale access
+      </a>
+    </div>
+  </div>
+</div>
+
+{%- comment -%} ── BENEFITS ── {%- endcomment -%}
+<div class="wh-section">
+  <div class="wh-section__inner">
+    <div class="wh-section__hd wh-section__hd--center">
+      <span class="wh-eyebrow">Why shops choose us</span>
+      <h2 class="wh-h2">Everything your shop needs</h2>
+      <p class="wh-lead wh-lead--center">From volume pricing to same-day delivery — built specifically for automotive trade professionals.</p>
+    </div>
+    <div class="wh-benefits">
+      <div class="wh-benefit">
+        <div class="wh-benefit__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <h3 class="wh-benefit__title">Volume pricing on major brands</h3>
+        <p class="wh-benefit__text">Tiered discounts on Michelin, Goodyear, Continental, BF Goodrich, Hankook, Pirelli, and 20+ other brands. Your discount grows with your monthly volume.</p>
+      </div>
+      <div class="wh-benefit">
+        <div class="wh-benefit__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+        <h3 class="wh-benefit__title">Same-day fulfillment</h3>
+        <p class="wh-benefit__text">Wholesale orders are picked and dispatched first. Same-day fulfillment available on all in-stock items across the Calgary metro area.</p>
+      </div>
+      <div class="wh-benefit">
+        <div class="wh-benefit__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <h3 class="wh-benefit__title">Dedicated account manager</h3>
+        <p class="wh-benefit__text">One direct contact for quotes, special orders, and fleet support. Phone and email — no hold queues, no ticket systems, just fast answers.</p>
+      </div>
+      <div class="wh-benefit">
+        <div class="wh-benefit__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <h3 class="wh-benefit__title">First access to new stock</h3>
+        <p class="wh-benefit__text">Wholesale partners get early access to new inventory, clearance lots, and seasonal deals before they go live to retail customers. Perfect for stocking up ahead of winter.</p>
+      </div>
+      <div class="wh-benefit">
+        <div class="wh-benefit__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <h3 class="wh-benefit__title">Flexible fleet booking</h3>
+        <p class="wh-benefit__text">Schedule installation appointments for multiple vehicles at once — we work around your operational hours to minimize downtime.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{%- comment -%} ── HOW IT WORKS ── {%- endcomment -%}
+<div class="wh-section wh-section--alt">
+  <div class="wh-section__inner">
+    <div class="wh-section__hd wh-section__hd--center">
+      <span class="wh-eyebrow">Simple process</span>
+      <h2 class="wh-h2">Up and running in 24 hours</h2>
+      <p class="wh-lead wh-lead--center">No contracts. No complex paperwork. Just fill in your shop details and we'll handle the rest.</p>
+    </div>
+    <div class="wh-steps">
+      <div class="wh-step">
+        <div class="wh-step__num">1</div>
+        <h4>Register your shop</h4>
+        <p>Fill in your business name, type, and contact details. Takes under 3 minutes. No payment required.</p>
+      </div>
+      <div class="wh-step">
+        <div class="wh-step__num">2</div>
+        <h4>Get approved</h4>
+        <p>Our team reviews all applications within 24 hours. You'll get a confirmation email when you're approved.</p>
+      </div>
+      <div class="wh-step">
+        <div class="wh-step__num">3</div>
+        <h4>See wholesale pricing</h4>
+        <p>Log in and see trade prices applied across the full catalog — clearly marked and automatically applied at checkout.</p>
+      </div>
+      <div class="wh-step">
+        <div class="wh-step__num">4</div>
+        <h4>Order &amp; save</h4>
+        <p>Shop online 24/7 or call your account manager directly. Volume discounts increase as your orders grow.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{%- comment -%} ── WHO QUALIFIES + CTA BOX ── {%- endcomment -%}
+<div class="wh-section">
+  <div class="wh-section__inner">
+    <div class="wh-who-grid">
+      <div>
+        <div class="wh-section__hd">
+          <span class="wh-eyebrow">Who can apply</span>
+          <h2 class="wh-h2">Is your business eligible?</h2>
+          <p class="wh-lead">If you work in the automotive industry and regularly buy tires, you likely qualify. We work with businesses of all sizes.</p>
+        </div>
+        <div class="wh-who__list">
+          <div class="wh-who__item">
+            <div class="wh-who__item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
+            <div><span class="wh-who__item-title">Auto repair shops</span><p class="wh-who__item-desc">Independent garages, franchise shops, and multi-bay operations</p></div>
+          </div>
+          <div class="wh-who__item">
+            <div class="wh-who__item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+            <div><span class="wh-who__item-title">Fleet operators</span><p class="wh-who__item-desc">Trucking, delivery, construction, and corporate vehicle fleets</p></div>
+          </div>
+          <div class="wh-who__item">
+            <div class="wh-who__item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v7a2 2 0 0 1-2 2z"/></svg></div>
+            <div><span class="wh-who__item-title">Car dealerships</span><p class="wh-who__item-desc">New and used car dealerships needing reliable tire supply</p></div>
+          </div>
+          <div class="wh-who__item">
+            <div class="wh-who__item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+            <div><span class="wh-who__item-title">Mobile mechanics &amp; tire installers</span><p class="wh-who__item-desc">Mobile shops and independent installers looking to reduce cost</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wh-cta-box">
+        <div class="wh-cta-box__badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Free to join
+        </div>
+        <h2 class="wh-cta-box__title">Ready to start saving on every tire order?</h2>
+        <p class="wh-cta-box__text">Register your shop in under 3 minutes. Our team reviews applications within 24 hours — most are approved the same day.</p>
+        <a href="/pages/wholesale-register" class="wh-cta-box__btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          Register my shop for wholesale prices
+        </a>
+        <p class="wh-cta-box__note">No contracts &middot; No fees &middot; No minimum order</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{%- comment -%} ── FAQ ── {%- endcomment -%}
+<div class="wh-section wh-section--alt">
+  <div class="wh-section__inner">
+    <div class="wh-section__hd wh-section__hd--center">
+      <span class="wh-eyebrow">Common questions</span>
+      <h2 class="wh-h2">Frequently asked questions</h2>
+    </div>
+    <div class="wh-faq" style="max-width:760px;margin:0 auto">
+      <div class="wh-faq-item">
+        <button class="wh-faq-btn" aria-expanded="false">
+          Is there a minimum order requirement?
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="wh-faq-body">No minimum order. You can order a single tire at wholesale pricing. Volume discounts apply as your monthly order volume increases — but there's no requirement to hit a minimum.</div>
+      </div>
+      <div class="wh-faq-item">
+        <button class="wh-faq-btn" aria-expanded="false">
+          How much can I save compared to retail?
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="wh-faq-body">Savings vary by brand, model, and your monthly volume. Higher-volume partners at Platinum and Elite tiers access the deepest discounts. Contact your account manager for a specific quote on the brands you buy most.</div>
+      </div>
+      <div class="wh-faq-item">
+        <button class="wh-faq-btn" aria-expanded="false">
+          How long does approval take?
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="wh-faq-body">Most applications are reviewed and approved within 24 hours during business days. You'll receive an email confirmation as soon as your account is activated. In many cases, same-day approval is possible.</div>
+      </div>
+      <div class="wh-faq-item">
+        <button class="wh-faq-btn" aria-expanded="false">
+          Do I need a business registration or GST number?
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="wh-faq-body">It's not strictly required, but providing your business registration or GST number helps speed up the approval process. We accept applications from all types of automotive businesses, including sole proprietors and mobile operators.</div>
+      </div>
+      <div class="wh-faq-item">
+        <button class="wh-faq-btn" aria-expanded="false">
+          Can I get wholesale pricing on installations too?
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="wh-faq-body">Yes — wholesale partners receive discounted installation rates for fleet work. We can schedule multiple vehicles at once around your operational hours. Contact your account manager to set up fleet terms.</div>
+      </div>
+      <div class="wh-faq-item">
+        <button class="wh-faq-btn" aria-expanded="false">
+          I already have a Prince Tires account. How do I upgrade to wholesale?
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="wh-faq-body">Sign in to your account first, then revisit this page — you'll see a direct option to apply for wholesale access linked to your existing account. Alternatively, visit <a href="/pages/wholesale-register" style="color:#DC2626">the application page</a> while logged in.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{%- comment -%} ── SAVINGS CALCULATOR ── {%- endcomment -%}
+<div class="wh-section">
+  <div class="wh-section__inner">
+    <div class="wh-calc" id="WholesaleCalc">
+      <div class="wh-calc__left">
+        <span class="wh-calc__eyebrow">Savings calculator</span>
+        <h2 class="wh-calc__title">How much could your shop save?</h2>
+        <p class="wh-calc__sub">Drag the slider to estimate your monthly tire volume and see your annual savings at wholesale pricing.</p>
+
+        <div class="wh-calc__label">
+          Monthly tire volume
+          <span id="CalcVolumeDisplay">20 tires/mo</span>
+        </div>
+        <input
+          type="range"
+          class="wh-calc__slider"
+          id="CalcSlider"
+          min="1"
+          max="150"
+          value="20"
+          aria-label="Monthly tire volume"
+        >
+        <div class="wh-calc__ticks">
+          <span class="wh-calc__tick">1</span>
+          <span class="wh-calc__tick">30</span>
+          <span class="wh-calc__tick">75</span>
+          <span class="wh-calc__tick">100+</span>
+        </div>
+
+        <div class="wh-calc__avg-price">
+          <div class="wh-calc__avg-label">Average tire retail price (customize)</div>
+          <div class="wh-calc__avg-inputs">
+            <span class="wh-calc__price-label">$</span>
+            <input
+              type="number"
+              class="wh-calc__price-input"
+              id="CalcRetailPrice"
+              value="180"
+              min="50"
+              max="1000"
+              step="10"
+              aria-label="Average tire retail price"
+            >
+            <span class="wh-calc__price-label">per tire</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wh-calc__right">
+        <div class="wh-calc__tier-badge wh-calc__tier-badge--silver" id="CalcTierBadge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span id="CalcTierName">Professional tier</span>
+        </div>
+        <span class="wh-calc__savings-num" id="CalcSavings">$0</span>
+        <p class="wh-calc__savings-label">estimated annual savings vs. retail</p>
+
+        <div class="wh-calc__breakdown">
+          <div class="wh-calc__breakdown-row">
+            <span>Monthly spend at retail</span>
+            <span id="CalcRetailMonthly">$3,600</span>
+          </div>
+          <div class="wh-calc__breakdown-row">
+            <span>Your wholesale discount</span>
+            <span id="CalcDiscountPct">22%</span>
+          </div>
+          <div class="wh-calc__breakdown-row">
+            <span>Monthly savings</span>
+            <span id="CalcMonthlySavings">$792</span>
+          </div>
+          <div class="wh-calc__breakdown-row wh-calc__breakdown-row--savings" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;margin-top:2px;">
+            <span>Annual savings</span>
+            <span id="CalcAnnualSavings">$9,504</span>
+          </div>
+        </div>
+
+        <a href="/pages/wholesale-register" class="wh-btn wh-btn--red" style="width:100%;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          Start saving — register free
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{%- comment -%} ── BOTTOM CTA ── {%- endcomment -%}
+<div class="wh-bottom-cta">
+  <div class="wh-bottom-cta__inner">
+    <h2 class="wh-bottom-cta__title">Your shop deserves <em>trade prices</em></h2>
+    <p class="wh-bottom-cta__sub">Join 500+ Alberta automotive businesses saving on every tire order. Free to join, no contracts, approved in 24 hours.</p>
+    <div class="wh-bottom-cta__actions">
+      <a href="/pages/wholesale-register" class="wh-btn wh-btn--red" style="height:52px;padding:0 30px;font-size:15px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Register my shop now
+      </a>
+      <a href="/pages/contact" class="wh-btn wh-btn--ghost" style="height:52px">Have questions? Talk to us</a>
+    </div>
+  </div>
+</div>
+
+{%- endif -%}
+
+</div>
+
+<script>
+(function() {
+
+  /* ── Savings Calculator ── */
+  var slider    = document.getElementById('CalcSlider');
+  var priceIn   = document.getElementById('CalcRetailPrice');
+
+  if (slider) {
+    var tiers = [
+      { name: 'Bronze tier',   min: 1,  max: 10,  pct: 5,  cls: 'bronze' },
+      { name: 'Silver tier',   min: 11, max: 20,  pct: 10, cls: 'silver' },
+      { name: 'Gold tier',     min: 21, max: 40,  pct: 15, cls: 'gold' },
+      { name: 'Platinum tier', min: 41, max: 80,  pct: 20, cls: 'platinum' },
+      { name: 'Elite tier',    min: 81, max: 999, pct: 25, cls: 'elite' }
+    ];
+
+    function fmt(n) {
+      return '$' + n.toLocaleString('en-CA', { maximumFractionDigits: 0 });
+    }
+
+    function calcUpdate() {
+      var volume = parseInt(slider.value, 10);
+      var retail = parseFloat((priceIn && priceIn.value) || 180);
+
+      var tier = tiers[0];
+      for (var i = 0; i < tiers.length; i++) {
+        if (volume >= tiers[i].min && volume <= tiers[i].max) { tier = tiers[i]; break; }
+        if (volume > tiers[tiers.length - 1].min) { tier = tiers[tiers.length - 1]; }
+      }
+
+      var monthlyRetail  = volume * retail;
+      var monthlySavings = monthlyRetail * (tier.pct / 100);
+      var annualSavings  = monthlySavings * 12;
+
+      var volDisplay = document.getElementById('CalcVolumeDisplay');
+      if (volDisplay) volDisplay.textContent = volume + ' tires/mo';
+
+      var savingsEl = document.getElementById('CalcSavings');
+      if (savingsEl) savingsEl.textContent = fmt(annualSavings);
+
+      var badgeEl = document.getElementById('CalcTierBadge');
+      if (badgeEl) {
+        badgeEl.className = 'wh-calc__tier-badge wh-calc__tier-badge--' + tier.cls;
+      }
+      var tierName = document.getElementById('CalcTierName');
+      if (tierName) tierName.textContent = tier.name;
+
+      var retM = document.getElementById('CalcRetailMonthly');
+      if (retM) retM.textContent = fmt(monthlyRetail);
+
+      var discPct = document.getElementById('CalcDiscountPct');
+      if (discPct) discPct.textContent = tier.pct + '%';
+
+      var monSav = document.getElementById('CalcMonthlySavings');
+      if (monSav) monSav.textContent = fmt(monthlySavings);
+
+      var annSav = document.getElementById('CalcAnnualSavings');
+      if (annSav) annSav.textContent = fmt(annualSavings);
+
+      // Update slider track fill
+      var pct = ((volume - 1) / (150 - 1)) * 100;
+      slider.style.background = 'linear-gradient(to right, #DC2626 ' + pct + '%, #E2E8F0 ' + pct + '%)';
+    }
+
+    slider.addEventListener('input', calcUpdate);
+    if (priceIn) priceIn.addEventListener('input', calcUpdate);
+    calcUpdate(); // init
+  }
+
+  /* ── FAQ accordion ── */
+  document.querySelectorAll('.wh-faq-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var body   = this.nextElementSibling;
+      var isOpen = this.getAttribute('aria-expanded') === 'true';
+      /* close all */
+      document.querySelectorAll('.wh-faq-btn').forEach(function(b) {
+        b.setAttribute('aria-expanded', 'false');
+        b.nextElementSibling.classList.remove('is-open');
+      });
+      /* open clicked if it was closed */
+      if (!isOpen) {
+        this.setAttribute('aria-expanded', 'true');
+        body.classList.add('is-open');
+      }
+    });
+  });
+})();
+
+/* ── Wholesale Dashboard Portal ── */
+(function() {
+  var portal = document.querySelector('.wh-dash-portal');
+  if (!portal) return;
+
+  /* 1. Note parsing */
+  var rawNote = portal.dataset.whNote || '';
+  var bizData = {};
+  rawNote.replace(/^WHOLESALE:\s*/i, '').split('|').forEach(function(seg) {
+    var idx = seg.indexOf('=');
+    if (idx < 0) return;
+    var key = seg.slice(0, idx).trim().toLowerCase();
+    var val = seg.slice(idx + 1).trim();
+    if (key && val) bizData[key] = val;
+  });
+
+  /* Populate business name in hero */
+  var bizNameEl = portal.querySelector('[data-wh-biz-name]');
+  if (bizNameEl && bizData['business']) bizNameEl.textContent = bizData['business'];
+
+  /* Populate business detail fields */
+  portal.querySelectorAll('[data-wh-biz]').forEach(function(el) {
+    var field = el.dataset.whBiz;
+    el.textContent = bizData[field] || '\u2014';
+  });
+
+  /* 2. Order data + stat cards */
+  var orderDataEl = document.getElementById('wh-order-data');
+  var orders = [];
+  var orderMeta = { page: 1, pages: 1, next: null, prev: null, total: 0 };
+  if (orderDataEl) {
+    try {
+      var parsed = JSON.parse(orderDataEl.textContent);
+      if (Array.isArray(parsed)) {
+        orders = parsed; /* legacy fallback */
+      } else {
+        orders = parsed.orders || [];
+        orderMeta = { page: parsed.page || 1, pages: parsed.pages || 1, next: parsed.next || null, prev: parsed.prev || null, total: parsed.total || 0 };
+      }
+    } catch(e) {}
+  }
+  var tierPct = parseInt(portal.dataset.whTierPct, 10) || 5;
+  var now = new Date();
+  var thisMonth = now.getMonth();
+  var thisYear  = now.getFullYear();
+  var ordersThisMonth = 0, tiresThisMonth = 0, savingsCents = 0;
+  orders.forEach(function(o) {
+    var d = new Date(o.date);
+    if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
+      ordersThisMonth++;
+      tiresThisMonth += (o.items || 0);
+      savingsCents += Math.round((o.total || 0) * tierPct / 100);
+    }
+  });
+  function fmtMoney(cents) {
+    return '$' + (cents / 100).toLocaleString('en-CA', { maximumFractionDigits: 0 });
+  }
+  var statMap = { 'orders-month': ordersThisMonth.toString(), 'tires-month': tiresThisMonth.toString(), 'savings-month': fmtMoney(savingsCents) };
+  Object.keys(statMap).forEach(function(key) {
+    var el = portal.querySelector('[data-wh-stats="' + key + '"]');
+    if (el) el.textContent = statMap[key];
+  });
+
+  /* 3. Recent orders mini list (last 5) */
+  var recentEl = document.getElementById('wh-recent-orders');
+  if (recentEl) {
+    if (!orders.length) {
+      recentEl.innerHTML = '<div class="wh-dash-empty">No orders yet. <a href="/collections/tires">Start shopping \u2192</a></div>';
+    } else {
+      var rows = orders.slice(0, 5).map(function(o) {
+        var d = new Date(o.date).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+        var tot = '$' + (o.total / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return '<div class="wh-dash-order-mini-row">'
+          + '<a class="wh-dash-order-mini-num" href="/account/orders/' + o.id + '">#' + o.number + '</a>'
+          + '<span class="wh-dash-order-mini-meta">' + d + ' &middot; ' + o.items + ' item' + (o.items !== 1 ? 's' : '') + '</span>'
+          + '<span class="wh-dash-order-mini-total">' + tot + '</span>'
+          + '</div>';
+      }).join('');
+      recentEl.innerHTML = '<div class="wh-dash-order-mini">' + rows + '</div>';
+    }
+  }
+
+  /* 4. Full order history table */
+  var tableEl = document.getElementById('wh-orders-table');
+  if (tableEl) {
+    if (!orders.length) {
+      tableEl.innerHTML = '<div class="wh-dash-empty" style="padding:32px 0">No orders yet. <a href="/collections/tires">Start shopping \u2192</a></div>';
+    } else {
+      var tableRows = orders.map(function(o) {
+        var d = new Date(o.date).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+        var tot = '$' + (o.total / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return '<tr>'
+          + '<td><a href="/account/orders/' + o.id + '">#' + o.number + '</a></td>'
+          + '<td>' + d + '</td>'
+          + '<td>' + o.items + ' item' + (o.items !== 1 ? 's' : '') + '</td>'
+          + '<td>' + tot + '</td>'
+          + '<td><a href="/account/orders/' + o.id + '" class="wh-dash-order-action">View order</a></td>'
+          + '</tr>';
+      }).join('');
+      tableEl.innerHTML = '<table class="wh-dash-order-table"><thead><tr><th>Order</th><th>Date</th><th>Items</th><th>Total</th><th></th></tr></thead><tbody>' + tableRows + '</tbody></table>';
+    }
+  }
+
+  /* 4b. Order pagination */
+  var paginEl = document.getElementById('wh-orders-pagination');
+  if (paginEl && orderMeta.pages > 1) {
+    var pHtml = '';
+    if (orderMeta.prev) pHtml += '<a href="' + orderMeta.prev + '" class="wh-dash-order-page-btn">\u2190 Previous</a>';
+    pHtml += '<span class="wh-dash-order-page-info">Page ' + orderMeta.page + ' of ' + orderMeta.pages + ' &middot; ' + orderMeta.total + ' orders total</span>';
+    if (orderMeta.next) pHtml += '<a href="' + orderMeta.next + '" class="wh-dash-order-page-btn">Next \u2192</a>';
+    paginEl.innerHTML = pHtml;
+    paginEl.style.display = 'flex';
+  }
+
+  /* 5. Tab switching */
+  var tabs   = portal.querySelectorAll('[data-wh-tab]');
+  var panels = portal.querySelectorAll('[data-wh-panel]');
+
+  function switchTab(name) {
+    tabs.forEach(function(t) {
+      var active = t.dataset.whTab === name;
+      t.classList.toggle('wh-dash-tab--active', active);
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    panels.forEach(function(p) {
+      p.classList.toggle('wh-dash-panel--hidden', p.dataset.whPanel !== name);
+    });
+  }
+
+  tabs.forEach(function(t) {
+    if (!t.dataset.whTab) return;
+    t.addEventListener('click', function() { switchTab(t.dataset.whTab); });
+  });
+
+  portal.querySelectorAll('[data-wh-tab-switch]').forEach(function(btn) {
+    btn.addEventListener('click', function() { switchTab(btn.dataset.whTabSwitch); });
+  });
+
+  /* 6. Progress bar animation */
+  var bar = portal.querySelector('[data-wh-bar-target]');
+  if (bar) {
+    var target = parseInt(bar.dataset.whBarTarget, 10) || 0;
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        bar.style.width = target + '%';
+      });
+    });
+  }
+
+  /* 7. Delivery request modal */
+  var modal   = document.getElementById('wh-delivery-modal');
+  var overlay = document.getElementById('wh-delivery-overlay');
+  var openBtn = document.getElementById('wh-delivery-open');
+  var closeBtn= document.getElementById('wh-delivery-close');
+
+  function openModal() {
+    if (!modal) return;
+    modal.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal() {
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    document.body.style.overflow = '';
+  }
+
+  if (openBtn)  openBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (overlay)  overlay.addEventListener('click', closeModal);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  /* Assemble hidden body for delivery form */
+  var deliveryForm = document.getElementById('WholesaleDeliveryForm');
+  if (deliveryForm) {
+    deliveryForm.addEventListener('submit', function() {
+      var hiddenBody = document.getElementById('wh-del-hidden-body');
+      if (!hiddenBody) return;
+      var tires   = (document.getElementById('wh-del-tires')   || {}).value   || '';
+      var qty     = (document.getElementById('wh-del-qty')     || {}).value   || '';
+      var addr    = (document.getElementById('wh-del-address') || {}).value   || '';
+      var date    = (document.getElementById('wh-del-date')    || {}).value   || '';
+      var notes   = (document.getElementById('wh-del-notes')   || {}).value   || '';
+      hiddenBody.value = 'DELIVERY REQUEST\nTires: ' + tires + '\nQty: ' + qty + '\nAddress: ' + addr + '\nDate: ' + date + '\nNotes: ' + notes;
+    });
+  }
+
+  /* 8. Update business info toggle */
+  var updateToggle = document.getElementById('wh-biz-update-toggle');
+  var updateForm   = document.getElementById('wh-biz-update-form');
+  var updateCancel = document.getElementById('wh-biz-update-cancel');
+
+  if (updateToggle && updateForm) {
+    updateToggle.addEventListener('click', function() {
+      updateForm.classList.toggle('is-open');
+    });
+  }
+  if (updateCancel && updateForm) {
+    updateCancel.addEventListener('click', function() {
+      updateForm.classList.remove('is-open');
+    });
+  }
+
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Wholesale Portal",
+  "settings": [
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding top",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding bottom",
+      "default": 0
+    },
+    { "type": "header",  "content": "Stats bar" },
+    { "type": "text",    "id": "stat_1_val",   "label": "Stat 1 value",  "default": "500+" },
+    { "type": "text",    "id": "stat_1_label", "label": "Stat 1 label",  "default": "Trade partners" },
+    { "type": "text",    "id": "stat_2_val",   "label": "Stat 2 value",  "default": "40k+" },
+    { "type": "text",    "id": "stat_2_label", "label": "Stat 2 label",  "default": "Tires in stock" },
+    { "type": "text",    "id": "stat_3_val",   "label": "Stat 3 value",  "default": "500+" },
+    { "type": "text",    "id": "stat_3_label", "label": "Stat 3 label",  "default": "Products available" },
+    { "type": "text",    "id": "stat_4_val",   "label": "Stat 4 value",  "default": "24hr" },
+    { "type": "text",    "id": "stat_4_label", "label": "Stat 4 label",  "default": "Approval time" },
+    { "type": "header",  "content": "Wholesale Dashboard" },
+    { "type": "text",    "id": "shop_url",       "label": "Shop tires URL",           "default": "/collections/tires" },
+    { "type": "text",    "id": "manager_name",   "label": "Account manager name",     "default": "Prince Tires Wholesale Team" },
+    { "type": "text",    "id": "manager_phone",  "label": "Account manager phone",    "default": "(403) 452-4283" },
+    { "type": "text",    "id": "payment_terms",  "label": "Payment terms text",       "default": "Contact your account manager for terms" },
+    { "type": "header",  "content": "Promotional Banner" },
+    { "type": "text",    "id": "promo_label",    "label": "Promo label (bold)" },
+    { "type": "textarea","id": "promo_text",     "label": "Promo text", "info": "Leave blank to hide banner." },
+    { "type": "url",     "id": "promo_link",     "label": "Promo link URL" },
+    { "type": "text",    "id": "promo_link_text","label": "Promo link text",          "default": "Learn more" }
+  ],
+  "presets": [
+    {
+      "name": "Wholesale Portal"
+    }
+  ]
+}
+{% endschema %}
