@@ -217,21 +217,10 @@ tbody td { padding:12px 18px; font-size:13px; vertical-align:middle; }
 </head>
 <body>
 
-<!-- LOGIN -->
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-logo">Prince Tires</div>
-    <div class="login-sub">Admin Portal</div>
-    <div class="field"><label>Password</label>
-      <input id="pw" type="password" placeholder="Enter admin password" autocomplete="current-password">
-    </div>
-    <button class="btn-primary" id="login-btn">Sign in</button>
-    <div class="login-err" id="login-err"></div>
-  </div>
-</div>
+<!-- no login screen -->
 
 <!-- APP SHELL -->
-<div id="app" style="display:none;">
+<div id="app" style="display:grid;">
   <div class="topbar">
     <div class="topbar-brand"><span>Prince</span> Tires Admin</div>
     <div class="topbar-actions">
@@ -653,7 +642,7 @@ tbody td { padding:12px 18px; font-size:13px; vertical-align:middle; }
 
 <script>
 const API = '';
-let token = sessionStorage.getItem('pt_admin') || '';
+let token = '';
 let products = [];
 let custCache = {};
 let whCache = {};
@@ -669,51 +658,17 @@ let orderSort    = { col: 'created_at', dir: 'desc' };
 let whSort       = { col: 'orders_count', dir: 'desc' };
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-document.getElementById('login-btn').addEventListener('click', doLogin);
-document.getElementById('logout-btn').addEventListener('click', () => {
-  token = ''; sessionStorage.removeItem('pt_admin');
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-});
+document.getElementById('logout-btn').addEventListener('click', () => location.reload());
 document.getElementById('refresh-btn').addEventListener('click', loadAll);
 
-async function doLogin() {
-  const pw = document.getElementById('pw').value;
-  const btn = document.getElementById('login-btn');
-  const err = document.getElementById('login-err');
-  err.textContent = ''; btn.disabled = true; btn.textContent = 'Signing in…';
-  try {
-    const r = await fetch('/api/admin-login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) });
-    const d = await r.json();
-    if (!r.ok) { err.textContent = d.error || 'Invalid password'; return; }
-    token = d.token;
-    sessionStorage.setItem('pt_admin', token);
-    showApp();
-  } catch { err.textContent = 'Connection error'; }
-  finally { btn.disabled = false; btn.textContent = 'Sign in'; }
-}
-
-if (token) showApp();
-
-function showApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'grid';
-  loadAll();
-}
-
-function handleUnauth() {
-  token = ''; sessionStorage.removeItem('pt_admin');
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('login-err').textContent = 'Session expired.';
-}
-
 async function apiFetch(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers || {}) } });
-  if (r.status === 401) { handleUnauth(); throw new Error('unauth'); }
+  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
   return r;
 }
+
+// Auto-load on open
+loadAll();
+loadProducts();
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
@@ -750,7 +705,7 @@ async function loadStats() {
       document.getElementById('stat-customers').textContent = Number(d.customers).toLocaleString();
       document.getElementById('stat-orders').textContent    = Number(d.orders).toLocaleString();
     }
-  } catch(e) { if (e.message !== 'unauth') console.error('stats error:', e); }
+  } catch(e) { console.error('stats error:', e); }
 }
 
 // ── BOOKINGS ──────────────────────────────────────────────────────────────────
@@ -763,7 +718,7 @@ async function loadBookings() {
     renderBookings();
     renderDashBookings();
     buildGarageRows();
-  } catch(e) { if (e.message !== 'unauth') console.error(e); }
+  } catch(e) { console.error(e); }
 }
 
 function updateBookingStats(events) {
@@ -929,7 +884,7 @@ async function loadOrders(dir) {
     renderOrdersTable(currentOrders);
     renderDashOrders(currentOrders.slice(0, 6));
   } catch(e) {
-    if (e.message !== 'unauth') {
+    {
       tbody.innerHTML = '<tr><td colspan="8" class="empty">Error loading orders.</td></tr>';
       document.getElementById('dash-orders').innerHTML = '<div class="empty" style="padding:20px;color:var(--red);">Error loading orders.</div>';
     }
@@ -1048,7 +1003,7 @@ async function loadAllCustomers(dir) {
     custCache = {};
     currentCustomers.forEach(c => { custCache[c.id] = c; });
     renderCustomersTable(currentCustomers);
-  } catch(e) { if (e.message !== 'unauth') tbody.innerHTML = '<tr><td colspan="8" class="empty">Error loading customers.</td></tr>'; }
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="8" class="empty">Error loading customers.</td></tr>'; }
 }
 
 function sortCustomersBy(col) {
@@ -1123,7 +1078,7 @@ async function loadWholesale() {
     whCache = {};
     pending.forEach(c => { whCache[c.id] = c; });
     approved.forEach(c => { whCache[c.id] = c; custCache[c.id] = c; });
-  } catch(e) { if (e.message !== 'unauth') console.error(e); }
+  } catch(e) { console.error(e); }
 }
 
 function renderWhPending(list) {
@@ -1748,8 +1703,7 @@ function fmtDatetime(iso) {
   return new Date(iso).toLocaleString('en-CA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
-// Init
-loadProducts();
+// (init is at top of Auth section)
 </script>
 </body>
 </html>
