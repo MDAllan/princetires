@@ -52,10 +52,48 @@ module.exports = async function handler(req, res) {
 
   try {
     const token    = await shopifyToken();
-    // Sanitize query param before using in Shopify search URL
+    // Sanitize query params before using in Shopify search URL
+    const mode     = sanitize(getParam(req, 'mode')  || '', 30);
     const query    = sanitize(getParam(req, 'query') || '', 100);
     const type     = sanitize(getParam(req, 'type')  || '', 50);
     const pageInfo = sanitize(getParam(req, 'page_info') || '', 200);
+
+    // ── Wholesale mode (merged from admin-customers.js) ──────────────────────
+    // Returns { pending, approved } with metafields for the Wholesale section
+    if (mode === 'wholesale') {
+      async function shopifyGet(t, path) {
+        const r = await fetch(`https://${SHOP}/admin/api/2024-10/${path}`, {
+          headers: { 'X-Shopify-Access-Token': t },
+        });
+        const ct = r.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) throw new Error(`Shopify API non-JSON (${r.status})`);
+        return r.json();
+      }
+
+      const [pendingData, approvedData] = await Promise.all([
+        shopifyGet(token, 'customers/search.json?query=tag:wholesale-pending&limit=250&fields=id,first_name,last_name,email,phone,tags,note,created_at,orders_count,state'),
+        shopifyGet(token, 'customers/search.json?query=tag:wholesale&limit=250&fields=id,first_name,last_name,email,phone,tags,note,created_at,orders_count,state'),
+      ]);
+
+      const approved = approvedData.customers || [];
+      const approvedWithMeta = await Promise.all(approved.map(async (c) => {
+        try {
+          const mf         = await shopifyGet(token, `customers/${c.id}/metafields.json`);
+          const metafields = (mf.metafields || []).reduce((acc, m) => {
+            acc[m.key] = m.value;
+            return acc;
+          }, {});
+          return { ...c, metafields };
+        } catch {
+          return { ...c, metafields: {} };
+        }
+      }));
+
+      return res.status(200).json({
+        pending:  pendingData.customers || [],
+        approved: approvedWithMeta,
+      });
+    }
 
     const fields = 'id,first_name,last_name,email,phone,tags,orders_count,created_at,note,state';
     let url;
