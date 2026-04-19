@@ -396,6 +396,9 @@ class MyGarage extends HTMLElement {
             + '</div>'
           + '</div>'
           + '<span class="gbk-status ' + statusClass + '">' + statusLabel + '</span>'
+          + (bk.cancelUrl && bk.status !== 'cancelled'
+            ? '<a href="' + this.escapeHtml(bk.cancelUrl) + '" class="gbk-cancel-btn" target="_blank" rel="noopener">Cancel</a>'
+            : '')
         + '</div>';
       }.bind(this)).join('');
     } catch (e) {
