@@ -750,8 +750,14 @@
         throw new Error(errData.error || 'Booking failed');
       }
 
-      // Save preferences for next visit
+      // Save preferences and HMAC lookup token for next visit
       try {
+        var bookData = await res.json().catch(function () { return {}; });
+        // A01: store the server-issued HMAC token so the customer can look up
+        // their own bookings without exposing an IDOR vulnerability
+        if (bookData.lookupToken && email) {
+          localStorage.setItem('pt-book-token-' + email.toLowerCase(), bookData.lookupToken);
+        }
         localStorage.setItem('pt-booking-contact', JSON.stringify({ name: name, phone: phone, email: email, savedAt: new Date().toISOString() }));
         localStorage.setItem('pt-booking-qty', String(st.qty));
         localStorage.setItem('pt-booking-vehicle', st.vehicle);
