@@ -1,0 +1,679 @@
+{%- comment -%} PrinceTires – Brands Overview Grid {%- endcomment -%}
+
+<div class="ptbg">
+  <div class="ptbg__container">
+
+    <div class="ptbg__hero">
+      <span class="ptbg__eyebrow">{{ section.settings.eyebrow }}</span>
+      <h1 class="ptbg__heading">{{ page.title }}</h1>
+      <p class="ptbg__subtitle">{{ section.settings.subtitle }}</p>
+
+      {%- if section.settings.show_filter -%}
+        <div class="ptbg__filters" role="tablist" aria-label="{{ 'sections.brands_grid.filter_label' | t }}">
+          <button class="ptbg__filter ptbg__filter--active" data-filter="all" role="tab" aria-selected="true">{{ 'sections.brands_grid.filter_all' | t }}</button>
+          <button class="ptbg__filter" data-filter="tire" role="tab" aria-selected="false">{{ 'sections.brands_grid.filter_tire' | t }}</button>
+          <button class="ptbg__filter" data-filter="wheel" role="tab" aria-selected="false">{{ 'sections.brands_grid.filter_wheel' | t }}</button>
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div class="ptbg__grid" id="ptbg-grid">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'brand' -%}
+          <a
+            href="{{ block.settings.page_link | default: '#' }}"
+            class="ptbg__card"
+            data-brand-type="{{ block.settings.brand_type }}"
+            {{ block.shopify_attributes }}
+          >
+            <div class="ptbg__card-logo">
+              {%- if block.settings.logo != blank -%}
+                {{ block.settings.logo | image_url: width: 160 | image_tag: loading: 'lazy', class: 'ptbg__logo-img', alt: block.settings.name }}
+              {%- else -%}
+                <span class="ptbg__logo-initial">{{ block.settings.name | slice: 0, 1 | upcase }}</span>
+              {%- endif -%}
+            </div>
+
+            <div class="ptbg__card-body">
+              <div class="ptbg__card-top">
+                <h2 class="ptbg__card-name">{{ block.settings.name }}</h2>
+                <span class="ptbg__card-type-badge ptbg__card-type-badge--{{ block.settings.brand_type }}">
+                  {%- if block.settings.brand_type == 'tire' -%}
+                    {{ 'sections.brands_grid.badge_tire' | t }}
+                  {%- else -%}
+                    {{ 'sections.brands_grid.badge_wheel' | t }}
+                  {%- endif -%}
+                </span>
+              </div>
+
+              <p class="ptbg__card-tagline">{{ block.settings.tagline }}</p>
+
+              {%- if block.settings.categories != blank -%}
+                <div class="ptbg__card-chips">
+                  {%- assign cats = block.settings.categories | split: ',' -%}
+                  {%- for cat in cats -%}
+                    <span class="ptbg__chip">{{ cat | strip }}</span>
+                  {%- endfor -%}
+                </div>
+              {%- endif -%}
+
+              <span class="ptbg__card-link">
+                {{ 'sections.brands_grid.view_brand' | t }}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </span>
+            </div>
+          </a>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+
+    {%- comment -%} CTA {%- endcomment -%}
+    <div class="ptbg__cta">
+      <h2 class="ptbg__cta-heading">{{ section.settings.cta_heading }}</h2>
+      <p class="ptbg__cta-desc">{{ section.settings.cta_description }}</p>
+      <div class="ptbg__cta-buttons">
+        {%- if section.settings.cta_primary_label != blank -%}
+          <a href="{{ section.settings.cta_primary_link | default: '/collections/all' }}" class="ptbg__cta-btn ptbg__cta-btn--primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            {{ section.settings.cta_primary_label }}
+          </a>
+        {%- endif -%}
+        {%- if section.settings.cta_phone != blank -%}
+          <a href="tel:{{ section.settings.cta_phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' }}" class="ptbg__cta-btn ptbg__cta-btn--secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            {{ section.settings.cta_phone }}
+          </a>
+        {%- endif -%}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% stylesheet %}
+  .ptbg {
+    background: #fff;
+    padding: 5rem 0 7rem;
+  }
+
+  .ptbg__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+  }
+
+  /* ── Hero ── */
+  .ptbg__hero {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+
+  .ptbg__eyebrow {
+    display: block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #dc2626;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.5rem;
+  }
+
+  .ptbg__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3.6rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 1rem;
+    line-height: 1.05;
+  }
+
+  .ptbg__subtitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    color: #6b7280;
+    margin: 0 auto 2.5rem;
+    max-width: 600px;
+    line-height: 1.6;
+  }
+
+  /* ── Filters ── */
+  .ptbg__filters {
+    display: inline-flex;
+    gap: 0.5rem;
+    background: #f3f4f6;
+    border-radius: 100px;
+    padding: 0.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .ptbg__filter {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 500;
+    padding: 0.6rem 2rem;
+    border-radius: 100px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .ptbg__filter--active,
+  .ptbg__filter:hover {
+    background: #fff;
+    color: #111;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+
+  .ptbg__filter--active {
+    color: #dc2626;
+    font-weight: 600;
+  }
+
+  /* ── Grid ── */
+  .ptbg__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-bottom: 5rem;
+  }
+
+  .ptbg__card--hidden {
+    display: none !important;
+  }
+
+  /* ── Card ── */
+  .ptbg__card {
+    display: flex;
+    flex-direction: column;
+    background: #fafafa;
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.25s ease;
+    border: 1px solid transparent;
+    overflow: hidden;
+  }
+
+  .ptbg__card:hover {
+    background: #fff;
+    border-color: #e5e7eb;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
+    transform: translateY(-3px);
+  }
+
+  /* Logo area */
+  .ptbg__card-logo {
+    height: 10rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.25s;
+  }
+
+  .ptbg__card:hover .ptbg__card-logo {
+    background: #fef2f2;
+  }
+
+  .ptbg__logo-img {
+    max-height: 6rem;
+    max-width: 14rem;
+    width: auto;
+    object-fit: contain;
+    filter: grayscale(30%);
+    transition: filter 0.25s;
+  }
+
+  .ptbg__card:hover .ptbg__logo-img {
+    filter: grayscale(0%);
+  }
+
+  .ptbg__logo-initial {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 4rem;
+    font-weight: 700;
+    color: #dc2626;
+    line-height: 1;
+  }
+
+  /* Body */
+  .ptbg__card-body {
+    padding: 1.8rem 2rem 2rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .ptbg__card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .ptbg__card-name {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .ptbg__card-type-badge {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0.25rem 0.8rem;
+    border-radius: 100px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .ptbg__card-type-badge--tire {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+
+  .ptbg__card-type-badge--wheel {
+    background: #f0f9ff;
+    color: #0284c7;
+  }
+
+  .ptbg__card-tagline {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: #6b7280;
+    margin: 0 0 1rem;
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .ptbg__card-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .ptbg__chip {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 400;
+    color: #374151;
+    background: #f3f4f6;
+    border-radius: 6px;
+    padding: 0.2rem 0.7rem;
+  }
+
+  .ptbg__card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #dc2626;
+    transition: gap 0.2s;
+  }
+
+  .ptbg__card:hover .ptbg__card-link {
+    gap: 0.7rem;
+  }
+
+  /* ── CTA ── */
+  .ptbg__cta {
+    text-align: center;
+    padding: 4rem 3rem;
+    background: #111;
+    border-radius: 12px;
+  }
+
+  .ptbg__cta-heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.6rem;
+    line-height: 1.1;
+  }
+
+  .ptbg__cta-desc {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: #9ca3af;
+    margin: 0 0 2rem;
+  }
+
+  .ptbg__cta-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .ptbg__cta-btn {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    padding: 1rem 2.4rem;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  .ptbg__cta-btn--primary {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .ptbg__cta-btn--primary:hover { background: #b91c1c; color: #fff; }
+
+  .ptbg__cta-btn--secondary {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .ptbg__cta-btn--secondary:hover { border-color: rgba(255,255,255,0.5); }
+
+  /* ── Responsive ── */
+  @media (max-width: 1100px) {
+    .ptbg__container { padding: 0 4rem; }
+    .ptbg__grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 749px) {
+    .ptbg { padding: 4rem 0 5rem; }
+    .ptbg__container { padding: 0 2rem; }
+    .ptbg__grid { grid-template-columns: 1fr; gap: 1.2rem; }
+    .ptbg__heading { font-size: 2.8rem; }
+    .ptbg__cta { padding: 3rem 2rem; }
+    .ptbg__cta-heading { font-size: 2rem; }
+    .ptbg__filters { flex-wrap: wrap; border-radius: 12px; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function() {
+    var filters = document.querySelectorAll('.ptbg__filter');
+    var cards   = document.querySelectorAll('.ptbg__card');
+    if (!filters.length) return;
+
+    filters.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var type = this.dataset.filter;
+
+        filters.forEach(function(b) {
+          b.classList.remove('ptbg__filter--active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        this.classList.add('ptbg__filter--active');
+        this.setAttribute('aria-selected', 'true');
+
+        cards.forEach(function(card) {
+          if (type === 'all' || card.dataset.brandType === type) {
+            card.classList.remove('ptbg__card--hidden');
+          } else {
+            card.classList.add('ptbg__card--hidden');
+          }
+        });
+      });
+    });
+  })();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Brands grid",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "Trusted brands"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "We stock the world's top tire and wheel brands — browse by brand and find the perfect fit for your vehicle."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filter",
+      "label": "Show tire / wheel filter",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Call to action"
+    },
+    {
+      "type": "text",
+      "id": "cta_heading",
+      "label": "CTA heading",
+      "default": "Can't find your brand?"
+    },
+    {
+      "type": "text",
+      "id": "cta_description",
+      "label": "CTA description",
+      "default": "We stock 50+ brands and can special-order almost anything. Give us a call."
+    },
+    {
+      "type": "text",
+      "id": "cta_primary_label",
+      "label": "Primary button label",
+      "default": "Browse all tires"
+    },
+    {
+      "type": "url",
+      "id": "cta_primary_link",
+      "label": "Primary button link"
+    },
+    {
+      "type": "text",
+      "id": "cta_phone",
+      "label": "Phone number",
+      "default": "(403) 452-4283"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "brand",
+      "name": "Brand",
+      "settings": [
+        {
+          "type": "text",
+          "id": "name",
+          "label": "Brand name",
+          "default": "Brand Name"
+        },
+        {
+          "type": "image_picker",
+          "id": "logo",
+          "label": "Brand logo"
+        },
+        {
+          "type": "select",
+          "id": "brand_type",
+          "label": "Type",
+          "options": [
+            { "value": "tire", "label": "Tire brand" },
+            { "value": "wheel", "label": "Wheel brand" }
+          ],
+          "default": "tire"
+        },
+        {
+          "type": "text",
+          "id": "tagline",
+          "label": "Tagline",
+          "default": "Quality tires for every road."
+        },
+        {
+          "type": "text",
+          "id": "categories",
+          "label": "Categories (comma-separated)",
+          "info": "e.g. Winter, All-Season, Performance",
+          "default": "All-Season, Winter"
+        },
+        {
+          "type": "url",
+          "id": "page_link",
+          "label": "Brand page link"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Brands grid",
+      "blocks": [
+        {
+          "type": "brand",
+          "settings": {
+            "name": "Michelin",
+            "brand_type": "tire",
+            "tagline": "French engineering. Premium safety and longevity in every tire.",
+            "categories": "All-Season, Winter, Performance",
+            "page_link": "/pages/brand-michelin"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "Bridgestone",
+            "brand_type": "tire",
+            "tagline": "World's largest tire manufacturer. Engineered for performance and comfort.",
+            "categories": "All-Season, Winter, All-Terrain",
+            "page_link": "/pages/brand-bridgestone"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "Continental",
+            "brand_type": "tire",
+            "tagline": "German precision. Outstanding wet and winter grip.",
+            "categories": "All-Season, Winter, All-Terrain",
+            "page_link": "/pages/brand-continental"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "Toyo",
+            "brand_type": "tire",
+            "tagline": "Japanese innovation. Popular with Calgary truck and SUV owners.",
+            "categories": "All-Terrain, Winter, All-Weather",
+            "page_link": "/pages/brand-toyo"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "Yokohama",
+            "brand_type": "tire",
+            "tagline": "Advanced compounds for sport, touring, and winter driving.",
+            "categories": "All-Season, Winter, Performance",
+            "page_link": "/pages/brand-yokohama"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "BFGoodrich",
+            "brand_type": "tire",
+            "tagline": "American off-road legend. Built for adventure on and off the pavement.",
+            "categories": "All-Terrain, Winter, Performance",
+            "page_link": "/pages/brand-bfgoodrich"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "Kumho",
+            "brand_type": "tire",
+            "tagline": "Korean-engineered value without compromising safety or grip.",
+            "categories": "All-Season, Winter, All-Terrain",
+            "page_link": "/pages/brand-kumho"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "Cooper",
+            "brand_type": "tire",
+            "tagline": "North American dependability for everyday driving and all seasons.",
+            "categories": "All-Season, Winter, All-Weather",
+            "page_link": "/pages/brand-cooper"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "Firestone",
+            "brand_type": "tire",
+            "tagline": "Trusted for over 100 years. Reliable performance at every price point.",
+            "categories": "All-Season, Winter, All-Weather",
+            "page_link": "/pages/brand-firestone"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "General",
+            "brand_type": "tire",
+            "tagline": "Continental-backed engineering. Great value all-weather and all-terrain tires.",
+            "categories": "All-Weather, All-Terrain, Winter",
+            "page_link": "/pages/brand-general"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "XF Off-Road",
+            "brand_type": "wheel",
+            "tagline": "Aggressive off-road styling for trucks and SUVs.",
+            "categories": "Off-Road, Truck, SUV",
+            "page_link": "/collections/wheels"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "RTX",
+            "brand_type": "wheel",
+            "tagline": "Canadian-designed wheels built for harsh winters and daily driving.",
+            "categories": "All-Season, Truck, Passenger",
+            "page_link": "/collections/wheels"
+          }
+        },
+        {
+          "type": "brand",
+          "settings": {
+            "name": "ENVY",
+            "brand_type": "wheel",
+            "tagline": "Premium finishes and bold designs to elevate any vehicle.",
+            "categories": "Sport, Luxury, Performance",
+            "page_link": "/collections/wheels"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

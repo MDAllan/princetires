@@ -1,0 +1,596 @@
+{%- comment -%} PrinceTires – Individual Brand Page {%- endcomment -%}
+
+<div class="ptbd">
+  <div class="ptbd__container">
+
+    {%- comment -%} Breadcrumb {%- endcomment -%}
+    <nav class="ptbd__breadcrumb" aria-label="Breadcrumb">
+      <a href="{{ routes.root_url }}" class="ptbd__crumb">{{ 'general.breadcrumbs.home' | t }}</a>
+      <span class="ptbd__crumb-sep" aria-hidden="true">/</span>
+      <a href="/pages/brands" class="ptbd__crumb">{{ 'sections.brand_detail.breadcrumb_brands' | t }}</a>
+      <span class="ptbd__crumb-sep" aria-hidden="true">/</span>
+      <span class="ptbd__crumb ptbd__crumb--current">{{ page.title }}</span>
+    </nav>
+
+    {%- comment -%} Hero {%- endcomment -%}
+    <div class="ptbd__hero">
+      <div class="ptbd__hero-logo">
+        {%- if section.settings.logo != blank -%}
+          {{ section.settings.logo | image_url: width: 200 | image_tag: loading: 'eager', class: 'ptbd__logo-img', alt: page.title }}
+        {%- else -%}
+          <span class="ptbd__logo-initial">{{ page.title | slice: 0, 2 | upcase }}</span>
+        {%- endif -%}
+      </div>
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="ptbd__eyebrow">{{ section.settings.eyebrow | escape }}</span>
+      {%- endif -%}
+      <h1 class="ptbd__title">{{ page.title }}</h1>
+      {%- if section.settings.subtitle != blank -%}
+        <p class="ptbd__subtitle">{{ section.settings.subtitle | escape }}</p>
+      {%- endif -%}
+    </div>
+
+    {%- comment -%} Quick Stats {%- endcomment -%}
+    {%- if section.settings.stat_1_value != blank -%}
+      <div class="ptbd__stats">
+        <div class="ptbd__stat">
+          <span class="ptbd__stat-value">{{ section.settings.stat_1_value | escape }}</span>
+          <span class="ptbd__stat-label">{{ section.settings.stat_1_label | escape }}</span>
+        </div>
+        {%- if section.settings.stat_2_value != blank -%}
+          <div class="ptbd__stat">
+            <span class="ptbd__stat-value">{{ section.settings.stat_2_value | escape }}</span>
+            <span class="ptbd__stat-label">{{ section.settings.stat_2_label | escape }}</span>
+          </div>
+        {%- endif -%}
+        {%- if section.settings.stat_3_value != blank -%}
+          <div class="ptbd__stat">
+            <span class="ptbd__stat-value">{{ section.settings.stat_3_value | escape }}</span>
+            <span class="ptbd__stat-label">{{ section.settings.stat_3_label | escape }}</span>
+          </div>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} Page Content {%- endcomment -%}
+    {%- if page.content != blank -%}
+      <div class="ptbd__content rte">
+        {{ page.content }}
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} Popular Models {%- endcomment -%}
+    {%- if section.blocks.size > 0 -%}
+      <div class="ptbd__models">
+        <h2 class="ptbd__models-heading">{{ section.settings.models_heading | default: 'Popular models' | escape }}</h2>
+        <div class="ptbd__models-grid">
+          {%- for block in section.blocks -%}
+            {%- if block.type == 'model' -%}
+              <div class="ptbd__model" {{ block.shopify_attributes }}>
+                <div class="ptbd__model-top">
+                  <h3 class="ptbd__model-name">{{ block.settings.model_name | escape }}</h3>
+                  {%- if block.settings.season != blank -%}
+                    <span class="ptbd__season-badge ptbd__season-badge--{{ block.settings.season | handleize }}">
+                      {{ block.settings.season | escape }}
+                    </span>
+                  {%- endif -%}
+                </div>
+                {%- if block.settings.description != blank -%}
+                  <p class="ptbd__model-desc">{{ block.settings.description | escape }}</p>
+                {%- endif -%}
+                {%- if block.settings.shop_link != blank -%}
+                  <a href="{{ block.settings.shop_link }}" class="ptbd__model-link">
+                    {{ 'sections.brand_detail.shop_model' | t }}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </a>
+                {%- endif -%}
+              </div>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} CTA {%- endcomment -%}
+    <div class="ptbd__cta-block">
+      <h2 class="ptbd__cta-heading">{{ section.settings.cta_heading | default: 'Ready to shop?' | escape }}</h2>
+      <p class="ptbd__cta-desc">{{ section.settings.cta_description | default: 'Book your installation or give us a call.' | escape }}</p>
+      <div class="ptbd__cta-buttons">
+        <a
+          href="{{ section.settings.cta_shop_link | default: '/collections/all' }}"
+          class="ptbd__cta-btn ptbd__cta-btn--primary"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          {{ section.settings.cta_shop_label | default: 'Shop all tires' | escape }}
+        </a>
+        {%- if section.settings.cta_phone != blank -%}
+          <a href="tel:{{ section.settings.cta_phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' }}" class="ptbd__cta-btn ptbd__cta-btn--secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            {{ section.settings.cta_phone | escape }}
+          </a>
+        {%- endif -%}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% stylesheet %}
+  .ptbd {
+    background: #fff;
+    padding: 5rem 0 7rem;
+  }
+
+  .ptbd__container {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* ── Breadcrumb ── */
+  .ptbd__breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 3.5rem;
+    flex-wrap: wrap;
+  }
+
+  .ptbd__crumb {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #9ca3af;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  a.ptbd__crumb:hover { color: #111; }
+
+  .ptbd__crumb--current { color: #6b7280; }
+
+  .ptbd__crumb-sep {
+    font-size: 1rem;
+    color: #d1d5db;
+  }
+
+  /* ── Hero ── */
+  .ptbd__hero {
+    text-align: center;
+    margin-bottom: 3.5rem;
+  }
+
+  .ptbd__hero-logo {
+    width: 9rem;
+    height: 9rem;
+    border-radius: 50%;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.8rem;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+  }
+
+  .ptbd__logo-img {
+    max-width: 7rem;
+    max-height: 7rem;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .ptbd__logo-initial {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: #dc2626;
+    line-height: 1;
+  }
+
+  .ptbd__eyebrow {
+    display: block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: #dc2626;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.5rem;
+  }
+
+  .ptbd__title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3.8rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 1rem;
+    line-height: 1.05;
+  }
+
+  .ptbd__subtitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    color: #6b7280;
+    margin: 0 auto;
+    line-height: 1.65;
+    max-width: 600px;
+  }
+
+  /* ── Stats ── */
+  .ptbd__stats {
+    display: flex;
+    justify-content: center;
+    gap: 4rem;
+    padding: 2.5rem 0;
+    margin-bottom: 3rem;
+    border-top: 1px solid #f3f4f6;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .ptbd__stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .ptbd__stat-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #111;
+    line-height: 1;
+  }
+
+  .ptbd__stat-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #9ca3af;
+    white-space: nowrap;
+  }
+
+  /* ── Content ── */
+  .ptbd__content {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 300;
+    color: #374151;
+    line-height: 1.8;
+    margin-bottom: 4rem;
+  }
+
+  .ptbd__content h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: #111;
+    margin: 2.5rem 0 0.8rem;
+    line-height: 1.15;
+  }
+
+  .ptbd__content p { margin: 0 0 1.4rem; }
+
+  .ptbd__content a {
+    color: #dc2626;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .ptbd__content ul,
+  .ptbd__content ol {
+    padding-left: 2rem;
+    margin: 0 0 1.4rem;
+  }
+
+  .ptbd__content li { margin-bottom: 0.4rem; }
+
+  /* ── Models ── */
+  .ptbd__models {
+    margin-bottom: 4rem;
+  }
+
+  .ptbd__models-heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0 0 2rem;
+    line-height: 1.1;
+  }
+
+  .ptbd__models-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.2rem;
+  }
+
+  .ptbd__model {
+    background: #fafafa;
+    border-radius: 10px;
+    padding: 1.6rem 2rem;
+    border: 1px solid transparent;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .ptbd__model:hover {
+    background: #fff;
+    border-color: #e5e7eb;
+  }
+
+  .ptbd__model-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .ptbd__model-name {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  .ptbd__season-badge {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0.2rem 0.75rem;
+    border-radius: 100px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .ptbd__season-badge--winter            { background: #eff6ff; color: #1d4ed8; }
+  .ptbd__season-badge--all-season        { background: #f0fdf4; color: #16a34a; }
+  .ptbd__season-badge--all-terrain       { background: #fef3c7; color: #92400e; }
+  .ptbd__season-badge--all-weather       { background: #f0fdf4; color: #15803d; }
+  .ptbd__season-badge--performance       { background: #fef2f2; color: #dc2626; }
+
+  .ptbd__model-desc {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: #6b7280;
+    margin: 0 0 0.8rem;
+    line-height: 1.5;
+  }
+
+  .ptbd__model-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #dc2626;
+    text-decoration: none;
+    transition: gap 0.2s;
+  }
+
+  .ptbd__model-link:hover { gap: 0.5rem; }
+
+  /* ── CTA Block ── */
+  .ptbd__cta-block {
+    text-align: center;
+    padding: 4rem 3rem;
+    background: #111;
+    border-radius: 12px;
+  }
+
+  .ptbd__cta-heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.6rem;
+    line-height: 1.1;
+  }
+
+  .ptbd__cta-desc {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: #9ca3af;
+    margin: 0 0 2rem;
+  }
+
+  .ptbd__cta-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .ptbd__cta-btn {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    padding: 1rem 2.4rem;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  .ptbd__cta-btn--primary {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .ptbd__cta-btn--primary:hover { background: #b91c1c; color: #fff; }
+
+  .ptbd__cta-btn--secondary {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .ptbd__cta-btn--secondary:hover { border-color: rgba(255,255,255,0.5); }
+
+  /* ── Responsive ── */
+  @media (max-width: 749px) {
+    .ptbd { padding: 4rem 0 5rem; }
+    .ptbd__title { font-size: 3rem; }
+    .ptbd__stats { gap: 2rem; flex-wrap: wrap; }
+    .ptbd__stat-value { font-size: 2rem; }
+    .ptbd__models-grid { grid-template-columns: 1fr; }
+    .ptbd__cta-block { padding: 3rem 2rem; }
+    .ptbd__cta-heading { font-size: 2rem; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Brand detail",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Brand logo"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "Stocked in Calgary"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle"
+    },
+    {
+      "type": "header",
+      "content": "Quick stats"
+    },
+    {
+      "type": "text",
+      "id": "stat_1_value",
+      "label": "Stat 1 value"
+    },
+    {
+      "type": "text",
+      "id": "stat_1_label",
+      "label": "Stat 1 label"
+    },
+    {
+      "type": "text",
+      "id": "stat_2_value",
+      "label": "Stat 2 value"
+    },
+    {
+      "type": "text",
+      "id": "stat_2_label",
+      "label": "Stat 2 label"
+    },
+    {
+      "type": "text",
+      "id": "stat_3_value",
+      "label": "Stat 3 value"
+    },
+    {
+      "type": "text",
+      "id": "stat_3_label",
+      "label": "Stat 3 label"
+    },
+    {
+      "type": "header",
+      "content": "Popular models"
+    },
+    {
+      "type": "text",
+      "id": "models_heading",
+      "label": "Models section heading",
+      "default": "Popular models in Calgary"
+    },
+    {
+      "type": "header",
+      "content": "Call to action"
+    },
+    {
+      "type": "text",
+      "id": "cta_heading",
+      "label": "CTA heading",
+      "default": "Ready to shop?"
+    },
+    {
+      "type": "text",
+      "id": "cta_description",
+      "label": "CTA description",
+      "default": "Come in or book online — same-day installation available."
+    },
+    {
+      "type": "url",
+      "id": "cta_shop_link",
+      "label": "Shop button link"
+    },
+    {
+      "type": "text",
+      "id": "cta_shop_label",
+      "label": "Shop button label",
+      "default": "Shop all tires"
+    },
+    {
+      "type": "text",
+      "id": "cta_phone",
+      "label": "Phone number",
+      "default": "(403) 452-4283"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "model",
+      "name": "Tire model",
+      "settings": [
+        {
+          "type": "text",
+          "id": "model_name",
+          "label": "Model name",
+          "default": "Model Name"
+        },
+        {
+          "type": "select",
+          "id": "season",
+          "label": "Season / category",
+          "options": [
+            { "value": "All-Season", "label": "All-Season" },
+            { "value": "Winter", "label": "Winter" },
+            { "value": "All-Terrain", "label": "All-Terrain" },
+            { "value": "All-Weather", "label": "All-Weather" },
+            { "value": "Performance", "label": "Performance" }
+          ],
+          "default": "All-Season"
+        },
+        {
+          "type": "text",
+          "id": "description",
+          "label": "Short description",
+          "default": "Describe what makes this model stand out."
+        },
+        {
+          "type": "url",
+          "id": "shop_link",
+          "label": "Shop link (optional)"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Brand detail"
+    }
+  ]
+}
+{% endschema %}
