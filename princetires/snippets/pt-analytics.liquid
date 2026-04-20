@@ -1,0 +1,93 @@
+{% doc %}
+  Renders Google Tag Manager and booking funnel event tracking.
+  Set GTM container ID in Theme Settings → Analytics → GTM Container ID.
+  Does nothing if no GTM ID is configured.
+
+  Events fired:
+    click_book_cta        — any element with data-pt-event="book_cta"
+    open_booking_modal    — when booking widget/modal becomes visible
+    submit_booking        — form submission to /api/book
+    booking_success       — on confirmation screen shown
+    booking_error         — on API error response
+    click_phone           — tel: link clicks
+    click_directions      — google maps / directions link clicks
+{% enddoc %}
+
+{%- assign gtm_id = settings.gtm_container_id | strip -%}
+{%- if gtm_id != blank -%}
+
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','{{ gtm_id | escape }}');</script>
+<!-- End Google Tag Manager -->
+
+<script>
+window.dataLayer = window.dataLayer || [];
+
+// pt.track(eventName, params) — universal event helper
+window.pt = window.pt || {};
+window.pt.track = function(eventName, params) {
+  window.dataLayer.push(Object.assign({ event: eventName }, params || {}));
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── Book CTA clicks ────────────────────────────────────────────────────────
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-pt-event="book_cta"]');
+    if (el) {
+      window.pt.track('click_book_cta', {
+        label: el.dataset.ptLabel || el.innerText.trim().slice(0, 50),
+        location: el.dataset.ptLocation || 'unknown',
+      });
+    }
+  });
+
+  // ── Phone link clicks ──────────────────────────────────────────────────────
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('a[href^="tel:"]');
+    if (el) {
+      window.pt.track('click_phone', { phone: el.href.replace('tel:', '') });
+    }
+  });
+
+  // ── Directions / map link clicks ───────────────────────────────────────────
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('a[href*="maps.google"], a[href*="maps.apple"], a[href*="google.com/maps"]');
+    if (el) {
+      window.pt.track('click_directions');
+    }
+  });
+
+  // ── Booking iframe / widget event listener ─────────────────────────────────
+  // The booking widget posts messages when modal opens, form submits, and on result
+  window.addEventListener('message', function (e) {
+    if (!e.data || typeof e.data !== 'object') return;
+    var type = e.data.type;
+    if (!type || !type.startsWith('pt:')) return;
+
+    if (type === 'pt:booking_modal_open') {
+      window.pt.track('open_booking_modal', { source: e.data.source });
+    } else if (type === 'pt:booking_submit') {
+      window.pt.track('submit_booking', {
+        service: e.data.service,
+        vehicle: e.data.vehicle,
+      });
+    } else if (type === 'pt:booking_success') {
+      window.pt.track('booking_success', {
+        service:  e.data.service,
+        vehicle:  e.data.vehicle,
+        date:     e.data.date,
+      });
+    } else if (type === 'pt:booking_error') {
+      window.pt.track('booking_error', { error: e.data.error });
+    }
+  });
+
+});
+</script>
+
+{%- endif -%}

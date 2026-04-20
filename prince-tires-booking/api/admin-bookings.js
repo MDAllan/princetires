@@ -7,6 +7,27 @@ const {
   verifyAdminAuth,
 } = require('./_lib/security');
 
+const SHOP = 'prince-tires-5560.myshopify.com';
+
+async function shopifyToken() {
+  if (process.env.SHOPIFY_ACCESS_TOKEN) return process.env.SHOPIFY_ACCESS_TOKEN;
+  const r = await fetch(`https://${SHOP}/admin/oauth/access_token`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body:    `grant_type=client_credentials&client_id=${process.env.SHOPIFY_CLIENT_ID}&client_secret=${process.env.SHOPIFY_CLIENT_SECRET}`,
+  });
+  const ct = r.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) throw new Error(`Token endpoint non-JSON (${r.status})`);
+  const d = await r.json();
+  if (!d.access_token) throw new Error('Shopify token failed');
+  return d.access_token;
+}
+
+function getParam(req, key) {
+  if (req.query && req.query[key]) return req.query[key];
+  try { return new URL(req.url, 'http://x').searchParams.get(key); } catch { return null; }
+}
+
 module.exports = async function handler(req, res) {
   setCorsHeaders(req, res, 'GET, OPTIONS');
   setSecurityHeaders(res);
@@ -21,6 +42,28 @@ module.exports = async function handler(req, res) {
 
   // Rate limit: 60 per minute for admin calendar reads
   if (!rateLimit(req, res, 60, 60_000)) return;
+
+  // ── ?mode=stats  — customer + order counts (merged from admin-stats.js) ──────
+  if (getParam(req, 'mode') === 'stats') {
+    try {
+      const token   = await shopifyToken();
+      const base    = `https://${SHOP}/admin/api/2024-10`;
+      const headers = { 'X-Shopify-Access-Token': token };
+      const [custRes, orderRes] = await Promise.all([
+        fetch(`${base}/customers/count.json`, { headers }),
+        fetch(`${base}/orders/count.json?status=any`, { headers }),
+      ]);
+      const custData  = custRes.headers.get('content-type')?.includes('application/json')  ? await custRes.json()  : null;
+      const orderData = orderRes.headers.get('content-type')?.includes('application/json') ? await orderRes.json() : null;
+      return res.status(200).json({
+        customers: custData?.count  ?? 0,
+        orders:    orderData?.count ?? 0,
+      });
+    } catch (err) {
+      console.error('admin-bookings stats error:', err);
+      return res.status(500).json({ error: 'Failed to fetch stats.' });
+    }
+  }
 
   let serviceAccountCreds;
   try {

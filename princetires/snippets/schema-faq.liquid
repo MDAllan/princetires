@@ -1,0 +1,37 @@
+{% doc %}
+  Renders a FAQPage JSON-LD structured data block for Google rich results.
+  Pass a faqs array where each item has question and answer properties.
+
+  @param {array} faqs - Array of objects with question and answer keys
+  @param {string} [page_url] - Canonical URL for this FAQ page (defaults to canonical_url)
+
+  @example
+  {% assign faqs = section.blocks | where: 'type', 'faq' %}
+  {% render 'schema-faq', faqs: faqs %}
+{% enddoc %}
+
+{%- if faqs and faqs.size > 0 -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "url": {{ page_url | default: canonical_url | json }},
+  "mainEntity": [
+    {%- for faq in faqs -%}
+      {%- assign q = faq.question | default: faq.settings.question -%}
+      {%- assign a = faq.answer   | default: faq.settings.answer   -%}
+      {%- if q and a -%}
+        {
+          "@type": "Question",
+          "name": {{ q | strip_html | json }},
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": {{ a | strip_html | json }}
+          }
+        }{%- unless forloop.last -%},{%- endunless -%}
+      {%- endif -%}
+    {%- endfor -%}
+  ]
+}
+</script>
+{%- endif -%}

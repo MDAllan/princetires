@@ -1,0 +1,143 @@
+<div class="pt-sticky-bar" id="pt-sticky-bar" role="complementary" aria-label="{{ 'sections.sticky_book_bar.label' | t }}">
+  <div class="pt-sticky-bar__inner">
+    <div class="pt-sticky-bar__availability" id="pt-sticky-bar-slot" aria-live="polite"></div>
+    <a
+      href="{{ section.settings.booking_url }}"
+      class="pt-sticky-bar__btn"
+      data-pt-event="book_cta"
+      data-pt-location="sticky_bar"
+      data-pt-label="{{ 'sections.sticky_book_bar.button_text' | t | escape }}"
+      aria-label="{{ 'sections.sticky_book_bar.button_text' | t }}"
+    >
+      {{- 'sections.sticky_book_bar.button_text' | t -}}
+    </a>
+  </div>
+</div>
+
+{% stylesheet %}
+.pt-sticky-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #111111;
+  border-top: 2px solid #E8251D;
+  padding: 12px 16px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.35);
+}
+
+@media (max-width: 768px) {
+  .pt-sticky-bar {
+    display: block;
+  }
+}
+
+.pt-sticky-bar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.pt-sticky-bar__availability {
+  font-size: 1.2rem;
+  color: #aaaaaa;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pt-sticky-bar__availability.has-slot {
+  color: #4ade80;
+}
+
+.pt-sticky-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #E8251D;
+  color: #ffffff;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  border-radius: 4px;
+  white-space: nowrap;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.pt-sticky-bar__btn:hover,
+.pt-sticky-bar__btn:focus {
+  background: #c71e17;
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* Hide bar when already on the booking page */
+.pt-sticky-bar--hidden {
+  display: none !important;
+}
+{% endstylesheet %}
+
+{% javascript %}
+(function () {
+  var bar    = document.getElementById('pt-sticky-bar');
+  var slotEl = document.getElementById('pt-sticky-bar-slot');
+  if (!bar) return;
+
+  // Hide bar on the booking page itself
+  if (window.location.pathname.includes('/pages/booking')) {
+    bar.classList.add('pt-sticky-bar--hidden');
+    return;
+  }
+
+  // Fetch next available slot and display it
+  var today = new Date().toISOString().slice(0, 10);
+  fetch('https://prince-tires-booking.vercel.app/api/availability?date=' + today)
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) {
+      if (!data || !slotEl) return;
+      var slots = data.slots || data.available || [];
+      // Find first available slot today or show "Available this week"
+      var first = slots.find(function (s) { return s.available !== false; });
+      if (first) {
+        slotEl.textContent = 'Next: ' + (first.label || first.time || first);
+        slotEl.classList.add('has-slot');
+      } else {
+        slotEl.textContent = 'Spots available this week';
+        slotEl.classList.add('has-slot');
+      }
+    })
+    .catch(function () {
+      // Silently fail — bar still shows without availability text
+    });
+})();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Sticky book bar",
+  "settings": [
+    {
+      "type": "url",
+      "id": "booking_url",
+      "label": "Booking page URL",
+      "default": "/pages/booking"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Sticky book bar"
+    }
+  ]
+}
+{% endschema %}

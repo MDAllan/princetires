@@ -1,0 +1,219 @@
+<div class="cgs" itemscope itemtype="https://schema.org/Service">
+
+  {%- comment -%} ── Hero ──────────────────────────────────────────────────── {%- endcomment -%}
+  <div class="cgs__hero">
+    <div class="cgs__hero-inner">
+      {%- if section.settings.hero_image -%}
+        <div class="cgs__hero-bg" aria-hidden="true">
+          {{- section.settings.hero_image | image_url: width: 1600 | image_tag: loading: 'eager', fetchpriority: 'high', alt: '' -}}
+        </div>
+      {%- endif -%}
+      <div class="cgs__hero-content">
+        <div class="cgs__trust-strip">
+          <span>⭐ 4.9 / 5 on Google</span>
+          <span>✓ Same-day available</span>
+          <span>📍 Calgary, AB</span>
+        </div>
+        <h1 class="cgs__title" itemprop="name">{{ section.settings.heading }}</h1>
+        <p class="cgs__subtitle">{{ section.settings.subheading }}</p>
+        <div class="cgs__hero-ctas">
+          <a
+            href="{{ section.settings.booking_url }}"
+            class="cgs__btn cgs__btn--primary"
+            data-pt-event="book_cta"
+            data-pt-location="hero"
+            data-pt-label="{{ section.settings.cta_text | escape }}"
+          >{{ section.settings.cta_text }}</a>
+          <a href="tel:{{ section.settings.phone }}" class="cgs__btn cgs__btn--ghost" data-pt-event="phone_click">
+            📞 {{ section.settings.phone }}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} ── How it works ──────────────────────────────────────────── {%- endcomment -%}
+  <div class="cgs__how">
+    <div class="cgs__container">
+      <h2 class="cgs__section-title">How it works</h2>
+      <div class="cgs__steps">
+        <div class="cgs__step">
+          <div class="cgs__step-num">1</div>
+          <h3>Book online</h3>
+          <p>Pick a date and time that works for you — takes under 2 minutes.</p>
+        </div>
+        <div class="cgs__step">
+          <div class="cgs__step-num">2</div>
+          <h3>Drop off your vehicle</h3>
+          <p>Arrive at our Calgary shop. We'll take care of everything.</p>
+        </div>
+        <div class="cgs__step">
+          <div class="cgs__step-num">3</div>
+          <h3>Drive away confident</h3>
+          <p>Professional installation, torque-checked, balanced, and ready.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} ── Pricing / service details ─────────────────────────────── {%- endcomment -%}
+  {%- if section.settings.pricing_intro != blank -%}
+  <div class="cgs__pricing">
+    <div class="cgs__container">
+      <h2 class="cgs__section-title">{{ section.settings.pricing_title | default: 'Pricing' }}</h2>
+      <p class="cgs__pricing-text" itemprop="description">{{ section.settings.pricing_intro }}</p>
+      {%- if section.settings.price_range != blank -%}
+        <div class="cgs__price-badge">Starting from {{ section.settings.price_range }}</div>
+      {%- endif -%}
+    </div>
+  </div>
+  {%- endif -%}
+
+  {%- comment -%} ── Service areas ─────────────────────────────────────────── {%- endcomment -%}
+  <div class="cgs__areas">
+    <div class="cgs__container">
+      <h2 class="cgs__section-title">Areas we serve</h2>
+      <div class="cgs__areas-grid">
+        <span>NE Calgary</span><span>NW Calgary</span>
+        <span>SE Calgary</span><span>SW Calgary</span>
+        <span>Airdrie</span><span>Chestermere</span>
+        <span>Okotoks</span><span>Cochrane</span>
+      </div>
+      <p class="cgs__address" itemprop="areaServed">
+        <strong>Shop location:</strong>
+        <a href="https://maps.google.com/?q=111+42+Ave+SW+Calgary+AB" target="_blank" rel="noopener">
+          111 42 Ave SW, Calgary, AB T2G 0G3
+        </a>
+      </p>
+    </div>
+  </div>
+
+  {%- comment -%} ── FAQ ──────────────────────────────────────────────────── {%- endcomment -%}
+  {%- assign faq_blocks = section.blocks | where: 'type', 'faq' -%}
+  {%- if faq_blocks.size > 0 -%}
+  <div class="cgs__faq">
+    <div class="cgs__container">
+      <h2 class="cgs__section-title">Frequently asked questions</h2>
+      <div class="cgs__faq-list">
+        {%- for block in faq_blocks -%}
+          <details class="cgs__faq-item" {{ block.shopify_attributes }}>
+            <summary class="cgs__faq-q">{{ block.settings.question }}</summary>
+            <div class="cgs__faq-a">{{ block.settings.answer }}</div>
+          </details>
+        {%- endfor -%}
+      </div>
+    </div>
+  </div>
+  {%- render 'schema-faq', faqs: faq_blocks -%}
+  {%- endif -%}
+
+  {%- comment -%} ── Bottom CTA ────────────────────────────────────────────── {%- endcomment -%}
+  <div class="cgs__cta-bottom">
+    <div class="cgs__container">
+      <h2>Ready to book your {{ section.settings.service_name | default: 'service' }} in Calgary?</h2>
+      <p>Join hundreds of Calgary drivers who trust Prince Tires.</p>
+      <a
+        href="{{ section.settings.booking_url }}"
+        class="cgs__btn cgs__btn--primary cgs__btn--large"
+        data-pt-event="book_cta"
+        data-pt-location="bottom_cta"
+        data-pt-label="{{ section.settings.cta_text | escape }}"
+      >{{ section.settings.cta_text }}</a>
+    </div>
+  </div>
+
+</div>
+
+{% stylesheet %}
+.cgs { --red: #E8251D; --black: #111; font-family: 'Outfit', sans-serif; }
+
+/* Hero */
+.cgs__hero { position: relative; background: var(--black); color: #fff; min-height: 480px; display: flex; }
+.cgs__hero-bg { position: absolute; inset: 0; overflow: hidden; }
+.cgs__hero-bg img { width: 100%; height: 100%; object-fit: cover; opacity: 0.35; }
+.cgs__hero-inner { position: relative; z-index: 1; padding: 80px 24px 60px; max-width: 800px; margin: 0 auto; width: 100%; }
+.cgs__trust-strip { display: flex; flex-wrap: wrap; gap: 16px; font-size: 1.3rem; color: rgba(255,255,255,0.75); margin-bottom: 20px; }
+.cgs__title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(3.2rem, 6vw, 5.6rem); font-weight: 800; line-height: 1; margin: 0 0 16px; text-transform: uppercase; }
+.cgs__subtitle { font-size: 1.8rem; color: rgba(255,255,255,0.8); margin: 0 0 32px; max-width: 600px; }
+.cgs__hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* Buttons */
+.cgs__btn { display: inline-flex; align-items: center; justify-content: center; padding: 14px 28px; border-radius: 4px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1.6rem; letter-spacing: 0.05em; text-transform: uppercase; transition: all 0.2s; white-space: nowrap; }
+.cgs__btn--primary { background: var(--red); color: #fff; }
+.cgs__btn--primary:hover { background: #c41a14; }
+.cgs__btn--ghost { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,0.5); }
+.cgs__btn--ghost:hover { border-color: #fff; }
+.cgs__btn--large { padding: 18px 40px; font-size: 1.9rem; }
+
+/* Sections */
+.cgs__container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+.cgs__section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 2.8rem; font-weight: 700; text-transform: uppercase; margin: 0 0 32px; }
+
+/* How it works */
+.cgs__how { padding: 64px 0; background: #f8f8f8; }
+.cgs__steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 32px; }
+.cgs__step { text-align: center; }
+.cgs__step-num { width: 52px; height: 52px; background: var(--red); color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 2.4rem; font-weight: 800; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+.cgs__step h3 { font-size: 1.8rem; margin: 0 0 8px; }
+.cgs__step p { font-size: 1.4rem; color: #555; margin: 0; }
+
+/* Pricing */
+.cgs__pricing { padding: 64px 0; border-bottom: 1px solid #eee; }
+.cgs__pricing-text { font-size: 1.6rem; color: #444; max-width: 680px; margin: 0 0 24px; line-height: 1.7; }
+.cgs__price-badge { display: inline-block; background: var(--black); color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 700; padding: 10px 24px; border-radius: 4px; }
+
+/* Service areas */
+.cgs__areas { padding: 64px 0; background: var(--black); color: #fff; }
+.cgs__areas .cgs__section-title { color: #fff; }
+.cgs__areas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.cgs__areas-grid span { background: rgba(255,255,255,0.08); padding: 10px 16px; border-radius: 4px; font-size: 1.4rem; text-align: center; }
+.cgs__address { font-size: 1.4rem; color: rgba(255,255,255,0.7); }
+.cgs__address a { color: rgba(255,255,255,0.9); text-decoration: underline; }
+
+/* FAQ */
+.cgs__faq { padding: 64px 0; }
+.cgs__faq-list { display: flex; flex-direction: column; gap: 2px; }
+.cgs__faq-item { border: 1px solid #e5e5e5; border-radius: 6px; overflow: hidden; }
+.cgs__faq-q { padding: 18px 20px; font-size: 1.6rem; font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; background: #fff; }
+.cgs__faq-q::after { content: '+'; font-size: 2rem; font-weight: 300; color: var(--red); flex-shrink: 0; margin-left: 12px; }
+.cgs__faq-item[open] .cgs__faq-q::after { content: '−'; }
+.cgs__faq-a { padding: 0 20px 18px; font-size: 1.5rem; color: #555; line-height: 1.7; }
+
+/* Bottom CTA */
+.cgs__cta-bottom { padding: 80px 24px; background: var(--red); color: #fff; text-align: center; }
+.cgs__cta-bottom h2 { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(2.4rem, 4vw, 4rem); font-weight: 800; text-transform: uppercase; margin: 0 0 12px; }
+.cgs__cta-bottom p { font-size: 1.6rem; opacity: 0.9; margin: 0 0 32px; }
+.cgs__cta-bottom .cgs__btn--primary { background: #fff; color: var(--red); }
+.cgs__cta-bottom .cgs__btn--primary:hover { background: #f0f0f0; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Calgary service page",
+  "blocks": [
+    {
+      "type": "faq",
+      "name": "FAQ item",
+      "settings": [
+        { "type": "text",     "id": "question", "label": "Question" },
+        { "type": "textarea", "id": "answer",   "label": "Answer" }
+      ]
+    }
+  ],
+  "settings": [
+    { "type": "text",         "id": "heading",       "label": "H1 heading" },
+    { "type": "text",         "id": "subheading",    "label": "Subheading" },
+    { "type": "text",         "id": "service_name",  "label": "Service name (for CTA copy)" },
+    { "type": "text",         "id": "cta_text",      "label": "CTA button text", "default": "Book installation" },
+    { "type": "url",          "id": "booking_url",   "label": "Booking page URL", "default": "/pages/booking" },
+    { "type": "text",         "id": "phone",         "label": "Phone number", "default": "403 452 4283" },
+    { "type": "image_picker", "id": "hero_image",    "label": "Hero background image" },
+    { "type": "text",         "id": "pricing_title", "label": "Pricing section title", "default": "Pricing" },
+    { "type": "textarea",     "id": "pricing_intro", "label": "Pricing description" },
+    { "type": "text",         "id": "price_range",   "label": "Starting price (e.g. $80/tire)" }
+  ],
+  "presets": [
+    { "name": "Calgary service page" }
+  ]
+}
+{% endschema %}
