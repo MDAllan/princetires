@@ -1,0 +1,345 @@
+<div
+  class="brands-hero"
+  style="
+    --bh-bg: {{ section.settings.bg_color }};
+    --bh-text: {{ section.settings.text_color }};
+    --bh-accent: {{ section.settings.accent_color }};
+  "
+>
+  <div class="brands-hero__container">
+    {%- if section.settings.eyebrow != blank -%}
+      <span class="brands-hero__eyebrow">{{ section.settings.eyebrow | escape }}</span>
+    {%- endif -%}
+
+    <h1 class="brands-hero__heading">
+      {{- section.settings.heading | escape -}}
+      {%- if section.settings.heading_accent != blank -%}
+        <span class="brands-hero__red"> {{ section.settings.heading_accent | escape }}</span>
+      {%- endif -%}
+    </h1>
+
+    {%- if section.settings.subtitle != blank -%}
+      <p class="brands-hero__subtitle">{{ section.settings.subtitle | escape }}</p>
+    {%- endif -%}
+
+    {%- if section.settings.cta_primary_label != blank or section.settings.cta_secondary_label != blank -%}
+      <div class="brands-hero__actions">
+        {%- if section.settings.cta_primary_label != blank -%}
+          <a href="{{ section.settings.cta_primary_link | default: '#' }}" class="brands-hero__btn brands-hero__btn--primary">
+            {{ section.settings.cta_primary_label | escape }}
+          </a>
+        {%- endif -%}
+        {%- if section.settings.cta_secondary_label != blank -%}
+          <a href="{{ section.settings.cta_secondary_link | default: '#' }}" class="brands-hero__btn brands-hero__btn--secondary">
+            {{ section.settings.cta_secondary_label | escape }}
+          </a>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- if section.blocks.size > 0 -%}
+      <div class="brands-hero__stats" role="list">
+        {%- for block in section.blocks -%}
+          <div class="brands-hero__stat" role="listitem" {{ block.shopify_attributes }}>
+            <span class="brands-hero__stat-value">{{ block.settings.value | escape }}</span>
+            <span class="brands-hero__stat-label">{{ block.settings.label | escape }}</span>
+          </div>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .brands-hero {
+    background: var(--bh-bg, #111);
+    color: var(--bh-text, #fff);
+    padding: 6rem 0 5rem;
+    text-align: center;
+  }
+
+  .brands-hero__container {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  .brands-hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(245, 130, 11, 0.12);
+    color: var(--bh-accent, #F5820B);
+    border: 1px solid rgba(245, 130, 11, 0.3);
+    border-radius: 100px;
+    padding: 0.4rem 1.4rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+
+  .brands-hero__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(3.6rem, 7vw, 6rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--bh-text, #fff);
+    margin: 0 0 1.6rem;
+    line-height: 1;
+  }
+
+  .brands-hero__red {
+    color: #dc2626;
+  }
+
+  .brands-hero__subtitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 300;
+    color: #9ca3af;
+    margin: 0 auto 3rem;
+    max-width: 56rem;
+    line-height: 1.65;
+  }
+
+  .brands-hero__actions {
+    display: flex;
+    justify-content: center;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+    margin-bottom: 4rem;
+  }
+
+  .brands-hero__btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 1.1rem 3rem;
+    border-radius: 100px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s;
+    min-height: 4.4rem;
+    white-space: nowrap;
+  }
+
+  .brands-hero__btn--primary {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .brands-hero__btn--primary:hover {
+    background: #b91c1c;
+    color: #fff;
+  }
+
+  .brands-hero__btn--secondary {
+    background: transparent;
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+  }
+
+  .brands-hero__btn--secondary:hover {
+    border-color: rgba(255, 255, 255, 0.55);
+    color: #fff;
+  }
+
+  /* Stats row */
+  .brands-hero__stats {
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 3rem;
+  }
+
+  .brands-hero__stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 3.2rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .brands-hero__stat:last-child {
+    border-right: none;
+  }
+
+  .brands-hero__stat-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3.2rem;
+    font-weight: 700;
+    color: var(--bh-accent, #F5820B);
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+
+  .brands-hero__stat-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    .brands-hero {
+      padding: 4.5rem 0 4rem;
+    }
+
+    .brands-hero__stats {
+      flex-wrap: wrap;
+    }
+
+    .brands-hero__stat {
+      flex: 1 1 40%;
+      padding: 1.6rem 1.6rem;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .brands-hero__stat:nth-child(even) {
+      border-right: none;
+    }
+
+    .brands-hero__stat:last-child,
+    .brands-hero__stat:nth-last-child(2):nth-child(odd) {
+      border-bottom: none;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .brands-hero {
+      padding: 4rem 0 3.5rem;
+    }
+
+    .brands-hero__actions {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .brands-hero__btn {
+      width: 100%;
+      max-width: 30rem;
+      justify-content: center;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brands-hero__btn {
+      transition: none !important;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Brands page hero",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow label",
+      "default": "50+ brands stocked in Calgary"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Tires & Wheels by"
+    },
+    {
+      "type": "text",
+      "id": "heading_accent",
+      "label": "Heading accent (red)",
+      "default": "Brand"
+    },
+    {
+      "type": "text",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "From Michelin to BFGoodrich — browse Calgary's best selection of tire and wheel brands, installed same day."
+    },
+    {
+      "type": "text",
+      "id": "cta_primary_label",
+      "label": "Primary button label",
+      "default": "Shop tires"
+    },
+    {
+      "type": "text",
+      "id": "cta_primary_link",
+      "label": "Primary button link",
+      "info": "Use #shopify-section-{key} for on-page anchors"
+    },
+    {
+      "type": "text",
+      "id": "cta_secondary_label",
+      "label": "Secondary button label",
+      "default": "Shop wheels"
+    },
+    {
+      "type": "text",
+      "id": "cta_secondary_link",
+      "label": "Secondary button link",
+      "info": "Use #shopify-section-{key} for on-page anchors"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background color",
+      "default": "#111111"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent color",
+      "default": "#F5820B"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "stat",
+      "name": "Stat",
+      "limit": 6,
+      "settings": [
+        {
+          "type": "text",
+          "id": "value",
+          "label": "Value",
+          "default": "50+"
+        },
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Label",
+          "default": "Tire brands"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Brands page hero",
+      "blocks": [
+        { "type": "stat", "settings": { "value": "50+", "label": "Tire brands" } },
+        { "type": "stat", "settings": { "value": "10+", "label": "Wheel brands" } },
+        { "type": "stat", "settings": { "value": "Same-day", "label": "Installation" } },
+        { "type": "stat", "settings": { "value": "Free", "label": "Lifetime rotations" } }
+      ]
+    }
+  ]
+}
+{% endschema %}
