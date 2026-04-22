@@ -73,6 +73,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Server configuration error.' });
   }
 
+
   try {
     const auth = new google.auth.GoogleAuth({
       credentials: serviceAccountCreds,

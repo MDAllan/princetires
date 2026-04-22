@@ -217,10 +217,24 @@ tbody td { padding:12px 18px; font-size:13px; vertical-align:middle; }
 </head>
 <body>
 
-<!-- no login screen -->
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">Prince Tires</div>
+    <div class="login-sub">Admin portal — staff only</div>
+    <form id="login-form" onsubmit="doLogin(event)">
+      <div class="field">
+        <label>Password</label>
+        <input id="login-pw" type="password" autocomplete="current-password" placeholder="Enter admin password" required>
+      </div>
+      <button class="btn-primary" type="submit" id="login-btn">Sign in</button>
+      <div class="login-err" id="login-err"></div>
+    </form>
+  </div>
+</div>
 
 <!-- APP SHELL -->
-<div id="app" style="display:grid;">
+<div id="app">
   <div class="topbar">
     <div class="topbar-brand"><span>Prince</span> Tires Admin</div>
     <div class="topbar-actions">
@@ -658,17 +672,85 @@ let orderSort    = { col: 'created_at', dir: 'desc' };
 let whSort       = { col: 'orders_count', dir: 'desc' };
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-document.getElementById('logout-btn').addEventListener('click', () => location.reload());
+const STORAGE_KEY = 'pt_admin_token';
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'grid';
+  loadAll();
+  loadProducts();
+}
+
+function showLogin(msg) {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  if (msg) document.getElementById('login-err').textContent = msg;
+}
+
+async function doLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-err');
+  const pw  = document.getElementById('login-pw').value;
+  btn.disabled = true;
+  err.textContent = '';
+  try {
+    const r = await fetch('/api/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    const d = await r.json();
+    if (!r.ok) { err.textContent = d.error || 'Login failed.'; btn.disabled = false; return; }
+    token = d.token;
+    sessionStorage.setItem(STORAGE_KEY, token);
+    showApp();
+  } catch {
+    err.textContent = 'Network error — try again.';
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  token = '';
+  sessionStorage.removeItem(STORAGE_KEY);
+  showLogin();
+});
 document.getElementById('refresh-btn').addEventListener('click', loadAll);
 
 async function apiFetch(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  const r = await fetch(path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(opts.headers || {}) },
+  });
+  if (r.status === 401) { showLogin('Session expired — please sign in again.'); return r; }
   return r;
 }
 
-// Auto-load on open
-loadAll();
-loadProducts();
+// Check for existing session on load, or auto-login via ?key= param
+token = sessionStorage.getItem(STORAGE_KEY) || '';
+if (token) {
+  showApp();
+} else {
+  const urlKey = new URLSearchParams(location.search).get('key');
+  if (urlKey) {
+    history.replaceState(null, '', location.pathname); // strip key from URL bar
+    (async () => {
+      try {
+        const r = await fetch('/api/admin-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: urlKey }),
+        });
+        const d = await r.json();
+        if (r.ok) { token = d.token; sessionStorage.setItem(STORAGE_KEY, token); showApp(); }
+        else { showLogin(d.error || 'Invalid key.'); }
+      } catch { showLogin('Network error.'); }
+    })();
+  } else {
+    showLogin();
+  }
+}
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
