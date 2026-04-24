@@ -298,6 +298,46 @@ async function handlePost(req, res) {
           html:    emailHtml,
         }),
       }).catch(err => console.error('Resend email error:', err));
+
+      // Owner notification — always send regardless of customer email
+      const ownerHtml = `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#111">
+          <div style="background:#111;padding:20px 28px">
+            <h1 style="color:#fff;margin:0;font-size:20px">📅 New booking</h1>
+            <p style="color:rgba(255,255,255,0.6);margin:4px 0 0;font-size:13px">${escapeHtml(date)} at ${escapeHtml(time)}</p>
+          </div>
+          <div style="padding:28px;background:#fff;border:1px solid #e5e7eb;border-top:none">
+            <table style="width:100%;border-collapse:collapse;font-size:14px">
+              <tr><td style="padding:7px 0;color:#6b7280;width:130px">Customer</td><td style="padding:7px 0;font-weight:600">${eName}</td></tr>
+              <tr><td style="padding:7px 0;color:#6b7280">Phone</td><td style="padding:7px 0">${escapeHtml(phone)}</td></tr>
+              <tr><td style="padding:7px 0;color:#6b7280">Email</td><td style="padding:7px 0">${escapeHtml(email)}</td></tr>
+              <tr><td style="padding:7px 0;color:#6b7280">Date &amp; time</td><td style="padding:7px 0;font-weight:600">${eDate} at ${eTime}</td></tr>
+              <tr><td style="padding:7px 0;color:#6b7280">Tire</td><td style="padding:7px 0">${eTireName} (${eTireSize}) &times; ${escapeHtml(String(qty))}</td></tr>
+              <tr><td style="padding:7px 0;color:#6b7280">Vehicle</td><td style="padding:7px 0">${eVehicleType}</td></tr>
+              <tr><td style="padding:7px 0;color:#6b7280">Inventory</td><td style="padding:7px 0">${inventorySource === 'trial' ? '⚠️ Trial Tires (ordered)' : 'Prince Tires (in-store)'}</td></tr>
+              ${eAddonRows}
+              <tr style="border-top:1px solid #e5e7eb">
+                <td style="padding:10px 0 0;font-weight:700">Total</td>
+                <td style="padding:10px 0 0;font-weight:700;color:#16a34a">$${eTotal} (incl. GST)</td>
+              </tr>
+            </table>
+            ${notes ? `<div style="margin-top:16px;padding:12px;background:#f9fafb;border-radius:6px;font-size:13px"><strong>Notes:</strong> ${escapeHtml(notes)}</div>` : ''}
+          </div>
+        </div>`;
+
+      fetch('https://api.resend.com/emails', {
+        method:  'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({
+          from:    'Prince Tires Bookings <bookings@princetires.ca>',
+          to:      'princetires111@gmail.com',
+          subject: `New booking — ${name} — ${date} at ${time}`,
+          html:    ownerHtml,
+        }),
+      }).catch(err => console.error('Owner notification email error:', err));
     }
 
     // Generate a lookup token so the customer can retrieve their bookings (A01 fix)
