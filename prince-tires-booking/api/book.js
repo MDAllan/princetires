@@ -118,15 +118,16 @@ async function handlePost(req, res) {
   }
 
   // ── Input validation & sanitization (A03: injection prevention) ─────────────
-  const name        = sanitize(b.name,        80);
-  const phone       = sanitize(b.phone,       30);
-  const vehicleType = sanitize(b.vehicleType, 80);
-  const tireSize    = sanitize(b.tireSize,    30);
-  const tireName    = sanitize(b.tireName,   100);
-  const notes       = sanitize(b.notes,      500);
-  const date        = sanitize(b.date,        10);
-  const time        = sanitize(b.time,        10);
-  const email       = sanitizeEmail(b.email);
+  const name           = sanitize(b.name,            80);
+  const phone          = sanitize(b.phone,           30);
+  const vehicleType    = sanitize(b.vehicleType,     80);
+  const tireSize       = sanitize(b.tireSize,        30);
+  const tireName       = sanitize(b.tireName,       100);
+  const notes          = sanitize(b.notes,          500);
+  const date           = sanitize(b.date,            10);
+  const time           = sanitize(b.time,            10);
+  const inventorySource = sanitize(b.inventorySource, 20) === 'trial' ? 'trial' : 'store';
+  const email          = sanitizeEmail(b.email);
 
   if (!name)  return res.status(400).json({ error: 'Customer name is required.' });
   if (!email) return res.status(400).json({ error: 'Valid email address is required.' });
@@ -176,6 +177,13 @@ async function handlePost(req, res) {
     }
     const h24 = `${hour < 10 ? '0' : ''}${hour}:${min < 10 ? '0' : ''}${min}`;
 
+    // Reject bookings in the past (server-side guard — primary check is on the frontend)
+    const nowEdmonton  = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Edmonton' }));
+    const slotEdmonton = new Date(`${date}T${h24}:00`);
+    if (slotEdmonton < nowEdmonton) {
+      return res.status(400).json({ error: 'Cannot book a time slot that is in the past.' });
+    }
+
     const startDateTime  = `${date}T${h24}:00`;
     const durationMins   = qty * 30;
     const endDate        = new Date(`${date}T${h24}:00`);
@@ -195,6 +203,7 @@ async function handlePost(req, res) {
       `Vehicle: ${vehicleType}`,
       `Tire: ${tireSize} — ${tireName}`,
       `Quantity: ${qty} tires`,
+      `Inventory: ${inventorySource === 'trial' ? 'Trial Tires (ordered)' : 'Prince Tires (in-store)'}`,
       '',
       addons.length ? `Add-ons: ${addons.join(', ')}` : 'Add-ons: None',
       `Subtotal: $${subtotal.toFixed(2)}`,
@@ -214,6 +223,7 @@ async function handlePost(req, res) {
         summary,
         location:    '111 42 Ave SW, Calgary, AB T2G 0G3',
         description,
+        colorId:     '6', // Tangerine
         start: { dateTime: startDateTime, timeZone: 'America/Edmonton' },
         end:   { dateTime: endDateTime,   timeZone: 'America/Edmonton' },
       },
