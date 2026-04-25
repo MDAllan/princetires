@@ -100,6 +100,7 @@
       <div class="bk-day-strip" id="bk-day-strip"></div>
 
       <p class="bk-label">Time</p>
+      <p class="bk-trial-note" id="bk-trial-note" hidden></p>
       <div class="bk-time-grid" id="bk-time-grid"></div>
       <p class="bk-hours-note">Mon–Sat 9:30–5:30 · Sun 10:00–3:30</p>
 
@@ -263,6 +264,10 @@
 .bk-confirm-btn:hover:not(:disabled){background:#15803d}
 .bk-confirm-btn:disabled{opacity:.5;cursor:not-allowed}
 
+/* ── Trial note ── */
+.bk-trial-note{font-size:.9rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:.5rem .75rem;margin:0 0 .5rem;line-height:1.4}
+.bk-trial-note[hidden]{display:none}
+
 /* ── Form error ── */
 .bk-form-error{background:#fef2f2;border-radius:7px;padding:.6rem .8rem;font-size:1rem;color:#dc2626;margin-top:.7rem}
 .bk-form-error[hidden]{display:none}
@@ -337,7 +342,7 @@
   var BOOKING_API = 'https://prince-tires-booking.vercel.app/api/book';
   var AVAILABILITY_API = 'https://prince-tires-booking.vercel.app/api/availability';
 
-  var st = { tireName: '', tireSize: '', tirePrice: 0, vehicle: 'passenger', qty: 4, tpms: false, disposal: true, date: null, time: null, savedVehicle: null };
+  var st = { tireName: '', tireSize: '', tirePrice: 0, vehicle: 'passenger', qty: 4, tpms: false, disposal: true, date: null, time: null, savedVehicle: null, inventorySource: 'store' };
   var wk = 0;
 
   var vehs = [
@@ -486,6 +491,16 @@
     });
   }
 
+  // ── Helper: convert "9:30 AM" → minutes from midnight ───────────────────
+  function slotToMins(slot) {
+    var m = slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return 0;
+    var h = parseInt(m[1]), mn = parseInt(m[2]);
+    if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+    if (m[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    return h * 60 + mn;
+  }
+
   // ── Render: time slots ───────────────────────────────────────────────────
   async function renderTimes() {
     if (!st.date) {
@@ -498,11 +513,12 @@
     var slots = [];
     for (var h = startH; h <= endH; h++) {
       for (var m = (h === startH ? startM : 0); m < 60; m += 30) {
-      if (h === endH && m > endM) break;
+        if (h === endH && m > endM) break;
         var hr = h > 12 ? h - 12 : h;
         slots.push(hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM'));
       }
     }
+
     document.getElementById('bk-time-grid').innerHTML = '<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Checking availability…</p>';
     var booked = [];
     var allDayBlocked = false;
@@ -513,14 +529,82 @@
       booked = data.booked || [];
       allDayBlocked = data.allDayBlocked || false;
     } catch (e) {}
+
     if (allDayBlocked) {
       document.getElementById('bk-time-grid').innerHTML = '<p style="color:#dc2626;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">Not available this day — please pick another date.</p>';
+      var noteEl = document.getElementById('bk-trial-note');
+      if (noteEl) noteEl.hidden = true;
       return;
     }
+
+    // ── Business-rule blocking ────────────────────────────────────────────
+    var blockReason = {}; // slot → reason string
+    var trialNote = '';
+    try {
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      var isToday = st.date.getTime() === today.getTime();
+      var now = new Date();
+      var nowMins = now.getHours() * 60 + now.getMinutes();
+
+      // Rule 1: block past slots for today (all inventory types)
+      if (isToday) {
+        slots.forEach(function (s) {
+          if (slotToMins(s) <= nowMins) blockReason[s] = 'Time has passed';
+        });
+      }
+
+      // Rule 2: Trial inventory restrictions (today only)
+      if (st.inventorySource === 'trial' && isToday) {
+        var month = now.getMonth(); // 0 = Jan … 11 = Dec
+        var isWinter = [9, 10, 11, 0, 1, 2].indexOf(month) > -1; // Oct–Mar
+
+        if (isWinter) {
+          slots.forEach(function (s) { blockReason[s] = 'No same-day booking in winter for ordered tires'; });
+          trialNote = 'Ordered tires: same-day bookings are unavailable in winter — please pick a future date.';
+        } else {
+          // Trial ships at 8:30, 11:30, 14:30 — need 4 hrs (240 min) after departure
+          var TRIAL_SHIPS = [510, 690, 870]; // minutes from midnight
+          var nextShip = null;
+          for (var i = 0; i < TRIAL_SHIPS.length; i++) {
+            if (nowMins <= TRIAL_SHIPS[i]) { nextShip = TRIAL_SHIPS[i]; break; }
+          }
+
+          if (nextShip === null) {
+            slots.forEach(function (s) { blockReason[s] = blockReason[s] || 'No more deliveries today for ordered tires'; });
+            trialNote = 'Ordered tires: no more same-day deliveries today — please pick a future date.';
+          } else {
+            var earliestAllowed = nextShip + 240;
+            slots.forEach(function (s) {
+              if (slotToMins(s) < earliestAllowed) {
+                blockReason[s] = blockReason[s] || 'Waiting for tire delivery';
+              }
+            });
+            var eH = Math.floor(earliestAllowed / 60);
+            var eM = earliestAllowed % 60;
+            var eLabel = (eH > 12 ? eH - 12 : eH) + ':' + (eM < 10 ? '0' : '') + eM + ' ' + (eH >= 12 ? 'PM' : 'AM');
+            trialNote = 'Ordered tires arrive today — earliest available: ' + eLabel + ' (4 hrs after next shipment).';
+          }
+        }
+      }
+    } catch (ruleErr) {
+      console.error('renderTimes rule error:', ruleErr);
+    }
+
+    var noteEl = document.getElementById('bk-trial-note');
+    if (noteEl) { noteEl.textContent = trialNote; noteEl.hidden = !trialNote; }
+
     document.getElementById('bk-time-grid').innerHTML = slots.map(function (s) {
-      var isBooked = booked.indexOf(s) > -1;
-      return '<div class="bk-time-slot' + (st.time === s ? ' bk-time-slot--active' : '') + (isBooked ? ' bk-time-slot--booked' : '') + '" data-time="' + s + '"' + (isBooked ? ' title="Already booked"' : '') + '>' + s + '</div>';
+      var isCalBooked = booked.indexOf(s) > -1;
+      var isBlocked = isCalBooked || !!blockReason[s];
+      var titleAttr = isCalBooked ? 'Already booked' : (blockReason[s] || '');
+      return '<div class="bk-time-slot' +
+        (st.time === s ? ' bk-time-slot--active' : '') +
+        (isBlocked ? ' bk-time-slot--booked' : '') +
+        '" data-time="' + s + '"' +
+        (isBlocked ? ' title="' + titleAttr + '"' : '') +
+        '>' + s + '</div>';
     }).join('');
+
     document.querySelectorAll('.bk-time-slot:not(.bk-time-slot--booked)').forEach(function (el) {
       el.addEventListener('click', function () {
         st.time = this.dataset.time;
@@ -568,6 +652,7 @@
     st.tireName = btn.dataset.tireName || 'Tire';
     st.tireSize = btn.dataset.tireSize || '';
     st.tirePrice = parseInt(btn.dataset.tirePrice || '0') / 100;
+    st.inventorySource = btn.dataset.inventorySource === 'trial' ? 'trial' : 'store';
     st.tpms = false;
     st.disposal = true;
     st.date = null;
@@ -732,6 +817,7 @@
         qty: st.qty,
         tpms: st.tpms,
         disposal: st.disposal,
+        inventorySource: st.inventorySource,
         date: st.date.toISOString().split('T')[0],
         time: st.time,
         subtotal: parseFloat(c.subtotal.toFixed(2)),

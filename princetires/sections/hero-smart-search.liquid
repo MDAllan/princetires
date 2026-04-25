@@ -867,7 +867,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       this.awaitingTrim = false;
 
-      this.tireSizeRegex = /(?:^|[\s,])([Pp]?[LlTtSs]?[Tt]?\d{3}\/?\d{2,3}[Rr]\d{2}(?:\.\d)?)/;
+      this.tireSizeRegex = /(?:^|[\s,])([Pp]?(?:[Ll][Tt]|[Ss][Tt])?\d{3}\/?\d{2,3}[Rr]\d{2}(?:\.\d)?|(?:[Ll][Tt])?\d{2}[xX\/]\d{2}\.\d{1,2}[Rr]\d{2})/;
       this.brands = ['michelin','bridgestone','goodyear','continental','toyo','pirelli','falken','kumho','yokohama','firestone','cooper','bfgoodrich','bf goodrich','general','uniroyal','hankook','nitto','mickey thompson','firemax','linglong','farroad','yeada','fortune','radar','rotalla','haida','carlstar'];
 
       this.knownMakes = ['acura','alfa romeo','aston martin','audi','bmw','bentley','buick','cadillac','chevrolet','chevy','chrysler','dodge','ferrari','fiat','ford','gmc','genesis','honda','hyundai','ineos','infiniti','jaguar','jeep','karma','kia','lamborghini','land rover','lexus','lincoln','lotus','lucid','maserati','mazda','mclaren','mercedes-benz','mercedes','benz','mini','mitsubishi','nissan','polestar','porsche','ram','rivian','rolls-royce','subaru','tesla','toyota','vinfast','volkswagen','vw','volvo'];
@@ -947,10 +947,10 @@ document.addEventListener('DOMContentLoaded', function() {
       else if (q.includes('summer') || q.includes('performance')) intent.season = 'Summer';
 
       for (const brand of this.brands) {
-        if (q.includes(brand)) {
+        var escapedBrand = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp('\\b' + escapedBrand + '\\b', 'i').test(q)) {
           intent.brand = brand.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
           if (intent.brand === 'Bfgoodrich' || intent.brand === 'Bf Goodrich') intent.brand = 'BFGoodrich';
-          if (intent.brand === 'Mickey Thompson') intent.brand = 'Mickey Thompson';
           break;
         }
       }
@@ -1018,16 +1018,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     normalizeTireSize(query) {
-      /* Standard format: 225/65R17, P225/65R17, LT225/65R17 */
-      var m = query.match(/[Pp]?[LlTtSs]?[Tt]?(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/);
+      /* Standard metric format: 225/65R17, P225/65R17, LT225/65R17 */
+      var m = query.match(/[Pp]?(?:[Ll][Tt]|[Ss][Tt])?(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/);
       if (m) return { width: m[1], aspect: m[2], rim: m[3], size: m[1] + '/' + m[2] + 'R' + m[3] };
 
-      /* Compact digits only: 2255517 or 2256517 (6-7 digits, width=3, aspect=2, rim=2) */
+      /* Flotation/inch format: 33x12.50R20, LT33x12.50R20, 33/12.50R20
+         Decimal aspect ratio is required to distinguish from metric format */
+      var fi = query.match(/(?:[Ll][Tt])?(\d{2})[xX\/](\d{2}\.\d{1,2})[Rr](\d{2})/);
+      if (fi) return { width: fi[1], aspect: fi[2], rim: fi[3], size: fi[1] + 'x' + fi[2] + 'R' + fi[3] };
+
+      /* Compact digits only: 2255517 (7 digits, width=3, aspect=2, rim=2) */
       var compact = query.replace(/[\s\/\-rR]/g, '');
-      var dm = compact.match(/[Pp]?[LlTtSs]?[Tt]?(\d{3})(\d{2})(\d{2})$/);
+      var dm = compact.match(/[Pp]?(?:[Ll][Tt]|[Ss][Tt])?(\d{3})(\d{2})(\d{2})$/);
       if (dm) return { width: dm[1], aspect: dm[2], rim: dm[3], size: dm[1] + '/' + dm[2] + 'R' + dm[3] };
 
-      /* Spaced format: 225 55 17 or 225 65 17 */
+      /* Spaced format: 225 55 17 */
       var spaced = query.match(/(\d{3})\s+(\d{2})\s+(\d{2})/);
       if (spaced) return { width: spaced[1], aspect: spaced[2], rim: spaced[3], size: spaced[1] + '/' + spaced[2] + 'R' + spaced[3] };
 
@@ -1038,34 +1043,20 @@ document.addEventListener('DOMContentLoaded', function() {
       if (this.abortController) this.abortController.abort();
       this.abortController = new AbortController();
 
-      /* Try standard tire size regex first */
-      var tireMatch = query.match(this.tireSizeRegex);
-      if (tireMatch && tireMatch[1]) {
-        var parsed = this.normalizeTireSize(query);
-        if (parsed) {
-          this.handleTireSizeMatch([null, parsed.width, parsed.aspect, parsed.rim], query);
-          return;
-        }
-      }
-
-      /* Try compact/spaced tire size (e.g. "2255517", "225 55 17") */
       var normalized = this.normalizeTireSize(query);
       if (normalized) {
-        this.handleTireSizeMatch([null, normalized.width, normalized.aspect, normalized.rim], query);
+        this.handleTireSizeMatch(normalized, query);
         return;
       }
 
       await this.handleVehicleQuery(query);
     }
 
-    handleTireSizeMatch(match, query) {
-      const width = match[1];
-      const aspect = match[2] || '';
-      const rim = match[3] || '';
-      /* Display label only — P/LT prefix already stripped by normalizeTireSize */
-      let sizeStr = width;
-      if (aspect) sizeStr += '/' + aspect;
-      if (rim) sizeStr += 'R' + rim;
+    handleTireSizeMatch(parsed, query) {
+      const width = parsed.width;
+      const aspect = parsed.aspect || '';
+      const rim = parsed.rim || '';
+      const sizeStr = parsed.size;
 
       const intent = this.parseSearchIntent(query);
       const intentLabel = intent.season ? ' · ' + intent.season : '';
@@ -1199,7 +1190,7 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
               contents: [{
                 parts: [{
-                  text: 'Extract vehicle info from this search query: "' + query + '"\n\nReturn ONLY a JSON object with these fields:\n- year (number, 4 digits, guess most recent if not specified)\n- make (string, full brand name e.g. "Honda" not "honda")\n- model (string, official model name)\n- trim (string or null)\n\nExamples:\n"2020 Honda Civic" -> {"year":2020,"make":"Honda","model":"Civic","trim":null}\n"\'19 Civic" -> {"year":2019,"make":"Honda","model":"Civic","trim":null}\n"F-150" -> {"year":2025,"make":"Ford","model":"F-150","trim":null}\n"corolla le" -> {"year":2025,"make":"Toyota","model":"Corolla","trim":"LE"}\n"rav4" -> {"year":2025,"make":"Toyota","model":"RAV4","trim":null}\n\nIf the input is not a vehicle at all, return {"year":null,"make":null,"model":null,"trim":null}\n\nReturn ONLY the JSON, no markdown, no explanation.'
+                  text: 'Extract vehicle info from this search query: "' + query + '"\n\nReturn ONLY a JSON object with these fields:\n- year (number, 4 digits, default to ' + this.config.maxYear + ' if not specified)\n- make (string, full brand name e.g. "Honda" not "honda")\n- model (string, official model name)\n- trim (string or null)\n\nExamples:\n"2020 Honda Civic" -> {"year":2020,"make":"Honda","model":"Civic","trim":null}\n"\'19 Civic" -> {"year":2019,"make":"Honda","model":"Civic","trim":null}\n"F-150" -> {"year":' + this.config.maxYear + ',"make":"Ford","model":"F-150","trim":null}\n"corolla le" -> {"year":' + this.config.maxYear + ',"make":"Toyota","model":"Corolla","trim":"LE"}\n"rav4" -> {"year":' + this.config.maxYear + ',"make":"Toyota","model":"RAV4","trim":null}\n\nIf the input is not a vehicle at all, return {"year":null,"make":null,"model":null,"trim":null}\n\nReturn ONLY the JSON, no markdown, no explanation.'
                 }]
               }],
               generationConfig: {
@@ -1245,7 +1236,7 @@ document.addEventListener('DOMContentLoaded', function() {
           var y = ym[1];
           if (y.length === 2) y = (parseInt(y) > 50 ? '19' : '20') + y;
           var yn = parseInt(y);
-          if (yn >= 1990 && yn <= this.config.maxYear) {
+          if (yn >= this.config.minYear && yn <= this.config.maxYear) {
             year = yn;
             yearIndex = i;
             break;
@@ -1404,62 +1395,72 @@ document.addEventListener('DOMContentLoaded', function() {
       return [...allSizes];
     }
 
-    async lookupVehicleTrims(vehicle) {
-      const data = await this.loadVehicleData(vehicle.year);
-      if (!data || !data.models) return [];
-
+    _findModelData(data, vehicle) {
+      if (!data || !data.models) return null;
       var makeData = null;
-      var modelData = null;
+      var foundMake = vehicle.make;
+      var foundModel = vehicle.model;
 
-      /* If we have a make, find it */
       if (vehicle.make) {
         makeData = data.models[vehicle.make];
         if (!makeData) {
           var ml = vehicle.make.toLowerCase();
           for (var [k, v] of Object.entries(data.models)) {
-            if (k.toLowerCase() === ml) { makeData = v; vehicle.make = k; break; }
+            if (k.toLowerCase() === ml) { makeData = v; foundMake = k; break; }
           }
         }
       }
 
-      /* Find model - search within make if known, or across all makes */
-      if (vehicle.model) {
-        var modelLower = vehicle.model.toLowerCase();
-        var modelClean = modelLower.replace(/[-\s]/g, '');
-        var searchIn = makeData ? [[vehicle.make, makeData]] : Object.entries(data.models);
+      if (!vehicle.model) return null;
 
-        for (var [mk, models] of searchIn) {
-          /* Exact match (case-insensitive) */
-          for (var [mn, md] of Object.entries(models)) {
-            if (mn.toLowerCase() === modelLower) {
-              modelData = md; vehicle.make = mk; vehicle.model = mn; break;
-            }
-          }
-          if (modelData) break;
+      var modelLower = vehicle.model.toLowerCase();
+      var modelClean = modelLower.replace(/[-\s]/g, '');
+      var searchIn = makeData ? [[foundMake, makeData]] : Object.entries(data.models);
+      var modelData = null;
 
-          /* Partial match - stripped of hyphens/spaces */
-          for (var [mn, md] of Object.entries(models)) {
-            var mnClean = mn.toLowerCase().replace(/[-\s]/g, '');
-            if (mnClean.includes(modelClean) || modelClean.includes(mnClean)) {
-              modelData = md; vehicle.make = mk; vehicle.model = mn; break;
-            }
-          }
-          if (modelData) break;
-
-          /* Fuzzy match - Levenshtein distance */
-          var bestModel = null, bestDist = 3, bestMd = null;
-          for (var [mn, md] of Object.entries(models)) {
-            var mnClean = mn.toLowerCase().replace(/[-\s]/g, '');
-            var maxDist = modelClean.length <= 4 ? 1 : 2;
-            if (Math.abs(mnClean.length - modelClean.length) > maxDist) continue;
-            var d = this.levenshtein(modelClean, mnClean);
-            if (d <= maxDist && d < bestDist) { bestDist = d; bestModel = mn; bestMd = md; }
-          }
-          if (bestModel) { modelData = bestMd; vehicle.make = mk; vehicle.model = bestModel; break; }
+      for (var [mk, models] of searchIn) {
+        for (var [mn, md] of Object.entries(models)) {
+          if (mn.toLowerCase() === modelLower) { modelData = md; foundMake = mk; foundModel = mn; break; }
         }
+        if (modelData) break;
+
+        for (var [mn, md] of Object.entries(models)) {
+          var mnClean = mn.toLowerCase().replace(/[-\s]/g, '');
+          if (mnClean.includes(modelClean) || modelClean.includes(mnClean)) { modelData = md; foundMake = mk; foundModel = mn; break; }
+        }
+        if (modelData) break;
+
+        var bestModel = null, bestDist = 3, bestMd = null;
+        for (var [mn, md] of Object.entries(models)) {
+          var mnClean = mn.toLowerCase().replace(/[-\s]/g, '');
+          var maxDist = modelClean.length <= 4 ? 1 : 2;
+          if (Math.abs(mnClean.length - modelClean.length) > maxDist) continue;
+          var d = this.levenshtein(modelClean, mnClean);
+          if (d <= maxDist && d < bestDist) { bestDist = d; bestModel = mn; bestMd = md; }
+        }
+        if (bestModel) { modelData = bestMd; foundMake = mk; foundModel = bestModel; break; }
       }
 
-      if (!modelData) return [];
+      if (!modelData) return null;
+      return { makeKey: foundMake, modelKey: foundModel, modelData: modelData };
+    }
+
+    async lookupVehicleTrims(vehicle) {
+      var data = await this.loadVehicleData(vehicle.year);
+      var match = this._findModelData(data, vehicle);
+
+      /* Multi-year fallback: if not found in requested year, try the previous year */
+      if (!match && vehicle.year > this.config.minYear) {
+        data = await this.loadVehicleData(vehicle.year - 1);
+        match = this._findModelData(data, vehicle);
+        if (match) vehicle.year = vehicle.year - 1;
+      }
+
+      if (!match) return [];
+
+      vehicle.make = match.makeKey || vehicle.make;
+      vehicle.model = match.modelKey || vehicle.model;
+      var modelData = match.modelData;
 
       /* If a trim was specified, filter to matching trims only */
       var trims = [];
@@ -1469,7 +1470,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (Array.isArray(sizes) && sizes.length > 0) {
             var tn = trimName.toLowerCase();
             if (tn === trimLower || tn.includes(trimLower) || trimLower.includes(tn)) {
-              trims.push({ trim: trimName, size: sizes[0] });
+              trims.push({ trim: trimName, size: sizes[0], allSizes: sizes });
             }
           }
         }
@@ -1479,7 +1480,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (trims.length === 0) {
         for (var [trimName, sizes] of Object.entries(modelData)) {
           if (Array.isArray(sizes) && sizes.length > 0) {
-            trims.push({ trim: trimName, size: sizes[0] });
+            trims.push({ trim: trimName, size: sizes[0], allSizes: sizes });
           }
         }
       }
@@ -1500,9 +1501,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
       html += trims.map((t, i) => {
         const url = this.buildCollectionUrl({ tireSize: t.size, brand: intent.brand, season: intent.season });
+        const sizeLabel = t.allSizes && t.allSizes.length > 1
+          ? t.allSizes.slice(0, 2).join(' / ') + (t.allSizes.length > 2 ? ' +' + (t.allSizes.length - 2) : '')
+          : t.size;
         return '<li class="hero-smart-search__trim-row" role="option" data-index="' + i + '" data-url="' + this.escapeAttr(url) + '">' +
           '<span class="hero-smart-search__trim-name">' + this.escapeHtml(t.trim) + '</span>' +
-          '<span class="hero-smart-search__trim-size">' + this.escapeHtml(t.size) + '</span>' +
+          '<span class="hero-smart-search__trim-size">' + this.escapeHtml(sizeLabel) + '</span>' +
         '</li>';
       }).join('');
 

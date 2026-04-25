@@ -2,6 +2,11 @@
   assign tire_size = product.metafields.custom.tire_size | default: ''
   assign product_title = product.title
 
+  assign inventory_source = 'store'
+  if product.tags contains 'trial'
+    assign inventory_source = 'trial'
+  endif
+
   assign season_tag = ''
   assign season_color = '#6b7280'
   for tag in product.tags
@@ -418,7 +423,7 @@
 
         {%- comment -%} CTAs — Book Installation is PRIMARY {%- endcomment -%}
         <div class="ptp__cta-stack">
-          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}">
+          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-inventory-source="{{ inventory_source }}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             Book installation
           </button>
@@ -886,7 +891,7 @@
         <span class="ptp__sticky-set" data-ptp-sticky-total>${{ set_price | money_without_currency }}</span>
         <span class="ptp__sticky-per">set of 4</span>
       </div>
-      <button type="button" class="ptp__sticky-btn" data-ptp-sticky-add aria-label="Book installation" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}">Book now</button>
+      <button type="button" class="ptp__sticky-btn" data-ptp-sticky-add aria-label="Book installation" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-inventory-source="{{ inventory_source }}">Book now</button>
     </div>
   </div>
 </product-info>
