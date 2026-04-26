@@ -106,7 +106,7 @@ function verifyAdminAuth(req) {
     err.status = 500;
     throw err;
   }
-  return jwt.verify(token, secret); // throws JsonWebTokenError on invalid token
+  return jwt.verify(token, secret);
 }
 
 // ── HTML escaping (email templates) ──────────────────────────────────────────

@@ -11,12 +11,13 @@ const {
 const SHOP = 'prince-tires-5560.myshopify.com';
 
 async function shopifyToken() {
-  if (process.env.SHOPIFY_ACCESS_TOKEN) return process.env.SHOPIFY_ACCESS_TOKEN;
   const r = await fetch(`https://${SHOP}/admin/oauth/access_token`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body:    `grant_type=client_credentials&client_id=${process.env.SHOPIFY_CLIENT_ID}&client_secret=${process.env.SHOPIFY_CLIENT_SECRET}`,
   });
+  const ct = r.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) throw new Error(`Token endpoint non-JSON (${r.status})`);
   const d = await r.json();
   if (!d.access_token) throw new Error('Shopify token failed');
   return d.access_token;

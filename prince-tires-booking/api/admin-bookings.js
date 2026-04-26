@@ -10,7 +10,6 @@ const {
 const SHOP = 'prince-tires-5560.myshopify.com';
 
 async function shopifyToken() {
-  if (process.env.SHOPIFY_ACCESS_TOKEN) return process.env.SHOPIFY_ACCESS_TOKEN;
   const r = await fetch(`https://${SHOP}/admin/oauth/access_token`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -101,14 +100,17 @@ module.exports = async function handler(req, res) {
       pageToken = resp.data.nextPageToken;
     } while (pageToken);
 
-    const events = allItems.map(e => ({
-      id:          e.id,
-      title:       e.summary       || '',
-      description: e.description   || '',
-      start:       e.start?.dateTime || e.start?.date,
-      end:         e.end?.dateTime   || e.end?.date,
-      location:    e.location      || '',
-    }));
+    const events = allItems
+      .filter(e => e.description && e.description.includes('Booked via princetires.ca'))
+      .map(e => ({
+        id:          e.id,
+        title:       e.summary       || '',
+        description: e.description   || '',
+        start:       e.start?.dateTime || e.start?.date,
+        end:         e.end?.dateTime   || e.end?.date,
+        location:    e.location      || '',
+        pt_status:   e.extendedProperties?.private?.pt_status || 'confirmed',
+      }));
 
     return res.status(200).json({ events });
   } catch (err) {

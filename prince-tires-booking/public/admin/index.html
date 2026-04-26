@@ -59,7 +59,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; backg
 .page-title { font-size:22px; font-weight:800; margin-bottom:20px; letter-spacing:-.4px; }
 
 /* ── Stats row ── */
-.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
 .stat-card { background:var(--card); border-radius:12px; padding:20px 22px; border:1.5px solid var(--border); transition:all .18s; position:relative; overflow:hidden; }
 .stat-card.clickable { cursor:pointer; }
 .stat-card.clickable:hover { border-color:var(--red); transform:translateY(-2px); box-shadow:0 6px 20px rgba(192,57,43,.12); }
@@ -157,7 +157,22 @@ tbody td { padding:12px 18px; font-size:13px; vertical-align:middle; }
 .booking-title { font-size:14px; font-weight:700; margin-bottom:6px; line-height:1.3; }
 .booking-meta  { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:3px; }
 .booking-meta strong { color:var(--text); }
-.booking-actions { display:flex; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+.booking-actions { display:flex; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); flex-wrap:wrap; align-items:center; }
+
+/* ── Booking status ── */
+.bk-status { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:3px 9px; border-radius:99px; }
+.bk-status-confirmed   { background:#dbeafe; color:#1d4ed8; }
+.bk-status-in_progress { background:#fef3c7; color:#92400e; }
+.bk-status-completed   { background:#dcfce7; color:#15803d; }
+.bk-status-no_show     { background:#fee2e2; color:#991b1b; }
+.status-select { font-size:11px; font-weight:600; border:1.5px solid var(--border); border-radius:6px; padding:3px 6px; background:var(--card); cursor:pointer; color:var(--text); }
+
+/* ── Print: work order ── */
+@media print {
+  body > *:not(#work-order-print) { display:none!important; }
+  #work-order-print { display:block!important; }
+}
+#work-order-print { display:none; }
 
 /* ── Modals ── */
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(2px); }
@@ -307,10 +322,16 @@ tbody td { padding:12px 18px; font-size:13px; vertical-align:middle; }
           <div class="stat-value" id="stat-wholesale">—</div>
         </div>
         <div class="stat-card">
+          <div class="stat-icon">📈</div>
+          <div class="stat-label">Revenue this week</div>
+          <div class="stat-value" id="stat-rev-week">—</div>
+          <div class="stat-sub" id="stat-rev-week-sub">from bookings</div>
+        </div>
+        <div class="stat-card">
           <div class="stat-icon">💰</div>
           <div class="stat-label">Revenue this month</div>
           <div class="stat-value" id="stat-revenue">—</div>
-          <div class="stat-sub">from recent orders</div>
+          <div class="stat-sub" id="stat-rev-month-sub">from bookings</div>
         </div>
       </div>
 
@@ -369,12 +390,29 @@ tbody td { padding:12px 18px; font-size:13px; vertical-align:middle; }
 
     <!-- ══ BOOKINGS ══ -->
     <div class="page" id="page-bookings">
-      <div class="page-title">All Bookings <span style="font-size:13px;font-weight:500;color:var(--muted);" id="bookings-count-label"></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div class="page-title" style="margin-bottom:0;">Bookings <span style="font-size:13px;font-weight:500;color:var(--muted);" id="bookings-count-label"></span></div>
+        <div style="display:flex;gap:8px;">
+          <button class="qa-btn" onclick="printWorkOrder()" style="font-size:12px;padding:7px 13px;">📋 Today's Work Order</button>
+          <button class="qa-btn" onclick="openNewBooking()" style="font-size:12px;padding:7px 13px;border-color:var(--red);color:var(--red);">+ New Booking</button>
+        </div>
+      </div>
+      <div class="table-toolbar" style="margin-bottom:12px;">
+        <input class="search-input" id="bookings-search" placeholder="Search name, email, phone, vehicle, tire…" oninput="debounceBookingSearch()" style="flex:1;min-width:180px;">
+        <select class="filter-select" id="bookings-sort" onchange="renderBookings()">
+          <option value="date-asc">Date: soonest first</option>
+          <option value="date-desc">Date: newest first</option>
+          <option value="name-asc">Customer A → Z</option>
+          <option value="name-desc">Customer Z → A</option>
+        </select>
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
         <button class="btn-sm btn-edit" id="btn-filter-upcoming" onclick="filterBookings('upcoming')">Upcoming</button>
-        <button class="btn-sm btn-view" id="btn-filter-all" onclick="filterBookings('all')">All</button>
-        <button class="btn-sm btn-view" id="btn-filter-past" onclick="filterBookings('past')">Past</button>
-        <button class="btn-sm btn-view" id="btn-filter-today" onclick="filterBookings('today')">Today</button>
+        <button class="btn-sm btn-view" id="btn-filter-all"      onclick="filterBookings('all')">All</button>
+        <button class="btn-sm btn-view" id="btn-filter-past"     onclick="filterBookings('past')">Past</button>
+        <button class="btn-sm btn-view" id="btn-filter-today"    onclick="filterBookings('today')">Today</button>
+        <button class="btn-sm btn-view" id="btn-filter-completed"  onclick="filterBookings('completed')">Completed</button>
+        <button class="btn-sm btn-view" id="btn-filter-no_show"    onclick="filterBookings('no_show')">No-show</button>
       </div>
       <div class="booking-grid" id="booking-list"><div class="empty"><span class="spinner"></span>Loading…</div></div>
     </div>
@@ -629,6 +667,91 @@ tbody td { padding:12px 18px; font-size:13px; vertical-align:middle; }
   </div>
 </div>
 
+<!-- ══ NEW BOOKING MODAL ══ -->
+<div class="modal-overlay hidden" id="modal-new-booking">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-header">
+      <span class="modal-title">New Booking</span>
+      <button class="modal-close" onclick="closeModal('modal-new-booking')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;">Customer</div>
+      <div class="form-row-2">
+        <div class="form-row"><label>Name <span style="color:var(--red)">*</span></label><input id="nbk-name" type="text" placeholder="Full name"></div>
+        <div class="form-row"><label>Phone</label><input id="nbk-phone" type="tel" placeholder="(403) 000-0000"></div>
+      </div>
+      <div class="form-row"><label>Email</label><input id="nbk-email" type="email" placeholder="customer@email.com"></div>
+
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:16px 0 12px;">Appointment</div>
+      <div class="form-row-2">
+        <div class="form-row"><label>Date <span style="color:var(--red)">*</span></label><input id="nbk-date" type="date"></div>
+        <div class="form-row"><label>Time <span style="color:var(--red)">*</span></label>
+          <select id="nbk-time">
+            <option value="">Select time…</option>
+            <option>9:00 AM</option><option>9:30 AM</option><option>10:00 AM</option><option>10:30 AM</option>
+            <option>11:00 AM</option><option>11:30 AM</option><option>12:00 PM</option><option>12:30 PM</option>
+            <option>1:00 PM</option><option>1:30 PM</option><option>2:00 PM</option><option>2:30 PM</option>
+            <option>3:00 PM</option><option>3:30 PM</option><option>4:00 PM</option><option>4:30 PM</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:16px 0 12px;">Tires &amp; Vehicle</div>
+      <div class="form-row"><label>Vehicle</label><input id="nbk-vehicle" type="text" placeholder="e.g. 2020 Toyota RAV4 AWD"></div>
+      <div class="form-row-2">
+        <div class="form-row"><label>Tire size</label><input id="nbk-tire-size" type="text" placeholder="e.g. 225/65R17"></div>
+        <div class="form-row"><label>Quantity</label>
+          <select id="nbk-qty" onchange="calcNewBookingPrice()">
+            <option value="4" selected>4 tires</option>
+            <option value="1">1 tire</option><option value="2">2 tires</option><option value="3">3 tires</option>
+            <option value="5">5 tires</option><option value="6">6 tires</option>
+            <option value="7">7 tires</option><option value="8">8 tires</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row"><label>Tire brand / name</label><input id="nbk-tire-name" type="text" placeholder="e.g. Michelin X-Ice Snow"></div>
+      <div class="form-row"><label>Inventory source</label>
+        <select id="nbk-inv">
+          <option value="store">Prince Tires (in-store)</option>
+          <option value="trial">Trial Tires (ordered)</option>
+        </select>
+      </div>
+
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:16px 0 12px;">Pricing</div>
+      <div class="form-row-2">
+        <div class="form-row"><label>Price per tire ($)</label><input id="nbk-price-per" type="number" min="0" step="0.01" placeholder="0.00" oninput="calcNewBookingPrice()"></div>
+        <div class="form-row"><label>Subtotal</label><input id="nbk-subtotal" type="number" min="0" step="0.01" placeholder="0.00" oninput="calcNewBookingPrice()" style="background:#f9fafb;"></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="nbk-tpms" onchange="calcNewBookingPrice()" style="accent-color:var(--red);">
+          TPMS sensors (+$75/tire)
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="nbk-disposal" onchange="calcNewBookingPrice()" style="accent-color:var(--red);">
+          Disposal (+$5/tire)
+        </label>
+      </div>
+      <div style="background:#f9fafb;border-radius:8px;padding:12px 16px;font-size:13px;display:grid;grid-template-columns:1fr auto;gap:4px 16px;">
+        <span style="color:var(--muted);">Subtotal</span><span id="nbk-display-sub">$0.00</span>
+        <span style="color:var(--muted);">GST (5%)</span><span id="nbk-display-gst">$0.00</span>
+        <span style="font-weight:700;">Total</span><span style="font-weight:700;" id="nbk-display-total">$0.00</span>
+      </div>
+
+      <div class="form-row" style="margin-top:16px;"><label>Notes</label><textarea id="nbk-notes" rows="2" placeholder="Special instructions…"></textarea></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:8px;">
+        <input type="checkbox" id="nbk-send-email" checked style="accent-color:var(--red);">
+        Send confirmation email to customer
+      </label>
+      <div class="action-result" id="nbk-result" style="margin-top:10px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-new-booking')">Cancel</button>
+      <button class="btn-save" id="btn-nbk-submit" onclick="submitNewBooking()">Create Booking</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ WHOLESALE APPROVE MODAL ══ -->
 <div class="modal-overlay hidden" id="modal-approve">
   <div class="modal">
@@ -662,6 +785,8 @@ let custCache = {};
 let whCache = {};
 let allEvents = [];
 let bookingFilter = 'upcoming';
+let bookingSearch = '';
+let bookingSearchTimer = null;
 let ordersCursors = { prev: [], next: null };
 let custCursors   = { prev: [], next: null };
 let currentCustomers = [];
@@ -727,30 +852,9 @@ async function apiFetch(path, opts = {}) {
   return r;
 }
 
-// Check for existing session on load, or auto-login via ?key= param
 token = sessionStorage.getItem(STORAGE_KEY) || '';
-if (token) {
-  showApp();
-} else {
-  const urlKey = new URLSearchParams(location.search).get('key');
-  if (urlKey) {
-    history.replaceState(null, '', location.pathname); // strip key from URL bar
-    (async () => {
-      try {
-        const r = await fetch('/api/admin-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: urlKey }),
-        });
-        const d = await r.json();
-        if (r.ok) { token = d.token; sessionStorage.setItem(STORAGE_KEY, token); showApp(); }
-        else { showLogin(d.error || 'Invalid key.'); }
-      } catch { showLogin('Network error.'); }
-    })();
-  } else {
-    showLogin();
-  }
-}
+if (token) showApp();
+else showLogin();
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
@@ -803,16 +907,39 @@ async function loadBookings() {
   } catch(e) { console.error(e); }
 }
 
+function parseRevenue(description) {
+  const match = (description || '').match(/Total \(incl\. GST\):\s*\$?([\d.]+)/);
+  return match ? parseFloat(match[1]) : 0;
+}
+
 function updateBookingStats(events) {
-  const now = new Date();
+  const now      = new Date();
   const todayStr = now.toDateString();
   const weekEnd  = now.getTime() + 7 * 24 * 3600 * 1000;
+
   const todayCount = events.filter(e => new Date(e.start).toDateString() === todayStr).length;
   const weekCount  = events.filter(e => { const t = new Date(e.start).getTime(); return t >= now.getTime() && t <= weekEnd; }).length;
   const upcoming   = events.filter(e => new Date(e.start).getTime() >= now.getTime()).length;
+
+  // Revenue — current week (Mon–Sun) and current month
+  const weekStart  = new Date(now); weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); weekStart.setHours(0,0,0,0);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  let revWeek = 0, revMonth = 0, weekJobs = 0, monthJobs = 0;
+  events.forEach(e => {
+    const dt = new Date(e.start);
+    const rev = parseRevenue(e.description);
+    if (dt >= weekStart  && dt <= now) { revWeek  += rev; weekJobs++;  }
+    if (dt >= monthStart && dt <= now) { revMonth += rev; monthJobs++; }
+  });
+
   document.getElementById('stat-today').textContent    = todayCount;
   document.getElementById('stat-bookings').textContent = weekCount;
   document.getElementById('nb-bookings').textContent   = upcoming;
+  document.getElementById('stat-rev-week').textContent  = revWeek  ? '$' + revWeek.toFixed(0)  : '—';
+  document.getElementById('stat-revenue').textContent   = revMonth ? '$' + revMonth.toFixed(0) : '—';
+  if (document.getElementById('stat-rev-week-sub'))   document.getElementById('stat-rev-week-sub').textContent   = weekJobs  + ' booking' + (weekJobs  !== 1 ? 's' : '');
+  if (document.getElementById('stat-rev-month-sub'))  document.getElementById('stat-rev-month-sub').textContent  = monthJobs + ' booking' + (monthJobs !== 1 ? 's' : '');
 }
 
 function getBookingClass(start) {
@@ -824,31 +951,69 @@ function getBookingClass(start) {
   return 'bk-upcoming';
 }
 
+function debounceBookingSearch() {
+  clearTimeout(bookingSearchTimer);
+  bookingSearchTimer = setTimeout(() => {
+    bookingSearch = (document.getElementById('bookings-search')?.value || '').trim().toLowerCase();
+    renderBookings();
+  }, 220);
+}
+
 function filterBookings(f) {
   bookingFilter = f;
-  const styles = {
-    upcoming: 'btn-edit',
-    all:      'btn-edit',
-    past:     'btn-edit',
-    today:    'btn-edit'
-  };
-  ['upcoming','all','past','today'].forEach(x => {
+  ['upcoming','all','past','today','completed','no_show'].forEach(x => {
     const btn = document.getElementById('btn-filter-' + x);
-    if (!btn) return;
-    btn.className = 'btn-sm ' + (x === f ? 'btn-edit' : 'btn-view');
+    if (btn) btn.className = 'btn-sm ' + (x === f ? 'btn-edit' : 'btn-view');
   });
   renderBookings();
 }
 
-function renderBookings() {
-  const now = Date.now();
-  const todayStr = new Date().toDateString();
-  let list = allEvents;
-  if (bookingFilter === 'upcoming') list = allEvents.filter(e => new Date(e.start).getTime() >= now);
-  if (bookingFilter === 'past')     list = allEvents.filter(e => new Date(e.start).getTime() < now).slice().reverse();
-  if (bookingFilter === 'today')    list = allEvents.filter(e => new Date(e.start).toDateString() === todayStr);
+function parseBookingDetails(description) {
+  const details = {};
+  (description || '').split('\n').filter(Boolean).forEach(l => {
+    const idx = l.indexOf(':');
+    if (idx > 0) details[l.slice(0, idx).trim()] = l.slice(idx + 1).trim();
+  });
+  return details;
+}
 
-  const el = document.getElementById('booking-list');
+function renderBookings() {
+  const now      = Date.now();
+  const todayStr = new Date().toDateString();
+  const sort     = document.getElementById('bookings-sort')?.value || 'date-asc';
+
+  // 1 — time / status filter
+  let list = allEvents.slice();
+  if (bookingFilter === 'upcoming')  list = list.filter(e => new Date(e.start).getTime() >= now && e.pt_status !== 'completed' && e.pt_status !== 'no_show');
+  if (bookingFilter === 'past')      list = list.filter(e => new Date(e.start).getTime() < now);
+  if (bookingFilter === 'today')     list = list.filter(e => new Date(e.start).toDateString() === todayStr);
+  if (bookingFilter === 'completed') list = list.filter(e => e.pt_status === 'completed');
+  if (bookingFilter === 'no_show')   list = list.filter(e => e.pt_status === 'no_show');
+
+  // 2 — search
+  if (bookingSearch) {
+    list = list.filter(e => {
+      const d = parseBookingDetails(e.description);
+      const haystack = [
+        e.title,
+        d['Customer'] || '',
+        d['Email']    || '',
+        d['Phone']    || '',
+        d['Vehicle']  || '',
+        d['Tire']     || '',
+        d['Notes']    || '',
+      ].join(' ').toLowerCase();
+      return haystack.includes(bookingSearch);
+    });
+  }
+
+  // 3 — sort
+  if (sort === 'date-asc')  list.sort((a,b) => new Date(a.start) - new Date(b.start));
+  if (sort === 'date-desc') list.sort((a,b) => new Date(b.start) - new Date(a.start));
+  if (sort === 'name-asc')  list.sort((a,b) => (parseBookingDetails(a.description)['Customer'] || a.title).localeCompare(parseBookingDetails(b.description)['Customer'] || b.title));
+  if (sort === 'name-desc') list.sort((a,b) => (parseBookingDetails(b.description)['Customer'] || b.title).localeCompare(parseBookingDetails(a.description)['Customer'] || a.title));
+
+  const el       = document.getElementById('booking-list');
   const countLbl = document.getElementById('bookings-count-label');
   if (countLbl) countLbl.textContent = list.length ? `— ${list.length} shown` : '';
   if (!list.length) { el.innerHTML = '<div class="empty">No bookings found.</div>'; return; }
@@ -856,13 +1021,13 @@ function renderBookings() {
   el.innerHTML = list.map(e => {
     const bkClass = getBookingClass(e.start);
     const isPast  = bkClass === 'bk-past';
-    const lines   = (e.description || '').split('\n').filter(Boolean);
-    const details = {};
-    lines.forEach(l => { const [k,...v] = l.split(':'); if (k && v.length) details[k.trim()] = v.join(':').trim(); });
+    const d       = parseBookingDetails(e.description);
 
     const badgeClass = bkClass === 'bk-today' ? 'badge-today' : isPast ? 'badge-past' : 'badge-upcoming';
     const badgeText  = bkClass === 'bk-today' ? 'Today' : isPast ? 'Past' : bkClass === 'bk-week' ? 'This week' : 'Upcoming';
 
+    const statusLabels = { confirmed:'Confirmed', in_progress:'In Progress', completed:'Completed', no_show:'No-show' };
+    const curStatus = e.pt_status || 'confirmed';
     return `<div class="booking-card ${bkClass}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
         <div class="booking-title">${esc(e.title)}</div>
@@ -870,19 +1035,45 @@ function renderBookings() {
       </div>
       <div class="booking-meta">
         <span><strong>${fmtDatetime(e.start)}</strong></span>
-        ${details['Customer'] ? `<span>Customer: <strong>${esc(details['Customer'])}</strong></span>` : ''}
-        ${details['Phone']    ? `<span>📞 ${esc(details['Phone'])}</span>` : ''}
-        ${details['Vehicle']  ? `<span>🚗 ${esc(details['Vehicle'])}</span>` : ''}
-        ${details['Tire']     ? `<span>🔩 ${esc(details['Tire'])}</span>` : ''}
-        ${details['Quantity'] ? `<span>Qty: ${esc(details['Quantity'])}</span>` : ''}
-        ${details['Total (incl. GST)'] ? `<span>💵 <strong>${esc(details['Total (incl. GST)'])}</strong></span>` : ''}
+        ${d['Customer'] ? `<span>👤 <strong>${esc(d['Customer'])}</strong></span>` : ''}
+        ${d['Email']    ? `<span>✉️ ${esc(d['Email'])}</span>` : ''}
+        ${d['Phone']    ? `<span>📞 ${esc(d['Phone'])}</span>` : ''}
+        ${d['Vehicle']  ? `<span>🚗 ${esc(d['Vehicle'])}</span>` : ''}
+        ${d['Tire']     ? `<span>🔩 ${esc(d['Tire'])}</span>` : ''}
+        ${d['Quantity'] ? `<span>Qty: ${esc(d['Quantity'])}</span>` : ''}
+        ${d['Add-ons'] && d['Add-ons'] !== 'None' ? `<span>➕ ${esc(d['Add-ons'])}</span>` : ''}
+        ${d['Total (incl. GST)'] ? `<span>💵 <strong>${esc(d['Total (incl. GST)'])}</strong></span>` : ''}
+        ${d['Notes']    ? `<span>📝 ${esc(d['Notes'])}</span>` : ''}
       </div>
       <div class="booking-actions">
+        <span class="bk-status bk-status-${curStatus}">${statusLabels[curStatus] || curStatus}</span>
+        <select class="status-select" onchange="updateBookingStatus('${e.id}', this.value, this)">
+          <option value="">Change status…</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="no_show">No-show</option>
+        </select>
         <button class="btn-sm btn-edit" onclick='openEditBooking(${JSON.stringify(e)})'>Edit</button>
-        <button class="btn-sm btn-del"  onclick="openCancelBooking('${e.id}','${esc(details['Customer']||e.title)}')">Cancel</button>
+        <button class="btn-sm btn-del"  onclick="openCancelBooking('${e.id}','${esc(d['Customer']||e.title)}')">Cancel</button>
       </div>
     </div>`;
   }).join('');
+}
+
+async function updateBookingStatus(id, status, selectEl) {
+  if (!status) return;
+  selectEl.disabled = true;
+  try {
+    const r = await apiFetch('/api/admin-booking-manage', {
+      method: 'PATCH',
+      body:   JSON.stringify({ id, status }),
+    });
+    if (!r.ok) { alert('Failed to update status.'); selectEl.value = ''; selectEl.disabled = false; return; }
+    const event = allEvents.find(e => e.id === id);
+    if (event) event.pt_status = status;
+    renderBookings();
+  } catch { alert('Connection error.'); selectEl.value = ''; selectEl.disabled = false; }
 }
 
 function renderDashBookings() {
@@ -1754,6 +1945,151 @@ async function confirmCancelBooking() {
     loadBookings();
   } catch(e) { alert('Connection error'); }
   finally { btn.disabled=false; btn.textContent='Yes, cancel it'; }
+}
+
+// ── New Booking (admin-created) ───────────────────────────────────────────────
+function openNewBooking() {
+  ['nbk-name','nbk-phone','nbk-email','nbk-vehicle','nbk-tire-size','nbk-tire-name','nbk-notes','nbk-price-per','nbk-subtotal'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('nbk-qty').value       = '4';
+  document.getElementById('nbk-inv').value       = 'store';
+  document.getElementById('nbk-time').value      = '';
+  document.getElementById('nbk-tpms').checked    = false;
+  document.getElementById('nbk-disposal').checked = false;
+  document.getElementById('nbk-send-email').checked = true;
+  document.getElementById('nbk-result').textContent  = '';
+  document.getElementById('nbk-date').value = new Date().toISOString().slice(0, 10);
+  calcNewBookingPrice();
+  document.getElementById('modal-new-booking').classList.remove('hidden');
+  setTimeout(() => document.getElementById('nbk-name').focus(), 100);
+}
+
+function calcNewBookingPrice() {
+  const qty      = parseInt(document.getElementById('nbk-qty').value) || 4;
+  const perTire  = parseFloat(document.getElementById('nbk-price-per').value) || 0;
+  const tpms     = document.getElementById('nbk-tpms').checked    ? qty * 75 : 0;
+  const disposal = document.getElementById('nbk-disposal').checked ? qty * 5  : 0;
+  let subtotal   = parseFloat(document.getElementById('nbk-subtotal').value);
+  if (isNaN(subtotal) || document.activeElement !== document.getElementById('nbk-subtotal')) {
+    subtotal = perTire * qty + tpms + disposal;
+    document.getElementById('nbk-subtotal').value = subtotal.toFixed(2);
+  }
+  const gst   = Math.round(subtotal * 0.05 * 100) / 100;
+  const total = Math.round((subtotal + gst) * 100) / 100;
+  document.getElementById('nbk-display-sub').textContent   = '$' + subtotal.toFixed(2);
+  document.getElementById('nbk-display-gst').textContent   = '$' + gst.toFixed(2);
+  document.getElementById('nbk-display-total').textContent = '$' + total.toFixed(2);
+}
+
+async function submitNewBooking() {
+  const btn    = document.getElementById('btn-nbk-submit');
+  const result = document.getElementById('nbk-result');
+  const name   = document.getElementById('nbk-name').value.trim();
+  const date   = document.getElementById('nbk-date').value;
+  const time   = document.getElementById('nbk-time').value;
+  if (!name || !date || !time) {
+    result.style.color = 'var(--red)'; result.textContent = 'Name, date, and time are required.'; return;
+  }
+  const qty      = parseInt(document.getElementById('nbk-qty').value) || 4;
+  const tpms     = document.getElementById('nbk-tpms').checked;
+  const disposal = document.getElementById('nbk-disposal').checked;
+  let subtotal   = parseFloat(document.getElementById('nbk-subtotal').value) || 0;
+  const addons   = (tpms ? qty * 75 : 0) + (disposal ? qty * 5 : 0);
+  if (!subtotal) subtotal = addons;
+
+  btn.disabled = true; btn.textContent = 'Creating…'; result.textContent = '';
+  try {
+    const r = await apiFetch('/api/admin-booking-manage', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        phone:           document.getElementById('nbk-phone').value.trim(),
+        email:           document.getElementById('nbk-email').value.trim(),
+        vehicle:         document.getElementById('nbk-vehicle').value.trim(),
+        tireSize:        document.getElementById('nbk-tire-size').value.trim(),
+        tireName:        document.getElementById('nbk-tire-name').value.trim(),
+        notes:           document.getElementById('nbk-notes').value.trim(),
+        date, time, qty, tpms, disposal,
+        inventorySource: document.getElementById('nbk-inv').value,
+        subtotal,
+        sendEmail:       document.getElementById('nbk-send-email').checked,
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) { result.style.color='var(--red)'; result.textContent=d.error||'Error creating booking'; return; }
+    result.style.color = 'var(--green)'; result.textContent = '✓ Booking created!';
+    setTimeout(() => { closeModal('modal-new-booking'); loadBookings(); }, 900);
+  } catch { result.style.color='var(--red)'; result.textContent='Connection error'; }
+  finally { btn.disabled=false; btn.textContent='Create Booking'; }
+}
+
+// ── Work Order (print today's jobs) ──────────────────────────────────────────
+function printWorkOrder() {
+  const todayStr = new Date().toDateString();
+  const jobs     = allEvents
+    .filter(e => new Date(e.start).toDateString() === todayStr)
+    .sort((a, b) => new Date(a.start) - new Date(b.start));
+
+  const dateLabel = new Date().toLocaleDateString('en-CA', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  const rows = jobs.length
+    ? jobs.map((e, i) => {
+        const d = parseBookingDetails(e.description);
+        const statusLabels = { confirmed:'Confirmed', in_progress:'In Progress', completed:'✓ Done', no_show:'No-show' };
+        const st = statusLabels[e.pt_status] || 'Confirmed';
+        return `<tr>
+          <td style="width:36px;text-align:center;font-weight:700;color:#666;">${i + 1}</td>
+          <td style="font-weight:700;">${fmtDatetime(e.start).split(',')[1]?.trim() || fmtDatetime(e.start)}</td>
+          <td><strong>${esc(d['Customer'] || e.title)}</strong><br><span style="color:#666;font-size:12px;">${esc(d['Phone'] || '')}</span></td>
+          <td>${esc(d['Vehicle'] || '—')}</td>
+          <td>${esc(d['Tire'] || '—')}</td>
+          <td style="text-align:center;">${esc(d['Quantity'] || '—')}</td>
+          <td>${esc(d['Add-ons'] && d['Add-ons'] !== 'None' ? d['Add-ons'] : '—')}</td>
+          <td style="font-weight:700;">${esc(d['Total (incl. GST)'] || '—')}</td>
+          <td>${esc(d['Notes'] || '')}</td>
+          <td style="text-align:center;font-size:12px;">${st}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="10" style="text-align:center;color:#999;padding:24px;">No bookings today.</td></tr>`;
+
+  const totalRevenue = jobs.reduce((sum, e) => {
+    const d = parseBookingDetails(e.description);
+    return sum + (parseFloat((d['Total (incl. GST)'] || '').replace('$', '')) || 0);
+  }, 0);
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Work Order — ${dateLabel}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size:13px; color:#111; margin:0; padding:24px; }
+    h1   { font-size:20px; margin:0 0 2px; }
+    .sub { color:#666; font-size:13px; margin-bottom:20px; }
+    table { width:100%; border-collapse:collapse; }
+    th    { background:#111; color:#fff; padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+    td    { padding:10px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+    tr:nth-child(even) td { background:#f9fafb; }
+    .footer { margin-top:20px; display:flex; justify-content:space-between; font-size:12px; color:#666; border-top:2px solid #111; padding-top:12px; }
+    @media print { @page { margin:15mm; } }
+  </style></head><body>
+  <h1>🛞 Daily Work Order</h1>
+  <div class="sub">Prince Tires · 111 42 Ave SW, Calgary, AB · ${dateLabel}</div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Time</th><th>Customer</th><th>Vehicle</th>
+      <th>Tire</th><th>Qty</th><th>Add-ons</th><th>Total</th><th>Notes</th><th>Status</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    <span>${jobs.length} job${jobs.length !== 1 ? 's' : ''} today</span>
+    <span>Estimated revenue: <strong>$${totalRevenue.toFixed(2)}</strong></span>
+    <span>Printed: ${new Date().toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit' })}</span>
+  </div>
+  <script>window.onload = () => window.print();<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank', 'width=1100,height=700');
+  if (w) { w.document.write(html); w.document.close(); }
 }
 
 // ── Modals ────────────────────────────────────────────────────────────────────

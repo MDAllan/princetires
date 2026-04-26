@@ -12,7 +12,6 @@ const {
 const SHOP = 'prince-tires-5560.myshopify.com';
 
 async function shopifyToken() {
-  if (process.env.SHOPIFY_ACCESS_TOKEN) return process.env.SHOPIFY_ACCESS_TOKEN;
   const r = await fetch(`https://${SHOP}/admin/oauth/access_token`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
