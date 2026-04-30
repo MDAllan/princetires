@@ -1,6 +1,6 @@
 # AGENTS.md
 
-🚨 MANDATORY: USE THE `shopify-liquid` SKILL WHEN WORKING WITH LIQUID THEME FILES.
+🚨 MANDATORY: USE THE `shopify-liquid-themes` SKILL WHEN WORKING WITH LIQUID THEME FILES.
 
 🎨 MANDATORY: FOR EVERY DESIGN, UI, OR STYLING TASK — use the `ui-ux-pro-max` skill BEFORE implementing.
 - Stack: `html-tailwind` (default for Shopify Liquid work)

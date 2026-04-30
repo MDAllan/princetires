@@ -545,12 +545,6 @@
             Description
           </button>
         {%- endif -%}
-        {%- if section.settings.show_ai_tab -%}
-          <button class="ptp__tab" role="tab" aria-selected="false" data-ptp-tab="ai" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            {{ section.settings.ai_tab_title | default: 'Ask AI' }}
-          </button>
-        {%- endif -%}
         {%- if section.settings.show_warranty_tab -%}
           <button class="ptp__tab" role="tab" aria-selected="false" data-ptp-tab="warranty" type="button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -808,28 +802,6 @@
         {%- endif -%}
 
         {%- comment -%} Warranty Panel {%- endcomment -%}
-        {%- comment -%} AI Assistant Panel {%- endcomment -%}
-        {%- if section.settings.show_ai_tab -%}
-          <div class="ptp__tab-panel" role="tabpanel" data-ptp-panel="ai">
-            <div class="ptp__ai">
-              <div class="ptp__ai-header">
-                <div class="ptp__ai-logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-                <div><strong>Tire assistant</strong><span>Ask anything about this tire</span></div>
-              </div>
-              <div class="ptp__ai-suggestions">
-                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_1 | default: 'Is this tire good for winter driving?' | escape }}" type="button">{{ section.settings.ai_suggestion_1 | default: 'Is this tire good for winter driving?' }}</button>
-                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_2 | default: 'How long will this tire last?' | escape }}" type="button">{{ section.settings.ai_suggestion_2 | default: 'How long will this tire last?' }}</button>
-                <button class="ptp__ai-chip" data-ptp-ai-q="{{ section.settings.ai_suggestion_3 | default: 'What size rim do I need?' | escape }}" type="button">{{ section.settings.ai_suggestion_3 | default: 'What size rim do I need?' }}</button>
-              </div>
-              <div class="ptp__ai-chat" data-ptp-ai-chat></div>
-              <div class="ptp__ai-input-row">
-                <input type="text" class="ptp__ai-input" placeholder="Ask about this tire..." data-ptp-ai-input>
-                <button class="ptp__ai-send" data-ptp-ai-send type="button" aria-label="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg></button>
-              </div>
-            </div>
-          </div>
-        {%- endif -%}
-
         {%- if section.settings.show_warranty_tab -%}
           <div class="ptp__tab-panel" role="tabpanel" data-ptp-panel="warranty">
             <div class="ptp__warranty-grid">
@@ -1139,39 +1111,6 @@
   @media (max-width: 768px) {
     .ptp__use-cases { flex-direction: column; }
   }
-
-  /* AI Assistant */
-  .ptp__ai { max-width: 640px; }
-  .ptp__ai-header { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem; }
-  .ptp__ai-logo { width: 2.8rem; height: 2.8rem; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #F5820B 0%, #dc2626 100%); border-radius: 50%; color: #fff; }
-  .ptp__ai-logo svg { stroke: #fff; }
-  .ptp__ai-header strong { font-size: 1rem; color: var(--ptp-text); display: block; }
-  .ptp__ai-header span { font-size: 0.85rem; color: var(--ptp-muted); }
-  .ptp__ai-suggestions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
-  .ptp__ai-chip {
-    padding: 0.5rem 1rem; border: 1.5px solid var(--ptp-border); border-radius: 100px;
-    background: var(--ptp-bg); font-family: var(--ptp-font); font-size: 0.85rem; font-weight: 500;
-    color: var(--ptp-muted); cursor: pointer; transition: all 0.2s;
-  }
-  .ptp__ai-chip:hover { border-color: var(--ptp-accent); color: var(--ptp-accent); }
-  .ptp__ai-chat { display: flex; flex-direction: column; gap: 0.8rem; max-height: 24rem; overflow-y: auto; margin-bottom: 1rem; scrollbar-width: thin; }
-  .ptp__ai-msg { padding: 0.8rem 1rem; border-radius: var(--ptp-r-sm); font-size: 0.9rem; line-height: 1.6; max-width: 90%; animation: ptp-fade 0.3s ease; }
-  .ptp__ai-msg--user { background: var(--ptp-text); color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
-  .ptp__ai-msg--bot { background: var(--ptp-bg2); color: var(--ptp-text); border: 1px solid var(--ptp-border); align-self: flex-start; border-bottom-left-radius: 2px; }
-  .ptp__ai-input-row { display: flex; gap: 0.5rem; }
-  .ptp__ai-input {
-    flex: 1; height: 3rem; padding: 0 1rem; border: 1.5px solid var(--ptp-border); border-radius: var(--ptp-r-sm);
-    font-family: var(--ptp-font); font-size: 0.9rem; color: var(--ptp-text); background: var(--ptp-bg);
-    transition: border-color 0.2s;
-  }
-  .ptp__ai-input:focus { outline: none; border-color: var(--ptp-accent); }
-  .ptp__ai-send {
-    width: 3rem; height: 3rem; border: none; border-radius: var(--ptp-r-sm);
-    background: var(--ptp-accent); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: background 0.2s;
-  }
-  .ptp__ai-send:hover { background: var(--ptp-accent-dark); }
-  .ptp__ai-send svg { stroke: #fff; }
 
   /* Browse & Share Links */
   .ptp__links-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; max-width: 780px; margin: 0 auto; padding-top: 2rem; border-top: 1px solid #f3f4f6; }
@@ -1518,136 +1457,6 @@ document.addEventListener('DOMContentLoaded', function() {
     } else { triggerPerfAnimation(); }
   }
 
-  /* ===== AI CHAT ===== */
-  (function() {
-    var chat = document.querySelector('[data-ptp-ai-chat]');
-    var input = document.querySelector('[data-ptp-ai-input]');
-    var sendBtn = document.querySelector('[data-ptp-ai-send]');
-    var chips = document.querySelectorAll('[data-ptp-ai-q]');
-    if (!chat || !input) return;
-
-    var productData = {
-      title: {{ product.title | json }},
-      vendor: {{ product.vendor | json }},
-      type: {{ product.type | json }},
-      size: {{ tire_size | json }},
-      season: {{ season_tag | json }},
-      price: unitPrice,
-      setPrice: unitPrice * 4,
-      available: {{ product.available | json }},
-      description: {{ product.description | strip_html | truncate: 500 | json }}
-    };
-
-    function addMsg(text, type) {
-      var div = document.createElement('div');
-      div.className = 'ptp__ai-msg ptp__ai-msg--' + type;
-      div.textContent = text;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    /* Fallback keyword-based responses (used when AI API is unavailable) */
-    function getFallbackResponse(q) {
-      var ql = q.toLowerCase();
-      if (ql.indexOf('winter') > -1 || ql.indexOf('snow') > -1 || ql.indexOf('ice') > -1) {
-        if (productData.season === 'Winter') return 'Yes! The ' + productData.title + ' is a winter tire designed for excellent traction on snow and ice.';
-        if (productData.season === 'All-Weather') return 'This is an All-Weather tire with 3PMSF certification, meaning it\'s approved for winter use while also performing well in other seasons.';
-        if (productData.season === 'All-Season') return 'This is an All-Season tire. It handles light winter conditions but for heavy snow/ice, a dedicated winter tire is recommended.';
-        return 'This ' + productData.type + ' tire is a ' + (productData.season || 'general use') + ' tire. Check the season rating for winter suitability.';
-      }
-      if (ql.indexOf('last') > -1 || ql.indexOf('long') > -1 || ql.indexOf('life') > -1 || ql.indexOf('durable') > -1) {
-        return 'Tire lifespan depends on driving habits, road conditions, and maintenance. Most ' + productData.vendor + ' tires in this category last 60,000-80,000 km with proper rotation every 8,000-10,000 km. Check the treadwear warranty in the Warranty tab.';
-      }
-      if (ql.indexOf('size') > -1 || ql.indexOf('rim') > -1 || ql.indexOf('fit') > -1 || ql.indexOf('vehicle') > -1 || ql.indexOf('car') > -1) {
-        if (productData.size) return 'This tire is size ' + productData.size + '. Make sure your vehicle\'s door jamb sticker or owner\'s manual lists this size. The tire fits a ' + productData.size.split('R')[1] + '" rim diameter.';
-        return 'Check your vehicle\'s door jamb sticker or owner\'s manual for the correct tire size.';
-      }
-      if (ql.indexOf('price') > -1 || ql.indexOf('cost') > -1 || ql.indexOf('cheap') > -1) {
-        return 'This tire is $' + productData.price.toFixed(2) + ' each, or $' + productData.setPrice.toFixed(2) + ' for a set of 4. Book installation through our page for the best service experience.';
-      }
-      if (ql.indexOf('install') > -1 || ql.indexOf('book') > -1 || ql.indexOf('mount') > -1) {
-        return 'You can book professional installation directly from this page using the red "Book installation" button above. We\'ll handle mounting, balancing, and disposal of your old tires.';
-      }
-      return 'The ' + productData.title + ' is a ' + (productData.season || '') + ' ' + (productData.type || 'tire') + ' by ' + productData.vendor + ' in size ' + (productData.size || 'N/A') + ', priced at $' + productData.price.toFixed(2) + '/tire. What would you like to know?';
-    }
-
-    /* AI-powered response via proxy endpoint */
-    var AI_ENDPOINT = 'https://prince-tires-ai.vercel.app/api/chat';
-    var chatHistory = [];
-
-    function getAIResponse(q, callback) {
-      chatHistory.push({ role: 'user', content: q });
-
-      var payload = {
-        messages: chatHistory.slice(-6), /* Keep last 3 exchanges */
-        product: {
-          title: productData.title,
-          vendor: productData.vendor,
-          type: productData.type,
-          size: productData.size,
-          season: productData.season,
-          price: productData.price,
-          available: productData.available,
-          description: productData.description,
-          warranty_km: {{ product.metafields.custom.warranty_km | json }},
-          speed_rating: {{ product.metafields.custom.speed_rating | json }},
-          load_index: {{ product.metafields.custom.load_index | json }},
-          vehicle_type: {{ product.metafields.custom.vehicle_type | json }},
-          three_peak: {{ product.metafields.custom.three_peak_snowflake | json }},
-          best_for: {{ product.metafields.custom.best_for | json }},
-          not_recommended: {{ product.metafields.custom.not_recommended_for | json }}
-        }
-      };
-
-      fetch(AI_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      .then(function(r) {
-        if (!r.ok) throw new Error('AI unavailable');
-        return r.json();
-      })
-      .then(function(data) {
-        var reply = data.reply || data.message || data.response;
-        if (reply) {
-          chatHistory.push({ role: 'assistant', content: reply });
-          callback(reply);
-        } else {
-          callback(getFallbackResponse(q));
-        }
-      })
-      .catch(function() {
-        /* Fallback to keyword matching */
-        var fallback = getFallbackResponse(q);
-        chatHistory.push({ role: 'assistant', content: fallback });
-        callback(fallback);
-      });
-    }
-
-    function handleQuestion(q) {
-      if (!q.trim()) return;
-      addMsg(q, 'user');
-      input.value = '';
-      /* Show typing indicator */
-      var typing = document.createElement('div');
-      typing.className = 'ptp__ai-msg ptp__ai-msg--bot';
-      typing.textContent = 'Thinking...';
-      typing.style.opacity = '0.6';
-      chat.appendChild(typing);
-      chat.scrollTop = chat.scrollHeight;
-
-      getAIResponse(q, function(reply) {
-        chat.removeChild(typing);
-        addMsg(reply, 'bot');
-      });
-    }
-
-    if (sendBtn) sendBtn.addEventListener('click', function() { handleQuestion(input.value); });
-    input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); handleQuestion(input.value); } });
-    chips.forEach(function(chip) { chip.addEventListener('click', function() { handleQuestion(this.dataset.ptpAiQ); }); });
-  })();
-
   if (typeof enableZoomOnHover === 'function') enableZoomOnHover(2);
 
   /* Weather-based seasonal warning */
@@ -1792,12 +1601,7 @@ document.addEventListener('DOMContentLoaded', function() {
     { "type": "checkbox", "id": "show_specs_tab", "default": true, "label": "t:sections.pt_product.settings.show_specs_tab.label" },
     { "type": "checkbox", "id": "show_desc_tab", "default": true, "label": "t:sections.pt_product.settings.show_desc_tab.label" },
     { "type": "checkbox", "id": "show_warranty_tab", "default": true, "label": "t:sections.pt_product.settings.show_warranty_tab.label" },
-    { "type": "checkbox", "id": "show_shipping_tab", "default": true, "label": "t:sections.pt_product.settings.show_shipping_tab.label" },
-    { "type": "checkbox", "id": "show_ai_tab", "default": true, "label": "t:sections.pt_product.settings.show_ai_tab.label" },
-    { "type": "text", "id": "ai_tab_title", "default": "Ask AI", "label": "t:sections.pt_product.settings.ai_tab_title.label" },
-    { "type": "text", "id": "ai_suggestion_1", "default": "Is this tire good for winter driving?", "label": "t:sections.pt_product.settings.ai_suggestion_1.label" },
-    { "type": "text", "id": "ai_suggestion_2", "default": "How long will this tire last?", "label": "t:sections.pt_product.settings.ai_suggestion_2.label" },
-    { "type": "text", "id": "ai_suggestion_3", "default": "What size rim do I need?", "label": "t:sections.pt_product.settings.ai_suggestion_3.label" }
+    { "type": "checkbox", "id": "show_shipping_tab", "default": true, "label": "t:sections.pt_product.settings.show_shipping_tab.label" }
   ],
   "presets": [{ "name": "PT Product page" }]
 }

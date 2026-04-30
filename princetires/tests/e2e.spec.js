@@ -7,7 +7,7 @@
 const { test, expect } = require('@playwright/test');
 
 const BASE = 'https://princetires.ca';
-const API  = 'https://prince-tires-booking.vercel.app/api';
+const API  = 'https://app.princetires.ca/api';
 
 // ── 1. Page health checks ────────────────────────────────────────────────────
 
