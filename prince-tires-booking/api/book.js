@@ -177,14 +177,19 @@ async function handlePost(req, res) {
     }
     const h24 = `${hour < 10 ? '0' : ''}${hour}:${min < 10 ? '0' : ''}${min}`;
 
-    // Reject bookings in the past (server-side guard — primary check is on the frontend)
-    // Use string/numeric comparison to avoid Date parsing ambiguity on UTC servers.
-    const edmontonDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Edmonton' }); // YYYY-MM-DD
-    const edmontonTimeStr = new Date().toLocaleTimeString('en-US', { timeZone: 'America/Edmonton', hour12: false }); // HH:MM:SS
-    const [edH, edM] = edmontonTimeStr.split(':').map(Number);
-    const nowEdmontonMins = edH * 60 + edM;
-    if (date === edmontonDateStr && (hour * 60 + min) < nowEdmontonMins) {
+    // Reject bookings in the past or within 6 hours (server-side guard)
+    // Build both "now" and the booking slot as local Edmonton wall-clock times so
+    // subtraction gives the correct minute delta regardless of server timezone.
+    const edmontonNowWall = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Edmonton' }));
+    const [bY, bMo, bD] = date.split('-').map(Number);
+    const bookingWall = new Date(bY, bMo - 1, bD, hour, min, 0, 0);
+    const minsUntilBooking = (bookingWall - edmontonNowWall) / 60_000;
+
+    if (minsUntilBooking < 0) {
       return res.status(400).json({ error: 'Cannot book a time slot that is in the past.' });
+    }
+    if (minsUntilBooking < 360) {
+      return res.status(400).json({ error: 'Bookings require at least 6 hours notice.' });
     }
 
     const startDateTime  = `${date}T${h24}:00`;
