@@ -18,44 +18,10 @@
       </div>
 
       <div class="auth-page__brand-middle">
-        <!-- Garage door illustration -->
-        <div class="auth-page__garage-art">
-          <svg class="auth-page__garage-svg" viewBox="0 0 220 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Ground glow -->
-            <ellipse cx="110" cy="192" rx="80" ry="8" fill="rgba(220,38,38,0.12)"/>
-            <!-- Garage structure -->
-            <path d="M22 90 L110 32 L198 90 L198 185 L22 185 Z" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" fill="rgba(255,255,255,0.02)"/>
-            <!-- Roof highlight -->
-            <path d="M22 90 L110 32 L198 90" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"/>
-            <!-- Garage door frame -->
-            <rect x="55" y="102" width="110" height="83" rx="3" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" fill="rgba(255,255,255,0.03)"/>
-            <!-- Door slats -->
-            <line x1="55" y1="119" x2="165" y2="119" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-            <line x1="55" y1="136" x2="165" y2="136" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-            <line x1="55" y1="153" x2="165" y2="153" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-            <line x1="55" y1="170" x2="165" y2="170" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-            <!-- Door handle -->
-            <rect x="103" y="139" width="14" height="5" rx="2.5" fill="rgba(220,38,38,0.4)"/>
-            <!-- Car silhouette inside -->
-            <path d="M72 180 L76 168 L85 162 L135 162 L144 168 L148 180" stroke="rgba(220,38,38,0.5)" stroke-width="1.5" fill="rgba(220,38,38,0.05)"/>
-            <!-- Car windows -->
-            <path d="M84 162 L89 155 L131 155 L136 162" stroke="rgba(220,38,38,0.3)" stroke-width="1" fill="none"/>
-            <!-- Car wheels -->
-            <circle cx="87" cy="180" r="6" stroke="rgba(220,38,38,0.4)" stroke-width="1.5" fill="rgba(220,38,38,0.06)"/>
-            <circle cx="133" cy="180" r="6" stroke="rgba(220,38,38,0.4)" stroke-width="1.5" fill="rgba(220,38,38,0.06)"/>
-            <!-- Headlights glow -->
-            <ellipse cx="148" cy="171" rx="5" ry="3" fill="rgba(245,200,100,0.2)"/>
-            <ellipse cx="72" cy="171" rx="5" ry="3" fill="rgba(245,200,100,0.2)"/>
-            <!-- Roof peak accent -->
-            <path d="M110 32 L110 16" stroke="rgba(220,38,38,0.4)" stroke-width="1.5"/>
-            <circle cx="110" cy="13" r="3.5" fill="rgba(220,38,38,0.3)" stroke="rgba(220,38,38,0.5)" stroke-width="1"/>
-            <!-- Side windows of garage -->
-            <rect x="28" y="110" width="18" height="24" rx="2" stroke="rgba(255,255,255,0.07)" stroke-width="1" fill="none"/>
-            <rect x="174" y="110" width="18" height="24" rx="2" stroke="rgba(255,255,255,0.07)" stroke-width="1" fill="none"/>
-          </svg>
-        </div>
-        <h2 class="auth-page__brand-headline">{{ section.settings.headline }}</h2>
-        <p class="auth-page__brand-desc">{{ section.settings.tagline }}</p>
+        <span class="auth-page__brand-eyebrow">Prince Tires · Calgary</span>
+        <span class="auth-page__brand-rule" aria-hidden="true"></span>
+        <h2 class="auth-page__brand-headline" id="AuthBrandHeadline" data-headline-customer="{{ section.settings.headline | escape }}" data-headline-shop="{{ section.settings.headline_dealer | escape }}">{{ section.settings.headline }}</h2>
+        <p class="auth-page__brand-desc" id="AuthBrandDesc" data-tagline-customer="{{ section.settings.tagline | escape }}" data-tagline-shop="{{ section.settings.tagline_dealer | escape }}">{{ section.settings.tagline }}</p>
       </div>
 
       <div class="auth-page__brand-bottom">
@@ -146,7 +112,7 @@
             <span class="auth-type-toggle__icon">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="9" y1="22" x2="9" y2="12"/><line x1="15" y1="22" x2="15" y2="12"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
             </span>
-            My Shop
+            Dealer Access
           </button>
         </div>
 
@@ -255,8 +221,8 @@
           <a href="{{ routes.account_register_url }}" id="AuthRegisterLink">{{ 'customer.auth.signup_cta' | t }}</a>
         </div>
         <div class="auth-page__switch" id="AuthShopRegisterNote" style="display:none;margin-top:8px;">
-          <span>Want wholesale access?</span>
-          <a href="/pages/wholesale-register" style="color:#dc2626;font-weight:600;margin-left:4px;">Register your shop →</a>
+          <span>Need dealer access?</span>
+          <a href="/pages/wholesale-register">Apply for dealer account →</a>
         </div>
 
         {%- if shop.checkout.guest_login -%}
@@ -280,7 +246,8 @@
 
 {% stylesheet %}
   /* ═══════════════════════════════════════════
-     AUTH PAGE – GARAGE-THEMED SPLIT SCREEN
+     AUTH PAGE – Ferrari editorial chiaroscuro
+     Pure black hero · Ferrari Red · sharp 2-4px
      ═══════════════════════════════════════════ */
 
   .auth-page {
@@ -288,15 +255,28 @@
     min-height: 100vh;
     min-height: 100dvh;
     font-family: 'Outfit', sans-serif;
+    background: #ffffff;
   }
 
-  /* ── Left brand panel ── */
+  /* When the auth page is mounted, hide the theme's header + footer so
+     the login goes full-bleed. The body class is added by JS on init. */
+  body.auth-page-body .shopify-section-group-header-group,
+  body.auth-page-body .shopify-section-group-footer-group,
+  body.auth-page-body sticky-header,
+  body.auth-page-body site-header,
+  body.auth-page-body .header-wrapper,
+  body.auth-page-body .header,
+  body.auth-page-body footer,
+  body.auth-page-body .footer,
+  body.auth-page-body .pt-sticky-bar { display: none !important; }
+  body.auth-page-body { padding: 0 !important; margin: 0 !important; }
+
+  /* ── Left brand panel — pure cinematic black ── */
   .auth-page__brand {
     display: none;
     width: 45%;
     max-width: 600px;
-    background: #0f172a;
-    background-image: linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #16213e 80%, #1a0e14 100%);
+    background: #000000;
     position: relative;
     overflow: hidden;
   }
@@ -307,33 +287,9 @@
     }
   }
 
-  /* Red spotlight glow from below */
-  .auth-page__brand::before {
-    content: '';
-    position: absolute;
-    bottom: -60px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 120%;
-    height: 55%;
-    background: radial-gradient(ellipse at center bottom, rgba(220, 38, 38, 0.22) 0%, rgba(220, 38, 38, 0.06) 40%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
+  /* Pure black — no chrome, no glow, no accent stripes. Typography carries it. */
 
-  /* Top accent line */
-  .auth-page__brand::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.6), transparent);
-    z-index: 2;
-  }
-
-  /* Tire tread diagonal texture */
+  /* Tire tread diagonal texture — barely visible */
   .auth-page__brand-tread {
     position: absolute;
     inset: 0;
@@ -341,9 +297,9 @@
       repeating-linear-gradient(
         -45deg,
         transparent,
-        transparent 14px,
-        rgba(255, 255, 255, 0.018) 14px,
-        rgba(255, 255, 255, 0.018) 15px
+        transparent 18px,
+        rgba(255, 255, 255, 0.015) 18px,
+        rgba(255, 255, 255, 0.015) 19px
       );
     pointer-events: none;
     z-index: 0;
@@ -375,48 +331,56 @@
     font-weight: 700;
     color: #fff;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.12em;
   }
 
-  /* ── Garage art ── */
+  /* ── Editorial brand panel content ── */
   .auth-page__brand-middle {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     flex: 1;
-    text-align: center;
-    gap: 1.5rem;
+    text-align: left;
+    gap: 1.4rem;
+    max-width: 460px;
   }
 
-  .auth-page__garage-art {
-    width: 200px;
-    height: 180px;
-    filter: drop-shadow(0 8px 24px rgba(220, 38, 38, 0.18));
+  .auth-page__brand-eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.45);
   }
 
-  .auth-page__garage-svg {
-    width: 100%;
-    height: 100%;
+  .auth-page__brand-rule {
+    display: block;
+    width: 64px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.25);
+    margin: 0.4rem 0 0.6rem;
   }
 
   .auth-page__brand-headline {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 2.4rem;
+    font-size: 5.2rem;
     font-weight: 700;
-    color: #f1f5f9;
+    color: #ffffff;
     margin: 0;
-    line-height: 1.15;
-    letter-spacing: 0.01em;
+    line-height: 0.98;
+    letter-spacing: -0.012em;
+    text-transform: uppercase;
   }
 
   .auth-page__brand-desc {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
     font-weight: 300;
-    color: rgba(148, 163, 184, 0.7);
-    margin: 0;
-    line-height: 1.5;
-    max-width: 280px;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0.6rem 0 0;
+    line-height: 1.55;
+    max-width: 38ch;
   }
 
   .auth-page__brand-bottom {
@@ -437,18 +401,21 @@
   }
 
   .auth-page__trust-text {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     font-weight: 400;
-    color: rgba(148, 163, 184, 0.6);
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.04em;
   }
 
   .auth-page__trust-secure {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 1.15rem;
-    font-weight: 300;
-    color: rgba(148, 163, 184, 0.4);
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgba(255, 255, 255, 0.35);
   }
 
   .auth-page__trust-secure svg {
@@ -461,7 +428,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 4rem 8rem;
+    padding: 4rem 6rem;
     background: #fff;
     min-height: 100vh;
     min-height: 100dvh;
@@ -487,32 +454,29 @@
   }
 
   .auth-page__garage-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: #fef2f2;
-    color: #dc2626;
-    margin-bottom: 1.2rem;
+    display: none;
   }
+
+  /* (No decorative rule above title — kept clean) */
 
   .auth-page__title {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 2.8rem;
+    font-size: 3.4rem;
     font-weight: 700;
-    color: #111;
-    margin: 0 0 0.5rem;
-    line-height: 1.1;
+    color: #000;
+    margin: 0 0 0.6rem;
+    line-height: 1.0;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
   }
 
   .auth-page__subtitle {
     font-size: 1.35rem;
     font-weight: 300;
-    color: #6b7280;
+    color: #475569;
     margin: 0;
     line-height: 1.5;
+    max-width: 32ch;
   }
 
   /* ── Fields ── */
@@ -522,10 +486,12 @@
 
   .auth-page__label {
     display: block;
-    font-size: 1.25rem;
-    font-weight: 500;
-    color: #374151;
-    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #6b7280;
+    margin-bottom: 0.7rem;
   }
 
   .auth-page__input-wrap {
@@ -536,17 +502,17 @@
 
   .auth-page__input {
     width: 100%;
-    height: 50px;
+    height: 52px;
     padding: 0 1.4rem 0 3.2rem;
     font-family: 'Outfit', sans-serif;
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: 400;
-    color: #111;
-    background: #f9fafb;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 10px;
+    color: #000;
+    background: #ffffff;
+    border: 1px solid #d4d4d4;
+    border-radius: 2px;
     outline: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
     box-sizing: border-box;
     -webkit-appearance: none;
     appearance: none;
@@ -558,14 +524,13 @@
   }
 
   .auth-page__input:focus {
-    background: #fff;
-    border-color: #dc2626;
-    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+    border-color: #DA291C;
+    box-shadow: inset 0 -2px 0 0 #DA291C;
   }
 
   .auth-page__input[aria-invalid="true"] {
-    border-color: #ef4444;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08);
+    border-color: #DA291C;
+    box-shadow: inset 0 -2px 0 0 #DA291C;
   }
 
   .auth-page__input--password {
@@ -583,7 +548,7 @@
 
   .auth-page__input:focus ~ .auth-page__input-icon,
   .auth-page__input-wrap:focus-within .auth-page__input-icon {
-    color: #dc2626;
+    color: #DA291C;
   }
 
   /* ── Password toggle ── */
@@ -612,17 +577,21 @@
   /* ── Forgot password ── */
   .auth-page__forgot {
     display: inline-block;
-    font-size: 1.2rem;
-    font-weight: 400;
-    color: #dc2626;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #000;
     text-decoration: none;
-    margin-top: 0.6rem;
-    transition: color 0.2s ease;
+    margin-top: 0.8rem;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+    transition: border-color 0.15s ease;
   }
 
   .auth-page__forgot:hover {
-    color: #b91c1c;
-    text-decoration: underline;
+    border-bottom-color: #DA291C;
+    color: #DA291C;
   }
 
   /* ── Buttons ── */
@@ -632,14 +601,16 @@
     justify-content: center;
     gap: 0.6rem;
     width: 100%;
-    height: 52px;
+    height: 56px;
     border: none;
-    border-radius: 10px;
+    border-radius: 2px;
     font-family: 'Outfit', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 600;
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease;
     text-decoration: none;
   }
 
@@ -650,19 +621,17 @@
   }
 
   .auth-page__btn--primary {
-    background: #dc2626;
+    background: #DA291C;
     color: #fff;
-    margin-top: 0.5rem;
+    margin-top: 0.8rem;
   }
 
   .auth-page__btn--primary:hover {
-    background: #b91c1c;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.3);
+    background: #B01E0A;
   }
 
   .auth-page__btn--primary:active {
-    transform: translateY(0);
+    background: #9D2211;
   }
 
   .auth-page__btn--primary .auth-page__btn-arrow {
@@ -670,7 +639,7 @@
   }
 
   .auth-page__btn--primary:hover .auth-page__btn-arrow {
-    transform: translateX(3px);
+    transform: translateX(4px);
   }
 
   /* Loading state */
@@ -690,13 +659,13 @@
 
   .auth-page__btn--secondary {
     background: transparent;
-    color: #374151;
-    border: 1.5px solid #e5e7eb;
+    color: #000;
+    border: 1px solid #000;
   }
 
   .auth-page__btn--secondary:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
+    background: #000;
+    color: #fff;
   }
 
   .auth-page__btn--text {
@@ -704,12 +673,15 @@
     color: #6b7280;
     height: auto;
     padding: 0.8rem;
-    font-weight: 400;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 1rem;
     margin-top: 0.5rem;
   }
 
   .auth-page__btn--text:hover {
-    color: #111;
+    color: #DA291C;
   }
 
   /* ── Divider ── */
@@ -806,22 +778,29 @@
   /* ── Switch link ── */
   .auth-page__switch {
     text-align: center;
-    margin-top: 2rem;
-    font-size: 1.3rem;
+    margin-top: 2.4rem;
+    font-size: 1.2rem;
+    font-weight: 400;
     color: #6b7280;
+    letter-spacing: 0.02em;
   }
 
   .auth-page__switch a {
-    color: #dc2626;
-    font-weight: 600;
+    color: #000;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 1.05rem;
     text-decoration: none;
-    margin-left: 0.3rem;
-    transition: color 0.2s ease;
+    margin-left: 0.5rem;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+    transition: border-color 0.15s ease, color 0.15s ease;
   }
 
   .auth-page__switch a:hover {
-    color: #b91c1c;
-    text-decoration: underline;
+    color: #DA291C;
+    border-bottom-color: #DA291C;
   }
 
   .auth-page__guest {
@@ -856,11 +835,9 @@
   /* ── Account type toggle (Customer / Shop) ── */
   .auth-type-toggle {
     display: flex;
-    background: #f1f5f9;
-    border-radius: 12px;
-    padding: 4px;
-    margin-bottom: 2.4rem;
-    gap: 4px;
+    border: 1px solid #e5e7eb;
+    border-radius: 2px;
+    margin-bottom: 2.8rem;
   }
 
   .auth-type-toggle__btn {
@@ -868,30 +845,33 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    height: 42px;
+    gap: 8px;
+    height: 44px;
     border: none;
-    border-radius: 9px;
+    border-right: 1px solid #e5e7eb;
     background: transparent;
     font-family: 'Outfit', sans-serif;
-    font-size: 1.3rem;
-    font-weight: 500;
-    color: #6b7280;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #9ca3af;
     cursor: pointer;
-    transition: all 0.22s ease;
+    transition: background-color 0.2s ease, color 0.2s ease;
     white-space: nowrap;
   }
 
+  .auth-type-toggle__btn:last-child {
+    border-right: none;
+  }
+
   .auth-type-toggle__btn:hover:not(.auth-type-toggle__btn--active) {
-    background: rgba(0,0,0,0.04);
-    color: #374151;
+    color: #000;
   }
 
   .auth-type-toggle__btn--active {
-    background: #fff;
-    color: #dc2626;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    background: #000;
+    color: #fff;
   }
 
   .auth-type-toggle__icon {
@@ -901,35 +881,28 @@
     flex-shrink: 0;
   }
 
-  /* Shop mode: badge turns navy */
-  .auth-page--shop-mode .auth-page__garage-badge {
-    background: #f0f4ff;
-    color: #1e3a8a;
+  /* Shop mode: brand rule turns black, primary CTA turns black */
+  .auth-page--shop-mode .auth-page__form-header::before {
+    background: #000;
   }
 
-  /* Shop mode: button turns navy */
   .auth-page--shop-mode .auth-page__btn--primary {
-    background: #1e293b;
+    background: #000;
   }
 
   .auth-page--shop-mode .auth-page__btn--primary:hover {
-    background: #0f172a;
-    box-shadow: 0 6px 20px rgba(30,41,59,0.3);
+    background: #1a1a1a;
   }
 
   .auth-page--shop-mode .auth-page__input:focus {
-    border-color: #1e3a8a;
-    box-shadow: 0 0 0 3px rgba(30,58,138,0.08);
-  }
-
-  .auth-page--shop-mode .auth-page__forgot,
-  .auth-page--shop-mode .auth-page__switch a {
-    color: #1e3a8a;
+    border-color: #000;
+    box-shadow: inset 0 -2px 0 0 #000;
   }
 
   .auth-page--shop-mode .auth-page__forgot:hover,
   .auth-page--shop-mode .auth-page__switch a:hover {
-    color: #1e40af;
+    color: #000;
+    border-bottom-color: #000;
   }
 {% endstylesheet %}
 
@@ -938,6 +911,9 @@
     function initAuthPage() {
     var section = document.querySelector('.auth-page');
     if (!section) return;
+
+    // Mark body so the auth-only stylesheet rules (hide theme header/footer) apply
+    document.body.classList.add('auth-page-body');
 
     // Password visibility toggle
     section.querySelectorAll('[data-toggle-password]').forEach(function(btn) {
@@ -999,6 +975,8 @@
     var registerLink   = document.getElementById('AuthRegisterLink');
     var shopNote       = document.getElementById('AuthShopRegisterNote');
     var authSwitchRow  = registerLink ? registerLink.closest('.auth-page__switch') : null;
+    var brandHeadline  = document.getElementById('AuthBrandHeadline');
+    var brandDesc      = document.getElementById('AuthBrandDesc');
 
     var shopIconSVGPaths = '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="9" y1="22" x2="9" y2="12"/><line x1="15" y1="22" x2="15" y2="12"/><line x1="3" y1="13" x2="21" y2="13"/>';
     var garageIconSVGPaths = '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>';
@@ -1020,15 +998,25 @@
       if (iconCustomer) iconCustomer.style.display = isShop ? 'none' : 'block';
       if (iconShop)     iconShop.style.display     = isShop ? 'block' : 'none';
 
-      // Heading
-      if (titleEl)    titleEl.textContent    = isShop ? 'Wholesale sign in' : 'Welcome back';
+      // Heading (right panel)
+      if (titleEl)    titleEl.textContent    = isShop ? 'Dealer sign in' : 'Welcome back';
       if (subtitleEl) subtitleEl.textContent = isShop
-        ? 'Access trade pricing, fleet orders & your shop dashboard.'
+        ? 'Trade pricing, fleet orders, and your dealer dashboard.'
         : 'Sign in to your garage and manage your vehicles & orders.';
+
+      // Left-panel brand headline + tagline (mode-aware via data-* attributes)
+      if (brandHeadline) {
+        var hk = isShop ? brandHeadline.getAttribute('data-headline-shop') : brandHeadline.getAttribute('data-headline-customer');
+        if (hk) brandHeadline.textContent = hk;
+      }
+      if (brandDesc) {
+        var tk = isShop ? brandDesc.getAttribute('data-tagline-shop') : brandDesc.getAttribute('data-tagline-customer');
+        if (tk) brandDesc.textContent = tk;
+      }
 
       // Button icon & label
       if (btnIconEl) btnIconEl.innerHTML = isShop ? shopIconSVGPaths : garageIconSVGPaths;
-      if (btnTextEl) btnTextEl.textContent = isShop ? 'Enter my shop' : 'Enter my garage';
+      if (btnTextEl) btnTextEl.textContent = isShop ? 'Enter dealer portal' : 'Enter my garage';
 
       // Register link row
       if (authSwitchRow) authSwitchRow.style.display = isShop ? 'none' : '';
@@ -1077,14 +1065,26 @@
     {
       "type": "text",
       "id": "headline",
-      "label": "Panel headline",
+      "label": "Panel headline (Customer mode)",
       "default": "Your garage awaits"
     },
     {
       "type": "text",
       "id": "tagline",
-      "label": "Panel description",
+      "label": "Panel description (Customer mode)",
       "default": "Save your vehicles, track orders, and get personalized tire recommendations."
+    },
+    {
+      "type": "text",
+      "id": "headline_dealer",
+      "label": "Panel headline (Dealer mode)",
+      "default": "Built for the trade"
+    },
+    {
+      "type": "text",
+      "id": "tagline_dealer",
+      "label": "Panel description (Dealer mode)",
+      "default": "Wholesale pricing, fleet orders, and a dedicated dashboard for your shop."
     },
     {
       "type": "text",
@@ -1096,7 +1096,7 @@
       "type": "checkbox",
       "id": "enable_shop_login_button",
       "label": "t:sections.main-login.shop_login_button.enable",
-      "default": true
+      "default": false
     },
     {
       "type": "header",

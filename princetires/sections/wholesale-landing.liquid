@@ -38,6 +38,33 @@
   {%- endunless -%}
 {%- endif -%}
 
+{%- comment -%} ── Submission banner: shown when URL contains ?submitted=1 (set by wholesale-register form) ── {%- endcomment -%}
+<div id="wholesale-submitted-banner" hidden style="background:#1c69d4;color:#ffffff;padding:24px 16px;text-align:center;font-family:Arial,sans-serif">
+  <div style="max-width:720px;margin:0 auto">
+    <p style="margin:0;font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:0.85">Application received</p>
+    <h2 style="margin:8px 0 6px;font-size:22px;font-weight:700">Thanks — we got your application.</h2>
+    <p style="margin:0;font-size:14px;opacity:0.92">Check your inbox for a confirmation email. Our team will review your business and follow up within 1–2 business days.</p>
+  </div>
+</div>
+<script>
+  (function () {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('submitted') === '1') {
+        var el = document.getElementById('wholesale-submitted-banner');
+        if (el) {
+          el.hidden = false;
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        // Clean the URL so a refresh doesn't keep showing the banner.
+        params.delete('submitted');
+        var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        history.replaceState(null, '', newUrl);
+      }
+    } catch (err) { /* no-op */ }
+  })();
+</script>
+
 <style>
 /* ═══════════════════════════════════════════════════
    WHOLESALE PAGE — Prince Tires

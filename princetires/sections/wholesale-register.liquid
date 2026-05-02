@@ -828,7 +828,7 @@
 
         {%- if show_account_form -%}
           {%- form 'create_customer' -%}
-            <input type="hidden" name="return_to" value="/pages/wholesale">
+            <input type="hidden" name="return_to" value="/pages/wholesale?submitted=1">
             {%- comment -%} Honeypot — bots fill this; JS blocks submit if non-empty {%- endcomment -%}
             <div class="whr-hp-trap" aria-hidden="true">
               <input type="text" data-whr-hp tabindex="-1" autocomplete="off">
@@ -1384,6 +1384,28 @@
           ' | Volume=' + (f.volume || '');
       }
 
+      // Notify admin platform (fire-and-forget; never blocks Shopify account creation)
+      try {
+        var first = (($id('WhrFirstName') || {}).value || '').trim();
+        var last  = (($id('WhrLastName')  || {}).value || '').trim();
+        var contactName = (first + ' ' + last).trim();
+        fetch('https://app.princetires.ca/api/wholesale/register', {
+          method: 'POST',
+          mode: 'cors',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: (($id('WhrAcctEmail') || {}).value || '').trim(),
+            businessName: f.business || '',
+            contactName: contactName,
+            phone: f.phone || '',
+            taxNumber: f.gst || '',
+            businessType: f.type || '',
+            monthlyVolume: f.volume || ''
+          })
+        }).catch(function() {});
+      } catch (err) {}
+
       try { localStorage.removeItem(LS_KEY); } catch(e) {}
 
       var btn = $id('WhrSubmitGuest');
@@ -1421,6 +1443,26 @@
 
       var composite = $id('WhrCompositeBody');
       if (composite) composite.value = body;
+
+      // Notify admin platform (fire-and-forget; never blocks Shopify contact form)
+      try {
+        fetch('https://app.princetires.ca/api/wholesale/register', {
+          method: 'POST',
+          mode: 'cors',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: upgradeForm.dataset.customerEmail || '',
+            businessName: f.business || '',
+            contactName: (($id('WhrContactName') || {}).value || '').trim(),
+            phone: f.phone || '',
+            taxNumber: f.gst || '',
+            businessType: f.type || '',
+            monthlyVolume: f.volume || '',
+            notes: f.notes || ''
+          })
+        }).catch(function() {});
+      } catch (err) {}
 
       var btn = $id('WhrSubmitUpgrade');
       if (btn) {
