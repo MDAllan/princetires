@@ -352,6 +352,7 @@
     { id: 'van', name: 'Van', price: 30 },
     { id: 'electric', name: 'Electric', price: 25 },
     { id: 'dually', name: 'Dually', price: 40 },
+    { id: 'largetruck', name: 'Large / 21"+', price: 120 },
     { id: 'trailer', name: 'Trailer', price: 20 },
     { id: 'racecar', name: 'Race Car', price: 35 },
     { id: 'other', name: 'Other', price: 0 }
@@ -364,6 +365,7 @@
     van: '<svg width="40" height="26" viewBox="0 0 40 26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16h28"/><rect x="6" y="5" width="24" height="11" rx="2"/><path d="M30 9l4 4v3h-4"/><circle cx="12" cy="18.5" r="2.5"/><circle cx="28" cy="18.5" r="2.5"/></svg>',
     electric: '<svg width="40" height="26" viewBox="0 0 40 26" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17h26" stroke="currentColor" stroke-width="1.4"/><path d="M9 17l2.5-6h17l2.5 6" stroke="currentColor" stroke-width="1.4"/><path d="M13.5 11l1.5-5h10l1.5 5" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="19.5" r="2.5" stroke="currentColor" stroke-width="1.4"/><circle cx="28" cy="19.5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M21 5l-3 5h4l-3 5" stroke="#F5820B" stroke-width="1.8"/></svg>',
     dually: '<svg width="40" height="26" viewBox="0 0 40 26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16h34"/><rect x="3" y="10" width="16" height="6" rx="1"/><path d="M19 16V7.5h11l4.5 5.5v3"/><circle cx="10" cy="18.5" r="2.5"/><circle cx="28" cy="18.5" r="2"/><circle cx="32" cy="18.5" r="2"/></svg>',
+    largetruck: '<svg width="40" height="26" viewBox="0 0 40 26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16h34"/><rect x="3" y="10" width="16" height="6" rx="1"/><path d="M19 16V7.5h11l4.5 5.5v3"/><circle cx="10" cy="18.5" r="3"/><circle cx="30" cy="18.5" r="3"/></svg>',
     trailer: '<svg width="40" height="26" viewBox="0 0 40 26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="26" height="12" rx="2"/><circle cx="12" cy="19.5" r="2.5"/><circle cx="24" cy="19.5" r="2.5"/><path d="M30 11h6" stroke-width="2.5"/><circle cx="36" cy="11" r="1.5" fill="currentColor" stroke="none"/></svg>',
     racecar: '<svg width="40" height="26" viewBox="0 0 40 26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16h30"/><path d="M7 16l4-5h18l4 5"/><path d="M14 11l2.5-5h7l2.5 5"/><path d="M30 8l3-2" stroke-width="1.8"/><circle cx="11" cy="18.5" r="2.5"/><circle cx="29" cy="18.5" r="2.5"/></svg>',
     other: '<svg width="40" height="26" viewBox="0 0 40 26" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="20" cy="13" r="10"/><text x="20" y="17.5" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor" stroke="none">?</text></svg>'
@@ -403,10 +405,12 @@
       if (md.indexOf('3500') > -1 || md.indexOf('dually') > -1) return 'dually';
       return 'passenger';
     }
-    // Fallback: tire size prefix
+    // Fallback: tire size prefix + rim diameter
     var sz = (tireSize || '').toUpperCase();
     if (sz.indexOf('ST') === 0) return 'trailer';
     if (sz.indexOf('LT') === 0 || sz.indexOf('/LT') > -1) return 'truck';
+    var rimM = sz.match(/R(\d+)/);
+    if (rimM && parseInt(rimM[1]) >= 21) return 'largetruck';
     return 'passenger';
   }
 
@@ -546,10 +550,15 @@
       var now = new Date();
       var nowMins = now.getHours() * 60 + now.getMinutes();
 
-      // Rule 1: block past slots for today (all inventory types)
+      // Rule 1: block past slots and slots within 6 hours (today only)
       if (isToday) {
         slots.forEach(function (s) {
-          if (slotToMins(s) <= nowMins) blockReason[s] = 'Time has passed';
+          var sm = slotToMins(s);
+          if (sm <= nowMins) {
+            blockReason[s] = 'Time has passed';
+          } else if (sm < nowMins + 360) {
+            blockReason[s] = 'Book at least 6 hrs ahead';
+          }
         });
       }
 

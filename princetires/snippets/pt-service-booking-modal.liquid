@@ -44,6 +44,12 @@
           <div class="sb-repair-grid" id="sb-repair-grid"></div>
         </div>
 
+        {%- comment -%} Trailer setup (installation + trailer only) {%- endcomment -%}
+        <div id="sb-looserim-section" hidden>
+          <p class="bk-label" style="margin-top:1.1rem">Trailer setup</p>
+          <div class="sb-repair-grid" id="sb-looserim-grid"></div>
+        </div>
+
         {%- comment -%} Qty selector for installation & TPMS {%- endcomment -%}
         <div id="sb-qty-section" hidden>
           <p class="bk-label" id="sb-qty-label" style="margin-top:1.1rem">How many tires?</p>
@@ -387,6 +393,7 @@
     vehicle: 'passenger',
     savedVehicle: null,
     repairType: '',
+    looseRims: false,
     qty: 4,
     addons: { disposal: false, tpms: false },
     date: null,
@@ -456,8 +463,9 @@
     { id: 'truck',     name: 'Truck' },
     { id: 'van',       name: 'Van' },
     { id: 'electric',  name: 'Electric' },
-    { id: 'dually',    name: 'Dually' },
-    { id: 'trailer',   name: 'Trailer' }
+    { id: 'dually',     name: 'Dually' },
+    { id: 'largetruck', name: 'Large / 21"+' },
+    { id: 'trailer',    name: 'Trailer' }
   ];
 
   // ── Repair options (flat_repair) ──────────────────────────────────────────
@@ -467,7 +475,7 @@
   ];
 
   // ── Pricing ───────────────────────────────────────────────────────────────
-  var sbInstallPrices   = { passenger: 25, suv: 30, truck: 35, van: 30, electric: 25, dually: 40, trailer: 20 };
+  var sbInstallPrices   = { passenger: 25, suv: 30, truck: 35, van: 30, electric: 25, dually: 40, largetruck: 120, trailer: 120 };
   // Rotation, balancing, and seasonal swap share the same per-vehicle rate
   var sbServicePrices   = { passenger: 60, suv: 60, truck: 80, van: 60, electric: 60, dually: 100, trailer: 60 };
 
@@ -476,7 +484,7 @@
     var subtotal = 0, parts = [];
 
     if (s === 'installation') {
-      var p = sbInstallPrices[v] || 30;
+      var p = (v === 'trailer' && sbSt.looseRims) ? 80 : (sbInstallPrices[v] || 30);
       subtotal = p * q;
       parts.push('$' + p + '/tire × ' + q);
       if (sbSt.addons.disposal) { subtotal += 5 * q; parts.push('disposal'); }
@@ -594,6 +602,12 @@
     repairSec.hidden = sbSt.service !== 'flat_repair';
     if (sbSt.service === 'flat_repair') sbRenderRepair();
 
+    // Trailer setup (installation + trailer only)
+    var looserimSec = document.getElementById('sb-looserim-section');
+    var showLooseRim = sbSt.service === 'installation' && sbSt.vehicle === 'trailer';
+    looserimSec.hidden = !showLooseRim;
+    if (showLooseRim) sbRenderLooseRims();
+
     // Qty selector — always shown for any service
     document.getElementById('sb-qty-section').hidden = false;
     sbRenderQty();
@@ -620,8 +634,13 @@
     grid.querySelectorAll('.bk-vehicle-card').forEach(function (el) {
       el.addEventListener('click', function () {
         sbSt.vehicle = this.dataset.veh;
+        if (sbSt.vehicle !== 'trailer') sbSt.looseRims = false;
         sbRenderVehicles();
         sbRenderQty();
+        var looserimSec = document.getElementById('sb-looserim-section');
+        var showLooseRim = sbSt.service === 'installation' && sbSt.vehicle === 'trailer';
+        looserimSec.hidden = !showLooseRim;
+        if (showLooseRim) sbRenderLooseRims();
         sbUpdatePrice();
         try { localStorage.setItem('pt-booking-vehicle', sbSt.vehicle); } catch (e) {}
       });
@@ -646,6 +665,31 @@
         sbRenderRepair();
         sbUpdatePrice();
         sbUpdateNextBtn();
+      });
+    });
+  }
+
+  // ── Render: trailer setup chips ───────────────────────────────────────────
+  function sbRenderLooseRims() {
+    var grid = document.getElementById('sb-looserim-grid');
+    if (!grid) return;
+    var opts = [
+      { loose: false, name: 'On trailer', desc: 'Tires mounted on trailer', price: 120 },
+      { loose: true,  name: 'Loose rims', desc: 'Off trailer or off vehicle', price: 80 }
+    ];
+    grid.innerHTML = opts.map(function (o) {
+      var active = sbSt.looseRims === o.loose ? ' sb-repair-chip--active' : '';
+      return '<button class="sb-repair-chip' + active + '" data-loose="' + o.loose + '">' +
+        '<span class="sb-repair-name">' + o.name + '</span>' +
+        '<span class="sb-repair-desc">' + o.desc + '</span>' +
+        '<span class="sb-repair-price">$' + o.price + '/tire</span>' +
+      '</button>';
+    }).join('');
+    grid.querySelectorAll('.sb-repair-chip').forEach(function (el) {
+      el.addEventListener('click', function () {
+        sbSt.looseRims = this.dataset.loose === 'true';
+        sbRenderLooseRims();
+        sbUpdatePrice();
       });
     });
   }
@@ -719,6 +763,16 @@
     document.getElementById('sb-next-1').disabled = !ok;
   }
 
+  // ── Helper: "9:30 AM" → minutes from midnight ─────────────────────────────
+  function sbSlotToMins(slot) {
+    var m = slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return 0;
+    var h = parseInt(m[1]), mn = parseInt(m[2]);
+    if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+    if (m[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    return h * 60 + mn;
+  }
+
   // ── Render: week + day strip ──────────────────────────────────────────────
   function sbRenderWeek() {
     var today = new Date(); today.setHours(0, 0, 0, 0);
@@ -783,9 +837,34 @@
       document.getElementById('sb-time-grid').innerHTML = '<p style="color:#dc2626;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">Not available this day — please pick another date.</p>';
       return;
     }
+
+    // Block past slots and slots within 6 hours of now (today only)
+    var blockReason = {};
+    var now = new Date();
+    var nowMins = now.getHours() * 60 + now.getMinutes();
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var isToday = sbSt.date.toDateString() === today.toDateString();
+    if (isToday) {
+      slots.forEach(function (s) {
+        var sm = sbSlotToMins(s);
+        if (sm <= nowMins) {
+          blockReason[s] = 'Time has passed';
+        } else if (sm < nowMins + 360) {
+          blockReason[s] = 'Book at least 6 hrs ahead';
+        }
+      });
+    }
+
     document.getElementById('sb-time-grid').innerHTML = slots.map(function (s) {
-      var isBooked = booked.indexOf(s) > -1;
-      return '<div class="bk-time-slot' + (sbSt.time === s ? ' bk-time-slot--active' : '') + (isBooked ? ' bk-time-slot--booked' : '') + '" data-time="' + s + '"' + (isBooked ? ' title="Already booked"' : '') + '>' + s + '</div>';
+      var isCalBooked = booked.indexOf(s) > -1;
+      var isBlocked = isCalBooked || !!blockReason[s];
+      var titleAttr = isCalBooked ? 'Already booked' : (blockReason[s] || '');
+      return '<div class="bk-time-slot' +
+        (sbSt.time === s ? ' bk-time-slot--active' : '') +
+        (isBlocked ? ' bk-time-slot--booked' : '') +
+        '" data-time="' + s + '"' +
+        (isBlocked ? ' title="' + titleAttr + '"' : '') +
+        '>' + s + '</div>';
     }).join('');
     document.querySelectorAll('#sb-time-grid .bk-time-slot:not(.bk-time-slot--booked)').forEach(function (el) {
       el.addEventListener('click', function () {
@@ -811,6 +890,9 @@
     if (sbSt.service === 'flat_repair' && sbSt.repairType) {
       var ro = sbRepairOptions.find(function (o) { return o.id === sbSt.repairType; });
       if (ro) h += '<div class="bk-summary-row"><span class="bk-summary-label">Type</span><span class="bk-summary-val">' + ro.name + '</span></div>';
+    }
+    if (sbSt.service === 'installation' && sbSt.vehicle === 'trailer') {
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">Trailer setup</span><span class="bk-summary-val">' + (sbSt.looseRims ? 'Loose rims' : 'On trailer') + '</span></div>';
     }
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
@@ -858,6 +940,7 @@
     }
 
     sbSt.repairType = '';
+    sbSt.looseRims = false;
     sbSt.qty = 4;
     sbSt.vehicle = 'passenger';
     sbSt.savedVehicle = null;
@@ -945,6 +1028,7 @@
         bookType: 'service',
         serviceName: svc ? svc.name : 'Service',
         repairType: sbSt.repairType || '',
+        looseRims: sbSt.looseRims || false,
         qty: sbSt.qty,
         tpms: sbSt.addons.tpms || false,
         disposal: sbSt.addons.disposal || false,
