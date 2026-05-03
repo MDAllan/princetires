@@ -4,164 +4,98 @@
   assign phone_href = phone_digits | prepend: 'tel:'
   assign email = section.settings.email
   assign email_href = email | prepend: 'mailto:'
-  assign address = section.settings.address
-  assign directions_url = section.settings.directions_url
-  assign map_embed = section.settings.map_embed_url
-  assign weekday_open = section.settings.weekday_open
-  assign weekday_close = section.settings.weekday_close
-  assign saturday_open = section.settings.saturday_open
-  assign saturday_close = section.settings.saturday_close
-  assign sunday_open = section.settings.sunday_open
-  assign sunday_close = section.settings.sunday_close
+
+  assign service_options = section.settings.service_options | split: '|'
 -%}
 
-<section
-  class="pt-contact"
-  data-pt-contact
-  data-weekday-open="{{ weekday_open }}"
-  data-weekday-close="{{ weekday_close }}"
-  data-saturday-open="{{ saturday_open }}"
-  data-saturday-close="{{ saturday_close }}"
-  data-sunday-open="{{ sunday_open }}"
-  data-sunday-close="{{ sunday_close }}"
->
-  <!-- ════════════════════════════════════════════════════════════
-       HERO — phone number is the hero, status pill, tire-tread bg
-       ════════════════════════════════════════════════════════════ -->
-  <div class="pt-contact__hero">
-    {%- if section.settings.hero_bg_image != blank -%}
-      <div class="pt-contact__hero-photo" aria-hidden="true">
-        {{ section.settings.hero_bg_image | image_url: width: 2400 | image_tag: loading: 'eager', widths: '750,1100,1500,2000,2400' }}
+<section class="pt-contact" data-pt-contact>
+  <!-- ── Background ── -->
+  <div class="pt-contact__bg" aria-hidden="true">
+    {%- if section.settings.bg_image != blank -%}
+      <div class="pt-contact__bg-image">
+        {{ section.settings.bg_image | image_url: width: 2400 | image_tag: loading: 'eager', widths: '900,1400,2000,2400' }}
       </div>
+    {%- else -%}
+      <div class="pt-contact__bg-fallback"></div>
     {%- endif -%}
-    <div class="pt-contact__hero-tread" aria-hidden="true"></div>
-    <div class="pt-contact__hero-vignette" aria-hidden="true"></div>
+    <div class="pt-contact__bg-tread"></div>
+    <div class="pt-contact__bg-vignette"></div>
 
-    <div class="pt-contact__hero-inner">
-      <div class="pt-contact__status" data-pt-status>
-        <span class="pt-contact__status-dot" aria-hidden="true"></span>
-        <span class="pt-contact__status-text" data-pt-status-text>{{ section.settings.business_status_default }}</span>
-      </div>
-
-      <span class="pt-contact__hero-eyebrow">{{ section.settings.eyebrow }}</span>
-
-      <a class="pt-contact__phone" href="{{ phone_href }}" aria-label="Call Prince Tires at {{ phone }}">
-        {%- assign phone_parts = phone | split: ' ' -%}
-        {%- if phone_parts.size > 1 -%}
-          {%- for part in phone_parts -%}
-            <span class="pt-contact__phone-chunk">{{ part }}</span>
-            {%- unless forloop.last -%}<span class="pt-contact__phone-sep" aria-hidden="true">·</span>{%- endunless -%}
-          {%- endfor -%}
-        {%- else -%}
-          <span class="pt-contact__phone-chunk">{{ phone }}</span>
-        {%- endif -%}
-      </a>
-
-      <p class="pt-contact__phone-hint">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-        {{ section.settings.phone_label }}
-      </p>
-
-      <!-- Quick action row -->
-      <div class="pt-contact__quickrow">
-        <a class="pt-contact__quick" href="{{ phone_href }}">
-          <span class="pt-contact__quick-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          </span>
-          <span class="pt-contact__quick-label">Call</span>
-        </a>
-        <a class="pt-contact__quick" href="{{ directions_url | default: '#visit' }}" {% if directions_url != blank %}target="_blank" rel="noopener"{% endif %}>
-          <span class="pt-contact__quick-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          </span>
-          <span class="pt-contact__quick-label">Directions</span>
-        </a>
-        <a class="pt-contact__quick" href="#message">
-          <span class="pt-contact__quick-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          </span>
-          <span class="pt-contact__quick-label">Message</span>
-        </a>
-      </div>
-
-      <span class="pt-contact__scrollhint" aria-hidden="true">
-        <span class="pt-contact__scrollhint-text">Visit · Hours · Message</span>
-        <span class="pt-contact__scrollhint-line"></span>
-      </span>
+    <!-- Animated particles -->
+    <div class="pt-contact__particles">
+      {%- for i in (1..18) -%}
+        {%- assign seed_x  = i  | times: 23 | modulo: 100 -%}
+        {%- assign seed_d  = i  | times: 1.7 -%}
+        {%- assign seed_dur = i | modulo: 8  | plus: 12 -%}
+        {%- assign seed_sz  = i | modulo: 6  | plus: 5  -%}
+        <span class="pt-contact__particle" style="--x:{{ seed_x }};--d:{{ seed_d }}s;--dur:{{ seed_dur }}s;--sz:{{ seed_sz }}px;"></span>
+      {%- endfor -%}
     </div>
   </div>
 
-  <!-- ════════════════════════════════════════════════════════════
-       VISIT — embedded map + hours
-       ════════════════════════════════════════════════════════════ -->
-  <div class="pt-contact__visit" id="visit">
-    <div class="pt-contact__visit-map">
-      {%- if map_embed != blank -%}
-        <iframe
-          src="{{ map_embed }}"
-          width="100%"
-          height="100%"
-          style="border:0"
-          allowfullscreen=""
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade"
-          title="Prince Tires location map"
-        ></iframe>
-      {%- else -%}
-        <div class="pt-contact__visit-map-placeholder">
-          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <span>Add a Google Maps embed URL in the theme editor.</span>
+  <!-- ── Layout grid ── -->
+  <div class="pt-contact__grid">
+    <!-- Left: editorial title -->
+    <div class="pt-contact__title-col">
+      <span class="pt-contact__eyebrow">{{ section.settings.eyebrow }}</span>
+      <h1 class="pt-contact__title">{{ section.settings.title }}</h1>
+      {%- if section.settings.title_sub != blank -%}
+        <p class="pt-contact__title-sub">{{ section.settings.title_sub }}</p>
+      {%- endif -%}
+    </div>
+
+    <!-- Right: glass form card -->
+    <div class="pt-contact__card">
+      <h2 class="pt-contact__card-h2">{{ section.settings.card_heading }}</h2>
+
+      <!-- Direct contact row -->
+      <div class="pt-contact__contact-row">
+        <span class="pt-contact__contact-label">Call us at</span>
+        <a class="pt-contact__phone" href="{{ phone_href }}" aria-label="Call Prince Tires at {{ phone }}">
+          {{ phone }}
+        </a>
+
+        <div class="pt-contact__socials">
+          <span class="pt-contact__or">OR</span>
+          {%- if section.settings.facebook_url != blank -%}
+            <a class="pt-contact__social" href="{{ section.settings.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </a>
+          {%- endif -%}
+          {%- if section.settings.instagram_url != blank -%}
+            <a class="pt-contact__social" href="{{ section.settings.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+            </a>
+          {%- endif -%}
+          {%- if section.settings.google_url != blank -%}
+            <a class="pt-contact__social" href="{{ section.settings.google_url }}" target="_blank" rel="noopener" aria-label="Google reviews">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>
+            </a>
+          {%- endif -%}
         </div>
-      {%- endif -%}
-    </div>
+      </div>
 
-    <div class="pt-contact__visit-meta">
-      <span class="pt-contact__section-eyebrow">Visit</span>
-      <h2 class="pt-contact__visit-heading">{{ section.settings.visit_heading }}</h2>
-      <address class="pt-contact__address">{{ address }}</address>
-      {%- if directions_url != blank -%}
-        <a class="pt-contact__btn pt-contact__btn--ghost" href="{{ directions_url }}" target="_blank" rel="noopener">
-          Open in Google Maps
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M7 7h10v10"/></svg>
-        </a>
-      {%- endif -%}
+      <hr class="pt-contact__rule">
 
-      <ul class="pt-contact__hours" data-pt-hours>
-        {%- assign day_labels = 'Sun,Mon,Tue,Wed,Thu,Fri,Sat' | split: ',' -%}
-        {%- for day_label in day_labels -%}
-          <li class="pt-contact__hours-row" data-day-index="{{ forloop.index0 }}">
-            <span class="pt-contact__hours-day">{{ day_label }}</span>
-            <span class="pt-contact__hours-time" data-day-time="{{ forloop.index0 }}"></span>
-          </li>
-        {%- endfor -%}
-      </ul>
-    </div>
-  </div>
-
-  <!-- ════════════════════════════════════════════════════════════
-       MESSAGE — minimal-friction form
-       ════════════════════════════════════════════════════════════ -->
-  <div class="pt-contact__message" id="message">
-    <div class="pt-contact__message-inner">
-      <span class="pt-contact__section-eyebrow pt-contact__section-eyebrow--inverse">{{ section.settings.form_eyebrow }}</span>
-      <h2 class="pt-contact__message-heading">{{ section.settings.form_heading }}</h2>
-      <p class="pt-contact__message-sub">{{ section.settings.form_sub }}</p>
-
+      <!-- Form -->
       {%- form 'contact', id: 'PTContactForm', class: 'pt-contact__form' -%}
+        <p class="pt-contact__form-lead">{{ section.settings.form_lead }}</p>
+
         {%- if form.posted_successfully? -%}
           <div class="pt-contact__form-success" tabindex="-1" autofocus>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
             <span>{{ 'templates.contact.form.post_success' | t }}</span>
           </div>
         {%- elsif form.errors -%}
           <div class="pt-contact__form-error" role="alert" tabindex="-1" autofocus>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <span>{{ 'templates.contact.form.error_heading' | t }}</span>
           </div>
         {%- endif -%}
 
-        <div class="pt-contact__form-row pt-contact__form-row--two">
+        <div class="pt-contact__field-row">
           <label class="pt-contact__field">
+            <span class="pt-contact__field-label">{{ 'templates.contact.form.name' | t }}</span>
             <input
               class="pt-contact__input"
               type="text"
@@ -171,10 +105,9 @@
               value="{% if form.name %}{{ form.name }}{% elsif customer %}{{ customer.name }}{% endif %}"
               required
             >
-            <span class="pt-contact__field-line" aria-hidden="true"></span>
           </label>
-
           <label class="pt-contact__field">
+            <span class="pt-contact__field-label">{{ 'templates.contact.form.email' | t }}</span>
             <input
               class="pt-contact__input"
               type="email"
@@ -182,33 +115,59 @@
               autocomplete="email"
               spellcheck="false"
               autocapitalize="off"
-              placeholder="Email or phone"
+              placeholder="you@email.com"
               value="{% if form.email %}{{ form.email }}{% elsif customer %}{{ customer.email }}{% endif %}"
               aria-required="true"
               required
             >
-            <span class="pt-contact__field-line" aria-hidden="true"></span>
           </label>
         </div>
 
-        <label class="pt-contact__field pt-contact__field--message">
+        <label class="pt-contact__field">
+          <span class="pt-contact__field-label">{{ section.settings.message_label }}</span>
           <textarea
             class="pt-contact__input pt-contact__input--textarea"
             name="contact[{{ 'templates.contact.form.comment' | t }}]"
-            rows="2"
-            placeholder="What do you need? (e.g., quote on 4 winter tires for a 2020 Civic)"
+            rows="3"
+            placeholder="{{ section.settings.message_placeholder }}"
             required
           >{{- form.body -}}</textarea>
-          <span class="pt-contact__field-line" aria-hidden="true"></span>
         </label>
 
+        <!-- Service checkboxes -->
+        <div class="pt-contact__services">
+          <p class="pt-contact__services-label">{{ section.settings.services_label }}</p>
+          <div class="pt-contact__checks">
+            {%- for opt in service_options -%}
+              {%- assign opt_trim = opt | strip -%}
+              {%- assign opt_id = opt_trim | handleize -%}
+              {%- if opt_trim != blank -%}
+                <label class="pt-contact__check" for="pt-svc-{{ opt_id }}">
+                  <input
+                    type="checkbox"
+                    id="pt-svc-{{ opt_id }}"
+                    class="pt-contact__check-input"
+                    data-pt-service
+                    value="{{ opt_trim | escape }}"
+                  >
+                  <span class="pt-contact__check-box" aria-hidden="true">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  </span>
+                  <span class="pt-contact__check-label">{{ opt_trim }}</span>
+                </label>
+              {%- endif -%}
+            {%- endfor -%}
+          </div>
+          <input type="hidden" name="contact[Looking for]" data-pt-services-aggregate value="">
+        </div>
+
         <button type="submit" class="pt-contact__send">
-          <span>Send message</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          <span>Send a message</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </button>
 
-        <p class="pt-contact__message-foot">
-          Or email <a href="{{ email_href }}">{{ email }}</a> · we usually reply within the day.
+        <p class="pt-contact__form-foot">
+          Or email <a href="{{ email_href }}">{{ email }}</a>
         </p>
       {%- endform -%}
     </div>
@@ -217,520 +176,376 @@
 
 {% stylesheet %}
   /* ═══════════════════════════════════════════════════════════
-     PT-CONTACT — "Live garage" — Ferrari + workshop
+     PT-CONTACT — split-screen w/ glass card · Ferrari editorial
      ═══════════════════════════════════════════════════════════ */
   .pt-contact {
     --pt-red: #DA291C;
-    --pt-red-dim: rgba(218, 41, 28, 0.18);
+    --pt-red-soft: rgba(218, 41, 28, 0.65);
     --pt-black: #050505;
-    --pt-ink: #0a0a0a;
-    --pt-paper: #f6f5f3;
-    --pt-line: rgba(255, 255, 255, 0.12);
-    --pt-line-dark: rgba(0, 0, 0, 0.10);
-    --pt-mute: rgba(255, 255, 255, 0.55);
+    --pt-glass: rgba(20, 20, 20, 0.55);
+    --pt-glass-border: rgba(255, 255, 255, 0.10);
+    --pt-line: rgba(255, 255, 255, 0.14);
     font-family: 'Outfit', sans-serif;
     color: #fff;
+    position: relative;
+    overflow: hidden;
     background: var(--pt-black);
+    min-height: 100vh;
+    min-height: 100dvh;
+    isolation: isolate;
   }
   .pt-contact * { box-sizing: border-box; }
   .pt-contact a { color: inherit; }
 
-  /* ═════════ HERO ═════════ */
-  .pt-contact__hero {
-    position: relative;
-    min-height: 92vh;
-    min-height: 92dvh;
-    overflow: hidden;
-    background: var(--pt-black);
-    display: flex;
-    align-items: center;
-    padding: clamp(4rem, 10vh, 8rem) clamp(1.25rem, 5vw, 4rem);
+  /* ── Background layers ── */
+  .pt-contact__bg { position: absolute; inset: 0; z-index: 0; }
+  .pt-contact__bg-image, .pt-contact__bg-fallback { position: absolute; inset: 0; }
+  .pt-contact__bg-image img {
+    width: 100%; height: 100%; object-fit: cover; object-position: center;
+    filter: grayscale(100%) contrast(1.05) brightness(0.45);
   }
-  .pt-contact__hero-photo {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    opacity: 0.35;
-    filter: grayscale(100%) contrast(1.05) brightness(0.7);
+  .pt-contact__bg-fallback {
+    background:
+      radial-gradient(ellipse at 30% 30%, rgba(218,41,28,0.18) 0%, transparent 60%),
+      linear-gradient(135deg, #0a0a0a 0%, #1a0606 100%);
   }
-  .pt-contact__hero-photo img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-  }
-  .pt-contact__hero-tread {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
+  .pt-contact__bg-tread {
+    position: absolute; inset: 0;
     background-image:
       repeating-linear-gradient(
         -45deg,
         transparent 0,
         transparent 22px,
-        rgba(255, 255, 255, 0.025) 22px,
-        rgba(255, 255, 255, 0.025) 24px
+        rgba(255,255,255,0.025) 22px,
+        rgba(255,255,255,0.025) 24px
       );
     pointer-events: none;
     mix-blend-mode: screen;
   }
-  .pt-contact__hero-vignette {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    background: radial-gradient(ellipse at 50% 65%, transparent 0%, rgba(0,0,0,0.6) 80%);
+  .pt-contact__bg-vignette {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 80%, transparent 0%, rgba(0,0,0,0.55) 80%),
+      linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 30%);
     pointer-events: none;
   }
-  .pt-contact__hero-inner {
-    position: relative;
-    z-index: 3;
-    width: 100%;
-    max-width: 1280px;
+
+  /* ── Particles ── */
+  .pt-contact__particles {
+    position: absolute; inset: 0; overflow: hidden;
+    pointer-events: none;
+  }
+  .pt-contact__particle {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    bottom: -40px;
+    width: var(--sz, 10px);
+    height: var(--sz, 10px);
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(218, 41, 28, 0.25);
+    animation: pt-particle var(--dur, 14s) linear infinite;
+    animation-delay: var(--d, 0s);
+    opacity: 0;
+  }
+  .pt-contact__particle:nth-child(3n)    { background: rgba(218, 41, 28, 0.28); }
+  .pt-contact__particle:nth-child(5n+1)  { background: rgba(255, 255, 255, 0.25); }
+  @keyframes pt-particle {
+    0%   { transform: translateY(0)        scale(0.4); opacity: 0; }
+    10%  { opacity: 0.9; }
+    90%  { opacity: 0.9; }
+    100% { transform: translateY(-110vh)   scale(1.1); opacity: 0; }
+  }
+
+  /* ── Grid ── */
+  .pt-contact__grid {
+    position: relative; z-index: 1;
+    max-width: 1320px;
     margin: 0 auto;
+    padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 4vw, 3.5rem);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(2.5rem, 5vw, 4.5rem);
+    min-height: 100vh; min-height: 100dvh;
+    align-items: center;
+  }
+  @media (min-width: 1000px) {
+    .pt-contact__grid { grid-template-columns: 1fr 1fr; align-items: stretch; }
+  }
+
+  /* ── Title column ── */
+  .pt-contact__title-col {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 1.4rem;
+    justify-content: flex-end;
+    gap: 1.2rem;
+    padding: 0 0 0.5rem;
   }
-
-  /* Status pill */
-  .pt-contact__status {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.55rem 1.1rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: rgba(255, 255, 255, 0.92);
-  }
-  .pt-contact__status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #38f0a0;
-    box-shadow: 0 0 0 0 rgba(56, 240, 160, 0.7);
-    animation: pt-pulse 1.8s ease-out infinite;
-    flex-shrink: 0;
-  }
-  .pt-contact__status[data-status="closed"] .pt-contact__status-dot {
-    background: var(--pt-red);
-    box-shadow: 0 0 0 0 rgba(218, 41, 28, 0.5);
-  }
-  @keyframes pt-pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(56, 240, 160, 0.55); }
-    70%  { box-shadow: 0 0 0 10px rgba(56, 240, 160, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(56, 240, 160, 0); }
-  }
-
-  .pt-contact__hero-eyebrow {
+  .pt-contact__eyebrow {
     font-size: 0.78rem;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.32em;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.55);
   }
-
-  /* Phone — the hero */
-  .pt-contact__phone {
-    display: inline-flex;
-    align-items: baseline;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: clamp(0.5rem, 1.5vw, 1.2rem);
-    text-decoration: none;
-    color: #fff;
+  .pt-contact__title {
     font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(3.2rem, 7vw, 6.5rem);
     font-weight: 800;
-    font-size: clamp(4.5rem, 17vw, 14rem);
-    line-height: 0.85;
-    letter-spacing: -0.02em;
-    margin: 0.4rem 0 0;
-    text-shadow: 0 4px 40px rgba(0, 0, 0, 0.5);
-    transition: color 200ms ease, transform 200ms ease;
-    will-change: transform;
-  }
-  .pt-contact__phone:hover {
-    color: var(--pt-red);
-    transform: translateY(-2px);
-  }
-  .pt-contact__phone-chunk { display: inline-block; }
-  .pt-contact__phone-sep {
-    color: var(--pt-red);
-    transform: translateY(-0.18em);
-    display: inline-block;
-    font-weight: 400;
-  }
-  .pt-contact__phone-hint {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    font-weight: 500;
+    line-height: 0.92;
+    letter-spacing: -0.015em;
+    color: #fff;
+    margin: 0;
     text-transform: uppercase;
-    letter-spacing: 0.22em;
-    color: rgba(255, 255, 255, 0.65);
+    text-shadow: 0 4px 40px rgba(0, 0, 0, 0.5);
+    max-width: 14ch;
+  }
+  .pt-contact__title-sub {
+    font-size: clamp(1rem, 1.3vw, 1.15rem);
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.72);
+    max-width: 38ch;
     margin: 0;
   }
-  .pt-contact__phone-hint svg {
-    color: var(--pt-red);
-  }
 
-  /* Quick row */
-  .pt-contact__quickrow {
-    display: flex;
-    gap: 0;
-    margin-top: 1.6rem;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 0;
-    overflow: hidden;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    background: rgba(255, 255, 255, 0.04);
-  }
-  .pt-contact__quick {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 1rem 1.6rem;
-    text-decoration: none;
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 0.74rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    transition: background-color 160ms ease, color 160ms ease;
-    position: relative;
-  }
-  .pt-contact__quick + .pt-contact__quick {
-    border-left: 1px solid rgba(255, 255, 255, 0.14);
-  }
-  .pt-contact__quick:hover {
-    background: rgba(218, 41, 28, 0.16);
-    color: #fff;
-  }
-  .pt-contact__quick-icon {
-    color: var(--pt-red);
-    display: inline-flex;
-  }
-
-  /* Scroll hint */
-  .pt-contact__scrollhint {
-    position: absolute;
-    bottom: 1.6rem;
-    left: 50%;
-    transform: translateX(-50%);
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.6rem;
-    font-size: 0.7rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    color: rgba(255, 255, 255, 0.45);
-    pointer-events: none;
-  }
-  .pt-contact__scrollhint-line {
-    width: 1px;
-    height: 36px;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
-    animation: pt-scrollhint 2s ease-in-out infinite;
-    transform-origin: top center;
-  }
-  @keyframes pt-scrollhint {
-    0%, 100% { transform: scaleY(1); opacity: 0.45; }
-    50%      { transform: scaleY(1.4); opacity: 0.85; }
-  }
-
-  /* ═════════ VISIT ═════════ */
-  .pt-contact__visit {
-    background: var(--pt-paper);
-    color: var(--pt-ink);
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-  @media (min-width: 880px) {
-    .pt-contact__visit {
-      grid-template-columns: 1.15fr 1fr;
-    }
-  }
-  .pt-contact__visit-map {
-    position: relative;
-    min-height: 360px;
-    aspect-ratio: 4 / 3;
-    background: #d5d3d0;
-  }
-  @media (min-width: 880px) {
-    .pt-contact__visit-map {
-      aspect-ratio: auto;
-      min-height: 100%;
-    }
-  }
-  .pt-contact__visit-map iframe {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border: 0;
-    filter: grayscale(20%) contrast(1.02);
-  }
-  .pt-contact__visit-map-placeholder {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.8rem;
-    color: rgba(0, 0, 0, 0.45);
-    font-size: 0.85rem;
-    text-align: center;
-    padding: 1rem;
-  }
-  .pt-contact__visit-meta {
-    padding: clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 4vw, 4rem);
+  /* ── Card column ── */
+  .pt-contact__card {
+    background: var(--pt-glass);
+    border: 1px solid var(--pt-glass-border);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    padding: clamp(1.5rem, 3vw, 2.5rem);
+    border-radius: 4px;
     display: flex;
     flex-direction: column;
     gap: 1.1rem;
-    background: var(--pt-paper);
     position: relative;
   }
-  .pt-contact__visit-meta::before {
+  .pt-contact__card::before {
     content: "";
     position: absolute;
-    top: 0;
-    left: clamp(1.5rem, 4vw, 4rem);
+    top: 0; left: 0;
     width: 36px;
     height: 3px;
     background: var(--pt-red);
   }
-  .pt-contact__section-eyebrow {
-    font-size: 0.74rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.28em;
-    color: rgba(0, 0, 0, 0.45);
-  }
-  .pt-contact__section-eyebrow--inverse {
-    color: rgba(255, 255, 255, 0.45);
-  }
-  .pt-contact__visit-heading {
+  .pt-contact__card-h2 {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(2.5rem, 5vw, 4rem);
-    font-weight: 800;
-    text-transform: uppercase;
-    line-height: 0.95;
-    letter-spacing: -0.01em;
-    margin: 0.3rem 0 0;
-    color: var(--pt-ink);
-  }
-  .pt-contact__address {
-    font-style: normal;
-    font-size: 1.1rem;
-    line-height: 1.45;
-    color: rgba(0, 0, 0, 0.78);
-    margin: 0.4rem 0;
-    white-space: pre-line;
-  }
-  .pt-contact__btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: fit-content;
-    padding: 0.85rem 1.4rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.78rem;
+    font-size: clamp(1.7rem, 2.4vw, 2.1rem);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.18em;
-    text-decoration: none;
-    border-radius: 0;
-    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 80ms ease;
+    letter-spacing: 0.005em;
+    margin: 0;
+    color: #fff;
   }
-  .pt-contact__btn--ghost {
-    background: transparent;
-    color: var(--pt-ink);
-    border: 1px solid var(--pt-ink);
-  }
-  .pt-contact__btn--ghost:hover {
-    background: var(--pt-ink);
-    color: var(--pt-paper);
-  }
-  .pt-contact__btn:active { transform: translateY(1px); }
 
-  /* Hours grid */
-  .pt-contact__hours {
-    list-style: none;
-    margin: 1.2rem 0 0;
-    padding: 1.2rem 0 0;
-    border-top: 1px solid var(--pt-line-dark);
+  /* Contact row */
+  .pt-contact__contact-row {
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.5rem;
   }
-  .pt-contact__hours-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-size: 0.94rem;
-    color: rgba(0, 0, 0, 0.72);
-    padding: 0;
-  }
-  .pt-contact__hours-row[data-today="true"] {
-    color: var(--pt-ink);
-    font-weight: 600;
-    position: relative;
-  }
-  .pt-contact__hours-row[data-today="true"]::before {
-    content: "";
-    position: absolute;
-    left: -14px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--pt-red);
-  }
-  .pt-contact__hours-day {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 600;
+  .pt-contact__contact-label {
+    font-size: 0.74rem;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
-    font-size: 0.95rem;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.55);
   }
-  .pt-contact__hours-time {
+  .pt-contact__phone {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(1.6rem, 2.5vw, 2.1rem);
+    font-weight: 700;
+    color: #fff;
+    text-decoration: none;
+    letter-spacing: 0.005em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: fit-content;
+    transition: color 160ms ease;
     font-variant-numeric: tabular-nums;
   }
+  .pt-contact__phone:hover { color: var(--pt-red); }
 
-  /* ═════════ MESSAGE ═════════ */
-  .pt-contact__message {
-    background: var(--pt-black);
-    color: #fff;
-    padding: clamp(4rem, 9vw, 7rem) clamp(1.25rem, 5vw, 4rem);
-    position: relative;
-    overflow: hidden;
+  .pt-contact__socials {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-top: 0.4rem;
   }
-  .pt-contact__message::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image:
-      repeating-linear-gradient(
-        -45deg,
-        transparent 0,
-        transparent 22px,
-        rgba(255, 255, 255, 0.018) 22px,
-        rgba(255, 255, 255, 0.018) 24px
-      );
-    pointer-events: none;
-  }
-  .pt-contact__message-inner {
-    position: relative;
-    max-width: 720px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  .pt-contact__message-heading {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(2.4rem, 5.5vw, 4.5rem);
-    font-weight: 800;
+  .pt-contact__or {
+    font-size: 0.7rem;
+    font-weight: 600;
     text-transform: uppercase;
-    line-height: 0.95;
-    letter-spacing: -0.01em;
-    margin: 0.3rem 0 0;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.4);
+    margin-right: 0.3rem;
   }
-  .pt-contact__message-sub {
-    font-size: 1.05rem;
-    line-height: 1.55;
-    color: rgba(255, 255, 255, 0.72);
-    margin: 0 0 0.8rem;
+  .pt-contact__social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px; height: 36px;
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.85);
+    text-decoration: none;
+    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 80ms ease;
+  }
+  .pt-contact__social:hover {
+    background: var(--pt-red);
+    border-color: var(--pt-red);
+    color: #fff;
+  }
+  .pt-contact__social:active { transform: translateY(1px); }
+
+  .pt-contact__rule {
+    border: 0;
+    border-top: 1px solid var(--pt-line);
+    margin: 0.4rem 0;
   }
 
-  /* Form: underline-style fields */
+  /* ── Form ── */
   .pt-contact__form {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-    margin-top: 0.6rem;
+    gap: 1.2rem;
   }
-  .pt-contact__form-row {
+  .pt-contact__form-lead {
+    font-size: 0.74rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0;
+  }
+  .pt-contact__field-row {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 1.5rem;
+    gap: 1rem;
   }
   @media (min-width: 600px) {
-    .pt-contact__form-row--two { grid-template-columns: 1fr 1fr; }
+    .pt-contact__field-row { grid-template-columns: 1fr 1fr; }
   }
   .pt-contact__field {
-    position: relative;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .pt-contact__field-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgba(255, 255, 255, 0.55);
   }
   .pt-contact__input {
     width: 100%;
-    background: transparent;
-    border: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.14);
     color: #fff;
     font-family: inherit;
-    font-size: 1.1rem;
-    padding: 0.9rem 0;
-    border-radius: 0;
-    transition: border-color 200ms ease;
+    font-size: 0.96rem;
+    padding: 0.85rem 0.95rem;
+    border-radius: 2px;
+    transition: border-color 160ms ease, background-color 160ms ease;
   }
-  .pt-contact__input::placeholder {
-    color: rgba(255, 255, 255, 0.42);
-    transition: color 200ms ease;
-  }
+  .pt-contact__input::placeholder { color: rgba(255, 255, 255, 0.32); }
   .pt-contact__input:focus,
   .pt-contact__input:focus-visible {
     outline: none;
-    border-bottom-color: rgba(255, 255, 255, 0.4);
-  }
-  .pt-contact__input:focus::placeholder { color: rgba(255, 255, 255, 0.6); }
-  .pt-contact__field-line {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 2px;
-    background: var(--pt-red);
-    transform: scaleX(0);
-    transform-origin: left center;
-    transition: transform 320ms cubic-bezier(0.5, 0, 0.1, 1);
-    pointer-events: none;
-  }
-  .pt-contact__input:focus + .pt-contact__field-line,
-  .pt-contact__input:focus-visible + .pt-contact__field-line {
-    transform: scaleX(1);
+    border-color: var(--pt-red);
+    background: rgba(218, 41, 28, 0.06);
   }
   .pt-contact__input--textarea {
     resize: vertical;
-    min-height: 84px;
+    min-height: 96px;
     line-height: 1.5;
+    font-family: inherit;
   }
 
-  .pt-contact__send {
-    align-self: flex-start;
+  /* ── Service checkboxes ── */
+  .pt-contact__services { display: flex; flex-direction: column; gap: 0.7rem; }
+  .pt-contact__services-label {
+    font-size: 0.74rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0;
+  }
+  .pt-contact__checks {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  @media (min-width: 480px) { .pt-contact__checks { grid-template-columns: repeat(3, 1fr); } }
+  .pt-contact__check {
     display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.55rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+    font-size: 0.83rem;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+    user-select: none;
+  }
+  .pt-contact__check:hover {
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .pt-contact__check-input {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap; border: 0;
+  }
+  .pt-contact__check-box {
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    width: 16px; height: 16px;
+    border: 1.5px solid rgba(255, 255, 255, 0.32);
+    border-radius: 2px;
+    color: transparent;
+    flex-shrink: 0;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  }
+  .pt-contact__check-input:focus-visible + .pt-contact__check-box {
+    outline: 2px solid var(--pt-red);
+    outline-offset: 2px;
+  }
+  .pt-contact__check-input:checked + .pt-contact__check-box {
+    background: var(--pt-red);
+    border-color: var(--pt-red);
+    color: #fff;
+  }
+  .pt-contact__check:has(.pt-contact__check-input:checked) {
+    border-color: var(--pt-red);
+    background: rgba(218, 41, 28, 0.08);
+    color: #fff;
+  }
+  /* Fallback for browsers without :has() */
+  .pt-contact__check-input:checked ~ .pt-contact__check-label { color: #fff; }
+
+  .pt-contact__check-label { line-height: 1.2; }
+
+  /* ── Send button ── */
+  .pt-contact__send {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    width: 100%;
     background: var(--pt-red);
     color: #fff;
     border: 0;
-    border-radius: 0;
-    padding: 1.2rem 2.2rem;
+    border-radius: 2px;
+    padding: 1rem 1.5rem;
     font-family: 'Outfit', sans-serif;
     font-size: 0.86rem;
     font-weight: 700;
@@ -738,40 +553,36 @@
     letter-spacing: 0.2em;
     cursor: pointer;
     transition: background-color 160ms ease, transform 80ms ease;
-    margin-top: 0.4rem;
+    margin-top: 0.3rem;
   }
   .pt-contact__send:hover { background: #b9221a; }
   .pt-contact__send:active { transform: translateY(1px); }
   .pt-contact__send:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-  .pt-contact__send svg {
-    transition: transform 200ms ease;
-  }
+  .pt-contact__send svg { transition: transform 160ms ease; }
   .pt-contact__send:hover svg { transform: translateX(4px); }
 
-  .pt-contact__message-foot {
-    font-size: 0.92rem;
-    color: rgba(255, 255, 255, 0.6);
-    margin: 1rem 0 0;
+  .pt-contact__form-foot {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.55);
+    text-align: center;
+    margin: 0.2rem 0 0;
   }
-  .pt-contact__message-foot a {
+  .pt-contact__form-foot a {
     color: #fff;
     text-decoration: underline;
     text-decoration-thickness: 1px;
-    text-underline-offset: 4px;
-    transition: color 160ms ease;
+    text-underline-offset: 3px;
   }
-  .pt-contact__message-foot a:hover { color: var(--pt-red); }
+  .pt-contact__form-foot a:hover { color: var(--pt-red); }
 
-  /* Form status */
+  /* Status messages */
   .pt-contact__form-success,
   .pt-contact__form-error {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem 1.15rem;
-    border-radius: 0;
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    font-size: 0.92rem;
     font-weight: 500;
-    line-height: 1.4;
+    border-radius: 2px;
   }
   .pt-contact__form-success {
     background: rgba(34, 197, 94, 0.12);
@@ -786,10 +597,7 @@
 
   /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
-    .pt-contact__status-dot,
-    .pt-contact__scrollhint-line,
-    .pt-contact__phone,
-    .pt-contact__send svg { animation: none !important; transition: none !important; }
+    .pt-contact__particle { animation: none !important; opacity: 0 !important; }
   }
 {% endstylesheet %}
 
@@ -797,144 +605,40 @@
   (function () {
     const root = document.querySelector("[data-pt-contact]");
     if (!root) return;
+    const aggregate = root.querySelector("[data-pt-services-aggregate]");
+    const boxes = root.querySelectorAll("[data-pt-service]");
+    if (!aggregate || !boxes.length) return;
 
-    const TZ = "America/Edmonton";
-    const DAY_LABELS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-
-    function readHourSetting(key, fallback) {
-      const v = root.dataset[key];
-      if (v === undefined || v === "" || v === "null") return fallback;
-      const n = Number(v);
-      return Number.isFinite(n) ? n : fallback;
-    }
-
-    const weekdayOpen  = readHourSetting("weekdayOpen", 8);
-    const weekdayClose = readHourSetting("weekdayClose", 17);
-    const satOpen      = readHourSetting("saturdayOpen", weekdayOpen);
-    const satClose     = readHourSetting("saturdayClose", weekdayClose);
-    const sunOpen      = readHourSetting("sundayOpen", -1);
-    const sunClose     = readHourSetting("sundayClose", -1);
-
-    const hoursFor = (dayIdx) => {
-      if (dayIdx === 0) return [sunOpen, sunClose];
-      if (dayIdx === 6) return [satOpen, satClose];
-      return [weekdayOpen, weekdayClose];
+    const sync = () => {
+      const selected = [];
+      boxes.forEach((b) => { if (b.checked) selected.push(b.value); });
+      aggregate.value = selected.join(", ");
     };
 
-    function fmtHour(h) {
-      if (h < 0) return null;
-      const period = h >= 12 ? "pm" : "am";
-      let display = h % 12;
-      if (display === 0) display = 12;
-      return `${display} ${period}`;
-    }
-
-    function nowInEdmonton() {
-      const fmt = new Intl.DateTimeFormat("en-US", {
-        timeZone: TZ,
-        weekday: "short",
-        hour: "numeric",
-        hour12: false,
-        minute: "numeric",
-      }).formatToParts(new Date());
-      const parts = Object.fromEntries(fmt.map((p) => [p.type, p.value]));
-      const wkMap = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
-      const day = wkMap[parts.weekday] ?? 0;
-      const hour = Number(parts.hour) || 0;
-      const minute = Number(parts.minute) || 0;
-      return { day, hour, minute, decimal: hour + minute / 60 };
-    }
-
-    function renderHours() {
-      const list = root.querySelector("[data-pt-hours]");
-      if (!list) return;
-      const today = nowInEdmonton().day;
-      list.querySelectorAll(".pt-contact__hours-row").forEach((row) => {
-        const idx = Number(row.dataset.dayIndex);
-        const [open, close] = hoursFor(idx);
-        const cell = row.querySelector("[data-day-time]");
-        if (open < 0 || close < 0 || open === close) {
-          cell.textContent = "Closed";
-        } else {
-          cell.textContent = `${fmtHour(open)} – ${fmtHour(close)}`;
-        }
-        if (idx === today) row.dataset.today = "true";
-        else row.removeAttribute("data-today");
-      });
-    }
-
-    function renderStatus() {
-      const pill = root.querySelector("[data-pt-status]");
-      const text = root.querySelector("[data-pt-status-text]");
-      if (!pill || !text) return;
-      const now = nowInEdmonton();
-      const [open, close] = hoursFor(now.day);
-      const openToday = open >= 0 && close >= 0 && open !== close;
-      const dec = now.decimal;
-
-      if (openToday && dec >= open && dec < close) {
-        const left = close - dec;
-        if (left < 1) {
-          const mins = Math.max(1, Math.round(left * 60));
-          text.textContent = `Open · closes in ${mins} min`;
-        } else {
-          text.textContent = `Open · closes at ${fmtHour(close).replace(' ','').replace('am','am').replace('pm','pm')}`;
-        }
-        pill.dataset.status = "open";
-      } else {
-        // Find next opening (today after current time, then forward)
-        let next = null;
-        for (let i = 0; i < 7; i++) {
-          const d = (now.day + i) % 7;
-          const [o, c] = hoursFor(d);
-          if (o < 0 || c < 0 || o === c) continue;
-          if (i === 0 && dec < o) { next = { day: d, hour: o, sameDay: true }; break; }
-          if (i > 0) { next = { day: d, hour: o, sameDay: false }; break; }
-        }
-        if (next) {
-          if (next.sameDay) text.textContent = `Closed · opens at ${fmtHour(next.hour)}`;
-          else if (next.day === (now.day + 1) % 7) text.textContent = `Closed · opens tomorrow at ${fmtHour(next.hour)}`;
-          else text.textContent = `Closed · opens ${DAY_LABELS[next.day]} at ${fmtHour(next.hour)}`;
-        } else {
-          text.textContent = "Closed";
-        }
-        pill.dataset.status = "closed";
-      }
-    }
-
-    function smoothScrollAnchors() {
-      root.querySelectorAll('a[href^="#"]').forEach((a) => {
-        a.addEventListener("click", (e) => {
-          const id = a.getAttribute("href").slice(1);
-          const target = document.getElementById(id);
-          if (!target) return;
-          e.preventDefault();
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-      });
-    }
-
-    renderHours();
-    renderStatus();
-    smoothScrollAnchors();
-    setInterval(renderStatus, 60000);
+    boxes.forEach((b) => b.addEventListener("change", sync));
+    sync();
   })();
 {% endjavascript %}
 
 {% schema %}
 {
-  "name": "Contact — live garage",
+  "name": "Contact — split editorial",
   "tag": "section",
   "class": "section section--pt-contact",
   "settings": [
     {
       "type": "header",
-      "content": "Hero"
+      "content": "Background"
     },
     {
       "type": "image_picker",
-      "id": "hero_bg_image",
-      "label": "Hero background image (optional — shop photo, garage interior, etc.)"
+      "id": "bg_image",
+      "label": "Background image",
+      "info": "A shop photo, tire close-up, or workshop scene works best. Image is desaturated + darkened automatically."
+    },
+    {
+      "type": "header",
+      "content": "Editorial title (left side)"
     },
     {
       "type": "text",
@@ -944,147 +648,91 @@
     },
     {
       "type": "text",
+      "id": "title",
+      "label": "Big title",
+      "default": "Need tires done right? Talk to the shop."
+    },
+    {
+      "type": "textarea",
+      "id": "title_sub",
+      "label": "Title sub-text (optional)",
+      "default": "Walk-ins welcome. Or send a quick note — we usually reply the same day."
+    },
+    {
+      "type": "header",
+      "content": "Form card (right side)"
+    },
+    {
+      "type": "text",
+      "id": "card_heading",
+      "label": "Card heading",
+      "default": "Reach out 👋"
+    },
+    {
+      "type": "text",
       "id": "phone",
       "label": "Phone (display)",
-      "default": "403 452 4283",
-      "info": "Use spaces between groups (403 452 4283); they render as a styled phone with red separators."
-    },
-    {
-      "type": "text",
-      "id": "phone_label",
-      "label": "Phone hint label",
-      "default": "Tap to call"
-    },
-    {
-      "type": "text",
-      "id": "business_status_default",
-      "label": "Default status text (shown before JS calculates)",
-      "default": "Open today"
-    },
-    {
-      "type": "header",
-      "content": "Hours (24-hour numbers, Edmonton time)"
-    },
-    {
-      "type": "range",
-      "id": "weekday_open",
-      "label": "Mon–Fri open",
-      "default": 8,
-      "min": 0,
-      "max": 23,
-      "step": 1,
-      "unit": "h"
-    },
-    {
-      "type": "range",
-      "id": "weekday_close",
-      "label": "Mon–Fri close",
-      "default": 17,
-      "min": 0,
-      "max": 23,
-      "step": 1,
-      "unit": "h"
-    },
-    {
-      "type": "range",
-      "id": "saturday_open",
-      "label": "Saturday open",
-      "default": 8,
-      "min": 0,
-      "max": 23,
-      "step": 1,
-      "unit": "h"
-    },
-    {
-      "type": "range",
-      "id": "saturday_close",
-      "label": "Saturday close",
-      "default": 17,
-      "min": 0,
-      "max": 23,
-      "step": 1,
-      "unit": "h"
-    },
-    {
-      "type": "range",
-      "id": "sunday_open",
-      "label": "Sunday open (set 0 for closed)",
-      "default": 0,
-      "min": 0,
-      "max": 23,
-      "step": 1,
-      "unit": "h"
-    },
-    {
-      "type": "range",
-      "id": "sunday_close",
-      "label": "Sunday close (leave equal to open if closed)",
-      "default": 0,
-      "min": 0,
-      "max": 23,
-      "step": 1,
-      "unit": "h"
-    },
-    {
-      "type": "header",
-      "content": "Visit / Map"
-    },
-    {
-      "type": "text",
-      "id": "visit_heading",
-      "label": "Visit heading",
-      "default": "Drop by the shop."
-    },
-    {
-      "type": "textarea",
-      "id": "address",
-      "label": "Address (one line per row)",
-      "default": "Calgary, AB"
-    },
-    {
-      "type": "text",
-      "id": "directions_url",
-      "label": "Google Maps directions URL",
-      "info": "Paste the share link from Google Maps."
-    },
-    {
-      "type": "text",
-      "id": "map_embed_url",
-      "label": "Google Maps embed URL",
-      "info": "Maps → Share → Embed a map → copy the src URL from the iframe."
-    },
-    {
-      "type": "header",
-      "content": "Message form"
-    },
-    {
-      "type": "text",
-      "id": "form_eyebrow",
-      "label": "Form eyebrow",
-      "default": "Or send a quick note"
-    },
-    {
-      "type": "text",
-      "id": "form_heading",
-      "label": "Form heading",
-      "default": "What do you need?"
-    },
-    {
-      "type": "textarea",
-      "id": "form_sub",
-      "label": "Form sub",
-      "default": "Quote, booking change, fleet inquiry — drop us a line and we'll reply within the day."
+      "default": "403 452 4283"
     },
     {
       "type": "text",
       "id": "email",
       "label": "Reply-to email",
       "default": "bookings@princetires.ca"
+    },
+    {
+      "type": "url",
+      "id": "facebook_url",
+      "label": "Facebook URL"
+    },
+    {
+      "type": "url",
+      "id": "instagram_url",
+      "label": "Instagram URL"
+    },
+    {
+      "type": "url",
+      "id": "google_url",
+      "label": "Google reviews URL"
+    },
+    {
+      "type": "header",
+      "content": "Form copy"
+    },
+    {
+      "type": "text",
+      "id": "form_lead",
+      "label": "Form lead text",
+      "default": "Leave us a brief message"
+    },
+    {
+      "type": "text",
+      "id": "message_label",
+      "label": "Message field label",
+      "default": "What do you need?"
+    },
+    {
+      "type": "text",
+      "id": "message_placeholder",
+      "label": "Message placeholder",
+      "default": "Quote on 4 winter tires for a 2020 Civic, etc."
+    },
+    {
+      "type": "text",
+      "id": "services_label",
+      "label": "Services group label",
+      "default": "I'm looking for…"
+    },
+    {
+      "type": "textarea",
+      "id": "service_options",
+      "label": "Service options (separated by | )",
+      "default": "4 new tires|Tire change / swap|Wheel alignment|Rotation & balance|Flat repair|Tire storage|Fleet inquiry|Quote / Other"
     }
   ],
   "presets": [
     {
-      "name": "Contact — live garage"
+      "name": "Contact — split editorial"
     }
   ]
 }
