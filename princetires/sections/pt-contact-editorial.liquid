@@ -1,421 +1,768 @@
 {%- liquid
   assign phone = section.settings.phone
-  assign phone_href = phone | replace: ' ', '' | replace: '-', '' | prepend: 'tel:'
+  assign phone_digits = phone | replace: ' ', '' | replace: '-', '' | replace: '.', '' | replace: '(', '' | replace: ')', ''
+  assign phone_href = phone_digits | prepend: 'tel:'
   assign email = section.settings.email
   assign email_href = email | prepend: 'mailto:'
   assign address = section.settings.address
-  assign hours = section.settings.hours
-  assign map_url = section.settings.map_url
+  assign directions_url = section.settings.directions_url
+  assign map_embed = section.settings.map_embed_url
+  assign weekday_open = section.settings.weekday_open
+  assign weekday_close = section.settings.weekday_close
+  assign saturday_open = section.settings.saturday_open
+  assign saturday_close = section.settings.saturday_close
+  assign sunday_open = section.settings.sunday_open
+  assign sunday_close = section.settings.sunday_close
 -%}
 
-<section class="pt-contact" aria-labelledby="ContactHeadline">
-  <!-- ── Hero band ─────────────────────────────────────────── -->
+<section
+  class="pt-contact"
+  data-pt-contact
+  data-weekday-open="{{ weekday_open }}"
+  data-weekday-close="{{ weekday_close }}"
+  data-saturday-open="{{ saturday_open }}"
+  data-saturday-close="{{ saturday_close }}"
+  data-sunday-open="{{ sunday_open }}"
+  data-sunday-close="{{ sunday_close }}"
+>
+  <!-- ════════════════════════════════════════════════════════════
+       HERO — phone number is the hero, status pill, tire-tread bg
+       ════════════════════════════════════════════════════════════ -->
   <div class="pt-contact__hero">
+    {%- if section.settings.hero_bg_image != blank -%}
+      <div class="pt-contact__hero-photo" aria-hidden="true">
+        {{ section.settings.hero_bg_image | image_url: width: 2400 | image_tag: loading: 'eager', widths: '750,1100,1500,2000,2400' }}
+      </div>
+    {%- endif -%}
+    <div class="pt-contact__hero-tread" aria-hidden="true"></div>
+    <div class="pt-contact__hero-vignette" aria-hidden="true"></div>
+
     <div class="pt-contact__hero-inner">
-      <span class="pt-contact__eyebrow">{{ section.settings.eyebrow }}</span>
-      <span class="pt-contact__rule" aria-hidden="true"></span>
-      <h1 class="pt-contact__headline" id="ContactHeadline">{{ section.settings.headline }}</h1>
-      <p class="pt-contact__subhead">{{ section.settings.subhead }}</p>
+      <div class="pt-contact__status" data-pt-status>
+        <span class="pt-contact__status-dot" aria-hidden="true"></span>
+        <span class="pt-contact__status-text" data-pt-status-text>{{ section.settings.business_status_default }}</span>
+      </div>
+
+      <span class="pt-contact__hero-eyebrow">{{ section.settings.eyebrow }}</span>
+
+      <a class="pt-contact__phone" href="{{ phone_href }}" aria-label="Call Prince Tires at {{ phone }}">
+        {%- assign phone_parts = phone | split: ' ' -%}
+        {%- if phone_parts.size > 1 -%}
+          {%- for part in phone_parts -%}
+            <span class="pt-contact__phone-chunk">{{ part }}</span>
+            {%- unless forloop.last -%}<span class="pt-contact__phone-sep" aria-hidden="true">·</span>{%- endunless -%}
+          {%- endfor -%}
+        {%- else -%}
+          <span class="pt-contact__phone-chunk">{{ phone }}</span>
+        {%- endif -%}
+      </a>
+
+      <p class="pt-contact__phone-hint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        {{ section.settings.phone_label }}
+      </p>
+
+      <!-- Quick action row -->
+      <div class="pt-contact__quickrow">
+        <a class="pt-contact__quick" href="{{ phone_href }}">
+          <span class="pt-contact__quick-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </span>
+          <span class="pt-contact__quick-label">Call</span>
+        </a>
+        <a class="pt-contact__quick" href="{{ directions_url | default: '#visit' }}" {% if directions_url != blank %}target="_blank" rel="noopener"{% endif %}>
+          <span class="pt-contact__quick-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </span>
+          <span class="pt-contact__quick-label">Directions</span>
+        </a>
+        <a class="pt-contact__quick" href="#message">
+          <span class="pt-contact__quick-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <span class="pt-contact__quick-label">Message</span>
+        </a>
+      </div>
+
+      <span class="pt-contact__scrollhint" aria-hidden="true">
+        <span class="pt-contact__scrollhint-text">Visit · Hours · Message</span>
+        <span class="pt-contact__scrollhint-line"></span>
+      </span>
     </div>
   </div>
 
-  <!-- ── Contact details grid ──────────────────────────────── -->
-  <div class="pt-contact__info">
-    <div class="pt-contact__info-cell">
-      <span class="pt-contact__info-label">{{ 'sections.contact.phone_label' | t | default: 'Phone' }}</span>
-      <a class="pt-contact__info-value pt-contact__info-value--phone" href="{{ phone_href }}">{{ phone }}</a>
-      <span class="pt-contact__info-meta">{{ hours }}</span>
-    </div>
-
-    <div class="pt-contact__info-cell">
-      <span class="pt-contact__info-label">{{ 'sections.contact.address_label' | t | default: 'Visit' }}</span>
-      <span class="pt-contact__info-value pt-contact__info-value--address">{{ address }}</span>
-      {%- if map_url != blank -%}
-        <a class="pt-contact__info-meta pt-contact__info-meta--link" href="{{ map_url }}" target="_blank" rel="noopener">
-          {{ 'sections.contact.directions' | t | default: 'Get directions' }}
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>
-        </a>
+  <!-- ════════════════════════════════════════════════════════════
+       VISIT — embedded map + hours
+       ════════════════════════════════════════════════════════════ -->
+  <div class="pt-contact__visit" id="visit">
+    <div class="pt-contact__visit-map">
+      {%- if map_embed != blank -%}
+        <iframe
+          src="{{ map_embed }}"
+          width="100%"
+          height="100%"
+          style="border:0"
+          allowfullscreen=""
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          title="Prince Tires location map"
+        ></iframe>
+      {%- else -%}
+        <div class="pt-contact__visit-map-placeholder">
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>Add a Google Maps embed URL in the theme editor.</span>
+        </div>
       {%- endif -%}
     </div>
 
-    <div class="pt-contact__info-cell">
-      <span class="pt-contact__info-label">{{ 'sections.contact.email_label' | t | default: 'Email' }}</span>
-      <a class="pt-contact__info-value pt-contact__info-value--email" href="{{ email_href }}">{{ email }}</a>
-      <span class="pt-contact__info-meta">{{ section.settings.email_response }}</span>
+    <div class="pt-contact__visit-meta">
+      <span class="pt-contact__section-eyebrow">Visit</span>
+      <h2 class="pt-contact__visit-heading">{{ section.settings.visit_heading }}</h2>
+      <address class="pt-contact__address">{{ address }}</address>
+      {%- if directions_url != blank -%}
+        <a class="pt-contact__btn pt-contact__btn--ghost" href="{{ directions_url }}" target="_blank" rel="noopener">
+          Open in Google Maps
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M7 7h10v10"/></svg>
+        </a>
+      {%- endif -%}
+
+      <ul class="pt-contact__hours" data-pt-hours>
+        {%- assign day_labels = 'Sun,Mon,Tue,Wed,Thu,Fri,Sat' | split: ',' -%}
+        {%- for day_label in day_labels -%}
+          <li class="pt-contact__hours-row" data-day-index="{{ forloop.index0 }}">
+            <span class="pt-contact__hours-day">{{ day_label }}</span>
+            <span class="pt-contact__hours-time" data-day-time="{{ forloop.index0 }}"></span>
+          </li>
+        {%- endfor -%}
+      </ul>
     </div>
   </div>
 
-  <!-- ── Form band ─────────────────────────────────────────── -->
-  <div class="pt-contact__form-band">
-    <div class="pt-contact__form-grid">
-      <div class="pt-contact__form-intro">
-        <span class="pt-contact__eyebrow pt-contact__eyebrow--inverse">{{ section.settings.form_eyebrow }}</span>
-        <span class="pt-contact__rule pt-contact__rule--inverse" aria-hidden="true"></span>
-        <h2 class="pt-contact__form-heading">{{ section.settings.form_heading }}</h2>
-        <p class="pt-contact__form-desc">{{ section.settings.form_desc }}</p>
-      </div>
+  <!-- ════════════════════════════════════════════════════════════
+       MESSAGE — minimal-friction form
+       ════════════════════════════════════════════════════════════ -->
+  <div class="pt-contact__message" id="message">
+    <div class="pt-contact__message-inner">
+      <span class="pt-contact__section-eyebrow pt-contact__section-eyebrow--inverse">{{ section.settings.form_eyebrow }}</span>
+      <h2 class="pt-contact__message-heading">{{ section.settings.form_heading }}</h2>
+      <p class="pt-contact__message-sub">{{ section.settings.form_sub }}</p>
 
-      <div class="pt-contact__form-wrap">
-        {%- form 'contact', id: 'PTContactForm', class: 'pt-contact__form' -%}
-          {%- if form.posted_successfully? -%}
-            <div class="pt-contact__form-success" tabindex="-1" autofocus>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-              <span>{{ 'templates.contact.form.post_success' | t }}</span>
-            </div>
-          {%- elsif form.errors -%}
-            <div class="pt-contact__form-error" role="alert" tabindex="-1" autofocus>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              <span>{{ 'templates.contact.form.error_heading' | t }}</span>
-            </div>
-          {%- endif -%}
-
-          <div class="pt-contact__field-row">
-            <label class="pt-contact__field">
-              <span class="pt-contact__field-label">{{ 'templates.contact.form.name' | t }}</span>
-              <input
-                class="pt-contact__input"
-                type="text"
-                name="contact[{{ 'templates.contact.form.name' | t }}]"
-                autocomplete="name"
-                value="{% if form.name %}{{ form.name }}{% elsif customer %}{{ customer.name }}{% endif %}"
-                required
-              >
-            </label>
-
-            <label class="pt-contact__field">
-              <span class="pt-contact__field-label">{{ 'templates.contact.form.email' | t }} <span aria-hidden="true">*</span></span>
-              <input
-                class="pt-contact__input"
-                type="email"
-                name="contact[email]"
-                autocomplete="email"
-                spellcheck="false"
-                autocapitalize="off"
-                value="{% if form.email %}{{ form.email }}{% elsif customer %}{{ customer.email }}{% endif %}"
-                aria-required="true"
-                required
-                {% if form.errors contains 'email' %}aria-invalid="true"{% endif %}
-              >
-            </label>
+      {%- form 'contact', id: 'PTContactForm', class: 'pt-contact__form' -%}
+        {%- if form.posted_successfully? -%}
+          <div class="pt-contact__form-success" tabindex="-1" autofocus>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            <span>{{ 'templates.contact.form.post_success' | t }}</span>
           </div>
+        {%- elsif form.errors -%}
+          <div class="pt-contact__form-error" role="alert" tabindex="-1" autofocus>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>{{ 'templates.contact.form.error_heading' | t }}</span>
+          </div>
+        {%- endif -%}
 
+        <div class="pt-contact__form-row pt-contact__form-row--two">
           <label class="pt-contact__field">
-            <span class="pt-contact__field-label">{{ 'templates.contact.form.phone' | t }}</span>
             <input
               class="pt-contact__input"
-              type="tel"
-              name="contact[{{ 'templates.contact.form.phone' | t }}]"
-              autocomplete="tel"
-              pattern="[0-9\-\s\(\)\+]*"
-              value="{% if form.phone %}{{ form.phone }}{% elsif customer %}{{ customer.phone }}{% endif %}"
+              type="text"
+              name="contact[{{ 'templates.contact.form.name' | t }}]"
+              autocomplete="name"
+              placeholder="Your name"
+              value="{% if form.name %}{{ form.name }}{% elsif customer %}{{ customer.name }}{% endif %}"
+              required
             >
+            <span class="pt-contact__field-line" aria-hidden="true"></span>
           </label>
 
           <label class="pt-contact__field">
-            <span class="pt-contact__field-label">{{ 'templates.contact.form.comment' | t }}</span>
-            <textarea
-              class="pt-contact__input pt-contact__input--textarea"
-              name="contact[{{ 'templates.contact.form.comment' | t }}]"
-              rows="6"
+            <input
+              class="pt-contact__input"
+              type="email"
+              name="contact[email]"
+              autocomplete="email"
+              spellcheck="false"
+              autocapitalize="off"
+              placeholder="Email or phone"
+              value="{% if form.email %}{{ form.email }}{% elsif customer %}{{ customer.email }}{% endif %}"
+              aria-required="true"
               required
-            >{{- form.body -}}</textarea>
+            >
+            <span class="pt-contact__field-line" aria-hidden="true"></span>
           </label>
+        </div>
 
-          <button type="submit" class="pt-contact__submit">
-            <span>{{ 'templates.contact.form.send' | t }}</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-          </button>
-        {%- endform -%}
-      </div>
+        <label class="pt-contact__field pt-contact__field--message">
+          <textarea
+            class="pt-contact__input pt-contact__input--textarea"
+            name="contact[{{ 'templates.contact.form.comment' | t }}]"
+            rows="2"
+            placeholder="What do you need? (e.g., quote on 4 winter tires for a 2020 Civic)"
+            required
+          >{{- form.body -}}</textarea>
+          <span class="pt-contact__field-line" aria-hidden="true"></span>
+        </label>
+
+        <button type="submit" class="pt-contact__send">
+          <span>Send message</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+
+        <p class="pt-contact__message-foot">
+          Or email <a href="{{ email_href }}">{{ email }}</a> · we usually reply within the day.
+        </p>
+      {%- endform -%}
     </div>
   </div>
-
-  <!-- ── Service-booking CTA ───────────────────────────────── -->
-  {%- if section.settings.cta_enabled -%}
-    <a class="pt-contact__cta" href="{{ section.settings.cta_url }}">
-      <div class="pt-contact__cta-inner">
-        <span class="pt-contact__cta-eyebrow">{{ section.settings.cta_eyebrow }}</span>
-        <span class="pt-contact__cta-headline">
-          {{ section.settings.cta_headline }}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-        </span>
-      </div>
-    </a>
-  {%- endif -%}
 </section>
 
 {% stylesheet %}
   /* ═══════════════════════════════════════════════════════════
-     PT-CONTACT — Ferrari editorial chiaroscuro
-     Pure #000 hero · Ferrari Red #DA291C · sharp 1-2px rules
+     PT-CONTACT — "Live garage" — Ferrari + workshop
      ═══════════════════════════════════════════════════════════ */
   .pt-contact {
     --pt-red: #DA291C;
-    --pt-black: #000000;
+    --pt-red-dim: rgba(218, 41, 28, 0.18);
+    --pt-black: #050505;
     --pt-ink: #0a0a0a;
-    --pt-paper: #ffffff;
-    --pt-line: rgba(0, 0, 0, 0.12);
-    --pt-line-inv: rgba(255, 255, 255, 0.16);
+    --pt-paper: #f6f5f3;
+    --pt-line: rgba(255, 255, 255, 0.12);
+    --pt-line-dark: rgba(0, 0, 0, 0.10);
     --pt-mute: rgba(255, 255, 255, 0.55);
-    --pt-mute-on-paper: rgba(0, 0, 0, 0.55);
     font-family: 'Outfit', sans-serif;
-    color: var(--pt-ink);
+    color: #fff;
+    background: var(--pt-black);
+  }
+  .pt-contact * { box-sizing: border-box; }
+  .pt-contact a { color: inherit; }
+
+  /* ═════════ HERO ═════════ */
+  .pt-contact__hero {
+    position: relative;
+    min-height: 92vh;
+    min-height: 92dvh;
+    overflow: hidden;
+    background: var(--pt-black);
+    display: flex;
+    align-items: center;
+    padding: clamp(4rem, 10vh, 8rem) clamp(1.25rem, 5vw, 4rem);
+  }
+  .pt-contact__hero-photo {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.35;
+    filter: grayscale(100%) contrast(1.05) brightness(0.7);
+  }
+  .pt-contact__hero-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+  .pt-contact__hero-tread {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background-image:
+      repeating-linear-gradient(
+        -45deg,
+        transparent 0,
+        transparent 22px,
+        rgba(255, 255, 255, 0.025) 22px,
+        rgba(255, 255, 255, 0.025) 24px
+      );
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  .pt-contact__hero-vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: radial-gradient(ellipse at 50% 65%, transparent 0%, rgba(0,0,0,0.6) 80%);
+    pointer-events: none;
+  }
+  .pt-contact__hero-inner {
+    position: relative;
+    z-index: 3;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.4rem;
   }
 
-  .pt-contact * { box-sizing: border-box; }
+  /* Status pill */
+  .pt-contact__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: rgba(255, 255, 255, 0.92);
+  }
+  .pt-contact__status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #38f0a0;
+    box-shadow: 0 0 0 0 rgba(56, 240, 160, 0.7);
+    animation: pt-pulse 1.8s ease-out infinite;
+    flex-shrink: 0;
+  }
+  .pt-contact__status[data-status="closed"] .pt-contact__status-dot {
+    background: var(--pt-red);
+    box-shadow: 0 0 0 0 rgba(218, 41, 28, 0.5);
+  }
+  @keyframes pt-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(56, 240, 160, 0.55); }
+    70%  { box-shadow: 0 0 0 10px rgba(56, 240, 160, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(56, 240, 160, 0); }
+  }
 
-  /* ── Hero band ── */
-  .pt-contact__hero {
+  .pt-contact__hero-eyebrow {
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.32em;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  /* Phone — the hero */
+  .pt-contact__phone {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: clamp(0.5rem, 1.5vw, 1.2rem);
+    text-decoration: none;
+    color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: clamp(4.5rem, 17vw, 14rem);
+    line-height: 0.85;
+    letter-spacing: -0.02em;
+    margin: 0.4rem 0 0;
+    text-shadow: 0 4px 40px rgba(0, 0, 0, 0.5);
+    transition: color 200ms ease, transform 200ms ease;
+    will-change: transform;
+  }
+  .pt-contact__phone:hover {
+    color: var(--pt-red);
+    transform: translateY(-2px);
+  }
+  .pt-contact__phone-chunk { display: inline-block; }
+  .pt-contact__phone-sep {
+    color: var(--pt-red);
+    transform: translateY(-0.18em);
+    display: inline-block;
+    font-weight: 400;
+  }
+  .pt-contact__phone-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.65);
+    margin: 0;
+  }
+  .pt-contact__phone-hint svg {
+    color: var(--pt-red);
+  }
+
+  /* Quick row */
+  .pt-contact__quickrow {
+    display: flex;
+    gap: 0;
+    margin-top: 1.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 0;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .pt-contact__quick {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 1rem 1.6rem;
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    transition: background-color 160ms ease, color 160ms ease;
+    position: relative;
+  }
+  .pt-contact__quick + .pt-contact__quick {
+    border-left: 1px solid rgba(255, 255, 255, 0.14);
+  }
+  .pt-contact__quick:hover {
+    background: rgba(218, 41, 28, 0.16);
+    color: #fff;
+  }
+  .pt-contact__quick-icon {
+    color: var(--pt-red);
+    display: inline-flex;
+  }
+
+  /* Scroll hint */
+  .pt-contact__scrollhint {
+    position: absolute;
+    bottom: 1.6rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.45);
+    pointer-events: none;
+  }
+  .pt-contact__scrollhint-line {
+    width: 1px;
+    height: 36px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
+    animation: pt-scrollhint 2s ease-in-out infinite;
+    transform-origin: top center;
+  }
+  @keyframes pt-scrollhint {
+    0%, 100% { transform: scaleY(1); opacity: 0.45; }
+    50%      { transform: scaleY(1.4); opacity: 0.85; }
+  }
+
+  /* ═════════ VISIT ═════════ */
+  .pt-contact__visit {
+    background: var(--pt-paper);
+    color: var(--pt-ink);
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 880px) {
+    .pt-contact__visit {
+      grid-template-columns: 1.15fr 1fr;
+    }
+  }
+  .pt-contact__visit-map {
+    position: relative;
+    min-height: 360px;
+    aspect-ratio: 4 / 3;
+    background: #d5d3d0;
+  }
+  @media (min-width: 880px) {
+    .pt-contact__visit-map {
+      aspect-ratio: auto;
+      min-height: 100%;
+    }
+  }
+  .pt-contact__visit-map iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    filter: grayscale(20%) contrast(1.02);
+  }
+  .pt-contact__visit-map-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    color: rgba(0, 0, 0, 0.45);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 1rem;
+  }
+  .pt-contact__visit-meta {
+    padding: clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 4vw, 4rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    background: var(--pt-paper);
+    position: relative;
+  }
+  .pt-contact__visit-meta::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: clamp(1.5rem, 4vw, 4rem);
+    width: 36px;
+    height: 3px;
+    background: var(--pt-red);
+  }
+  .pt-contact__section-eyebrow {
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    color: rgba(0, 0, 0, 0.45);
+  }
+  .pt-contact__section-eyebrow--inverse {
+    color: rgba(255, 255, 255, 0.45);
+  }
+  .pt-contact__visit-heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    margin: 0.3rem 0 0;
+    color: var(--pt-ink);
+  }
+  .pt-contact__address {
+    font-style: normal;
+    font-size: 1.1rem;
+    line-height: 1.45;
+    color: rgba(0, 0, 0, 0.78);
+    margin: 0.4rem 0;
+    white-space: pre-line;
+  }
+  .pt-contact__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+    padding: 0.85rem 1.4rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    text-decoration: none;
+    border-radius: 0;
+    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 80ms ease;
+  }
+  .pt-contact__btn--ghost {
+    background: transparent;
+    color: var(--pt-ink);
+    border: 1px solid var(--pt-ink);
+  }
+  .pt-contact__btn--ghost:hover {
+    background: var(--pt-ink);
+    color: var(--pt-paper);
+  }
+  .pt-contact__btn:active { transform: translateY(1px); }
+
+  /* Hours grid */
+  .pt-contact__hours {
+    list-style: none;
+    margin: 1.2rem 0 0;
+    padding: 1.2rem 0 0;
+    border-top: 1px solid var(--pt-line-dark);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .pt-contact__hours-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.94rem;
+    color: rgba(0, 0, 0, 0.72);
+    padding: 0;
+  }
+  .pt-contact__hours-row[data-today="true"] {
+    color: var(--pt-ink);
+    font-weight: 600;
+    position: relative;
+  }
+  .pt-contact__hours-row[data-today="true"]::before {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--pt-red);
+  }
+  .pt-contact__hours-day {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.95rem;
+  }
+  .pt-contact__hours-time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ═════════ MESSAGE ═════════ */
+  .pt-contact__message {
     background: var(--pt-black);
     color: #fff;
-    padding: clamp(4rem, 9vw, 8rem) clamp(1.25rem, 5vw, 4rem);
+    padding: clamp(4rem, 9vw, 7rem) clamp(1.25rem, 5vw, 4rem);
     position: relative;
     overflow: hidden;
   }
-  .pt-contact__hero::before {
+  .pt-contact__message::before {
     content: "";
     position: absolute;
     inset: 0;
     background-image:
       repeating-linear-gradient(
         -45deg,
-        transparent,
-        transparent 18px,
-        rgba(255, 255, 255, 0.018) 18px,
-        rgba(255, 255, 255, 0.018) 19px
+        transparent 0,
+        transparent 22px,
+        rgba(255, 255, 255, 0.018) 22px,
+        rgba(255, 255, 255, 0.018) 24px
       );
     pointer-events: none;
   }
-  .pt-contact__hero-inner {
+  .pt-contact__message-inner {
     position: relative;
-    max-width: 1180px;
+    max-width: 720px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 1.4rem;
-    align-items: flex-start;
+    gap: 1rem;
   }
-  .pt-contact__eyebrow {
-    font-size: 0.85rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    color: var(--pt-mute);
-  }
-  .pt-contact__eyebrow--inverse { color: var(--pt-mute); }
-  .pt-contact__rule {
-    display: block;
-    width: 64px;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.28);
-  }
-  .pt-contact__rule--inverse { background: rgba(255, 255, 255, 0.28); }
-  .pt-contact__headline {
+  .pt-contact__message-heading {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(3rem, 8vw, 6.5rem);
+    font-size: clamp(2.4rem, 5.5vw, 4.5rem);
     font-weight: 800;
+    text-transform: uppercase;
     line-height: 0.95;
     letter-spacing: -0.01em;
-    margin: 0;
-    text-transform: uppercase;
-    color: #fff;
+    margin: 0.3rem 0 0;
   }
-  .pt-contact__subhead {
-    font-size: clamp(1rem, 1.4vw, 1.2rem);
-    line-height: 1.55;
-    color: rgba(255, 255, 255, 0.78);
-    max-width: 56ch;
-    margin: 0;
-  }
-
-  /* ── Contact info grid ── */
-  .pt-contact__info {
-    background: var(--pt-paper);
-    display: grid;
-    grid-template-columns: 1fr;
-    border-bottom: 1px solid var(--pt-line);
-  }
-  @media (min-width: 800px) {
-    .pt-contact__info { grid-template-columns: repeat(3, 1fr); }
-  }
-  .pt-contact__info-cell {
-    padding: clamp(1.75rem, 3vw, 2.75rem) clamp(1.5rem, 3vw, 2.5rem);
-    display: flex;
-    flex-direction: column;
-    gap: 0.55rem;
-    border-top: 1px solid var(--pt-line);
-    position: relative;
-  }
-  @media (min-width: 800px) {
-    .pt-contact__info-cell { border-top: none; }
-    .pt-contact__info-cell + .pt-contact__info-cell { border-left: 1px solid var(--pt-line); }
-  }
-  .pt-contact__info-cell::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: clamp(1.5rem, 3vw, 2.5rem);
-    width: 28px;
-    height: 2px;
-    background: var(--pt-red);
-  }
-  .pt-contact__info-label {
-    font-size: 0.78rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    color: var(--pt-mute-on-paper);
-  }
-  .pt-contact__info-value {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(1.65rem, 2.6vw, 2.15rem);
-    font-weight: 700;
-    color: var(--pt-ink);
-    text-decoration: none;
-    line-height: 1.05;
-    letter-spacing: -0.005em;
-  }
-  .pt-contact__info-value--phone { font-variant-numeric: tabular-nums; }
-  .pt-contact__info-value--address { font-size: clamp(1.05rem, 1.5vw, 1.25rem); font-weight: 600; line-height: 1.35; }
-  .pt-contact__info-value--email { font-size: clamp(1.05rem, 1.6vw, 1.25rem); font-weight: 600; word-break: break-all; }
-  .pt-contact__info-value--phone:hover,
-  .pt-contact__info-value--email:hover { color: var(--pt-red); }
-  .pt-contact__info-meta {
-    font-size: 0.95rem;
-    color: var(--pt-mute-on-paper);
-    line-height: 1.4;
-  }
-  .pt-contact__info-meta--link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--pt-ink);
-    font-weight: 600;
-    text-decoration: none;
-    text-transform: uppercase;
-    font-size: 0.78rem;
-    letter-spacing: 0.16em;
-    width: fit-content;
-  }
-  .pt-contact__info-meta--link:hover { color: var(--pt-red); }
-
-  /* ── Form band ── */
-  .pt-contact__form-band {
-    background: var(--pt-black);
-    color: #fff;
-    padding: clamp(3.5rem, 8vw, 7rem) clamp(1.25rem, 5vw, 4rem);
-  }
-  .pt-contact__form-grid {
-    max-width: 1180px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: clamp(2.5rem, 5vw, 4.5rem);
-  }
-  @media (min-width: 900px) {
-    .pt-contact__form-grid {
-      grid-template-columns: 0.85fr 1.15fr;
-      align-items: start;
-    }
-  }
-  .pt-contact__form-intro {
-    display: flex;
-    flex-direction: column;
-    gap: 1.1rem;
-    max-width: 36ch;
-  }
-  .pt-contact__form-heading {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(2.25rem, 4.5vw, 3.6rem);
-    font-weight: 800;
-    text-transform: uppercase;
-    line-height: 0.98;
-    letter-spacing: -0.005em;
-    margin: 0;
-    color: #fff;
-  }
-  .pt-contact__form-desc {
-    font-size: clamp(0.98rem, 1.2vw, 1.08rem);
+  .pt-contact__message-sub {
+    font-size: 1.05rem;
     line-height: 1.55;
     color: rgba(255, 255, 255, 0.72);
-    margin: 0;
+    margin: 0 0 0.8rem;
   }
 
-  /* Form */
+  /* Form: underline-style fields */
   .pt-contact__form {
     display: flex;
     flex-direction: column;
-    gap: 1.3rem;
+    gap: 1.5rem;
+    margin-top: 0.6rem;
   }
-  .pt-contact__field-row {
+  .pt-contact__form-row {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 1.3rem;
+    gap: 1.5rem;
   }
   @media (min-width: 600px) {
-    .pt-contact__field-row { grid-template-columns: 1fr 1fr; }
+    .pt-contact__form-row--two { grid-template-columns: 1fr 1fr; }
   }
   .pt-contact__field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  .pt-contact__field-label {
-    font-size: 0.78rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: rgba(255, 255, 255, 0.65);
+    position: relative;
+    display: block;
   }
   .pt-contact__input {
+    width: 100%;
     background: transparent;
-    border: 1px solid var(--pt-line-inv);
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
     color: #fff;
     font-family: inherit;
-    font-size: 1rem;
-    padding: 0.95rem 1rem;
+    font-size: 1.1rem;
+    padding: 0.9rem 0;
     border-radius: 0;
-    transition: border-color 120ms ease, background-color 120ms ease;
-    width: 100%;
+    transition: border-color 200ms ease;
   }
-  .pt-contact__input::placeholder { color: rgba(255, 255, 255, 0.35); }
+  .pt-contact__input::placeholder {
+    color: rgba(255, 255, 255, 0.42);
+    transition: color 200ms ease;
+  }
   .pt-contact__input:focus,
   .pt-contact__input:focus-visible {
     outline: none;
-    border-color: var(--pt-red);
-    background: rgba(218, 41, 28, 0.06);
+    border-bottom-color: rgba(255, 255, 255, 0.4);
+  }
+  .pt-contact__input:focus::placeholder { color: rgba(255, 255, 255, 0.6); }
+  .pt-contact__field-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--pt-red);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 320ms cubic-bezier(0.5, 0, 0.1, 1);
+    pointer-events: none;
+  }
+  .pt-contact__input:focus + .pt-contact__field-line,
+  .pt-contact__input:focus-visible + .pt-contact__field-line {
+    transform: scaleX(1);
   }
   .pt-contact__input--textarea {
     resize: vertical;
-    min-height: 140px;
-    font-family: inherit;
+    min-height: 84px;
     line-height: 1.5;
   }
 
-  .pt-contact__submit {
-    margin-top: 0.5rem;
+  .pt-contact__send {
     align-self: flex-start;
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
     background: var(--pt-red);
     color: #fff;
-    font-family: 'Outfit', sans-serif;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    font-size: 0.85rem;
-    padding: 1.05rem 2rem;
     border: 0;
     border-radius: 0;
+    padding: 1.2rem 2.2rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
     cursor: pointer;
-    transition: background-color 120ms ease, transform 80ms ease;
+    transition: background-color 160ms ease, transform 80ms ease;
+    margin-top: 0.4rem;
   }
-  .pt-contact__submit:hover { background: #b9221a; }
-  .pt-contact__submit:active { transform: translateY(1px); }
-  .pt-contact__submit:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  .pt-contact__send:hover { background: #b9221a; }
+  .pt-contact__send:active { transform: translateY(1px); }
+  .pt-contact__send:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  .pt-contact__send svg {
+    transition: transform 200ms ease;
+  }
+  .pt-contact__send:hover svg { transform: translateX(4px); }
 
-  /* Form status messages */
+  .pt-contact__message-foot {
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 1rem 0 0;
+  }
+  .pt-contact__message-foot a {
+    color: #fff;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+    transition: color 160ms ease;
+  }
+  .pt-contact__message-foot a:hover { color: var(--pt-red); }
+
+  /* Form status */
   .pt-contact__form-success,
   .pt-contact__form-error {
     display: flex;
@@ -428,7 +775,7 @@
   }
   .pt-contact__form-success {
     background: rgba(34, 197, 94, 0.12);
-    border: 1px solid rgba(34, 197, 94, 0.38);
+    border: 1px solid rgba(34, 197, 94, 0.4);
     color: #6ee7a3;
   }
   .pt-contact__form-error {
@@ -437,55 +784,146 @@
     color: #ff8a82;
   }
 
-  /* ── Bottom CTA strip ── */
-  .pt-contact__cta {
-    display: block;
-    background: var(--pt-black);
-    color: #fff;
-    text-decoration: none;
-    border-top: 2px solid var(--pt-red);
-    padding: clamp(2rem, 4vw, 3.25rem) clamp(1.25rem, 5vw, 4rem);
-    transition: background-color 120ms ease;
-  }
-  .pt-contact__cta:hover { background: #0a0a0a; }
-  .pt-contact__cta-inner {
-    max-width: 1180px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-  }
-  .pt-contact__cta-eyebrow {
-    font-size: 0.78rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    color: var(--pt-red);
-  }
-  .pt-contact__cta-headline {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: -0.005em;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.7rem;
-    color: #fff;
-  }
-  .pt-contact__cta-headline svg {
-    transition: transform 180ms ease;
-  }
-  .pt-contact__cta:hover .pt-contact__cta-headline svg {
-    transform: translateX(6px);
-    color: var(--pt-red);
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .pt-contact__status-dot,
+    .pt-contact__scrollhint-line,
+    .pt-contact__phone,
+    .pt-contact__send svg { animation: none !important; transition: none !important; }
   }
 {% endstylesheet %}
 
+{% javascript %}
+  (function () {
+    const root = document.querySelector("[data-pt-contact]");
+    if (!root) return;
+
+    const TZ = "America/Edmonton";
+    const DAY_LABELS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+    function readHourSetting(key, fallback) {
+      const v = root.dataset[key];
+      if (v === undefined || v === "" || v === "null") return fallback;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    const weekdayOpen  = readHourSetting("weekdayOpen", 8);
+    const weekdayClose = readHourSetting("weekdayClose", 17);
+    const satOpen      = readHourSetting("saturdayOpen", weekdayOpen);
+    const satClose     = readHourSetting("saturdayClose", weekdayClose);
+    const sunOpen      = readHourSetting("sundayOpen", -1);
+    const sunClose     = readHourSetting("sundayClose", -1);
+
+    const hoursFor = (dayIdx) => {
+      if (dayIdx === 0) return [sunOpen, sunClose];
+      if (dayIdx === 6) return [satOpen, satClose];
+      return [weekdayOpen, weekdayClose];
+    };
+
+    function fmtHour(h) {
+      if (h < 0) return null;
+      const period = h >= 12 ? "pm" : "am";
+      let display = h % 12;
+      if (display === 0) display = 12;
+      return `${display} ${period}`;
+    }
+
+    function nowInEdmonton() {
+      const fmt = new Intl.DateTimeFormat("en-US", {
+        timeZone: TZ,
+        weekday: "short",
+        hour: "numeric",
+        hour12: false,
+        minute: "numeric",
+      }).formatToParts(new Date());
+      const parts = Object.fromEntries(fmt.map((p) => [p.type, p.value]));
+      const wkMap = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+      const day = wkMap[parts.weekday] ?? 0;
+      const hour = Number(parts.hour) || 0;
+      const minute = Number(parts.minute) || 0;
+      return { day, hour, minute, decimal: hour + minute / 60 };
+    }
+
+    function renderHours() {
+      const list = root.querySelector("[data-pt-hours]");
+      if (!list) return;
+      const today = nowInEdmonton().day;
+      list.querySelectorAll(".pt-contact__hours-row").forEach((row) => {
+        const idx = Number(row.dataset.dayIndex);
+        const [open, close] = hoursFor(idx);
+        const cell = row.querySelector("[data-day-time]");
+        if (open < 0 || close < 0 || open === close) {
+          cell.textContent = "Closed";
+        } else {
+          cell.textContent = `${fmtHour(open)} – ${fmtHour(close)}`;
+        }
+        if (idx === today) row.dataset.today = "true";
+        else row.removeAttribute("data-today");
+      });
+    }
+
+    function renderStatus() {
+      const pill = root.querySelector("[data-pt-status]");
+      const text = root.querySelector("[data-pt-status-text]");
+      if (!pill || !text) return;
+      const now = nowInEdmonton();
+      const [open, close] = hoursFor(now.day);
+      const openToday = open >= 0 && close >= 0 && open !== close;
+      const dec = now.decimal;
+
+      if (openToday && dec >= open && dec < close) {
+        const left = close - dec;
+        if (left < 1) {
+          const mins = Math.max(1, Math.round(left * 60));
+          text.textContent = `Open · closes in ${mins} min`;
+        } else {
+          text.textContent = `Open · closes at ${fmtHour(close).replace(' ','').replace('am','am').replace('pm','pm')}`;
+        }
+        pill.dataset.status = "open";
+      } else {
+        // Find next opening (today after current time, then forward)
+        let next = null;
+        for (let i = 0; i < 7; i++) {
+          const d = (now.day + i) % 7;
+          const [o, c] = hoursFor(d);
+          if (o < 0 || c < 0 || o === c) continue;
+          if (i === 0 && dec < o) { next = { day: d, hour: o, sameDay: true }; break; }
+          if (i > 0) { next = { day: d, hour: o, sameDay: false }; break; }
+        }
+        if (next) {
+          if (next.sameDay) text.textContent = `Closed · opens at ${fmtHour(next.hour)}`;
+          else if (next.day === (now.day + 1) % 7) text.textContent = `Closed · opens tomorrow at ${fmtHour(next.hour)}`;
+          else text.textContent = `Closed · opens ${DAY_LABELS[next.day]} at ${fmtHour(next.hour)}`;
+        } else {
+          text.textContent = "Closed";
+        }
+        pill.dataset.status = "closed";
+      }
+    }
+
+    function smoothScrollAnchors() {
+      root.querySelectorAll('a[href^="#"]').forEach((a) => {
+        a.addEventListener("click", (e) => {
+          const id = a.getAttribute("href").slice(1);
+          const target = document.getElementById(id);
+          if (!target) return;
+          e.preventDefault();
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+    }
+
+    renderHours();
+    renderStatus();
+    smoothScrollAnchors();
+    setInterval(renderStatus, 60000);
+  })();
+{% endjavascript %}
+
 {% schema %}
 {
-  "name": "Contact — editorial",
+  "name": "Contact — live garage",
   "tag": "section",
   "class": "section section--pt-contact",
   "settings": [
@@ -494,116 +932,159 @@
       "content": "Hero"
     },
     {
+      "type": "image_picker",
+      "id": "hero_bg_image",
+      "label": "Hero background image (optional — shop photo, garage interior, etc.)"
+    },
+    {
       "type": "text",
       "id": "eyebrow",
-      "label": "Eyebrow text",
+      "label": "Eyebrow",
       "default": "Prince Tires · Calgary"
-    },
-    {
-      "type": "text",
-      "id": "headline",
-      "label": "Hero headline",
-      "default": "Talk to us."
-    },
-    {
-      "type": "textarea",
-      "id": "subhead",
-      "label": "Hero subhead",
-      "default": "Walk-ins welcome. Call ahead for fast service. Or send a note below — we reply within the day."
-    },
-    {
-      "type": "header",
-      "content": "Contact details"
     },
     {
       "type": "text",
       "id": "phone",
       "label": "Phone (display)",
-      "default": "403 452 4283"
+      "default": "403 452 4283",
+      "info": "Use spaces between groups (403 452 4283); they render as a styled phone with red separators."
     },
     {
       "type": "text",
-      "id": "hours",
-      "label": "Business hours",
-      "default": "Mon–Sat 8 am – 5 pm"
+      "id": "phone_label",
+      "label": "Phone hint label",
+      "default": "Tap to call"
     },
     {
       "type": "text",
-      "id": "address",
-      "label": "Address",
-      "default": "Calgary, AB"
-    },
-    {
-      "type": "url",
-      "id": "map_url",
-      "label": "Google Maps URL"
-    },
-    {
-      "type": "text",
-      "id": "email",
-      "label": "Contact email",
-      "default": "bookings@princetires.ca"
-    },
-    {
-      "type": "text",
-      "id": "email_response",
-      "label": "Email response time text",
-      "default": "Replies within the day"
+      "id": "business_status_default",
+      "label": "Default status text (shown before JS calculates)",
+      "default": "Open today"
     },
     {
       "type": "header",
-      "content": "Form band"
+      "content": "Hours (24-hour numbers, Edmonton time)"
+    },
+    {
+      "type": "range",
+      "id": "weekday_open",
+      "label": "Mon–Fri open",
+      "default": 8,
+      "min": 0,
+      "max": 23,
+      "step": 1,
+      "unit": "h"
+    },
+    {
+      "type": "range",
+      "id": "weekday_close",
+      "label": "Mon–Fri close",
+      "default": 17,
+      "min": 0,
+      "max": 23,
+      "step": 1,
+      "unit": "h"
+    },
+    {
+      "type": "range",
+      "id": "saturday_open",
+      "label": "Saturday open",
+      "default": 8,
+      "min": 0,
+      "max": 23,
+      "step": 1,
+      "unit": "h"
+    },
+    {
+      "type": "range",
+      "id": "saturday_close",
+      "label": "Saturday close",
+      "default": 17,
+      "min": 0,
+      "max": 23,
+      "step": 1,
+      "unit": "h"
+    },
+    {
+      "type": "range",
+      "id": "sunday_open",
+      "label": "Sunday open (set 0 for closed)",
+      "default": 0,
+      "min": 0,
+      "max": 23,
+      "step": 1,
+      "unit": "h"
+    },
+    {
+      "type": "range",
+      "id": "sunday_close",
+      "label": "Sunday close (leave equal to open if closed)",
+      "default": 0,
+      "min": 0,
+      "max": 23,
+      "step": 1,
+      "unit": "h"
+    },
+    {
+      "type": "header",
+      "content": "Visit / Map"
+    },
+    {
+      "type": "text",
+      "id": "visit_heading",
+      "label": "Visit heading",
+      "default": "Drop by the shop."
+    },
+    {
+      "type": "textarea",
+      "id": "address",
+      "label": "Address (one line per row)",
+      "default": "Calgary, AB"
+    },
+    {
+      "type": "text",
+      "id": "directions_url",
+      "label": "Google Maps directions URL",
+      "info": "Paste the share link from Google Maps."
+    },
+    {
+      "type": "text",
+      "id": "map_embed_url",
+      "label": "Google Maps embed URL",
+      "info": "Maps → Share → Embed a map → copy the src URL from the iframe."
+    },
+    {
+      "type": "header",
+      "content": "Message form"
     },
     {
       "type": "text",
       "id": "form_eyebrow",
       "label": "Form eyebrow",
-      "default": "Send a message"
+      "default": "Or send a quick note"
     },
     {
       "type": "text",
       "id": "form_heading",
       "label": "Form heading",
-      "default": "Tell us what you need."
+      "default": "What do you need?"
     },
     {
       "type": "textarea",
-      "id": "form_desc",
-      "label": "Form description",
-      "default": "Pricing question, booking change, fleet inquiry — drop us a line and we'll get back the same business day."
-    },
-    {
-      "type": "header",
-      "content": "Bottom CTA strip"
-    },
-    {
-      "type": "checkbox",
-      "id": "cta_enabled",
-      "label": "Show CTA strip",
-      "default": true
+      "id": "form_sub",
+      "label": "Form sub",
+      "default": "Quote, booking change, fleet inquiry — drop us a line and we'll reply within the day."
     },
     {
       "type": "text",
-      "id": "cta_eyebrow",
-      "label": "CTA eyebrow",
-      "default": "Need it sooner?"
-    },
-    {
-      "type": "text",
-      "id": "cta_headline",
-      "label": "CTA headline",
-      "default": "Book a service slot online"
-    },
-    {
-      "type": "text",
-      "id": "cta_url",
-      "label": "CTA URL (e.g. /pages/services)",
-      "default": "/pages/services"
+      "id": "email",
+      "label": "Reply-to email",
+      "default": "bookings@princetires.ca"
     }
   ],
   "presets": [
     {
-      "name": "Contact — editorial"
+      "name": "Contact — live garage"
     }
   ]
 }
