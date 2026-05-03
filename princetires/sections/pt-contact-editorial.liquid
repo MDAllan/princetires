@@ -1,0 +1,610 @@
+{%- liquid
+  assign phone = section.settings.phone
+  assign phone_href = phone | replace: ' ', '' | replace: '-', '' | prepend: 'tel:'
+  assign email = section.settings.email
+  assign email_href = email | prepend: 'mailto:'
+  assign address = section.settings.address
+  assign hours = section.settings.hours
+  assign map_url = section.settings.map_url
+-%}
+
+<section class="pt-contact" aria-labelledby="ContactHeadline">
+  <!-- ── Hero band ─────────────────────────────────────────── -->
+  <div class="pt-contact__hero">
+    <div class="pt-contact__hero-inner">
+      <span class="pt-contact__eyebrow">{{ section.settings.eyebrow }}</span>
+      <span class="pt-contact__rule" aria-hidden="true"></span>
+      <h1 class="pt-contact__headline" id="ContactHeadline">{{ section.settings.headline }}</h1>
+      <p class="pt-contact__subhead">{{ section.settings.subhead }}</p>
+    </div>
+  </div>
+
+  <!-- ── Contact details grid ──────────────────────────────── -->
+  <div class="pt-contact__info">
+    <div class="pt-contact__info-cell">
+      <span class="pt-contact__info-label">{{ 'sections.contact.phone_label' | t | default: 'Phone' }}</span>
+      <a class="pt-contact__info-value pt-contact__info-value--phone" href="{{ phone_href }}">{{ phone }}</a>
+      <span class="pt-contact__info-meta">{{ hours }}</span>
+    </div>
+
+    <div class="pt-contact__info-cell">
+      <span class="pt-contact__info-label">{{ 'sections.contact.address_label' | t | default: 'Visit' }}</span>
+      <span class="pt-contact__info-value pt-contact__info-value--address">{{ address }}</span>
+      {%- if map_url != blank -%}
+        <a class="pt-contact__info-meta pt-contact__info-meta--link" href="{{ map_url }}" target="_blank" rel="noopener">
+          {{ 'sections.contact.directions' | t | default: 'Get directions' }}
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>
+        </a>
+      {%- endif -%}
+    </div>
+
+    <div class="pt-contact__info-cell">
+      <span class="pt-contact__info-label">{{ 'sections.contact.email_label' | t | default: 'Email' }}</span>
+      <a class="pt-contact__info-value pt-contact__info-value--email" href="{{ email_href }}">{{ email }}</a>
+      <span class="pt-contact__info-meta">{{ section.settings.email_response }}</span>
+    </div>
+  </div>
+
+  <!-- ── Form band ─────────────────────────────────────────── -->
+  <div class="pt-contact__form-band">
+    <div class="pt-contact__form-grid">
+      <div class="pt-contact__form-intro">
+        <span class="pt-contact__eyebrow pt-contact__eyebrow--inverse">{{ section.settings.form_eyebrow }}</span>
+        <span class="pt-contact__rule pt-contact__rule--inverse" aria-hidden="true"></span>
+        <h2 class="pt-contact__form-heading">{{ section.settings.form_heading }}</h2>
+        <p class="pt-contact__form-desc">{{ section.settings.form_desc }}</p>
+      </div>
+
+      <div class="pt-contact__form-wrap">
+        {%- form 'contact', id: 'PTContactForm', class: 'pt-contact__form' -%}
+          {%- if form.posted_successfully? -%}
+            <div class="pt-contact__form-success" tabindex="-1" autofocus>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>{{ 'templates.contact.form.post_success' | t }}</span>
+            </div>
+          {%- elsif form.errors -%}
+            <div class="pt-contact__form-error" role="alert" tabindex="-1" autofocus>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>{{ 'templates.contact.form.error_heading' | t }}</span>
+            </div>
+          {%- endif -%}
+
+          <div class="pt-contact__field-row">
+            <label class="pt-contact__field">
+              <span class="pt-contact__field-label">{{ 'templates.contact.form.name' | t }}</span>
+              <input
+                class="pt-contact__input"
+                type="text"
+                name="contact[{{ 'templates.contact.form.name' | t }}]"
+                autocomplete="name"
+                value="{% if form.name %}{{ form.name }}{% elsif customer %}{{ customer.name }}{% endif %}"
+                required
+              >
+            </label>
+
+            <label class="pt-contact__field">
+              <span class="pt-contact__field-label">{{ 'templates.contact.form.email' | t }} <span aria-hidden="true">*</span></span>
+              <input
+                class="pt-contact__input"
+                type="email"
+                name="contact[email]"
+                autocomplete="email"
+                spellcheck="false"
+                autocapitalize="off"
+                value="{% if form.email %}{{ form.email }}{% elsif customer %}{{ customer.email }}{% endif %}"
+                aria-required="true"
+                required
+                {% if form.errors contains 'email' %}aria-invalid="true"{% endif %}
+              >
+            </label>
+          </div>
+
+          <label class="pt-contact__field">
+            <span class="pt-contact__field-label">{{ 'templates.contact.form.phone' | t }}</span>
+            <input
+              class="pt-contact__input"
+              type="tel"
+              name="contact[{{ 'templates.contact.form.phone' | t }}]"
+              autocomplete="tel"
+              pattern="[0-9\-\s\(\)\+]*"
+              value="{% if form.phone %}{{ form.phone }}{% elsif customer %}{{ customer.phone }}{% endif %}"
+            >
+          </label>
+
+          <label class="pt-contact__field">
+            <span class="pt-contact__field-label">{{ 'templates.contact.form.comment' | t }}</span>
+            <textarea
+              class="pt-contact__input pt-contact__input--textarea"
+              name="contact[{{ 'templates.contact.form.comment' | t }}]"
+              rows="6"
+              required
+            >{{- form.body -}}</textarea>
+          </label>
+
+          <button type="submit" class="pt-contact__submit">
+            <span>{{ 'templates.contact.form.send' | t }}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
+        {%- endform -%}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Service-booking CTA ───────────────────────────────── -->
+  {%- if section.settings.cta_enabled -%}
+    <a class="pt-contact__cta" href="{{ section.settings.cta_url }}">
+      <div class="pt-contact__cta-inner">
+        <span class="pt-contact__cta-eyebrow">{{ section.settings.cta_eyebrow }}</span>
+        <span class="pt-contact__cta-headline">
+          {{ section.settings.cta_headline }}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </span>
+      </div>
+    </a>
+  {%- endif -%}
+</section>
+
+{% stylesheet %}
+  /* ═══════════════════════════════════════════════════════════
+     PT-CONTACT — Ferrari editorial chiaroscuro
+     Pure #000 hero · Ferrari Red #DA291C · sharp 1-2px rules
+     ═══════════════════════════════════════════════════════════ */
+  .pt-contact {
+    --pt-red: #DA291C;
+    --pt-black: #000000;
+    --pt-ink: #0a0a0a;
+    --pt-paper: #ffffff;
+    --pt-line: rgba(0, 0, 0, 0.12);
+    --pt-line-inv: rgba(255, 255, 255, 0.16);
+    --pt-mute: rgba(255, 255, 255, 0.55);
+    --pt-mute-on-paper: rgba(0, 0, 0, 0.55);
+    font-family: 'Outfit', sans-serif;
+    color: var(--pt-ink);
+  }
+
+  .pt-contact * { box-sizing: border-box; }
+
+  /* ── Hero band ── */
+  .pt-contact__hero {
+    background: var(--pt-black);
+    color: #fff;
+    padding: clamp(4rem, 9vw, 8rem) clamp(1.25rem, 5vw, 4rem);
+    position: relative;
+    overflow: hidden;
+  }
+  .pt-contact__hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 18px,
+        rgba(255, 255, 255, 0.018) 18px,
+        rgba(255, 255, 255, 0.018) 19px
+      );
+    pointer-events: none;
+  }
+  .pt-contact__hero-inner {
+    position: relative;
+    max-width: 1180px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    align-items: flex-start;
+  }
+  .pt-contact__eyebrow {
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--pt-mute);
+  }
+  .pt-contact__eyebrow--inverse { color: var(--pt-mute); }
+  .pt-contact__rule {
+    display: block;
+    width: 64px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.28);
+  }
+  .pt-contact__rule--inverse { background: rgba(255, 255, 255, 0.28); }
+  .pt-contact__headline {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(3rem, 8vw, 6.5rem);
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .pt-contact__subhead {
+    font-size: clamp(1rem, 1.4vw, 1.2rem);
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.78);
+    max-width: 56ch;
+    margin: 0;
+  }
+
+  /* ── Contact info grid ── */
+  .pt-contact__info {
+    background: var(--pt-paper);
+    display: grid;
+    grid-template-columns: 1fr;
+    border-bottom: 1px solid var(--pt-line);
+  }
+  @media (min-width: 800px) {
+    .pt-contact__info { grid-template-columns: repeat(3, 1fr); }
+  }
+  .pt-contact__info-cell {
+    padding: clamp(1.75rem, 3vw, 2.75rem) clamp(1.5rem, 3vw, 2.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    border-top: 1px solid var(--pt-line);
+    position: relative;
+  }
+  @media (min-width: 800px) {
+    .pt-contact__info-cell { border-top: none; }
+    .pt-contact__info-cell + .pt-contact__info-cell { border-left: 1px solid var(--pt-line); }
+  }
+  .pt-contact__info-cell::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: clamp(1.5rem, 3vw, 2.5rem);
+    width: 28px;
+    height: 2px;
+    background: var(--pt-red);
+  }
+  .pt-contact__info-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--pt-mute-on-paper);
+  }
+  .pt-contact__info-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(1.65rem, 2.6vw, 2.15rem);
+    font-weight: 700;
+    color: var(--pt-ink);
+    text-decoration: none;
+    line-height: 1.05;
+    letter-spacing: -0.005em;
+  }
+  .pt-contact__info-value--phone { font-variant-numeric: tabular-nums; }
+  .pt-contact__info-value--address { font-size: clamp(1.05rem, 1.5vw, 1.25rem); font-weight: 600; line-height: 1.35; }
+  .pt-contact__info-value--email { font-size: clamp(1.05rem, 1.6vw, 1.25rem); font-weight: 600; word-break: break-all; }
+  .pt-contact__info-value--phone:hover,
+  .pt-contact__info-value--email:hover { color: var(--pt-red); }
+  .pt-contact__info-meta {
+    font-size: 0.95rem;
+    color: var(--pt-mute-on-paper);
+    line-height: 1.4;
+  }
+  .pt-contact__info-meta--link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--pt-ink);
+    font-weight: 600;
+    text-decoration: none;
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    width: fit-content;
+  }
+  .pt-contact__info-meta--link:hover { color: var(--pt-red); }
+
+  /* ── Form band ── */
+  .pt-contact__form-band {
+    background: var(--pt-black);
+    color: #fff;
+    padding: clamp(3.5rem, 8vw, 7rem) clamp(1.25rem, 5vw, 4rem);
+  }
+  .pt-contact__form-grid {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(2.5rem, 5vw, 4.5rem);
+  }
+  @media (min-width: 900px) {
+    .pt-contact__form-grid {
+      grid-template-columns: 0.85fr 1.15fr;
+      align-items: start;
+    }
+  }
+  .pt-contact__form-intro {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    max-width: 36ch;
+  }
+  .pt-contact__form-heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(2.25rem, 4.5vw, 3.6rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 0.98;
+    letter-spacing: -0.005em;
+    margin: 0;
+    color: #fff;
+  }
+  .pt-contact__form-desc {
+    font-size: clamp(0.98rem, 1.2vw, 1.08rem);
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.72);
+    margin: 0;
+  }
+
+  /* Form */
+  .pt-contact__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.3rem;
+  }
+  .pt-contact__field-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.3rem;
+  }
+  @media (min-width: 600px) {
+    .pt-contact__field-row { grid-template-columns: 1fr 1fr; }
+  }
+  .pt-contact__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .pt-contact__field-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgba(255, 255, 255, 0.65);
+  }
+  .pt-contact__input {
+    background: transparent;
+    border: 1px solid var(--pt-line-inv);
+    color: #fff;
+    font-family: inherit;
+    font-size: 1rem;
+    padding: 0.95rem 1rem;
+    border-radius: 0;
+    transition: border-color 120ms ease, background-color 120ms ease;
+    width: 100%;
+  }
+  .pt-contact__input::placeholder { color: rgba(255, 255, 255, 0.35); }
+  .pt-contact__input:focus,
+  .pt-contact__input:focus-visible {
+    outline: none;
+    border-color: var(--pt-red);
+    background: rgba(218, 41, 28, 0.06);
+  }
+  .pt-contact__input--textarea {
+    resize: vertical;
+    min-height: 140px;
+    font-family: inherit;
+    line-height: 1.5;
+  }
+
+  .pt-contact__submit {
+    margin-top: 0.5rem;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--pt-red);
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.85rem;
+    padding: 1.05rem 2rem;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+    transition: background-color 120ms ease, transform 80ms ease;
+  }
+  .pt-contact__submit:hover { background: #b9221a; }
+  .pt-contact__submit:active { transform: translateY(1px); }
+  .pt-contact__submit:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+  /* Form status messages */
+  .pt-contact__form-success,
+  .pt-contact__form-error {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.15rem;
+    border-radius: 0;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .pt-contact__form-success {
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.38);
+    color: #6ee7a3;
+  }
+  .pt-contact__form-error {
+    background: rgba(218, 41, 28, 0.12);
+    border: 1px solid var(--pt-red);
+    color: #ff8a82;
+  }
+
+  /* ── Bottom CTA strip ── */
+  .pt-contact__cta {
+    display: block;
+    background: var(--pt-black);
+    color: #fff;
+    text-decoration: none;
+    border-top: 2px solid var(--pt-red);
+    padding: clamp(2rem, 4vw, 3.25rem) clamp(1.25rem, 5vw, 4rem);
+    transition: background-color 120ms ease;
+  }
+  .pt-contact__cta:hover { background: #0a0a0a; }
+  .pt-contact__cta-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .pt-contact__cta-eyebrow {
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--pt-red);
+  }
+  .pt-contact__cta-headline {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.005em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: #fff;
+  }
+  .pt-contact__cta-headline svg {
+    transition: transform 180ms ease;
+  }
+  .pt-contact__cta:hover .pt-contact__cta-headline svg {
+    transform: translateX(6px);
+    color: var(--pt-red);
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Contact — editorial",
+  "tag": "section",
+  "class": "section section--pt-contact",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Hero"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow text",
+      "default": "Prince Tires · Calgary"
+    },
+    {
+      "type": "text",
+      "id": "headline",
+      "label": "Hero headline",
+      "default": "Talk to us."
+    },
+    {
+      "type": "textarea",
+      "id": "subhead",
+      "label": "Hero subhead",
+      "default": "Walk-ins welcome. Call ahead for fast service. Or send a note below — we reply within the day."
+    },
+    {
+      "type": "header",
+      "content": "Contact details"
+    },
+    {
+      "type": "text",
+      "id": "phone",
+      "label": "Phone (display)",
+      "default": "403 452 4283"
+    },
+    {
+      "type": "text",
+      "id": "hours",
+      "label": "Business hours",
+      "default": "Mon–Sat 8 am – 5 pm"
+    },
+    {
+      "type": "text",
+      "id": "address",
+      "label": "Address",
+      "default": "Calgary, AB"
+    },
+    {
+      "type": "url",
+      "id": "map_url",
+      "label": "Google Maps URL"
+    },
+    {
+      "type": "text",
+      "id": "email",
+      "label": "Contact email",
+      "default": "bookings@princetires.ca"
+    },
+    {
+      "type": "text",
+      "id": "email_response",
+      "label": "Email response time text",
+      "default": "Replies within the day"
+    },
+    {
+      "type": "header",
+      "content": "Form band"
+    },
+    {
+      "type": "text",
+      "id": "form_eyebrow",
+      "label": "Form eyebrow",
+      "default": "Send a message"
+    },
+    {
+      "type": "text",
+      "id": "form_heading",
+      "label": "Form heading",
+      "default": "Tell us what you need."
+    },
+    {
+      "type": "textarea",
+      "id": "form_desc",
+      "label": "Form description",
+      "default": "Pricing question, booking change, fleet inquiry — drop us a line and we'll get back the same business day."
+    },
+    {
+      "type": "header",
+      "content": "Bottom CTA strip"
+    },
+    {
+      "type": "checkbox",
+      "id": "cta_enabled",
+      "label": "Show CTA strip",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "cta_eyebrow",
+      "label": "CTA eyebrow",
+      "default": "Need it sooner?"
+    },
+    {
+      "type": "text",
+      "id": "cta_headline",
+      "label": "CTA headline",
+      "default": "Book a service slot online"
+    },
+    {
+      "type": "url",
+      "id": "cta_url",
+      "label": "CTA URL",
+      "default": "/pages/services"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Contact — editorial"
+    }
+  ]
+}
+{% endschema %}
