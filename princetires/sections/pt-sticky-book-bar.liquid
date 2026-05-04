@@ -100,26 +100,66 @@
     return;
   }
 
-  // Fetch next available slot and display it
+  // Fetch next available slot today and display it
+  // API returns { booked: ["10:30 AM", ...], allDayBlocked: bool }
   var today = new Date().toISOString().slice(0, 10);
   fetch('https://app.princetires.ca/api/availability?date=' + today)
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (data) {
       if (!data || !slotEl) return;
-      var slots = data.slots || data.available || [];
-      // Find first available slot today or show "Available this week"
-      var first = slots.find(function (s) { return s.available !== false; });
-      if (first) {
-        slotEl.textContent = 'Next: ' + (first.label || first.time || first);
+
+      var booked = Array.isArray(data.booked) ? data.booked : [];
+      var allDayBlocked = data.allDayBlocked === true;
+      var next = computeNextSlot(booked, allDayBlocked);
+
+      if (next) {
+        slotEl.textContent = 'Next slot today: ' + next;
         slotEl.classList.add('has-slot');
       } else {
-        slotEl.textContent = 'Spots available this week';
+        // No slot fits today (closed, all booked, or past lead-time cutoff)
+        slotEl.textContent = 'Walk-ins welcome · spots open this week';
         slotEl.classList.add('has-slot');
       }
     })
     .catch(function () {
       // Silently fail — bar still shows without availability text
     });
+
+  // Returns the label of the first bookable slot today, or null if none.
+  // Mirrors booking rules: 8 am–5 pm, 30-min slots, lunch 12:00+12:30 closed,
+  // Sunday closed, 6-hour lead time enforced.
+  function computeNextSlot(bookedTimes, allDayBlocked) {
+    if (allDayBlocked) return null;
+
+    var now = new Date();
+    if (now.getDay() === 0) return null; // closed Sunday
+
+    var LEAD_MIN = 6 * 60;
+    var earliestMin = now.getHours() * 60 + now.getMinutes() + LEAD_MIN;
+
+    var bookedSet = {};
+    for (var i = 0; i < bookedTimes.length; i++) bookedSet[bookedTimes[i]] = true;
+
+    for (var h = 8; h < 17; h++) {
+      if (h === 12) continue; // lunch
+      for (var mi = 0; mi < 2; mi++) {
+        var m = mi === 0 ? 0 : 30;
+        var slotMin = h * 60 + m;
+        if (slotMin < earliestMin) continue;
+        var label = formatSlotLabel(h, m);
+        if (bookedSet[label]) continue;
+        return label;
+      }
+    }
+    return null;
+  }
+
+  function formatSlotLabel(h, m) {
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    var disp = h % 12;
+    if (disp === 0) disp = 12;
+    return disp + ':' + (m === 0 ? '00' : '30') + ' ' + ampm;
+  }
 })();
 {% endjavascript %}
 
