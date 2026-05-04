@@ -2,394 +2,546 @@
   assign phone = section.settings.phone
   assign phone_digits = phone | replace: ' ', '' | replace: '-', '' | replace: '.', '' | replace: '(', '' | replace: ')', ''
   assign phone_href = phone_digits | prepend: 'tel:'
+  assign phone_alt = section.settings.phone_alt
   assign email = section.settings.email
+  assign email_alt = section.settings.email_alt
   assign email_href = email | prepend: 'mailto:'
-
-  assign service_options = section.settings.service_options | split: '|'
 -%}
 
 <section class="pt-contact" data-pt-contact>
-  <!-- ── Background ── -->
-  <div class="pt-contact__bg" aria-hidden="true">
-    {%- if section.settings.bg_image != blank -%}
-      <div class="pt-contact__bg-image">
-        {{ section.settings.bg_image | image_url: width: 2400 | image_tag: loading: 'eager', widths: '900,1400,2000,2400' }}
+  <!-- ════════════════════════════════════════════════════════════
+       HERO — full-bleed photo with dark overlay + centered title
+       ════════════════════════════════════════════════════════════ -->
+  <div class="pt-contact__hero">
+    {%- if section.settings.hero_image != blank -%}
+      <div class="pt-contact__hero-bg" aria-hidden="true">
+        {{ section.settings.hero_image | image_url: width: 2400 | image_tag: loading: 'eager', widths: '900,1400,2000,2400' }}
       </div>
     {%- else -%}
-      <div class="pt-contact__bg-fallback"></div>
+      <div class="pt-contact__hero-bg pt-contact__hero-bg--fallback" aria-hidden="true"></div>
     {%- endif -%}
-    <div class="pt-contact__bg-tread"></div>
-    <div class="pt-contact__bg-vignette"></div>
+    <div class="pt-contact__hero-overlay" aria-hidden="true"></div>
+    <div class="pt-contact__hero-tread" aria-hidden="true"></div>
 
-    <!-- Animated particles -->
-    <div class="pt-contact__particles">
-      {%- for i in (1..18) -%}
-        {%- assign seed_x  = i  | times: 23 | modulo: 100 -%}
-        {%- assign seed_d  = i  | times: 1.7 -%}
-        {%- assign seed_dur = i | modulo: 8  | plus: 12 -%}
-        {%- assign seed_sz  = i | modulo: 6  | plus: 5  -%}
-        <span class="pt-contact__particle" style="--x:{{ seed_x }};--d:{{ seed_d }}s;--dur:{{ seed_dur }}s;--sz:{{ seed_sz }}px;"></span>
-      {%- endfor -%}
-    </div>
-  </div>
-
-  <!-- ── Layout grid ── -->
-  <div class="pt-contact__grid">
-    <!-- Left: editorial title -->
-    <div class="pt-contact__title-col">
+    <div class="pt-contact__hero-inner">
       <span class="pt-contact__eyebrow">{{ section.settings.eyebrow }}</span>
-      <h1 class="pt-contact__title">{{ section.settings.title }}</h1>
-      {%- if section.settings.title_sub != blank -%}
-        <p class="pt-contact__title-sub">{{ section.settings.title_sub }}</p>
+      <h1 class="pt-contact__hero-title">{{ section.settings.hero_title }}</h1>
+      {%- if section.settings.hero_subhead != blank -%}
+        <p class="pt-contact__hero-subhead">{{ section.settings.hero_subhead }}</p>
       {%- endif -%}
     </div>
+  </div>
 
-    <!-- Right: glass form card -->
+  <!-- ════════════════════════════════════════════════════════════
+       CARD — dark-glass card overlapping hero, info + form
+       ════════════════════════════════════════════════════════════ -->
+  <div class="pt-contact__deck">
     <div class="pt-contact__card">
-      <h2 class="pt-contact__card-h2">{{ section.settings.card_heading }}</h2>
+      <span class="pt-contact__card-accent" aria-hidden="true"></span>
 
-      <!-- Direct contact row -->
-      <div class="pt-contact__contact-row">
-        <span class="pt-contact__contact-label">Call us at</span>
-        <a class="pt-contact__phone" href="{{ phone_href }}" aria-label="Call Prince Tires at {{ phone }}">
-          {{ phone }}
-        </a>
+      <div class="pt-contact__card-grid">
+        <!-- ── LEFT: contact info ── -->
+        <aside class="pt-contact__info">
+          <span class="pt-contact__section-eyebrow">{{ section.settings.info_eyebrow }}</span>
+          <h2 class="pt-contact__info-heading">{{ section.settings.info_heading }}</h2>
+          {%- if section.settings.info_lead != blank -%}
+            <p class="pt-contact__info-lead">{{ section.settings.info_lead }}</p>
+          {%- endif -%}
 
-        <div class="pt-contact__socials">
-          <span class="pt-contact__or">OR</span>
-          {%- if section.settings.facebook_url != blank -%}
-            <a class="pt-contact__social" href="{{ section.settings.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            </a>
-          {%- endif -%}
-          {%- if section.settings.instagram_url != blank -%}
-            <a class="pt-contact__social" href="{{ section.settings.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
-            </a>
-          {%- endif -%}
-          {%- if section.settings.google_url != blank -%}
-            <a class="pt-contact__social" href="{{ section.settings.google_url }}" target="_blank" rel="noopener" aria-label="Google reviews">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>
-            </a>
-          {%- endif -%}
+          <ul class="pt-contact__info-list">
+            <li class="pt-contact__info-item">
+              <span class="pt-contact__info-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </span>
+              <div class="pt-contact__info-body">
+                <span class="pt-contact__info-label">Visit the shop</span>
+                <address class="pt-contact__info-text">{{ section.settings.address }}</address>
+                {%- if section.settings.directions_url != blank -%}
+                  <a class="pt-contact__info-link" href="{{ section.settings.directions_url }}" target="_blank" rel="noopener">
+                    Get directions
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M7 7h10v10"/></svg>
+                  </a>
+                {%- endif -%}
+              </div>
+            </li>
+
+            <li class="pt-contact__info-item">
+              <span class="pt-contact__info-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              </span>
+              <div class="pt-contact__info-body">
+                <span class="pt-contact__info-label">Email us</span>
+                <a class="pt-contact__info-text pt-contact__info-text--link" href="{{ email_href }}">{{ email }}</a>
+                {%- if email_alt != blank -%}
+                  <a class="pt-contact__info-text pt-contact__info-text--link" href="mailto:{{ email_alt }}">{{ email_alt }}</a>
+                {%- endif -%}
+              </div>
+            </li>
+
+            <li class="pt-contact__info-item">
+              <span class="pt-contact__info-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              </span>
+              <div class="pt-contact__info-body">
+                <span class="pt-contact__info-label">Call us</span>
+                <a class="pt-contact__info-text pt-contact__info-text--link pt-contact__phone-display" href="{{ phone_href }}">{{ phone }}</a>
+                {%- if phone_alt != blank -%}
+                  <span class="pt-contact__info-text pt-contact__info-text--muted">{{ phone_alt }}</span>
+                {%- endif -%}
+              </div>
+            </li>
+          </ul>
+
+          <!-- Social row -->
+          <div class="pt-contact__social-row">
+            <span class="pt-contact__social-label">Follow us</span>
+            <div class="pt-contact__socials">
+              {%- if section.settings.facebook_url != blank -%}
+                <a class="pt-contact__social" href="{{ section.settings.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                </a>
+              {%- endif -%}
+              {%- if section.settings.instagram_url != blank -%}
+                <a class="pt-contact__social" href="{{ section.settings.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+                </a>
+              {%- endif -%}
+              {%- if section.settings.google_url != blank -%}
+                <a class="pt-contact__social" href="{{ section.settings.google_url }}" target="_blank" rel="noopener" aria-label="Google reviews">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>
+                </a>
+              {%- endif -%}
+              {%- if section.settings.youtube_url != blank -%}
+                <a class="pt-contact__social" href="{{ section.settings.youtube_url }}" target="_blank" rel="noopener" aria-label="YouTube">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                </a>
+              {%- endif -%}
+            </div>
+          </div>
+        </aside>
+
+        <!-- ── RIGHT: form ── -->
+        <div class="pt-contact__form-wrap">
+          <span class="pt-contact__section-eyebrow">{{ section.settings.form_eyebrow }}</span>
+          <h2 class="pt-contact__form-heading">{{ section.settings.form_heading }}</h2>
+
+          {%- form 'contact', id: 'PTContactForm', class: 'pt-contact__form' -%}
+            {%- if form.posted_successfully? -%}
+              <div class="pt-contact__form-success" tabindex="-1" autofocus>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                <span>{{ 'templates.contact.form.post_success' | t }}</span>
+              </div>
+            {%- elsif form.errors -%}
+              <div class="pt-contact__form-error" role="alert" tabindex="-1" autofocus>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>{{ 'templates.contact.form.error_heading' | t }}</span>
+              </div>
+            {%- endif -%}
+
+            <div class="pt-contact__field-row">
+              <label class="pt-contact__field">
+                <span class="pt-contact__field-label">Name</span>
+                <input
+                  class="pt-contact__input"
+                  type="text"
+                  name="contact[{{ 'templates.contact.form.name' | t }}]"
+                  autocomplete="name"
+                  placeholder="Your name"
+                  value="{% if form.name %}{{ form.name }}{% elsif customer %}{{ customer.name }}{% endif %}"
+                  required
+                >
+              </label>
+              <label class="pt-contact__field">
+                <span class="pt-contact__field-label">Company <span class="pt-contact__field-optional">(optional)</span></span>
+                <input
+                  class="pt-contact__input"
+                  type="text"
+                  name="contact[Company]"
+                  placeholder="Fleet, body shop, etc."
+                  value="{% if form.posted_successfully? %}{% else %}{% endif %}"
+                >
+              </label>
+            </div>
+
+            <div class="pt-contact__field-row">
+              <label class="pt-contact__field">
+                <span class="pt-contact__field-label">Phone</span>
+                <input
+                  class="pt-contact__input"
+                  type="tel"
+                  name="contact[{{ 'templates.contact.form.phone' | t }}]"
+                  autocomplete="tel"
+                  placeholder="(403) 555-0000"
+                  value="{% if form.phone %}{{ form.phone }}{% elsif customer %}{{ customer.phone }}{% endif %}"
+                >
+              </label>
+              <label class="pt-contact__field">
+                <span class="pt-contact__field-label">Email</span>
+                <input
+                  class="pt-contact__input"
+                  type="email"
+                  name="contact[email]"
+                  autocomplete="email"
+                  spellcheck="false"
+                  autocapitalize="off"
+                  placeholder="you@email.com"
+                  value="{% if form.email %}{{ form.email }}{% elsif customer %}{{ customer.email }}{% endif %}"
+                  aria-required="true"
+                  required
+                >
+              </label>
+            </div>
+
+            <label class="pt-contact__field">
+              <span class="pt-contact__field-label">Subject</span>
+              <input
+                class="pt-contact__input"
+                type="text"
+                name="contact[Subject]"
+                placeholder="What can we help you with?"
+              >
+            </label>
+
+            <label class="pt-contact__field">
+              <span class="pt-contact__field-label">Message</span>
+              <textarea
+                class="pt-contact__input pt-contact__input--textarea"
+                name="contact[{{ 'templates.contact.form.comment' | t }}]"
+                rows="4"
+                placeholder="A few details about what you need (vehicle, tire size, timing)..."
+                required
+              >{{- form.body -}}</textarea>
+            </label>
+
+            <button type="submit" class="pt-contact__send">
+              <span>Send message</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </button>
+          {%- endform -%}
         </div>
       </div>
-
-      <hr class="pt-contact__rule">
-
-      <!-- Form -->
-      {%- form 'contact', id: 'PTContactForm', class: 'pt-contact__form' -%}
-        <p class="pt-contact__form-lead">{{ section.settings.form_lead }}</p>
-
-        {%- if form.posted_successfully? -%}
-          <div class="pt-contact__form-success" tabindex="-1" autofocus>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-            <span>{{ 'templates.contact.form.post_success' | t }}</span>
-          </div>
-        {%- elsif form.errors -%}
-          <div class="pt-contact__form-error" role="alert" tabindex="-1" autofocus>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span>{{ 'templates.contact.form.error_heading' | t }}</span>
-          </div>
-        {%- endif -%}
-
-        <div class="pt-contact__field-row">
-          <label class="pt-contact__field">
-            <span class="pt-contact__field-label">{{ 'templates.contact.form.name' | t }}</span>
-            <input
-              class="pt-contact__input"
-              type="text"
-              name="contact[{{ 'templates.contact.form.name' | t }}]"
-              autocomplete="name"
-              placeholder="Your name"
-              value="{% if form.name %}{{ form.name }}{% elsif customer %}{{ customer.name }}{% endif %}"
-              required
-            >
-          </label>
-          <label class="pt-contact__field">
-            <span class="pt-contact__field-label">{{ 'templates.contact.form.email' | t }}</span>
-            <input
-              class="pt-contact__input"
-              type="email"
-              name="contact[email]"
-              autocomplete="email"
-              spellcheck="false"
-              autocapitalize="off"
-              placeholder="you@email.com"
-              value="{% if form.email %}{{ form.email }}{% elsif customer %}{{ customer.email }}{% endif %}"
-              aria-required="true"
-              required
-            >
-          </label>
-        </div>
-
-        <label class="pt-contact__field">
-          <span class="pt-contact__field-label">{{ section.settings.message_label }}</span>
-          <textarea
-            class="pt-contact__input pt-contact__input--textarea"
-            name="contact[{{ 'templates.contact.form.comment' | t }}]"
-            rows="3"
-            placeholder="{{ section.settings.message_placeholder }}"
-            required
-          >{{- form.body -}}</textarea>
-        </label>
-
-        <!-- Service checkboxes -->
-        <div class="pt-contact__services">
-          <p class="pt-contact__services-label">{{ section.settings.services_label }}</p>
-          <div class="pt-contact__checks">
-            {%- for opt in service_options -%}
-              {%- assign opt_trim = opt | strip -%}
-              {%- assign opt_id = opt_trim | handleize -%}
-              {%- if opt_trim != blank -%}
-                <label class="pt-contact__check" for="pt-svc-{{ opt_id }}">
-                  <input
-                    type="checkbox"
-                    id="pt-svc-{{ opt_id }}"
-                    class="pt-contact__check-input"
-                    data-pt-service
-                    value="{{ opt_trim | escape }}"
-                  >
-                  <span class="pt-contact__check-box" aria-hidden="true">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                  </span>
-                  <span class="pt-contact__check-label">{{ opt_trim }}</span>
-                </label>
-              {%- endif -%}
-            {%- endfor -%}
-          </div>
-          <input type="hidden" name="contact[Looking for]" data-pt-services-aggregate value="">
-        </div>
-
-        <button type="submit" class="pt-contact__send">
-          <span>Send a message</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-        </button>
-
-        <p class="pt-contact__form-foot">
-          Or email <a href="{{ email_href }}">{{ email }}</a>
-        </p>
-      {%- endform -%}
     </div>
   </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       MAP — full-width Google Maps embed
+       ════════════════════════════════════════════════════════════ -->
+  {%- if section.settings.map_embed_url != blank -%}
+    <div class="pt-contact__map">
+      <iframe
+        src="{{ section.settings.map_embed_url }}"
+        width="100%"
+        height="100%"
+        style="border:0"
+        allowfullscreen=""
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Prince Tires location map"
+      ></iframe>
+    </div>
+  {%- endif -%}
 </section>
 
 {% stylesheet %}
   /* ═══════════════════════════════════════════════════════════
-     PT-CONTACT — split-screen w/ glass card · Ferrari editorial
+     PT-CONTACT — overlapping card · matches home aesthetic
+     Dark · Ferrari Red #DA291C · Orange accent #F5820B · glass
      ═══════════════════════════════════════════════════════════ */
   .pt-contact {
     --pt-red: #DA291C;
-    --pt-red-soft: rgba(218, 41, 28, 0.65);
+    --pt-red-2: #DC2626;
+    --pt-orange: #F5820B;
     --pt-black: #050505;
-    --pt-glass: rgba(20, 20, 20, 0.55);
-    --pt-glass-border: rgba(255, 255, 255, 0.10);
-    --pt-line: rgba(255, 255, 255, 0.14);
+    --pt-card: rgba(15, 15, 15, 0.92);
+    --pt-card-border: rgba(255, 255, 255, 0.08);
+    --pt-line: rgba(255, 255, 255, 0.10);
+    --pt-mute: rgba(255, 255, 255, 0.6);
     font-family: 'Outfit', sans-serif;
     color: #fff;
-    position: relative;
-    overflow: hidden;
     background: var(--pt-black);
-    min-height: 100vh;
-    min-height: 100dvh;
     isolation: isolate;
   }
   .pt-contact * { box-sizing: border-box; }
   .pt-contact a { color: inherit; }
 
-  /* ── Background layers ── */
-  .pt-contact__bg { position: absolute; inset: 0; z-index: 0; }
-  .pt-contact__bg-image, .pt-contact__bg-fallback { position: absolute; inset: 0; }
-  .pt-contact__bg-image img {
-    width: 100%; height: 100%; object-fit: cover; object-position: center;
-    filter: grayscale(100%) contrast(1.05) brightness(0.45);
+  /* ═════════ HERO ═════════ */
+  .pt-contact__hero {
+    position: relative;
+    min-height: 56vh;
+    min-height: 56dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(5rem, 10vh, 10rem) clamp(1.25rem, 4vw, 3rem) clamp(8rem, 14vh, 12rem);
+    overflow: hidden;
   }
-  .pt-contact__bg-fallback {
+  .pt-contact__hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+  .pt-contact__hero-bg img {
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: center;
+    filter: grayscale(60%) brightness(0.5);
+  }
+  .pt-contact__hero-bg--fallback {
     background:
-      radial-gradient(ellipse at 30% 30%, rgba(218,41,28,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse at 30% 30%, rgba(218, 41, 28, 0.32) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 70%, rgba(245, 130, 11, 0.18) 0%, transparent 60%),
       linear-gradient(135deg, #0a0a0a 0%, #1a0606 100%);
   }
-  .pt-contact__bg-tread {
-    position: absolute; inset: 0;
+  .pt-contact__hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+      linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.55) 50%, rgba(5,5,5,1) 100%);
+  }
+  .pt-contact__hero-tread {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
     background-image:
       repeating-linear-gradient(
         -45deg,
         transparent 0,
         transparent 22px,
-        rgba(255,255,255,0.025) 22px,
-        rgba(255,255,255,0.025) 24px
+        rgba(255, 255, 255, 0.022) 22px,
+        rgba(255, 255, 255, 0.022) 24px
       );
     pointer-events: none;
-    mix-blend-mode: screen;
   }
-  .pt-contact__bg-vignette {
-    position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse at 50% 80%, transparent 0%, rgba(0,0,0,0.55) 80%),
-      linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 30%);
-    pointer-events: none;
-  }
-
-  /* ── Particles ── */
-  .pt-contact__particles {
-    position: absolute; inset: 0; overflow: hidden;
-    pointer-events: none;
-  }
-  .pt-contact__particle {
-    position: absolute;
-    left: calc(var(--x, 50) * 1%);
-    bottom: -40px;
-    width: var(--sz, 10px);
-    height: var(--sz, 10px);
-    background: rgba(255, 255, 255, 0.18);
-    border-radius: 50%;
-    box-shadow: 0 0 12px rgba(218, 41, 28, 0.25);
-    animation: pt-particle var(--dur, 14s) linear infinite;
-    animation-delay: var(--d, 0s);
-    opacity: 0;
-  }
-  .pt-contact__particle:nth-child(3n)    { background: rgba(218, 41, 28, 0.28); }
-  .pt-contact__particle:nth-child(5n+1)  { background: rgba(255, 255, 255, 0.25); }
-  @keyframes pt-particle {
-    0%   { transform: translateY(0)        scale(0.4); opacity: 0; }
-    10%  { opacity: 0.9; }
-    90%  { opacity: 0.9; }
-    100% { transform: translateY(-110vh)   scale(1.1); opacity: 0; }
-  }
-
-  /* ── Grid ── */
-  .pt-contact__grid {
-    position: relative; z-index: 1;
-    max-width: 1320px;
-    margin: 0 auto;
-    padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 4vw, 3.5rem);
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: clamp(2.5rem, 5vw, 4.5rem);
-    min-height: 100vh; min-height: 100dvh;
-    align-items: center;
-  }
-  @media (min-width: 1000px) {
-    .pt-contact__grid { grid-template-columns: 1fr 1fr; align-items: stretch; }
-  }
-
-  /* ── Title column ── */
-  .pt-contact__title-col {
+  .pt-contact__hero-inner {
+    position: relative;
+    z-index: 3;
+    text-align: center;
+    max-width: 900px;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
-    gap: 1.2rem;
-    padding: 0 0 0.5rem;
+    align-items: center;
+    gap: 1rem;
   }
   .pt-contact__eyebrow {
     font-size: 0.92rem;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.32em;
-    color: rgba(255, 255, 255, 0.6);
-  }
-  .pt-contact__title {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(4rem, 9vw, 8.5rem);
-    font-weight: 800;
-    line-height: 0.92;
-    letter-spacing: -0.015em;
-    color: #fff;
-    margin: 0;
-    text-transform: uppercase;
-    text-shadow: 0 4px 40px rgba(0, 0, 0, 0.5);
-    max-width: 14ch;
-  }
-  .pt-contact__title-sub {
-    font-size: clamp(1.15rem, 1.5vw, 1.4rem);
-    line-height: 1.55;
-    color: rgba(255, 255, 255, 0.78);
-    max-width: 40ch;
-    margin: 0;
-  }
-
-  /* ── Card column ── */
-  .pt-contact__card {
-    background: var(--pt-glass);
-    border: 1px solid var(--pt-glass-border);
-    backdrop-filter: blur(24px) saturate(140%);
-    -webkit-backdrop-filter: blur(24px) saturate(140%);
-    padding: clamp(1.5rem, 3vw, 2.5rem);
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 1.1rem;
-    position: relative;
-  }
-  .pt-contact__card::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0;
-    width: 36px;
-    height: 3px;
-    background: var(--pt-red);
-  }
-  .pt-contact__card-h2 {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(2.4rem, 3.2vw, 3rem);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.005em;
-    margin: 0;
-    color: #fff;
-  }
-
-  /* Contact row */
-  .pt-contact__contact-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  .pt-contact__contact-label {
-    font-size: 0.88rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    color: rgba(255, 255, 255, 0.6);
-  }
-  .pt-contact__phone {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(2.4rem, 3.8vw, 3.2rem);
-    font-weight: 700;
-    color: #fff;
-    text-decoration: none;
-    letter-spacing: 0.005em;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    width: fit-content;
-    transition: color 160ms ease;
-    font-variant-numeric: tabular-nums;
-  }
-  .pt-contact__phone:hover { color: var(--pt-red); }
-
-  .pt-contact__socials {
+    color: rgba(255, 255, 255, 0.7);
     display: inline-flex;
     align-items: center;
     gap: 0.7rem;
-    margin-top: 0.5rem;
   }
-  .pt-contact__or {
-    font-size: 0.85rem;
+  .pt-contact__eyebrow::before,
+  .pt-contact__eyebrow::after {
+    content: "";
+    width: 22px;
+    height: 1px;
+    background: var(--pt-red);
+  }
+  .pt-contact__hero-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(3.5rem, 8vw, 7rem);
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -0.012em;
+    text-transform: uppercase;
+    margin: 0;
+    color: #fff;
+    text-shadow: 0 6px 36px rgba(0, 0, 0, 0.5);
+  }
+  .pt-contact__hero-subhead {
+    font-size: clamp(1.05rem, 1.4vw, 1.3rem);
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.78);
+    max-width: 56ch;
+    margin: 0;
+  }
+
+  /* ═════════ CARD ═════════ */
+  .pt-contact__deck {
+    position: relative;
+    z-index: 4;
+    margin: clamp(-7rem, -10vh, -5rem) auto 0;
+    padding: 0 clamp(1rem, 4vw, 3rem);
+    max-width: 1240px;
+  }
+  .pt-contact__card {
+    background: var(--pt-card);
+    border: 1px solid var(--pt-card-border);
+    border-radius: 6px;
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.02);
+    position: relative;
+    overflow: hidden;
+  }
+  .pt-contact__card-accent {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--pt-red) 0%, var(--pt-orange) 100%);
+  }
+  .pt-contact__card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  @media (min-width: 900px) {
+    .pt-contact__card-grid {
+      grid-template-columns: 0.85fr 1.15fr;
+    }
+  }
+
+  /* ── INFO column ── */
+  .pt-contact__info {
+    padding: clamp(2rem, 4vw, 3.5rem);
+    border-bottom: 1px solid var(--pt-line);
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+  @media (min-width: 900px) {
+    .pt-contact__info {
+      border-bottom: 0;
+      border-right: 1px solid var(--pt-line);
+    }
+  }
+  .pt-contact__section-eyebrow {
+    font-size: 0.84rem;
     font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.28em;
+    color: var(--pt-orange);
+  }
+  .pt-contact__info-heading,
+  .pt-contact__form-heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(2.4rem, 3.8vw, 3.4rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 0.95;
+    letter-spacing: -0.005em;
+    margin: 0.2rem 0 0;
+    color: #fff;
+  }
+  .pt-contact__info-lead {
+    font-size: 1.02rem;
+    line-height: 1.55;
+    color: var(--pt-mute);
+    margin: 0 0 0.4rem;
+    max-width: 36ch;
+  }
+
+  /* Info list */
+  .pt-contact__info-list {
+    list-style: none;
+    padding: 0; margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    margin-top: 0.4rem;
+  }
+  .pt-contact__info-item {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  .pt-contact__info-icon {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(218, 41, 28, 0.22) 0%, rgba(245, 130, 11, 0.18) 100%);
+    border: 1px solid rgba(218, 41, 28, 0.35);
+    border-radius: 50%;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .pt-contact__info-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+  .pt-contact__info-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-transform: uppercase;
     letter-spacing: 0.22em;
-    color: rgba(255, 255, 255, 0.45);
-    margin-right: 0.3rem;
+    color: var(--pt-mute);
+  }
+  .pt-contact__info-text {
+    font-size: 1.08rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.4;
+    text-decoration: none;
+    word-break: break-word;
+  }
+  .pt-contact__info-text--link { transition: color 160ms ease; }
+  .pt-contact__info-text--link:hover { color: var(--pt-red); }
+  .pt-contact__info-text--muted {
+    font-weight: 500;
+    color: var(--pt-mute);
+    font-size: 1rem;
+  }
+  .pt-contact__phone-display {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.55rem;
+    letter-spacing: 0.005em;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .pt-contact__info-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--pt-orange);
+    text-decoration: none;
+    width: fit-content;
+    transition: color 160ms ease;
+  }
+  .pt-contact__info-link:hover { color: var(--pt-red); }
+
+  /* Social row */
+  .pt-contact__social-row {
+    margin-top: 1rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--pt-line);
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+  .pt-contact__social-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--pt-mute);
+  }
+  .pt-contact__socials {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
   }
   .pt-contact__social {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px; height: 44px;
-    border: 1px solid rgba(255,255,255,0.18);
-    color: rgba(255,255,255,0.85);
+    width: 40px; height: 40px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    color: rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
     text-decoration: none;
     transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 80ms ease;
   }
@@ -397,33 +549,26 @@
     background: var(--pt-red);
     border-color: var(--pt-red);
     color: #fff;
-  }
-  .pt-contact__social:active { transform: translateY(1px); }
-
-  .pt-contact__rule {
-    border: 0;
-    border-top: 1px solid var(--pt-line);
-    margin: 0.4rem 0;
+    transform: translateY(-2px);
   }
 
-  /* ── Form ── */
-  .pt-contact__form {
+  /* ── FORM column ── */
+  .pt-contact__form-wrap {
+    padding: clamp(2rem, 4vw, 3.5rem);
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
   }
-  .pt-contact__form-lead {
-    font-size: 0.88rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    color: rgba(255, 255, 255, 0.6);
-    margin: 0;
+  .pt-contact__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    margin-top: 0.4rem;
   }
   .pt-contact__field-row {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 1.1rem;
   }
   @media (min-width: 600px) {
     .pt-contact__field-row { grid-template-columns: 1fr 1fr; }
@@ -431,24 +576,30 @@
   .pt-contact__field {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.45rem;
   }
   .pt-contact__field-label {
-    font-size: 0.85rem;
+    font-size: 0.84rem;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.18em;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--pt-mute);
+  }
+  .pt-contact__field-optional {
+    text-transform: none;
+    letter-spacing: 0;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 400;
   }
   .pt-contact__input {
     width: 100%;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.10);
     color: #fff;
     font-family: inherit;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     padding: 1rem 1.1rem;
-    border-radius: 2px;
+    border-radius: 4px;
     transition: border-color 160ms ease, background-color 160ms ease;
   }
   .pt-contact__input::placeholder { color: rgba(255, 255, 255, 0.32); }
@@ -456,95 +607,25 @@
   .pt-contact__input:focus-visible {
     outline: none;
     border-color: var(--pt-red);
-    background: rgba(218, 41, 28, 0.06);
+    background: rgba(255, 255, 255, 0.06);
   }
   .pt-contact__input--textarea {
     resize: vertical;
-    min-height: 96px;
+    min-height: 120px;
     line-height: 1.5;
     font-family: inherit;
   }
 
-  /* ── Service checkboxes ── */
-  .pt-contact__services { display: flex; flex-direction: column; gap: 0.7rem; }
-  .pt-contact__services-label {
-    font-size: 0.88rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    color: rgba(255, 255, 255, 0.6);
-    margin: 0;
-  }
-  .pt-contact__checks {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.6rem;
-  }
-  @media (min-width: 480px) { .pt-contact__checks { grid-template-columns: repeat(3, 1fr); } }
-  .pt-contact__check {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.7rem 0.85rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 2px;
-    font-size: 0.96rem;
-    color: rgba(255, 255, 255, 0.85);
-    cursor: pointer;
-    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
-    user-select: none;
-  }
-  .pt-contact__check:hover {
-    border-color: rgba(255, 255, 255, 0.28);
-    background: rgba(255, 255, 255, 0.04);
-  }
-  .pt-contact__check-input {
-    position: absolute;
-    width: 1px; height: 1px;
-    padding: 0; margin: -1px; overflow: hidden;
-    clip: rect(0,0,0,0);
-    white-space: nowrap; border: 0;
-  }
-  .pt-contact__check-box {
-    display: inline-flex;
-    align-items: center; justify-content: center;
-    width: 20px; height: 20px;
-    border: 1.5px solid rgba(255, 255, 255, 0.32);
-    border-radius: 2px;
-    color: transparent;
-    flex-shrink: 0;
-    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
-  }
-  .pt-contact__check-input:focus-visible + .pt-contact__check-box {
-    outline: 2px solid var(--pt-red);
-    outline-offset: 2px;
-  }
-  .pt-contact__check-input:checked + .pt-contact__check-box {
-    background: var(--pt-red);
-    border-color: var(--pt-red);
-    color: #fff;
-  }
-  .pt-contact__check:has(.pt-contact__check-input:checked) {
-    border-color: var(--pt-red);
-    background: rgba(218, 41, 28, 0.08);
-    color: #fff;
-  }
-  /* Fallback for browsers without :has() */
-  .pt-contact__check-input:checked ~ .pt-contact__check-label { color: #fff; }
-
-  .pt-contact__check-label { line-height: 1.2; }
-
-  /* ── Send button ── */
   .pt-contact__send {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.6rem;
     width: 100%;
-    background: var(--pt-red);
+    background: linear-gradient(135deg, var(--pt-red) 0%, #b9221a 100%);
     color: #fff;
     border: 0;
-    border-radius: 2px;
+    border-radius: 4px;
     padding: 1.2rem 1.6rem;
     font-family: 'Outfit', sans-serif;
     font-size: 1rem;
@@ -552,37 +633,29 @@
     text-transform: uppercase;
     letter-spacing: 0.2em;
     cursor: pointer;
-    transition: background-color 160ms ease, transform 80ms ease;
+    transition: background 160ms ease, transform 80ms ease, box-shadow 160ms ease;
     margin-top: 0.4rem;
+    box-shadow: 0 8px 24px -8px rgba(218, 41, 28, 0.5);
   }
-  .pt-contact__send:hover { background: #b9221a; }
+  .pt-contact__send:hover {
+    background: linear-gradient(135deg, #f53224 0%, var(--pt-red) 100%);
+    box-shadow: 0 12px 32px -8px rgba(218, 41, 28, 0.7);
+  }
   .pt-contact__send:active { transform: translateY(1px); }
   .pt-contact__send:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
   .pt-contact__send svg { transition: transform 160ms ease; }
   .pt-contact__send:hover svg { transform: translateX(4px); }
 
-  .pt-contact__form-foot {
-    font-size: 0.98rem;
-    color: rgba(255, 255, 255, 0.6);
-    text-align: center;
-    margin: 0.3rem 0 0;
-  }
-  .pt-contact__form-foot a {
-    color: #fff;
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
-  }
-  .pt-contact__form-foot a:hover { color: var(--pt-red); }
-
   /* Status messages */
   .pt-contact__form-success,
   .pt-contact__form-error {
-    display: flex; align-items: center; gap: 0.6rem;
-    padding: 0.85rem 1rem;
-    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.95rem 1.1rem;
+    font-size: 0.96rem;
     font-weight: 500;
-    border-radius: 2px;
+    border-radius: 4px;
   }
   .pt-contact__form-success {
     background: rgba(34, 197, 94, 0.12);
@@ -595,50 +668,44 @@
     color: #ff8a82;
   }
 
-  /* Reduced motion */
-  @media (prefers-reduced-motion: reduce) {
-    .pt-contact__particle { animation: none !important; opacity: 0 !important; }
+  /* ═════════ MAP ═════════ */
+  .pt-contact__map {
+    margin-top: clamp(3rem, 7vw, 5.5rem);
+    position: relative;
+    width: 100%;
+    aspect-ratio: 21 / 9;
+    background: #0a0a0a;
+    border-top: 1px solid var(--pt-line);
+    border-bottom: 1px solid var(--pt-line);
+  }
+  .pt-contact__map iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    filter: grayscale(8%) contrast(1.02);
+  }
+  @media (max-width: 700px) {
+    .pt-contact__map { aspect-ratio: 4 / 3; }
   }
 {% endstylesheet %}
 
-{% javascript %}
-  (function () {
-    const root = document.querySelector("[data-pt-contact]");
-    if (!root) return;
-    const aggregate = root.querySelector("[data-pt-services-aggregate]");
-    const boxes = root.querySelectorAll("[data-pt-service]");
-    if (!aggregate || !boxes.length) return;
-
-    const sync = () => {
-      const selected = [];
-      boxes.forEach((b) => { if (b.checked) selected.push(b.value); });
-      aggregate.value = selected.join(", ");
-    };
-
-    boxes.forEach((b) => b.addEventListener("change", sync));
-    sync();
-  })();
-{% endjavascript %}
-
 {% schema %}
 {
-  "name": "Contact — split editorial",
+  "name": "Contact — overlapping card",
   "tag": "section",
   "class": "section section--pt-contact",
   "settings": [
     {
       "type": "header",
-      "content": "Background"
+      "content": "Hero"
     },
     {
       "type": "image_picker",
-      "id": "bg_image",
-      "label": "Background image",
-      "info": "A shop photo, tire close-up, or workshop scene works best. Image is desaturated + darkened automatically."
-    },
-    {
-      "type": "header",
-      "content": "Editorial title (left side)"
+      "id": "hero_image",
+      "label": "Hero background image",
+      "info": "Photo of the shop, mechanic, or tire close-up. Auto-darkened."
     },
     {
       "type": "text",
@@ -648,37 +715,74 @@
     },
     {
       "type": "text",
-      "id": "title",
-      "label": "Big title",
-      "default": "Need tires done right? Talk to the shop."
+      "id": "hero_title",
+      "label": "Hero title",
+      "default": "Contact us"
     },
     {
       "type": "textarea",
-      "id": "title_sub",
-      "label": "Title sub-text (optional)",
-      "default": "Walk-ins welcome. Or send a quick note — we usually reply the same day."
+      "id": "hero_subhead",
+      "label": "Hero subhead",
+      "default": "Calgary's most trusted tire shop. Walk-ins welcome — or send us a note and we'll get back the same day."
     },
     {
       "type": "header",
-      "content": "Form card (right side)"
+      "content": "Get in touch (left side)"
     },
     {
       "type": "text",
-      "id": "card_heading",
-      "label": "Card heading",
-      "default": "Reach out 👋"
+      "id": "info_eyebrow",
+      "label": "Info eyebrow",
+      "default": "Get in touch"
     },
     {
       "type": "text",
-      "id": "phone",
-      "label": "Phone (display)",
-      "default": "403 452 4283"
+      "id": "info_heading",
+      "label": "Info heading",
+      "default": "We're here to help."
+    },
+    {
+      "type": "textarea",
+      "id": "info_lead",
+      "label": "Info lead text",
+      "default": "Booking a service, getting a quote, or fleet account — pick the channel that's easiest for you."
+    },
+    {
+      "type": "textarea",
+      "id": "address",
+      "label": "Address",
+      "default": "Calgary, AB"
+    },
+    {
+      "type": "url",
+      "id": "directions_url",
+      "label": "Google Maps directions URL"
     },
     {
       "type": "text",
       "id": "email",
-      "label": "Reply-to email",
+      "label": "Primary email",
       "default": "bookings@princetires.ca"
+    },
+    {
+      "type": "text",
+      "id": "email_alt",
+      "label": "Alt email (optional)"
+    },
+    {
+      "type": "text",
+      "id": "phone",
+      "label": "Primary phone",
+      "default": "403 452 4283"
+    },
+    {
+      "type": "text",
+      "id": "phone_alt",
+      "label": "Alt phone / fax (optional)"
+    },
+    {
+      "type": "header",
+      "content": "Social"
     },
     {
       "type": "url",
@@ -696,43 +800,40 @@
       "label": "Google reviews URL"
     },
     {
+      "type": "url",
+      "id": "youtube_url",
+      "label": "YouTube URL"
+    },
+    {
       "type": "header",
-      "content": "Form copy"
+      "content": "Send a message (right side)"
     },
     {
       "type": "text",
-      "id": "form_lead",
-      "label": "Form lead text",
-      "default": "Leave us a brief message"
+      "id": "form_eyebrow",
+      "label": "Form eyebrow",
+      "default": "Send a message"
     },
     {
       "type": "text",
-      "id": "message_label",
-      "label": "Message field label",
-      "default": "What do you need?"
+      "id": "form_heading",
+      "label": "Form heading",
+      "default": "Drop us a line."
+    },
+    {
+      "type": "header",
+      "content": "Map"
     },
     {
       "type": "text",
-      "id": "message_placeholder",
-      "label": "Message placeholder",
-      "default": "Quote on 4 winter tires for a 2020 Civic, etc."
-    },
-    {
-      "type": "text",
-      "id": "services_label",
-      "label": "Services group label",
-      "default": "I'm looking for…"
-    },
-    {
-      "type": "textarea",
-      "id": "service_options",
-      "label": "Service options (separated by | )",
-      "default": "4 new tires|Tire change / swap|Wheel alignment|Rotation & balance|Flat repair|Tire storage|Fleet inquiry|Quote / Other"
+      "id": "map_embed_url",
+      "label": "Google Maps embed URL",
+      "info": "Maps → Share → Embed a map → copy the src URL from the iframe. Leave empty to hide the map."
     }
   ],
   "presets": [
     {
-      "name": "Contact — split editorial"
+      "name": "Contact — overlapping card"
     }
   ]
 }
