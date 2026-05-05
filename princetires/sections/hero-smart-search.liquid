@@ -19,15 +19,24 @@
     >
       {%- for block in slide_blocks -%}
         {%- if block.settings.image != blank -%}
-          <img
-            class="hero-smart-search__slide{% if forloop.first %} is-active{% endif %}"
-            src="{{ block.settings.image | image_url: width: 2400 }}"
-            srcset="{{ block.settings.image | image_url: width: 900 }} 900w, {{ block.settings.image | image_url: width: 1400 }} 1400w, {{ block.settings.image | image_url: width: 2000 }} 2000w, {{ block.settings.image | image_url: width: 2400 }} 2400w"
-            sizes="100vw"
-            loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
-            alt=""
-            {{ block.shopify_attributes }}
-          >
+          <picture class="hero-smart-search__slide-pic">
+            {%- if block.settings.mobile_image != blank -%}
+              <source
+                media="(max-width: 768px)"
+                srcset="{{ block.settings.mobile_image | image_url: width: 600 }} 600w, {{ block.settings.mobile_image | image_url: width: 900 }} 900w, {{ block.settings.mobile_image | image_url: width: 1200 }} 1200w"
+                sizes="100vw"
+              >
+            {%- endif -%}
+            <img
+              class="hero-smart-search__slide{% if forloop.first %} is-active{% endif %}"
+              src="{{ block.settings.image | image_url: width: 2400 }}"
+              srcset="{{ block.settings.image | image_url: width: 900 }} 900w, {{ block.settings.image | image_url: width: 1400 }} 1400w, {{ block.settings.image | image_url: width: 2000 }} 2000w, {{ block.settings.image | image_url: width: 2400 }} 2400w"
+              sizes="100vw"
+              loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+              alt=""
+              {{ block.shopify_attributes }}
+            >
+          </picture>
         {%- endif -%}
       {%- endfor -%}
       <div
@@ -233,6 +242,8 @@
     overflow: hidden;
     pointer-events: none;
   }
+  /* <picture> wrapper sits in normal flow but is invisible — only the img renders */
+  .hero-smart-search__slide-pic { display: contents; }
   .hero-smart-search__slide {
     position: absolute;
     inset: 0;
@@ -250,8 +261,13 @@
   }
   .hero-smart-search__slide.is-active {
     opacity: 1;
-    transform: scale(1) rotateX(0deg);
     z-index: 1;
+  }
+  /* Ken Burns — slow zoom while a slide is active. Only kicks in after the
+     entry animation finishes (the :not(.is-entering) gate). 7s zoom matches
+     the default 5s slide interval + 2s tail for a soft motion bed. */
+  .hero-smart-search__slide.is-active:not(.is-entering):not(.is-leaving) {
+    animation: hero-ken-burns 7s cubic-bezier(0.16, 0.6, 0.3, 1.0) forwards;
   }
   .hero-smart-search__slide.is-leaving {
     z-index: 1;
@@ -265,13 +281,17 @@
     from { opacity: 0; transform: scale(0.4) rotateX(45deg); }
     to   { opacity: 1; transform: scale(1) rotateX(0deg); }
   }
+  @keyframes hero-ken-burns {
+    from { transform: scale(1)    rotateX(0deg); }
+    to   { transform: scale(1.07) rotateX(0deg); }
+  }
   @keyframes hero-slide-out-up {
-    from { opacity: 1; transform: translateY(0) scale(1); }
-    to   { opacity: 1; transform: translateY(-150%) scale(1); }
+    from { opacity: 1; transform: translateY(0) scale(1.07); }
+    to   { opacity: 1; transform: translateY(-150%) scale(1.07); }
   }
   @keyframes hero-slide-out-down {
-    from { opacity: 1; transform: translateY(0) scale(1); }
-    to   { opacity: 1; transform: translateY(150%) scale(1); }
+    from { opacity: 1; transform: translateY(0) scale(1.07); }
+    to   { opacity: 1; transform: translateY(150%) scale(1.07); }
   }
   .hero-smart-search__slideshow-overlay {
     position: absolute;
@@ -2148,8 +2168,14 @@ document.addEventListener('DOMContentLoaded', function() {
         {
           "type": "image_picker",
           "id": "image",
-          "label": "Image",
-          "info": "Recommended 2400×1350. Dark or low-contrast images read best behind the overlay."
+          "label": "Image (desktop / fallback)",
+          "info": "Recommended 2400×1350 (16:9). Dark or low-contrast images read best behind the overlay."
+        },
+        {
+          "type": "image_picker",
+          "id": "mobile_image",
+          "label": "Mobile image (optional)",
+          "info": "Used on phones (≤768px). Upload a portrait/square crop (e.g. 1200×1500) so faces and product details stay centered. If blank, the desktop image is used everywhere."
         }
       ]
     },
