@@ -1,6 +1,23 @@
+{%- comment -%}
+  Live counts pulled from collections.all (paginated up to 250 products):
+    total_inventory  — sum of every variant's inventory_quantity (>0)
+    total_products   — count of products in the catalogue
+    vendors_count    — number of unique product.vendor values (brands)
+{%- endcomment -%}
 {%- assign total_inventory = 0 -%}
+{%- assign total_products  = 0 -%}
+{%- assign vendor_seen     = '' -%}
+{%- assign vendors_count   = 0 -%}
 {%- paginate collections.all.products by 250 -%}
   {%- for product in collections.all.products -%}
+    {%- assign total_products = total_products | plus: 1 -%}
+    {%- if product.vendor != blank -%}
+      {%- assign vendor_token = '|' | append: product.vendor | append: '|' -%}
+      {%- unless vendor_seen contains vendor_token -%}
+        {%- assign vendor_seen = vendor_seen | append: vendor_token -%}
+        {%- assign vendors_count = vendors_count | plus: 1 -%}
+      {%- endunless -%}
+    {%- endif -%}
     {%- for variant in product.variants -%}
       {%- if variant.inventory_quantity > 0 -%}
         {%- assign total_inventory = total_inventory | plus: variant.inventory_quantity -%}
@@ -24,14 +41,14 @@
     <div class="inv-pulse__divider"></div>
 
     <div class="inv-pulse__stat">
-      <div class="inv-pulse__number" data-count-to="{{ section.settings.brand_count }}">0</div>
+      <div class="inv-pulse__number" data-count-to="{{ vendors_count }}">0</div>
       <div class="inv-pulse__label">{{ section.settings.brand_label }}</div>
     </div>
 
     <div class="inv-pulse__divider"></div>
 
     <div class="inv-pulse__stat">
-      <div class="inv-pulse__number" data-count-to="{{ section.settings.size_count }}">0</div>
+      <div class="inv-pulse__number" data-count-to="{{ total_products }}">0</div>
       <div class="inv-pulse__label">{{ section.settings.size_label }}</div>
     </div>
 
@@ -274,8 +291,9 @@
     {
       "type": "text",
       "id": "tire_count",
-      "label": "Tires in stock",
-      "default": "3496"
+      "label": "Tires in stock (auto-computed)",
+      "info": "No longer used — the live number is summed from variant inventory automatically.",
+      "default": "0"
     },
     {
       "type": "text",
@@ -286,8 +304,9 @@
     {
       "type": "text",
       "id": "brand_count",
-      "label": "Number of brands",
-      "default": "26"
+      "label": "Number of brands (auto-computed)",
+      "info": "No longer used — counts unique product.vendor values automatically.",
+      "default": "0"
     },
     {
       "type": "text",
@@ -298,14 +317,15 @@
     {
       "type": "text",
       "id": "size_count",
-      "label": "Number of sizes",
-      "default": "1036"
+      "label": "Items count (auto-computed)",
+      "info": "No longer used — counts total products in catalog automatically.",
+      "default": "0"
     },
     {
       "type": "text",
       "id": "size_label",
-      "label": "Sizes label",
-      "default": "Tire sizes available"
+      "label": "Items label",
+      "default": "Items in catalog"
     },
     {
       "type": "text",
