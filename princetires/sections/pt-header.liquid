@@ -1,9 +1,11 @@
 <header class="pt-header" data-pt-header>
   <div class="pt-header__container">
 
-    {%- comment -%} Logo — left corner {%- endcomment -%}
+    {%- comment -%} Logo — left corner. Priority: inline SVG markup → raster image → letter mark {%- endcomment -%}
     <a href="{{ routes.root_url }}" class="pt-header__logo" aria-label="{{ shop.name }}">
-      {%- if section.settings.logo != blank -%}
+      {%- if section.settings.logo_svg != blank -%}
+        <span class="pt-header__logo-svg">{{ section.settings.logo_svg }}</span>
+      {%- elsif section.settings.logo != blank -%}
         {{ section.settings.logo | image_url: height: 44 | image_tag: class: "pt-header__logo-img" }}
       {%- else -%}
         <div class="pt-header__logo-mark"><span>P</span></div>
@@ -190,6 +192,16 @@
     text-decoration: none;
   }
   .pt-header__logo-img {
+    height: 44px;
+    width: auto;
+    display: block;
+  }
+  .pt-header__logo-svg {
+    display: inline-flex;
+    align-items: center;
+    line-height: 0;
+  }
+  .pt-header__logo-svg > svg {
     height: 44px;
     width: auto;
     display: block;
@@ -528,9 +540,19 @@
   ],
   "settings": [
     {
+      "type": "header",
+      "content": "Logo"
+    },
+    {
       "type": "image_picker",
       "id": "logo",
-      "label": "t:sections.pt_header.settings.logo"
+      "label": "Logo (raster — JPG / PNG / WebP)"
+    },
+    {
+      "type": "textarea",
+      "id": "logo_svg",
+      "label": "Logo (SVG markup)",
+      "info": "Paste raw <svg>…</svg> markup here. Takes priority over the image above. Use this for crisp rendering at any size and full CSS styling control. Tip: open your .svg file in a text editor to copy the markup."
     },
     {
       "type": "text",
