@@ -135,6 +135,16 @@
     top: 0;
     z-index: 100;
     border-bottom: 1px solid #1a1a1a;
+    transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                padding 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ── Scrolled state — morph to centered pill on desktop ── */
+  .pt-header.is-scrolled {
+    background: transparent;
+    border-bottom-color: transparent;
+    padding: 12px 16px 0;
   }
 
   /* ── Single flex row ── */
@@ -146,6 +156,24 @@
     display: flex;
     align-items: center;
     gap: 2rem;
+    transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                border-radius 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                padding 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .pt-header.is-scrolled .pt-header__container {
+    max-width: 920px;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 999px;
+    box-shadow: 0 10px 36px -8px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    padding: 0 24px;
   }
 
   /* ── Logo — left ── */
@@ -364,6 +392,17 @@
       flex: 1;
       justify-content: center;
     }
+
+    /* Mobile keeps full-width on scroll — pill is desktop-only */
+    .pt-header.is-scrolled { padding: 0; }
+    .pt-header.is-scrolled .pt-header__container {
+      max-width: none;
+      border-radius: 0;
+      border: 0;
+      background: rgba(0, 0, 0, 0.92);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      height: 60px;
+    }
   }
 
   /* Hide mobile cart on desktop */
@@ -386,6 +425,17 @@
 {% endstylesheet %}
 
 {% javascript %}
+  /* Scroll-pill effect — toggles .is-scrolled on the header past 4px */
+  (function() {
+    var hdr = document.querySelector('[data-pt-header]');
+    if (!hdr) return;
+    function syncScroll() {
+      hdr.classList.toggle('is-scrolled', window.scrollY > 4);
+    }
+    syncScroll();
+    window.addEventListener('scroll', syncScroll, { passive: true });
+  })();
+
   /* Garage badge */
   (function() {
     var badge = document.querySelector('[data-garage-count]');
