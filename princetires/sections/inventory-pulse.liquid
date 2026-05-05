@@ -253,49 +253,59 @@
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     var counters = document.querySelectorAll('[data-count-to]');
+    var observerArmed = false;
 
-    // 1. Fetch live inventory stats (paginated full-catalog count, cached
-    //    server-side for 1h). Updates data-count-to *before* count-up runs
-    //    when possible, and snap-overrides if it already ran.
+    function armObserver() {
+      if (observerArmed) return;
+      observerArmed = true;
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (!entry.isIntersecting) return;
+          var el = entry.target;
+          var target = parseInt(el.dataset.countTo);
+          if (!target) { el.textContent = '0'; return; }
+          var startTime = null;
+          function step(timestamp) {
+            if (!startTime) startTime = timestamp;
+            var progress = Math.min((timestamp - startTime) / 2000, 1);
+            var eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.floor(eased * target).toLocaleString();
+            if (progress < 1) requestAnimationFrame(step);
+            else el.textContent = target.toLocaleString();
+          }
+          requestAnimationFrame(step);
+          observer.unobserve(el);
+        });
+      }, { threshold: 0.3 });
+      counters.forEach(function(c) { observer.observe(c); });
+    }
+
+    // Fetch live inventory stats (full-catalog count, cached server-side 1h).
+    // Whichever finishes first — fetch OR the 3s timeout — arms the count-up
+    // animation. This keeps phone + desktop on the same final number even
+    // when the phone's network is slower.
+    var safetyTimeout = setTimeout(armObserver, 3000);
+
     fetch('https://app.princetires.ca/api/inventory-stats', {
       method: 'GET', credentials: 'omit', cache: 'default'
     })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
-        if (!data) return;
-        var map = { tires: data.totalInventory, vendors: data.vendorsCount, products: data.totalProducts };
-        Object.keys(map).forEach(function (k) {
-          var el = document.querySelector('[data-pt-inv="' + k + '"]');
-          if (!el || typeof map[k] !== 'number') return;
-          el.dataset.countTo = String(map[k]);
-          // If the IntersectionObserver already ran (text isn't '0' anymore),
-          // snap to the live value. Otherwise leave it for the animation.
-          if (el.textContent !== '0') el.textContent = map[k].toLocaleString();
-        });
-      })
-      .catch(function () { /* silent — Liquid-computed values stay as fallback */ });
-
-    // 2. Count-up animation, unchanged.
-    var observer = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        if (!entry.isIntersecting) return;
-        var el = entry.target;
-        var target = parseInt(el.dataset.countTo);
-        if (!target) { el.textContent = '0'; return; }
-        var startTime = null;
-        function step(timestamp) {
-          if (!startTime) startTime = timestamp;
-          var progress = Math.min((timestamp - startTime) / 2000, 1);
-          var eased = 1 - Math.pow(1 - progress, 3);
-          el.textContent = Math.floor(eased * target).toLocaleString();
-          if (progress < 1) requestAnimationFrame(step);
-          else el.textContent = target.toLocaleString();
+        if (data) {
+          var map = { tires: data.totalInventory, vendors: data.vendorsCount, products: data.totalProducts };
+          Object.keys(map).forEach(function (k) {
+            var el = document.querySelector('[data-pt-inv="' + k + '"]');
+            if (!el || typeof map[k] !== 'number') return;
+            el.dataset.countTo = String(map[k]);
+          });
         }
-        requestAnimationFrame(step);
-        observer.unobserve(el);
+        clearTimeout(safetyTimeout);
+        armObserver();
+      })
+      .catch(function () {
+        clearTimeout(safetyTimeout);
+        armObserver();
       });
-    }, { threshold: 0.3 });
-    counters.forEach(function(c) { observer.observe(c); });
   });
 </script>
 
