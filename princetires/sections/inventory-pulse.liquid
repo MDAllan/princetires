@@ -34,21 +34,21 @@
         <span class="inv-pulse__dot"></span>
         <span class="inv-pulse__live-text">{{ section.settings.live_label }}</span>
       </div>
-      <div class="inv-pulse__number" data-count-to="{{ total_inventory }}">0</div>
+      <div class="inv-pulse__number" data-count-to="{{ total_inventory }}" data-pt-inv="tires">0</div>
       <div class="inv-pulse__label">{{ section.settings.tire_label }}</div>
     </div>
 
     <div class="inv-pulse__divider"></div>
 
     <div class="inv-pulse__stat">
-      <div class="inv-pulse__number" data-count-to="{{ vendors_count }}">0</div>
+      <div class="inv-pulse__number" data-count-to="{{ vendors_count }}" data-pt-inv="vendors">0</div>
       <div class="inv-pulse__label">{{ section.settings.brand_label }}</div>
     </div>
 
     <div class="inv-pulse__divider"></div>
 
     <div class="inv-pulse__stat">
-      <div class="inv-pulse__number" data-count-to="{{ total_products }}">0</div>
+      <div class="inv-pulse__number" data-count-to="{{ total_products }}" data-pt-inv="products">0</div>
       <div class="inv-pulse__label">{{ section.settings.size_label }}</div>
     </div>
 
@@ -253,6 +253,29 @@
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     var counters = document.querySelectorAll('[data-count-to]');
+
+    // 1. Fetch live inventory stats (paginated full-catalog count, cached
+    //    server-side for 1h). Updates data-count-to *before* count-up runs
+    //    when possible, and snap-overrides if it already ran.
+    fetch('https://app.princetires.ca/api/inventory-stats', {
+      method: 'GET', credentials: 'omit', cache: 'default'
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data) return;
+        var map = { tires: data.totalInventory, vendors: data.vendorsCount, products: data.totalProducts };
+        Object.keys(map).forEach(function (k) {
+          var el = document.querySelector('[data-pt-inv="' + k + '"]');
+          if (!el || typeof map[k] !== 'number') return;
+          el.dataset.countTo = String(map[k]);
+          // If the IntersectionObserver already ran (text isn't '0' anymore),
+          // snap to the live value. Otherwise leave it for the animation.
+          if (el.textContent !== '0') el.textContent = map[k].toLocaleString();
+        });
+      })
+      .catch(function () { /* silent — Liquid-computed values stay as fallback */ });
+
+    // 2. Count-up animation, unchanged.
     var observer = new IntersectionObserver(function(entries) {
       entries.forEach(function(entry) {
         if (!entry.isIntersecting) return;
