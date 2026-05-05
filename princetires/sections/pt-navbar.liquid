@@ -16,7 +16,7 @@
   endif
   assign href_services = section.settings.services_url
   if href_services == blank
-    assign href_services = '/pages/all-services'
+    assign href_services = '/pages/services'
   endif
   assign href_brands = section.settings.brands_url
   if href_brands == blank
@@ -75,13 +75,44 @@
     border-color 0.3s var(--nb-ease);
 }
 
-/* scrolled state — lift with shadow */
+/* scrolled state — lift with shadow + morph to centered pill on desktop */
 #pt-navbar .nb-root.is-scrolled {
-  background: var(--nb-bg-scroll);
-  backdrop-filter: blur(16px) saturate(1.6);
-  -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  box-shadow: 0 1px 0 var(--nb-border), 0 4px 24px rgba(15, 23, 42, 0.08);
+  background: transparent;
   border-bottom-color: transparent;
+  box-shadow: none;
+  padding: 8px 12px 0;
+  transition:
+    background 0.3s var(--nb-ease),
+    padding 0.3s var(--nb-ease);
+}
+#pt-navbar .nb-root.is-scrolled .nb-inner {
+  background: var(--nb-bg-scroll);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  border-radius: 14px;
+  border: 1px solid var(--nb-border);
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.10);
+  max-width: 1180px;
+  padding-left: 20px;
+  padding-right: 20px;
+  transition:
+    max-width 0.3s var(--nb-ease),
+    background 0.3s var(--nb-ease),
+    border-radius 0.3s var(--nb-ease),
+    border-color 0.3s var(--nb-ease),
+    box-shadow 0.3s var(--nb-ease),
+    padding 0.3s var(--nb-ease);
+}
+@media (max-width: 989px) {
+  /* On mobile, keep full-width on scroll — pill is desktop-only */
+  #pt-navbar .nb-root.is-scrolled { padding: 0; }
+  #pt-navbar .nb-root.is-scrolled .nb-inner {
+    max-width: none;
+    border-radius: 0;
+    border: 0;
+    background: var(--nb-bg-scroll);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.10);
+  }
 }
 
 /* red accent hairline at very bottom on scroll */
@@ -355,7 +386,8 @@
 @media (max-width: 989px) {
   #pt-navbar .nb-links-frost,
   #pt-navbar .nb-sep,
-  #pt-navbar .nb-book { display: none; }
+  #pt-navbar .nb-book,
+  #pt-navbar .nb-icon--contact { display: none; }
 
   #pt-navbar .nb-burger { display: flex; }
   #pt-navbar .nb-logo { margin-right: auto; }
@@ -597,8 +629,8 @@
           </a>
         {%- endif -%}
 
-        {%- comment -%} Contact (phone or contact page) {%- endcomment -%}
-        <a href="{{ href_contact }}" class="nb-icon" aria-label="Contact us" title="Contact us">
+        {%- comment -%} Contact (phone or contact page) — hidden on mobile, sticky bar carries it {%- endcomment -%}
+        <a href="{{ href_contact }}" class="nb-icon nb-icon--contact" aria-label="Contact us" title="Contact us">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 12 19.79 19.79 0 0 1 1.17 3.39 2 2 0 0 1 3.14 1.22h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16v.92z"/></svg>
         </a>
 

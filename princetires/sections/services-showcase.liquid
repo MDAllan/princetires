@@ -3,18 +3,16 @@
 
     <div class="svc__top">
       <div class="svc__header">
-        <span class="svc__eyebrow">{{ section.settings.eyebrow }}</span>
         <h2 class="svc__heading">{{ section.settings.heading }}</h2>
       </div>
 
       <div class="svc__controls">
         {%- if section.settings.cta_label != blank -%}
           <a href="{{ section.settings.cta_link | default: '#' }}" class="svc__cta">
-            {{ section.settings.cta_label }}
+            <span class="svc__cta-text">{{ section.settings.cta_label }}</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
         {%- endif -%}
-
       </div>
     </div>
 
@@ -56,7 +54,7 @@
 {% stylesheet %}
   .svc {
     background: #fff;
-    padding: 7rem 0;
+    padding: 5rem 0;
   }
 
   .svc__container {
@@ -224,13 +222,26 @@
       padding: 0 1.6rem;
     }
     .svc__top {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1rem;
-      margin-bottom: 2rem;
+      /* Inline heading + view-all CTA on the same row to save vertical space */
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      margin-bottom: 1.6rem;
     }
     .svc__heading {
       font-size: clamp(2rem, 6vw, 2.6rem);
+    }
+    /* Mobile: only icon + arrow, no label text — heading carries the meaning */
+    .svc__cta-text { display: none; }
+    .svc__cta {
+      padding: 0.6rem;
+      min-height: 4.4rem;
+      min-width: 4.4rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
     }
     /* Switch from horizontal scroll to 3-column grid */
     .svc__carousel {

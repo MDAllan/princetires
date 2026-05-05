@@ -16,12 +16,6 @@
     {%- assign wheel_blocks = section.blocks | where: "type", "wheel_card" -%}
 
     {%- if brand_blocks.size > 0 -%}
-      <style>
-        @keyframes wb-marquee {
-          from { transform: translateX(0); }
-          to   { transform: translateX(-50%); }
-        }
-      </style>
       <div class="wheel-brands__marquee" data-wheel-marquee>
         <div class="wheel-brands__marquee-inner">
           <div class="wheel-brands__tabs-track" role="tablist" data-wheel-tabs-track>
@@ -168,15 +162,9 @@
       carousel.scrollLeft = 0;
     }
 
-    if (marqueeEl && marqueeInner) {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        marqueeInner.style.animationPlayState = 'paused';
-      } else {
-        marqueeEl.addEventListener('mouseenter', function() { marqueeInner.style.animationPlayState = 'paused'; });
-        marqueeEl.addEventListener('mouseleave', function() { marqueeInner.style.animationPlayState = 'running'; });
-        marqueeEl.addEventListener('touchstart', function() { marqueeInner.style.animationPlayState = 'paused'; }, { passive: true });
-        marqueeEl.addEventListener('touchend', function() { setTimeout(function() { marqueeInner.style.animationPlayState = 'running'; }, 800); });
-      }
+    if (marqueeEl) {
+      // Auto-marquee removed — tabs are user-scrolled. Click handler still
+      // switches the active brand.
       marqueeEl.addEventListener('click', function(e) {
         var btn = e.target.closest('[data-wheel-brand]');
         if (!btn) return;
@@ -187,32 +175,13 @@
     var firstBtn = tabsTrack && tabsTrack.querySelector('[data-wheel-brand]');
     if (firstBtn) switchBrand(firstBtn.dataset.wheelBrand, firstBtn.dataset.wheelBrandName);
 
-    var autoplayPaused = false;
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && !window.matchMedia('(max-width: 767px)').matches) {
-      carousel.addEventListener('mouseenter', function() { autoplayPaused = true; });
-      carousel.addEventListener('mouseleave', function() { autoplayPaused = false; });
-      carousel.addEventListener('touchstart', function() { autoplayPaused = true; }, { passive: true });
-      carousel.addEventListener('touchend', function() { setTimeout(function() { autoplayPaused = false; }, 900); });
-      (function tick() {
-        if (!autoplayPaused) {
-          var max = carousel.scrollWidth - carousel.offsetWidth;
-          if (max > 0) {
-            carousel.scrollLeft += 0.5;
-            if (carousel.scrollLeft >= max - 1) {
-              autoplayPaused = true;
-              carousel.scrollTo({ left: 0, behavior: 'smooth' });
-              setTimeout(function() { autoplayPaused = false; }, 700);
-            }
-          }
-        }
-        requestAnimationFrame(tick);
-      }());
-    }
+    // Auto-scroll tick loop removed — wheels move only on user swipe / drag /
+    // arrow click.
 
     var drag = { on: false, startX: 0, startLeft: 0 };
     carousel.addEventListener('mousedown', function(e) {
       drag.on = true; drag.startX = e.pageX; drag.startLeft = carousel.scrollLeft;
-      autoplayPaused = true; carousel.style.cursor = 'grabbing';
+      carousel.style.cursor = 'grabbing';
     });
     document.addEventListener('mousemove', function(e) {
       if (!drag.on) return;
@@ -221,29 +190,24 @@
     }, { passive: false });
     document.addEventListener('mouseup', function() {
       if (!drag.on) return;
-      drag.on = false; autoplayPaused = false; carousel.style.cursor = '';
+      drag.on = false; carousel.style.cursor = '';
     });
     carousel.addEventListener('touchstart', function(e) {
       drag.on = true; drag.startX = e.touches[0].pageX; drag.startLeft = carousel.scrollLeft;
-      autoplayPaused = true;
     }, { passive: true });
     carousel.addEventListener('touchmove', function(e) {
       if (!drag.on) return;
       carousel.scrollLeft = drag.startLeft - (e.touches[0].pageX - drag.startX);
     }, { passive: true });
     carousel.addEventListener('touchend', function() {
-      drag.on = false; setTimeout(function() { autoplayPaused = false; }, 900);
+      drag.on = false;
     });
 
     if (prevBtn) prevBtn.addEventListener('click', function() {
-      autoplayPaused = true;
       carousel.scrollBy({ left: -carousel.offsetWidth * 0.6, behavior: 'smooth' });
-      setTimeout(function() { autoplayPaused = false; }, 800);
     });
     if (nextBtn) nextBtn.addEventListener('click', function() {
-      autoplayPaused = true;
       carousel.scrollBy({ left: carousel.offsetWidth * 0.6, behavior: 'smooth' });
-      setTimeout(function() { autoplayPaused = false; }, 800);
     });
   }());
   </script>
@@ -289,18 +253,23 @@
     max-width: 50rem;
   }
 
-  /* ── Marquee tab bar ── */
+  /* ── Brand tab bar (horizontal-scroll, user-controlled) ── */
   .wheel-brands__marquee {
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     margin-bottom: 3rem;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
   }
+  .wheel-brands__marquee::-webkit-scrollbar { display: none; }
 
   .wheel-brands__marquee-inner {
     display: flex;
     align-items: center;
     gap: 1rem;
     width: max-content;
-    animation: wb-marquee 28s linear infinite;
   }
 
   .wheel-brands__tabs-track {
@@ -373,6 +342,10 @@
     gap: 1.6rem;
     cursor: grab;
     user-select: none;
+    scroll-snap-type: x mandatory;
+  }
+  .wheel-brands__card {
+    scroll-snap-align: start;
   }
 
   .wheel-brands__track:active {
@@ -532,7 +505,12 @@
   @media (max-width: 768px) {
     .wheel-brands__container { padding: 0 1.6rem; }
     .wheel-brands__card { min-width: 70vw; max-width: 70vw; }
-    .wheel-brands__arrow { display: none; }
+    .wheel-brands__arrow {
+      width: 36px;
+      height: 36px;
+      background: rgba(0, 0, 0, 0.06);
+      border-color: transparent;
+    }
     .wheel-brands__heading { font-size: 2.2rem; }
   }
 
