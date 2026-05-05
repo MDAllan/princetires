@@ -1,15 +1,46 @@
 <header class="pt-header" data-pt-header>
   <div class="pt-header__container">
 
-    {%- comment -%} Logo — left corner. Priority: inline SVG markup → raster image → wordmark text {%- endcomment -%}
+    {%- comment -%}
+      Logo — left/center. Two parallel variants: desktop + mobile.
+      Each variant has its own SVG / image / wordmark in priority order.
+      Mobile variant only renders if at least one mobile-specific field
+      is set; otherwise the desktop variant shows on both.
+    {%- endcomment -%}
     {%- assign wordmark_text = section.settings.wordmark_text | default: shop.name -%}
+    {%- assign has_mobile_logo = false -%}
+    {%- if section.settings.mobile_logo_svg != blank
+       or section.settings.mobile_logo != blank
+       or section.settings.mobile_wordmark_text != blank -%}
+      {%- assign has_mobile_logo = true -%}
+    {%- endif -%}
+    {%- if has_mobile_logo -%}
+      {%- assign mobile_wordmark = section.settings.mobile_wordmark_text | default: wordmark_text -%}
+    {%- endif -%}
+
     <a href="{{ routes.root_url }}" class="pt-header__logo" aria-label="{{ shop.name }}">
-      {%- if section.settings.logo_svg != blank -%}
-        <span class="pt-header__logo-svg">{{ section.settings.logo_svg }}</span>
-      {%- elsif section.settings.logo != blank -%}
-        {{ section.settings.logo | image_url: height: 44 | image_tag: class: "pt-header__logo-img" }}
-      {%- else -%}
-        <span class="pt-header__logo-wordmark">{{ wordmark_text }}</span>
+      <!-- Desktop variant -->
+      <span class="pt-header__logo-variant pt-header__logo-variant--desktop">
+        {%- if section.settings.logo_svg != blank -%}
+          <span class="pt-header__logo-svg">{{ section.settings.logo_svg }}</span>
+        {%- elsif section.settings.logo != blank -%}
+          {{ section.settings.logo | image_url: height: 88 | image_tag: class: "pt-header__logo-img" }}
+        {%- else -%}
+          <span class="pt-header__logo-wordmark">{{ wordmark_text }}</span>
+        {%- endif -%}
+      </span>
+
+      {%- if has_mobile_logo -%}
+        <!-- Mobile variant (only rendered when at least one mobile field is set) -->
+        <span class="pt-header__logo-variant pt-header__logo-variant--mobile">
+          {%- if section.settings.mobile_logo_svg != blank -%}
+            <span class="pt-header__logo-svg">{{ section.settings.mobile_logo_svg }}</span>
+          {%- elsif section.settings.mobile_logo != blank -%}
+            {{ section.settings.mobile_logo | image_url: height: 72 | image_tag: class: "pt-header__logo-img" }}
+          {%- else -%}
+            <span class="pt-header__logo-wordmark">{{ mobile_wordmark }}</span>
+          {%- endif -%}
+        </span>
       {%- endif -%}
     </a>
 
@@ -207,6 +238,15 @@
     width: auto;
     display: block;
   }
+  /* Variant visibility — defaults: show desktop on all viewports */
+  .pt-header__logo-variant--desktop { display: inline-flex; align-items: center; }
+  .pt-header__logo-variant--mobile  { display: none; }
+  /* When a mobile variant exists, hide desktop ≤768px and show mobile */
+  @media (max-width: 768px) {
+    .pt-header__logo:has(.pt-header__logo-variant--mobile) .pt-header__logo-variant--desktop { display: none; }
+    .pt-header__logo-variant--mobile { display: inline-flex; align-items: center; }
+  }
+
   /* Wordmark fallback — shop name styled */
   .pt-header__logo-wordmark {
     font-family: 'Barlow Condensed', sans-serif;
@@ -583,6 +623,32 @@
       "label": "Option 3 — Wordmark text (fallback)",
       "info": "Used when both above are blank. Defaults to your shop name. Rendered in Barlow Condensed uppercase white.",
       "placeholder": "Prince Tires"
+    },
+    {
+      "type": "header",
+      "content": "Mobile logo (optional, ≤768px)"
+    },
+    {
+      "type": "paragraph",
+      "content": "Use these to show a different logo on phones — e.g. a compact mark instead of the full wordmark. Same priority order as desktop. If all three are blank, the desktop logo renders on mobile too."
+    },
+    {
+      "type": "textarea",
+      "id": "mobile_logo_svg",
+      "label": "Mobile — SVG markup"
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_logo",
+      "label": "Mobile — PNG / JPG / WebP image",
+      "info": "Recommended height 72px for retina."
+    },
+    {
+      "type": "text",
+      "id": "mobile_wordmark_text",
+      "label": "Mobile — Wordmark text",
+      "info": "Used when both above are blank. e.g. 'PT' instead of full name.",
+      "placeholder": "PT"
     },
     {
       "type": "text",
