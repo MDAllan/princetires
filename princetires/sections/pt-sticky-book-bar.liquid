@@ -1,6 +1,8 @@
 {%- liquid
   assign phone     = section.settings.phone     | default: '403 452 4283'
   assign phone_dig = phone | replace: ' ', '' | replace: '-', '' | replace: '.', '' | replace: '(', '' | replace: ')', ''
+  assign sms_phone = section.settings.sms_phone | default: phone_dig
+  assign sms_dig   = sms_phone | replace: ' ', '' | replace: '-', '' | replace: '.', '' | replace: '(', '' | replace: ')', '' | replace: '+', ''
   assign book_url  = section.settings.booking_url | default: '/pages/booking'
 
   assign account_url = routes.account_url
@@ -78,15 +80,15 @@
     <span class="pt-tabbar__label">Cart</span>
   </a>
 
-  <button
-    class="pt-tabbar__item pt-tabbar__item--menu"
-    type="button"
-    data-pt-tabbar-menu
-    aria-label="Open menu"
-    aria-expanded="false"
+  <a
+    class="pt-tabbar__item"
+    href="sms:+1{{ sms_dig }}"
+    data-pt-event="tabbar_sms"
+    aria-label="Text us at {{ phone }}"
   >
-    <span class="pt-tabbar__menu-text">Menu</span>
-  </button>
+    <svg class="pt-tabbar__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span class="pt-tabbar__label">Text us</span>
+  </a>
 </nav>
 
 {% stylesheet %}
@@ -206,28 +208,10 @@
   font-weight: 700;
 }
 
-/* Text-only Menu item — replaces the hamburger icon */
-.pt-tabbar__item--menu {
-  padding-top: 0.6rem;
-}
-.pt-tabbar__menu-text {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Outfit', sans-serif;
-  font-size: 0.86rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #fff;
-  line-height: 1;
-}
-
 @media (max-width: 360px) {
   .pt-tabbar { padding-left: 0.25rem; padding-right: 0.25rem; }
   .pt-tabbar__item { font-size: 0.58rem; padding: 0.4rem 0.1rem; }
   .pt-tabbar__cta-circle { width: 48px; height: 48px; }
-  .pt-tabbar__menu-text { font-size: 0.78rem; letter-spacing: 0.12em; }
 }
 {% endstylesheet %}
 
@@ -239,20 +223,6 @@
   if (window.location.pathname.indexOf('/pages/booking') === 0 ||
       window.location.pathname === '/pages/booking') {
     bar.classList.add('pt-tabbar--hidden');
-  }
-
-  // Wire the Menu button to the existing pt-header mobile drawer.
-  var btn = bar.querySelector('[data-pt-tabbar-menu]');
-  if (btn) {
-    btn.addEventListener('click', function () {
-      var menu = document.querySelector('[data-pt-mobile-menu]');
-      var hdrToggle = document.querySelector('[data-pt-menu-toggle]');
-      if (menu) {
-        var isOpen = menu.classList.toggle('pt-header__mobile-menu--open');
-        btn.setAttribute('aria-expanded', String(isOpen));
-        if (hdrToggle) hdrToggle.setAttribute('aria-expanded', String(isOpen));
-      }
-    });
   }
 })();
 {% endjavascript %}
@@ -274,8 +244,14 @@
     {
       "type": "text",
       "id": "phone",
-      "label": "Phone (used elsewhere; kept for parity)",
+      "label": "Phone (display)",
       "default": "403 452 4283"
+    },
+    {
+      "type": "text",
+      "id": "sms_phone",
+      "label": "SMS number override (optional)",
+      "info": "Leave blank to use the same as Phone. Format: digits only or with +1 prefix."
     }
   ],
   "presets": [
