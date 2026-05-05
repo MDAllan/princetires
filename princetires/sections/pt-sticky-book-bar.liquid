@@ -1,17 +1,46 @@
-<div class="pt-sticky-bar" id="pt-sticky-bar" role="complementary" aria-label="{{ 'sections.sticky_book_bar.label' | t }}">
-  <div class="pt-sticky-bar__inner">
-    <div class="pt-sticky-bar__availability" id="pt-sticky-bar-slot" aria-live="polite"></div>
-    <a
-      href="{{ section.settings.booking_url }}"
-      class="pt-sticky-bar__btn"
-      data-pt-event="book_cta"
-      data-pt-location="sticky_bar"
-      data-pt-label="{{ 'sections.sticky_book_bar.button_text' | t | escape }}"
-      aria-label="{{ 'sections.sticky_book_bar.button_text' | t }}"
-    >
-      {{- 'sections.sticky_book_bar.button_text' | t -}}
-    </a>
-  </div>
+{%- liquid
+  assign phone     = section.settings.phone     | default: '403 452 4283'
+  assign phone_dig = phone | replace: ' ', '' | replace: '-', '' | replace: '.', '' | replace: '(', '' | replace: ')', ''
+  assign sms_phone = section.settings.sms_phone | default: phone_dig
+  assign sms_dig   = sms_phone | replace: ' ', '' | replace: '-', '' | replace: '.', '' | replace: '(', '' | replace: ')', '' | replace: '+', ''
+  assign book_url  = section.settings.booking_url | default: '/pages/booking'
+-%}
+
+<div
+  class="pt-sticky-bar"
+  id="pt-sticky-bar"
+  role="complementary"
+  aria-label="{{ 'sections.sticky_book_bar.label' | t | default: 'Quick contact' }}"
+>
+  <a
+    class="pt-sticky-bar__btn"
+    href="tel:{{ phone_dig }}"
+    aria-label="Call Prince Tires at {{ phone }}"
+    data-pt-event="sticky_call"
+  >
+    <svg class="pt-sticky-bar__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+    <span class="pt-sticky-bar__label">Call</span>
+  </a>
+
+  <a
+    class="pt-sticky-bar__btn pt-sticky-bar__btn--primary"
+    href="{{ book_url }}"
+    aria-label="Book a service appointment"
+    data-pt-event="sticky_book"
+  >
+    <svg class="pt-sticky-bar__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span class="pt-sticky-bar__label">Book</span>
+  </a>
+
+  <a
+    class="pt-sticky-bar__btn"
+    href="sms:+1{{ sms_dig }}"
+    aria-label="Text Prince Tires at {{ phone }}"
+    data-pt-event="sticky_sms"
+  >
+    <svg class="pt-sticky-bar__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span class="pt-sticky-bar__label">Text</span>
+  </a>
 </div>
 
 {% stylesheet %}
@@ -22,143 +51,99 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  background: #111111;
-  border-top: 2px solid #E8251D;
-  padding: 12px 16px;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.35);
+  background: rgba(8, 8, 8, 0.92);
+  border-top: 4px solid #DA291C;
+  padding: 0.6rem 0.8rem calc(0.6rem + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.55rem;
+
+  font-family: 'Outfit', sans-serif;
+}
+
+@media (min-width: 769px) {
+  .pt-sticky-bar { display: none; }
 }
 
 @media (max-width: 768px) {
-  .pt-sticky-bar {
-    display: block;
-  }
+  .pt-sticky-bar { display: grid; }
 }
 
-.pt-sticky-bar__inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.pt-sticky-bar__availability {
-  font-size: 1.2rem;
-  color: #aaaaaa;
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.pt-sticky-bar__availability.has-slot {
-  color: #4ade80;
-}
+/* Hide on /pages/booking via JS-applied class */
+.pt-sticky-bar--hidden { display: none !important; }
 
 .pt-sticky-bar__btn {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #E8251D;
-  color: #ffffff;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 700;
-  font-size: 1.5rem;
-  letter-spacing: 0.05em;
+  gap: 0.18rem;
+  padding: 0.55rem 0.4rem;
+  min-height: 56px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.92);
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 10px 20px;
-  border-radius: 4px;
-  white-space: nowrap;
-  transition: background 0.2s;
-  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 80ms ease;
 }
 
+.pt-sticky-bar__btn:active { transform: translateY(1px); }
 .pt-sticky-bar__btn:hover,
-.pt-sticky-bar__btn:focus {
-  background: #c71e17;
-  outline: 2px solid #ffffff;
-  outline-offset: 2px;
+.pt-sticky-bar__btn:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.20);
+}
+.pt-sticky-bar__btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.pt-sticky-bar__btn--primary {
+  background: linear-gradient(135deg, #DA291C 0%, #b9221a 100%);
+  border-color: #DA291C;
+  color: #fff;
+  box-shadow: 0 6px 18px -8px rgba(218, 41, 28, 0.6);
+}
+.pt-sticky-bar__btn--primary:hover,
+.pt-sticky-bar__btn--primary:focus-visible {
+  background: linear-gradient(135deg, #f53224 0%, #DA291C 100%);
+  border-color: #f53224;
 }
 
-/* Hide bar when already on the booking page */
-.pt-sticky-bar--hidden {
-  display: none !important;
+.pt-sticky-bar__icon {
+  flex-shrink: 0;
+  color: currentColor;
+}
+.pt-sticky-bar__btn--primary .pt-sticky-bar__icon { color: #fff; }
+.pt-sticky-bar__btn:not(.pt-sticky-bar__btn--primary) .pt-sticky-bar__icon {
+  color: #DA291C;
+}
+
+.pt-sticky-bar__label {
+  line-height: 1;
+}
+
+@media (max-width: 360px) {
+  .pt-sticky-bar { padding-left: 0.5rem; padding-right: 0.5rem; gap: 0.4rem; }
+  .pt-sticky-bar__btn { font-size: 0.7rem; padding: 0.5rem 0.25rem; }
 }
 {% endstylesheet %}
 
 {% javascript %}
 (function () {
-  var bar    = document.getElementById('pt-sticky-bar');
-  var slotEl = document.getElementById('pt-sticky-bar-slot');
+  var bar = document.getElementById('pt-sticky-bar');
   if (!bar) return;
-
-  // Hide bar on the booking page itself
-  if (window.location.pathname.includes('/pages/booking')) {
+  // Hide on the booking page itself — three-button bar is redundant there.
+  if (window.location.pathname.indexOf('/pages/booking') === 0 ||
+      window.location.pathname === '/pages/booking') {
     bar.classList.add('pt-sticky-bar--hidden');
-    return;
-  }
-
-  // Fetch next available slot today and display it
-  // API returns { booked: ["10:30 AM", ...], allDayBlocked: bool }
-  var today = new Date().toISOString().slice(0, 10);
-  fetch('https://app.princetires.ca/api/availability?date=' + today)
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (data) {
-      if (!data || !slotEl) return;
-
-      var booked = Array.isArray(data.booked) ? data.booked : [];
-      var allDayBlocked = data.allDayBlocked === true;
-      var next = computeNextSlot(booked, allDayBlocked);
-
-      if (next) {
-        slotEl.textContent = 'Next slot today: ' + next;
-        slotEl.classList.add('has-slot');
-      } else {
-        // No slot fits today (closed, all booked, or past lead-time cutoff)
-        slotEl.textContent = 'Walk-ins welcome · spots open this week';
-        slotEl.classList.add('has-slot');
-      }
-    })
-    .catch(function () {
-      // Silently fail — bar still shows without availability text
-    });
-
-  // Returns the label of the first bookable slot today, or null if none.
-  // Mirrors booking rules: 8 am–5 pm, 30-min slots, lunch 12:00+12:30 closed,
-  // Sunday closed, 6-hour lead time enforced.
-  function computeNextSlot(bookedTimes, allDayBlocked) {
-    if (allDayBlocked) return null;
-
-    var now = new Date();
-    if (now.getDay() === 0) return null; // closed Sunday
-
-    var LEAD_MIN = 6 * 60;
-    var earliestMin = now.getHours() * 60 + now.getMinutes() + LEAD_MIN;
-
-    var bookedSet = {};
-    for (var i = 0; i < bookedTimes.length; i++) bookedSet[bookedTimes[i]] = true;
-
-    for (var h = 8; h < 17; h++) {
-      if (h === 12) continue; // lunch
-      for (var mi = 0; mi < 2; mi++) {
-        var m = mi === 0 ? 0 : 30;
-        var slotMin = h * 60 + m;
-        if (slotMin < earliestMin) continue;
-        var label = formatSlotLabel(h, m);
-        if (bookedSet[label]) continue;
-        return label;
-      }
-    }
-    return null;
-  }
-
-  function formatSlotLabel(h, m) {
-    var ampm = h >= 12 ? 'PM' : 'AM';
-    var disp = h % 12;
-    if (disp === 0) disp = 12;
-    return disp + ':' + (m === 0 ? '00' : '30') + ' ' + ampm;
   }
 })();
 {% endjavascript %}
@@ -168,9 +153,27 @@
   "name": "Sticky book bar",
   "settings": [
     {
+      "type": "header",
+      "content": "Quick-contact bar (mobile only)"
+    },
+    {
       "type": "url",
       "id": "booking_url",
-      "label": "Booking page URL"
+      "label": "Booking page URL",
+      "info": "Where the middle 'Book' button goes."
+    },
+    {
+      "type": "text",
+      "id": "phone",
+      "label": "Phone (display)",
+      "default": "403 452 4283",
+      "info": "Used for the Call button (tel:) and SMS button if no override below."
+    },
+    {
+      "type": "text",
+      "id": "sms_phone",
+      "label": "SMS number override (optional)",
+      "info": "Leave blank to use the same as Phone. Format: digits only or with +1 prefix."
     }
   ],
   "presets": [

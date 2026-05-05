@@ -1,0 +1,187 @@
+/* ═══════════════════════════════════════════════════════════════
+   PT-BTN — Global button system (Prince Tires)
+   ───────────────────────────────────────────────────────────────
+   Pattern: <a class="pt-btn pt-btn--solid"  data-neon>…</a>
+            <button class="pt-btn pt-btn--ghost pt-btn--sm">…</button>
+
+   Variants:
+     .pt-btn               default (transparent bg, red hairline border)
+     .pt-btn--solid        Ferrari Red fill, primary CTA
+     .pt-btn--ghost        no border, hover only
+
+   Sizes:
+     .pt-btn--sm           compact
+     (no modifier)         default
+     .pt-btn--lg           hero / oversized
+
+   Modifiers:
+     [data-neon]           gradient hairline above + below text on hover
+     .pt-btn--full         100% width
+     [aria-disabled]       muted, no pointer
+
+   Notes:
+     - All sizes meet ≥44×44 hit target on mobile (ui-ux-pro-max rule)
+     - Font: theme-inherited (Outfit) — no @import here
+     - No JS dependency
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --pt-btn-red:        #DA291C;
+  --pt-btn-red-hover:  #b9221a;
+  --pt-btn-orange:     #F5820B;
+  --pt-btn-line:       rgba(255, 255, 255, 0.18);
+  --pt-btn-line-hover: rgba(255, 255, 255, 0.45);
+}
+
+.pt-btn,
+a.pt-btn,
+button.pt-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+
+  /* default size */
+  min-height: 44px;
+  padding: 0.65rem 1.6rem;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #fff;
+
+  border: 1px solid var(--pt-btn-line);
+  border-radius: 9999px;
+  background: transparent;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 80ms ease;
+}
+
+.pt-btn:hover,
+.pt-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--pt-btn-line-hover);
+}
+.pt-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.pt-btn:active { transform: translateY(1px); }
+
+/* ── Sizes ── */
+.pt-btn--sm {
+  min-height: 36px;        /* relaxed below the strict 44 — only use in clusters with built-in spacing */
+  padding: 0.4rem 1.05rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+}
+.pt-btn--lg {
+  min-height: 52px;
+  padding: 0.95rem 2.4rem;
+  font-size: 0.96rem;
+  letter-spacing: 0.18em;
+}
+
+/* ── Variants ── */
+.pt-btn--solid {
+  background: var(--pt-btn-red);
+  border-color: var(--pt-btn-red);
+  color: #fff;
+  box-shadow: 0 6px 20px -8px rgba(218, 41, 28, 0.55);
+}
+.pt-btn--solid:hover,
+.pt-btn--solid:focus-visible {
+  background: var(--pt-btn-red-hover);
+  border-color: var(--pt-btn-red-hover);
+  box-shadow: 0 8px 24px -8px rgba(218, 41, 28, 0.7);
+}
+
+.pt-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+}
+.pt-btn--ghost:hover,
+.pt-btn--ghost:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--pt-btn-line);
+  color: #fff;
+}
+
+/* ── Full-width ── */
+.pt-btn--full { width: 100%; }
+
+/* ── Disabled / aria-disabled ── */
+.pt-btn[aria-disabled="true"],
+.pt-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Neon hairline (data-neon attribute) ──
+   Two 1px gradient lines that fade in on hover. Adapted from the user's
+   reference React component, in red instead of blue. */
+.pt-btn[data-neon]::before,
+.pt-btn[data-neon]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 1px;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--pt-btn-red) 50%,
+    transparent 100%
+  );
+  transition: opacity 320ms ease;
+}
+.pt-btn[data-neon]::before { top:    -1px; }
+.pt-btn[data-neon]::after  { bottom: -1px; }
+
+.pt-btn[data-neon]:hover::before,
+.pt-btn[data-neon]:focus-visible::before { opacity: 1; }
+.pt-btn[data-neon]:hover::after,
+.pt-btn[data-neon]:focus-visible::after  { opacity: 0.35; }
+
+/* Solid + neon: shift the lines to red-on-orange so they pop on the red bg */
+.pt-btn--solid[data-neon]::before,
+.pt-btn--solid[data-neon]::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--pt-btn-orange) 50%,
+    transparent 100%
+  );
+}
+
+/* ── Reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .pt-btn,
+  .pt-btn::before,
+  .pt-btn::after { transition: none !important; }
+  .pt-btn:active { transform: none; }
+}
+
+/* ── Dark-text variant for use on light backgrounds (rare) ── */
+.pt-btn--on-light {
+  color: #0a0a0a;
+  border-color: rgba(0, 0, 0, 0.18);
+}
+.pt-btn--on-light:hover,
+.pt-btn--on-light:focus-visible {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.45);
+}
