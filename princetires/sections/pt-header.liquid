@@ -384,14 +384,14 @@
      MOBILE  (≤ 768px)
   ══════════════════════════ */
   @media (max-width: 768px) {
-    /* Mobile top row: menu (left) | logo (center) | cart (right)
-       Use grid + explicit column placement so DOM order doesn't matter. */
+    /* Mobile top row: menu (left) | logo (center, absolute) | cart (right) */
     .pt-header__container {
-      padding: 0 1rem;
+      position: relative;
+      padding: 0 0.75rem;
       height: 60px;
       gap: 0;
-      display: grid;
-      grid-template-columns: 44px 1fr 44px;
+      display: flex;
+      justify-content: space-between;
       align-items: center;
     }
     .pt-header__nav { display: none; }
@@ -399,17 +399,32 @@
 
     .pt-header__menu-btn {
       display: flex;
-      grid-column: 1;
-      justify-self: start;
+      order: 0;
+      width: 44px;
+      height: 44px;
     }
+
+    /* Logo is absolutely centered so menu/cart widths can't shift it */
     .pt-header__logo {
-      grid-column: 2;
-      justify-self: center;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
       flex: none;
+      width: auto;
+      pointer-events: auto;
     }
+    .pt-header__logo-img {
+      height: 36px;
+      max-width: 50vw;
+      object-fit: contain;
+    }
+
     .pt-header__cart-mobile {
-      grid-column: 3;
-      justify-self: end;
+      display: flex;
+      order: 2;
+      width: 44px;
+      height: 44px;
     }
 
     /* Mobile keeps full-width on scroll — pill is desktop-only */
