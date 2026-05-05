@@ -1,0 +1,647 @@
+{%- liquid
+  assign hero_eyebrow = section.settings.hero_eyebrow | default: 'Prince Tires · Calgary'
+  assign hero_title   = section.settings.hero_title   | default: 'Book your appointment'
+  assign hero_sub     = section.settings.hero_sub     | default: 'Pick a service, choose a time. We confirm by email within the day.'
+
+  assign services_default = '4 winter tires (change-over)|4 all-season tires (change-over)|Wheel alignment|Tire rotation & balance|Flat repair|Tire storage|Fleet / commercial inquiry|Other / quote'
+  assign services_raw = section.settings.services | default: services_default
+  assign services_arr = services_raw | split: '|'
+-%}
+
+<section class="pt-bp" data-pt-booking-page>
+  <!-- ── Hero band ── -->
+  <div class="pt-bp__hero">
+    <div class="pt-bp__hero-tread" aria-hidden="true"></div>
+    <div class="pt-bp__hero-overlay" aria-hidden="true"></div>
+    <div class="pt-bp__hero-inner">
+      <span class="pt-bp__eyebrow">{{ hero_eyebrow }}</span>
+      <h1 class="pt-bp__hero-title">{{ hero_title }}</h1>
+      <p class="pt-bp__hero-sub">{{ hero_sub }}</p>
+    </div>
+  </div>
+
+  <!-- ── Card ── -->
+  <div class="pt-bp__deck">
+    <div class="pt-bp__card">
+      <span class="pt-bp__card-accent" aria-hidden="true"></span>
+
+      <form class="pt-bp__form" data-pt-bp-form novalidate>
+        <!-- Hidden state -->
+        <input type="hidden" name="bookType" value="service">
+        <input type="hidden" name="date" data-pt-bp-date value="">
+        <input type="hidden" name="time" data-pt-bp-time value="">
+        <input type="hidden" name="serviceName" data-pt-bp-service value="">
+
+        <!-- Step header -->
+        <div class="pt-bp__top">
+          <span class="pt-bp__step-eyebrow">Service appointment</span>
+          <h2 class="pt-bp__step-title">Tell us what you need.</h2>
+        </div>
+
+        <!-- 1. Service select -->
+        <fieldset class="pt-bp__group">
+          <legend class="pt-bp__group-label">1. What service?</legend>
+          <div class="pt-bp__services">
+            {%- for s in services_arr -%}
+              {%- assign svc = s | strip -%}
+              {%- if svc != blank -%}
+                <button
+                  type="button"
+                  class="pt-bp__svc"
+                  data-pt-bp-svc-btn
+                  data-svc="{{ svc | escape }}"
+                >{{ svc }}</button>
+              {%- endif -%}
+            {%- endfor -%}
+          </div>
+        </fieldset>
+
+        <!-- 2. Vehicle -->
+        <fieldset class="pt-bp__group">
+          <legend class="pt-bp__group-label">2. Your vehicle</legend>
+          <div class="pt-bp__row pt-bp__row--4">
+            <label class="pt-bp__field">
+              <span>Year</span>
+              <input type="text" name="vehicleYear" inputmode="numeric" autocomplete="off" placeholder="2024" maxlength="4">
+            </label>
+            <label class="pt-bp__field">
+              <span>Make</span>
+              <input type="text" name="vehicleMake" autocomplete="off" placeholder="Toyota">
+            </label>
+            <label class="pt-bp__field">
+              <span>Model</span>
+              <input type="text" name="vehicleModel" autocomplete="off" placeholder="RAV4">
+            </label>
+            <label class="pt-bp__field">
+              <span>Trim <span class="pt-bp__opt">(opt.)</span></span>
+              <input type="text" name="vehicleTrim" autocomplete="off" placeholder="XLE">
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- 3. When -->
+        <fieldset class="pt-bp__group">
+          <legend class="pt-bp__group-label">3. When?</legend>
+
+          <div class="pt-bp__day-strip" data-pt-bp-days>
+            <p class="pt-bp__hint">Loading…</p>
+          </div>
+
+          <div class="pt-bp__time-grid" data-pt-bp-times>
+            <p class="pt-bp__hint pt-bp__hint--mute">Pick a day above to see available times.</p>
+          </div>
+        </fieldset>
+
+        <!-- 4. You -->
+        <fieldset class="pt-bp__group">
+          <legend class="pt-bp__group-label">4. Your info</legend>
+          <div class="pt-bp__row pt-bp__row--3">
+            <label class="pt-bp__field">
+              <span>Name</span>
+              <input type="text" name="name" autocomplete="name" placeholder="Your name" required>
+            </label>
+            <label class="pt-bp__field">
+              <span>Email</span>
+              <input type="email" name="email" autocomplete="email" placeholder="you@email.com" required>
+            </label>
+            <label class="pt-bp__field">
+              <span>Phone</span>
+              <input type="tel" name="phone" autocomplete="tel" placeholder="(403) 555-0000" required>
+            </label>
+          </div>
+          <label class="pt-bp__field">
+            <span>Notes <span class="pt-bp__opt">(optional)</span></span>
+            <textarea name="notes" rows="3" placeholder="Anything we should know — TPMS, drop-off time, custom request…"></textarea>
+          </label>
+        </fieldset>
+
+        <!-- Status + submit -->
+        <div class="pt-bp__status" data-pt-bp-status hidden role="alert"></div>
+
+        <button type="submit" class="pt-bp__submit" data-pt-bp-submit>
+          <span class="pt-bp__submit-text">Confirm booking</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+
+        <p class="pt-bp__foot">By booking, you agree we may contact you about this appointment. We'll reply within the day to confirm.</p>
+      </form>
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .pt-bp {
+    --pt-red: #DA291C;
+    --pt-orange: #F5820B;
+    --pt-card: rgba(15, 15, 15, 0.96);
+    --pt-line: rgba(255, 255, 255, 0.10);
+    --pt-mute: rgba(255, 255, 255, 0.6);
+    background: #050505;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    isolation: isolate;
+    min-height: 60vh;
+  }
+  .pt-bp * { box-sizing: border-box; }
+
+  /* ── Hero ── */
+  .pt-bp__hero {
+    position: relative;
+    padding: clamp(4rem, 10vh, 8rem) clamp(1.25rem, 4vw, 3rem) clamp(7rem, 12vh, 10rem);
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 30% 30%, rgba(218, 41, 28, 0.32) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 70%, rgba(245, 130, 11, 0.18) 0%, transparent 60%),
+      linear-gradient(135deg, #0a0a0a 0%, #1a0606 100%);
+  }
+  .pt-bp__hero-tread {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: repeating-linear-gradient(-45deg, transparent 0, transparent 22px, rgba(255,255,255,.022) 22px, rgba(255,255,255,.022) 24px);
+  }
+  .pt-bp__hero-overlay {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.45) 50%, rgba(5,5,5,1) 100%);
+  }
+  .pt-bp__hero-inner {
+    position: relative;
+    text-align: center;
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex; flex-direction: column; align-items: center; gap: 1rem;
+  }
+  .pt-bp__eyebrow {
+    font-size: 0.92rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.32em;
+    color: rgba(255,255,255,.7);
+    display: inline-flex; align-items: center; gap: 0.7rem;
+  }
+  .pt-bp__eyebrow::before, .pt-bp__eyebrow::after {
+    content: ""; width: 22px; height: 1px; background: var(--pt-red);
+  }
+  .pt-bp__hero-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(3rem, 7vw, 6rem); font-weight: 800; line-height: 0.95; letter-spacing: -0.012em;
+    text-transform: uppercase; margin: 0;
+    text-shadow: 0 6px 36px rgba(0,0,0,0.5);
+  }
+  .pt-bp__hero-sub {
+    font-size: clamp(1rem, 1.4vw, 1.3rem); line-height: 1.55; color: rgba(255,255,255,.78); max-width: 56ch; margin: 0;
+  }
+
+  /* ── Deck / card ── */
+  .pt-bp__deck {
+    position: relative;
+    margin: clamp(-7rem, -10vh, -5rem) auto 0;
+    padding: 0 clamp(1rem, 4vw, 3rem) clamp(3rem, 7vw, 5rem);
+    max-width: 880px;
+  }
+  .pt-bp__card {
+    position: relative;
+    background: var(--pt-card);
+    border: 1px solid var(--pt-line);
+    border-radius: 8px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,.7);
+    overflow: hidden;
+  }
+  .pt-bp__card-accent {
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--pt-red) 0%, var(--pt-orange) 100%);
+  }
+
+  .pt-bp__form {
+    display: flex; flex-direction: column; gap: 2rem;
+    padding: clamp(2rem, 4vw, 3rem);
+  }
+
+  .pt-bp__top { display: flex; flex-direction: column; gap: 0.4rem; }
+  .pt-bp__step-eyebrow {
+    font-size: 0.84rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.28em;
+    color: var(--pt-orange);
+  }
+  .pt-bp__step-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(2rem, 3.4vw, 3rem); font-weight: 800; text-transform: uppercase;
+    line-height: 0.95; letter-spacing: -0.005em; margin: 0;
+  }
+
+  /* ── Group ── */
+  .pt-bp__group {
+    border: 0; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 0.9rem;
+  }
+  .pt-bp__group-label {
+    font-size: 0.84rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.22em;
+    color: rgba(255,255,255,.85); padding: 0;
+  }
+
+  /* ── Service buttons ── */
+  .pt-bp__services {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem;
+  }
+  @media (min-width: 600px) {
+    .pt-bp__services { grid-template-columns: repeat(3, 1fr); }
+  }
+  .pt-bp__svc {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--pt-line);
+    border-radius: 4px;
+    padding: 0.85rem 0.95rem;
+    color: rgba(255,255,255,.85);
+    font-family: inherit;
+    font-size: 0.95rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  }
+  .pt-bp__svc:hover { background: rgba(255,255,255,0.08); }
+  .pt-bp__svc.is-selected {
+    background: rgba(218, 41, 28, 0.16);
+    border-color: var(--pt-red);
+    color: #fff;
+  }
+
+  /* ── Inputs ── */
+  .pt-bp__row { display: grid; grid-template-columns: 1fr; gap: 0.9rem; }
+  @media (min-width: 600px) {
+    .pt-bp__row--3 { grid-template-columns: repeat(3, 1fr); }
+    .pt-bp__row--4 { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 599px) {
+    .pt-bp__row--4 { grid-template-columns: repeat(2, 1fr); }
+  }
+  .pt-bp__field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .pt-bp__field > span {
+    font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.18em;
+    color: var(--pt-mute);
+  }
+  .pt-bp__opt { text-transform: none; letter-spacing: 0; color: rgba(255,255,255,.4); font-weight: 400; }
+  .pt-bp__field input,
+  .pt-bp__field textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--pt-line);
+    color: #fff;
+    font-family: inherit;
+    font-size: 1.02rem;
+    padding: 0.85rem 1rem;
+    border-radius: 4px;
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+  .pt-bp__field input::placeholder,
+  .pt-bp__field textarea::placeholder { color: rgba(255,255,255,.32); }
+  .pt-bp__field input:focus,
+  .pt-bp__field textarea:focus {
+    outline: none; border-color: var(--pt-red); background: rgba(255,255,255,0.06);
+  }
+  .pt-bp__field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+  /* ── Day strip ── */
+  .pt-bp__day-strip {
+    display: flex; gap: 0.5rem;
+    overflow-x: auto; padding-bottom: 0.4rem;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .pt-bp__day-strip::-webkit-scrollbar { display: none; }
+  .pt-bp__day {
+    flex: 0 0 auto; min-width: 64px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--pt-line);
+    border-radius: 6px;
+    padding: 0.55rem 0.7rem;
+    color: #fff;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 140ms ease, border-color 140ms ease, opacity 140ms ease;
+    scroll-snap-align: start;
+  }
+  .pt-bp__day-name {
+    display: block;
+    font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.16em;
+    color: var(--pt-mute);
+  }
+  .pt-bp__day-num {
+    display: block;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.5rem; font-weight: 700; line-height: 1;
+    margin-top: 0.2rem;
+  }
+  .pt-bp__day:hover { background: rgba(255,255,255,0.08); }
+  .pt-bp__day.is-selected {
+    background: rgba(218, 41, 28, 0.16);
+    border-color: var(--pt-red);
+  }
+  .pt-bp__day.is-closed { opacity: 0.36; cursor: not-allowed; }
+
+  /* ── Time grid ── */
+  .pt-bp__time-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;
+  }
+  @media (min-width: 600px) {
+    .pt-bp__time-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  .pt-bp__time {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--pt-line);
+    border-radius: 4px;
+    padding: 0.7rem 0.5rem;
+    color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease;
+  }
+  .pt-bp__time:hover { background: rgba(255,255,255,0.08); }
+  .pt-bp__time.is-selected { background: rgba(218,41,28,0.16); border-color: var(--pt-red); }
+  .pt-bp__time.is-blocked { opacity: 0.32; cursor: not-allowed; }
+
+  .pt-bp__hint { color: var(--pt-mute); font-size: 0.95rem; margin: 0; grid-column: 1 / -1; }
+  .pt-bp__hint--mute { font-style: italic; }
+
+  /* ── Status & submit ── */
+  .pt-bp__status {
+    padding: 0.85rem 1.1rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+  .pt-bp__status--ok {
+    background: rgba(34,197,94,.12);
+    border: 1px solid rgba(34,197,94,.4);
+    color: #6ee7a3;
+  }
+  .pt-bp__status--err {
+    background: rgba(218,41,28,.12);
+    border: 1px solid var(--pt-red);
+    color: #ff8a82;
+  }
+
+  .pt-bp__submit {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem;
+    width: 100%;
+    background: linear-gradient(135deg, var(--pt-red) 0%, #b9221a 100%);
+    color: #fff;
+    border: 0; border-radius: 4px;
+    padding: 1.15rem 1.6rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;
+    cursor: pointer;
+    box-shadow: 0 8px 24px -8px rgba(218,41,28,0.5);
+    transition: background 160ms ease, transform 80ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  }
+  .pt-bp__submit:hover { background: linear-gradient(135deg, #f53224 0%, var(--pt-red) 100%); }
+  .pt-bp__submit:active { transform: translateY(1px); }
+  .pt-bp__submit:disabled { opacity: 0.55; cursor: wait; }
+
+  .pt-bp__foot { color: rgba(255,255,255,.42); font-size: 0.88rem; line-height: 1.4; text-align: center; margin: 0; }
+{% endstylesheet %}
+
+{% javascript %}
+(function () {
+  var root = document.querySelector('[data-pt-booking-page]');
+  if (!root) return;
+
+  var form          = root.querySelector('[data-pt-bp-form]');
+  var svcButtons    = root.querySelectorAll('[data-pt-bp-svc-btn]');
+  var hiddenSvc     = root.querySelector('[data-pt-bp-service]');
+  var hiddenDate    = root.querySelector('[data-pt-bp-date]');
+  var hiddenTime    = root.querySelector('[data-pt-bp-time]');
+  var dayStripEl    = root.querySelector('[data-pt-bp-days]');
+  var timeGridEl    = root.querySelector('[data-pt-bp-times]');
+  var statusEl      = root.querySelector('[data-pt-bp-status]');
+  var submitBtn     = root.querySelector('[data-pt-bp-submit]');
+  var submitText    = submitBtn.querySelector('.pt-bp__submit-text');
+
+  var API_BASE = 'https://app.princetires.ca';
+  var st = { date: null, time: null, service: null };
+
+  // ── Service select (deep-link via ?service=…) ───────────────────────────
+  var qs = new URLSearchParams(window.location.search);
+  var qpService = qs.get('service');
+  if (qpService) {
+    var match = [].filter.call(svcButtons, function(b){ return b.dataset.svc.toLowerCase() === qpService.toLowerCase(); })[0];
+    if (match) selectService(match);
+  }
+  svcButtons.forEach(function (btn) {
+    btn.addEventListener('click', function() { selectService(btn); });
+  });
+  function selectService(btn) {
+    svcButtons.forEach(function (b) { b.classList.remove('is-selected'); });
+    btn.classList.add('is-selected');
+    st.service = btn.dataset.svc;
+    hiddenSvc.value = btn.dataset.svc;
+  }
+
+  // ── Day strip (next 14 days, Sunday closed) ──────────────────────────────
+  function buildDays() {
+    dayStripEl.innerHTML = '';
+    var today = new Date();
+    today.setHours(0,0,0,0);
+    for (var i = 0; i < 14; i++) {
+      var d = new Date(today.getTime());
+      d.setDate(today.getDate() + i);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pt-bp__day';
+      var isSun = d.getDay() === 0;
+      if (isSun) btn.classList.add('is-closed');
+      btn.disabled = isSun;
+      var nameEl = document.createElement('span');
+      nameEl.className = 'pt-bp__day-name';
+      nameEl.textContent = d.toLocaleDateString('en-CA', { weekday: 'short' });
+      var numEl = document.createElement('span');
+      numEl.className = 'pt-bp__day-num';
+      numEl.textContent = String(d.getDate());
+      btn.appendChild(nameEl);
+      btn.appendChild(numEl);
+      btn.dataset.date = d.toISOString().slice(0,10);
+      btn.addEventListener('click', function (ev) {
+        var t = ev.currentTarget;
+        if (t.classList.contains('is-closed')) return;
+        root.querySelectorAll('.pt-bp__day').forEach(function(x){ x.classList.remove('is-selected'); });
+        t.classList.add('is-selected');
+        st.date = t.dataset.date;
+        hiddenDate.value = st.date;
+        loadTimes(st.date);
+      });
+      dayStripEl.appendChild(btn);
+    }
+  }
+  buildDays();
+
+  // ── Time slots (8–5, half-hour, skip lunch + past + 6h lead) ─────────────
+  function loadTimes(dateStr) {
+    timeGridEl.innerHTML = '<p class="pt-bp__hint">Checking availability…</p>';
+    fetch(API_BASE + '/api/availability?date=' + encodeURIComponent(dateStr))
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('availability ' + r.status)); })
+      .then(function (data) {
+        var booked = Array.isArray(data.booked) ? data.booked : [];
+        var allDay = data.allDayBlocked === true;
+        renderTimes(dateStr, booked, allDay);
+      })
+      .catch(function () {
+        timeGridEl.innerHTML = '<p class="pt-bp__hint">Could not load times — please refresh and try again.</p>';
+      });
+  }
+
+  function renderTimes(dateStr, booked, allDay) {
+    if (allDay) {
+      timeGridEl.innerHTML = '<p class="pt-bp__hint">Closed this day. Pick another.</p>';
+      return;
+    }
+    var bookedSet = {}; for (var i = 0; i < booked.length; i++) bookedSet[booked[i]] = true;
+    var now = new Date();
+    var sameDay = dateStr === now.toISOString().slice(0,10);
+    var earliestMin = 0;
+    if (sameDay) earliestMin = now.getHours()*60 + now.getMinutes() + 360; // 6h lead
+
+    var html = '';
+    for (var h = 8; h < 17; h++) {
+      if (h === 12) continue; // lunch
+      for (var mi = 0; mi < 2; mi++) {
+        var m = mi === 0 ? 0 : 30;
+        var slotMin = h*60 + m;
+        var label = formatLabel(h, m);
+        var blocked = bookedSet[label] || (sameDay && slotMin < earliestMin);
+        html += '<button type="button" class="pt-bp__time' + (blocked ? ' is-blocked' : '') + '" data-time="' + label + '"' + (blocked ? ' disabled' : '') + '>' + label + '</button>';
+      }
+    }
+    if (!html) html = '<p class="pt-bp__hint">No times available — try a different day.</p>';
+    timeGridEl.innerHTML = html;
+
+    timeGridEl.querySelectorAll('.pt-bp__time:not(.is-blocked)').forEach(function (t) {
+      t.addEventListener('click', function (ev) {
+        timeGridEl.querySelectorAll('.pt-bp__time').forEach(function(x){ x.classList.remove('is-selected'); });
+        ev.currentTarget.classList.add('is-selected');
+        st.time = ev.currentTarget.dataset.time;
+        hiddenTime.value = st.time;
+      });
+    });
+  }
+  function formatLabel(h, m) {
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    var disp = h % 12; if (disp === 0) disp = 12;
+    return disp + ':' + (m === 0 ? '00' : '30') + ' ' + ampm;
+  }
+
+  // ── Submit ───────────────────────────────────────────────────────────────
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    statusEl.hidden = true;
+    statusEl.className = 'pt-bp__status';
+
+    if (!st.service) return showStatus('Please pick a service.', false);
+    if (!st.date)    return showStatus('Please pick a day.',     false);
+    if (!st.time)    return showStatus('Please pick a time.',    false);
+
+    var fd = new FormData(form);
+    var payload = {
+      bookType:    'service',
+      serviceName: fd.get('serviceName'),
+      name:        (fd.get('name')||'').trim(),
+      email:       (fd.get('email')||'').trim(),
+      phone:       (fd.get('phone')||'').trim(),
+      vehicleYear: (fd.get('vehicleYear')||'').trim() || null,
+      vehicleMake: (fd.get('vehicleMake')||'').trim() || null,
+      vehicleModel:(fd.get('vehicleModel')||'').trim() || null,
+      vehicleTrim: (fd.get('vehicleTrim')||'').trim() || null,
+      notes:       (fd.get('notes')||'').trim() || null,
+      date:        st.date,
+      time:        st.time
+    };
+
+    if (!payload.name || !payload.email || !payload.phone) {
+      return showStatus('Name, email, and phone are required.', false);
+    }
+
+    submitBtn.disabled = true;
+    submitText.textContent = 'Booking…';
+
+    fetch(API_BASE + '/api/book', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) {
+        return r.json().then(function (j) { return { status: r.status, body: j }; });
+      })
+      .then(function (res) {
+        if (res.status === 201) {
+          showStatus('Booked! We sent a confirmation to ' + payload.email + '. We will reply by end of day to confirm.', true);
+          form.reset();
+          root.querySelectorAll('.is-selected').forEach(function(x){ x.classList.remove('is-selected'); });
+          st = { date: null, time: null, service: null };
+          timeGridEl.innerHTML = '<p class="pt-bp__hint pt-bp__hint--mute">Pick a day above to see available times.</p>';
+          if (window.scrollTo) window.scrollTo({ top: root.offsetTop - 80, behavior: 'smooth' });
+        } else if (res.status === 409) {
+          showStatus('That slot was just booked. Please pick another time.', false);
+        } else {
+          showStatus(res.body.error || 'Could not save your booking. Please try again.', false);
+        }
+      })
+      .catch(function () {
+        showStatus('Network error. Check your connection and try again.', false);
+      })
+      .finally(function () {
+        submitBtn.disabled = false;
+        submitText.textContent = 'Confirm booking';
+      });
+  });
+
+  function showStatus(msg, ok) {
+    statusEl.textContent = msg;
+    statusEl.className = 'pt-bp__status ' + (ok ? 'pt-bp__status--ok' : 'pt-bp__status--err');
+    statusEl.hidden = false;
+    statusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+})();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Booking page",
+  "tag": "section",
+  "class": "section section--pt-bp",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Hero copy"
+    },
+    {
+      "type": "text",
+      "id": "hero_eyebrow",
+      "label": "Eyebrow",
+      "default": "Prince Tires · Calgary"
+    },
+    {
+      "type": "text",
+      "id": "hero_title",
+      "label": "Title",
+      "default": "Book your appointment"
+    },
+    {
+      "type": "textarea",
+      "id": "hero_sub",
+      "label": "Sub-text",
+      "default": "Pick a service, choose a time. We confirm by email within the day."
+    },
+    {
+      "type": "header",
+      "content": "Service options"
+    },
+    {
+      "type": "textarea",
+      "id": "services",
+      "label": "Services (one per line, separated by |)",
+      "default": "4 winter tires (change-over)|4 all-season tires (change-over)|Wheel alignment|Tire rotation & balance|Flat repair|Tire storage|Fleet / commercial inquiry|Other / quote",
+      "info": "Separate with the pipe character |. These appear as buttons in step 1."
+    }
+  ],
+  "presets": [
+    { "name": "Booking page" }
+  ]
+}
+{% endschema %}
