@@ -7,7 +7,35 @@
     --hero-subtitle-opacity: {{ section.settings.subtitle_opacity | divided_by: 100.0 }};
   "
 >
-  {%- if section.settings.hero_3d_scene_url != blank -%}
+  {%- assign slide_blocks = section.blocks | where: 'type', 'slide_image' -%}
+
+  {%- if slide_blocks.size > 0 -%}
+    <div
+      class="hero-smart-search__slideshow"
+      data-hero-slideshow
+      data-direction="{{ section.settings.slideshow_direction | default: 'up' }}"
+      data-interval="{{ section.settings.slideshow_interval_s | default: 5 | times: 1000 }}"
+      aria-hidden="true"
+    >
+      {%- for block in slide_blocks -%}
+        {%- if block.settings.image != blank -%}
+          <img
+            class="hero-smart-search__slide{% if forloop.first %} is-active{% endif %}"
+            src="{{ block.settings.image | image_url: width: 2400 }}"
+            srcset="{{ block.settings.image | image_url: width: 900 }} 900w, {{ block.settings.image | image_url: width: 1400 }} 1400w, {{ block.settings.image | image_url: width: 2000 }} 2000w, {{ block.settings.image | image_url: width: 2400 }} 2400w"
+            sizes="100vw"
+            loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+            alt=""
+            {{ block.shopify_attributes }}
+          >
+        {%- endif -%}
+      {%- endfor -%}
+      <div
+        class="hero-smart-search__slideshow-overlay"
+        style="--hero-overlay-opacity: {{ section.settings.slideshow_overlay_opacity | default: 60 | divided_by: 100.0 }};"
+      ></div>
+    </div>
+  {%- elsif section.settings.hero_3d_scene_url != blank -%}
     <div class="hero-smart-search__spline" aria-hidden="true">
       <spline-viewer
         url="{{ section.settings.hero_3d_scene_url }}"
@@ -197,6 +225,69 @@
     .hero-smart-search__spline { display: none; }
   }
 
+  /* ── Slideshow background (optional, replaces Spline if both set) ── */
+  .hero-smart-search__slideshow {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .hero-smart-search__slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    opacity: 0;
+    transform: scale(1) rotateX(0deg);
+    transform-origin: center;
+    will-change: transform, opacity;
+  }
+  .hero-smart-search__slide.is-entering {
+    animation: hero-slide-in 0.55s cubic-bezier(0.645, 0.045, 0.355, 1.0) forwards;
+  }
+  .hero-smart-search__slide.is-active {
+    opacity: 1;
+    transform: scale(1) rotateX(0deg);
+    z-index: 1;
+  }
+  .hero-smart-search__slide.is-leaving {
+    z-index: 1;
+    opacity: 1;
+    animation: hero-slide-out-up 1s cubic-bezier(0.645, 0.045, 0.355, 1.0) forwards;
+  }
+  .hero-smart-search__slideshow[data-direction="down"] .hero-smart-search__slide.is-leaving {
+    animation-name: hero-slide-out-down;
+  }
+  @keyframes hero-slide-in {
+    from { opacity: 0; transform: scale(0.4) rotateX(45deg); }
+    to   { opacity: 1; transform: scale(1) rotateX(0deg); }
+  }
+  @keyframes hero-slide-out-up {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 1; transform: translateY(-150%) scale(1); }
+  }
+  @keyframes hero-slide-out-down {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 1; transform: translateY(150%) scale(1); }
+  }
+  .hero-smart-search__slideshow-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, var(--hero-overlay-opacity, 0.6));
+    z-index: 2;
+    pointer-events: none;
+  }
+  /* Reduced-motion: skip animations, just show the active slide */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-smart-search__slide.is-entering,
+    .hero-smart-search__slide.is-leaving {
+      animation: none;
+    }
+    .hero-smart-search__slide:not(.is-active) { display: none; }
+  }
   .hero-smart-search__container {
     width: 100%;
     max-width: 80rem;
@@ -1883,6 +1974,61 @@ document.addEventListener('DOMContentLoaded', function() {
     /* Start after heading animation completes */
     setTimeout(tick, 1200);
   })();
+
+  /* ── Hero slideshow cycler ─────────────────────────────────── */
+  (function () {
+    var root = document.querySelector('[data-hero-slideshow]');
+    if (!root) return;
+    var slides = root.querySelectorAll('.hero-smart-search__slide');
+    if (slides.length < 2) return;
+
+    var interval = parseInt(root.dataset.interval, 10) || 5000;
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+
+    var current = 0;
+    var timer = null;
+
+    function show(next) {
+      var prev = current;
+      if (next === prev) return;
+
+      var prevEl = slides[prev];
+      var nextEl = slides[next];
+
+      prevEl.classList.remove('is-active');
+      prevEl.classList.add('is-leaving');
+      nextEl.classList.remove('is-leaving');
+      nextEl.classList.add('is-entering', 'is-active');
+
+      // Cleanup the leaving class after the exit animation finishes
+      window.setTimeout(function () { prevEl.classList.remove('is-leaving'); }, 1100);
+      window.setTimeout(function () { nextEl.classList.remove('is-entering'); }, 700);
+
+      current = next;
+    }
+
+    function next() {
+      show((current + 1) % slides.length);
+    }
+
+    function start() {
+      if (timer) return;
+      timer = window.setInterval(next, interval);
+    }
+    function stop() {
+      if (!timer) return;
+      window.clearInterval(timer);
+      timer = null;
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') stop();
+      else start();
+    });
+
+    start();
+  })();
 });
 </script>
 
@@ -1894,13 +2040,51 @@ document.addEventListener('DOMContentLoaded', function() {
   "settings": [
     {
       "type": "header",
-      "content": "3D Hero Background (Spline)"
+      "content": "Hero background slideshow"
+    },
+    {
+      "type": "paragraph",
+      "content": "Add 'Slide image' blocks below to cycle through hero photos. If no slides are added the hero falls back to the Spline scene URL (if set) or solid color. Recommended size: 2400×1350 (16:9), dark/low-contrast images work best because of the overlay."
+    },
+    {
+      "type": "range",
+      "id": "slideshow_interval_s",
+      "label": "Seconds per slide",
+      "min": 3,
+      "max": 12,
+      "step": 1,
+      "default": 5,
+      "unit": "s"
+    },
+    {
+      "type": "range",
+      "id": "slideshow_overlay_opacity",
+      "label": "Dark overlay opacity",
+      "min": 0,
+      "max": 85,
+      "step": 5,
+      "default": 60,
+      "unit": "%"
+    },
+    {
+      "type": "select",
+      "id": "slideshow_direction",
+      "label": "Exit direction",
+      "default": "up",
+      "options": [
+        { "value": "up", "label": "Slide up" },
+        { "value": "down", "label": "Slide down" }
+      ]
+    },
+    {
+      "type": "header",
+      "content": "3D background (Spline) — fallback when no slides set"
     },
     {
       "type": "text",
       "id": "hero_3d_scene_url",
       "label": "Spline scene URL (.splinecode)",
-      "info": "Browse community.spline.design → export → 'Code Export' → copy the .splinecode URL. Leave blank for the default solid bg. Disabled when prefers-reduced-motion is set."
+      "info": "Browse community.spline.design → export → 'Code Export' → copy the .splinecode URL. Used only when no slideshow images are set. Disabled when prefers-reduced-motion is on."
     },
     {
       "type": "inline_richtext",
@@ -1956,6 +2140,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   ],
   "blocks": [
+    {
+      "type": "slide_image",
+      "name": "Slide image",
+      "limit": 6,
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image",
+          "info": "Recommended 2400×1350. Dark or low-contrast images read best behind the overlay."
+        }
+      ]
+    },
     {
       "type": "action_button",
       "name": "t:sections.hero_smart_search.blocks.action_button.name",
