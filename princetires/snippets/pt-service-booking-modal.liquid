@@ -1045,8 +1045,21 @@
         total:    pr ? sbParseAmt(pr.amount)    : 0
       };
 
-      var res = await fetch(BOOKING_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!res.ok) { var ed = await res.json().catch(function () { return {}; }); throw new Error(ed.error || 'Booking failed'); }
+      var res;
+      try {
+        res = await fetch(BOOKING_API, { method: 'POST', mode: 'cors', credentials: 'omit', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      } catch (netErr) {
+        console.error('[service booking] network failure:', netErr);
+        var diagErr = new Error("Couldn't reach the booking server. This is usually a browser extension (ad-blocker, privacy tool) blocking the request, or an unstable network. Try: (1) disable extensions for this site, (2) open in a private window, (3) use a different browser, or call (403) 452-4283.");
+        diagErr.isNetworkError = true; throw diagErr;
+      }
+      if (!res.ok) {
+        var ed = await res.json().catch(function () { return {}; });
+        if (res.status === 429) throw new Error("Too many bookings from this device — please wait a minute and try again.");
+        if (res.status === 409) throw new Error("That time slot was just booked. Please pick another time.");
+        if (res.status >= 500) throw new Error("Our booking server hit a snag (HTTP " + res.status + "). Please try again or call (403) 452-4283.");
+        throw new Error(ed.error || ("Booking failed (HTTP " + res.status + ")"));
+      }
 
       try {
         var bookData = await res.json().catch(function () { return {}; });
@@ -1081,9 +1094,11 @@
         setTimeout(function () { confetti({ particleCount: 40, angle: 120, spread: 55, origin: { x: 1 }, colors: co }); }, 400);
       }
     } catch (err) {
+      console.error('[service booking] submit failed:', err);
       btn.disabled = false; btn.textContent = 'Confirm booking';
-      errEl.textContent = err.message && err.message.length < 120 ? err.message : 'Something went wrong. Please try again or call (403) 452-4283.';
+      errEl.textContent = err.message || 'Something went wrong. Please try again or call (403) 452-4283.';
       errEl.hidden = false;
+      try { errEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
     }
   };
 
