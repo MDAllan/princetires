@@ -162,9 +162,16 @@
       carousel.scrollLeft = 0;
     }
 
-    if (marqueeEl) {
-      // Auto-marquee removed — tabs are user-scrolled. Click handler still
-      // switches the active brand.
+    if (marqueeEl && marqueeInner) {
+      // Auto-marquee restored: pause on hover / touch / reduced-motion.
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        marqueeInner.style.animationPlayState = 'paused';
+      } else {
+        marqueeEl.addEventListener('mouseenter', function() { marqueeInner.style.animationPlayState = 'paused'; });
+        marqueeEl.addEventListener('mouseleave', function() { marqueeInner.style.animationPlayState = 'running'; });
+        marqueeEl.addEventListener('touchstart', function() { marqueeInner.style.animationPlayState = 'paused'; }, { passive: true });
+        marqueeEl.addEventListener('touchend',   function() { setTimeout(function () { marqueeInner.style.animationPlayState = 'running'; }, 800); });
+      }
       marqueeEl.addEventListener('click', function(e) {
         var btn = e.target.closest('[data-wheel-brand]');
         if (!btn) return;
@@ -253,23 +260,25 @@
     max-width: 50rem;
   }
 
-  /* ── Brand tab bar (horizontal-scroll, user-controlled) ── */
-  .wheel-brands__marquee {
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    margin-bottom: 3rem;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
+  /* ── Brand-logo strip — auto-scrolling marquee, pauses on hover/touch ── */
+  @keyframes wb-marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
   }
-  .wheel-brands__marquee::-webkit-scrollbar { display: none; }
-
+  .wheel-brands__marquee {
+    overflow: hidden;
+    margin-bottom: 3rem;
+  }
   .wheel-brands__marquee-inner {
     display: flex;
     align-items: center;
     gap: 1rem;
     width: max-content;
+    animation: wb-marquee 28s linear infinite;
+  }
+  .wheel-brands__marquee-inner:hover { animation-play-state: paused; }
+  @media (prefers-reduced-motion: reduce) {
+    .wheel-brands__marquee-inner { animation: none; }
   }
 
   .wheel-brands__tabs-track {
