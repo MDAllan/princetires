@@ -1,14 +1,15 @@
 <header class="pt-header" data-pt-header>
   <div class="pt-header__container">
 
-    {%- comment -%} Logo — left corner. Priority: inline SVG markup → raster image → letter mark {%- endcomment -%}
+    {%- comment -%} Logo — left corner. Priority: inline SVG markup → raster image → wordmark text {%- endcomment -%}
+    {%- assign wordmark_text = section.settings.wordmark_text | default: shop.name -%}
     <a href="{{ routes.root_url }}" class="pt-header__logo" aria-label="{{ shop.name }}">
       {%- if section.settings.logo_svg != blank -%}
         <span class="pt-header__logo-svg">{{ section.settings.logo_svg }}</span>
       {%- elsif section.settings.logo != blank -%}
         {{ section.settings.logo | image_url: height: 44 | image_tag: class: "pt-header__logo-img" }}
       {%- else -%}
-        <div class="pt-header__logo-mark"><span>P</span></div>
+        <span class="pt-header__logo-wordmark">{{ wordmark_text }}</span>
       {%- endif -%}
     </a>
 
@@ -206,6 +207,21 @@
     width: auto;
     display: block;
   }
+  /* Wordmark fallback — shop name styled */
+  .pt-header__logo-wordmark {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1;
+    white-space: nowrap;
+    display: inline-block;
+  }
+  .pt-header__logo:hover .pt-header__logo-wordmark { color: #fff; }
+
+  /* Legacy "P" mark — kept for backward compat in case anyone re-enables it */
   .pt-header__logo-mark {
     width: 40px;
     height: 40px;
@@ -431,6 +447,8 @@
       max-width: 50vw;
       object-fit: contain;
     }
+    .pt-header__logo-svg > svg { height: 32px; max-width: 50vw; }
+    .pt-header__logo-wordmark { font-size: 1.35rem; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
 
     .pt-header__cart-mobile {
       display: flex;
@@ -544,15 +562,27 @@
       "content": "Logo"
     },
     {
-      "type": "image_picker",
-      "id": "logo",
-      "label": "Logo (raster — JPG / PNG / WebP)"
+      "type": "paragraph",
+      "content": "Pick ONE option. Priority: SVG markup → PNG/raster image → wordmark text. Whichever is filled out highest in the list wins."
     },
     {
       "type": "textarea",
       "id": "logo_svg",
-      "label": "Logo (SVG markup)",
-      "info": "Paste raw <svg>…</svg> markup here. Takes priority over the image above. Use this for crisp rendering at any size and full CSS styling control. Tip: open your .svg file in a text editor to copy the markup."
+      "label": "Option 1 — SVG markup",
+      "info": "Open your .svg file in a text editor → copy the entire <svg>…</svg> → paste here. Highest priority. Crispest at any size, recolorable via CSS."
+    },
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Option 2 — PNG / JPG / WebP image",
+      "info": "Used when SVG above is blank. Recommended height 88px for retina."
+    },
+    {
+      "type": "text",
+      "id": "wordmark_text",
+      "label": "Option 3 — Wordmark text (fallback)",
+      "info": "Used when both above are blank. Defaults to your shop name. Rendered in Barlow Condensed uppercase white.",
+      "placeholder": "Prince Tires"
     },
     {
       "type": "text",
