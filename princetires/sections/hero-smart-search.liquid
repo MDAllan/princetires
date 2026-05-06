@@ -272,7 +272,7 @@
   .hero-smart-search__slide.is-leaving {
     z-index: 1;
     opacity: 1;
-    animation: hero-slide-out-up 1s cubic-bezier(0.645, 0.045, 0.355, 1.0) forwards;
+    animation: hero-slide-out-up 1.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
   .hero-smart-search__slideshow[data-direction="down"] .hero-smart-search__slide.is-leaving {
     animation-name: hero-slide-out-down;
@@ -285,13 +285,17 @@
     from { transform: scale(1)    rotateX(0deg); }
     to   { transform: scale(1.07) rotateX(0deg); }
   }
+  /* Softer exits: shorter travel + opacity fade so the image dissolves
+     instead of hard-dropping. Reads gracefully on mobile. */
   @keyframes hero-slide-out-up {
-    from { opacity: 1; transform: translateY(0) scale(1.07); }
-    to   { opacity: 1; transform: translateY(-150%) scale(1.07); }
+    0%   { opacity: 1; transform: translateY(0)    scale(1.07); }
+    60%  { opacity: 0.6; }
+    100% { opacity: 0; transform: translateY(-40%) scale(1.10); }
   }
   @keyframes hero-slide-out-down {
-    from { opacity: 1; transform: translateY(0) scale(1.07); }
-    to   { opacity: 1; transform: translateY(150%) scale(1.07); }
+    0%   { opacity: 1; transform: translateY(0)   scale(1.07); }
+    60%  { opacity: 0.6; }
+    100% { opacity: 0; transform: translateY(40%) scale(1.10); }
   }
   .hero-smart-search__slideshow-overlay {
     position: absolute;
