@@ -5,6 +5,7 @@ class MyGarage extends HTMLElement {
     this.config = configEl ? JSON.parse(configEl.textContent) : {};
     this.vehicleCache = {};
     this._syncTimer = null;
+    this._syncing = false;
 
     this.yearSelect = this.querySelector('[data-garage-year]');
     this.makeSelect = this.querySelector('[data-garage-make]');
@@ -33,6 +34,15 @@ class MyGarage extends HTMLElement {
     this.renderSeasonalTip();
     this.renderVehicles();
     this.publishGarageUpdate();
+
+    // Phase 1 — Q4 + Q11: cache-then-refresh from /apps/api/vehicles.
+    // Local cache rendered above is the instant-paint state; this bg sync
+    // migrates legacy localStorage vehicles up to the server (idempotent
+    // INSERT ON CONFLICT DO NOTHING) and then swaps the local cache for the
+    // canonical server list.
+    if (this.config.customerId) {
+      this.startApiSync();
+    }
   }
 
   get storageKey() {
@@ -96,9 +106,145 @@ class MyGarage extends HTMLElement {
     }
   }
 
+  /* ---- API layer (Phase 1) ---- */
+
+  // Generic fetch wrapper. Throws on non-2xx with .status set on the error.
+  async api(method, path, body) {
+    var opts = { method: method, credentials: 'same-origin' };
+    if (body !== undefined) {
+      opts.headers = { 'Content-Type': 'application/json' };
+      opts.body = JSON.stringify(body);
+    }
+    var res = await fetch(path, opts);
+    var data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) {
+      var err = new Error('API ' + method + ' ' + path + ' -> ' + res.status);
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return data;
+  }
+
+  // Convert local vehicle shape -> API request body. Empty strings become
+  // undefined so optional fields don't trip Zod's .strict() outer object.
+  localToApiBody(v, opts) {
+    var body = {
+      year: typeof v.year === 'number' ? v.year : parseInt(v.year, 10),
+      make: v.make,
+      model: v.model
+    };
+    if (v.id) body.id = v.id;
+    if (v.nickname) body.nickname = v.nickname;
+    if (v.trim) body.trim = v.trim;
+    if (v.tireSize) body.tireSize = v.tireSize;
+    if (Array.isArray(v.maintenance)) body.maintenance = v.maintenance;
+    if (v.reminders) body.reminders = v.reminders;
+    // isDefault: caller decides (migration suppresses, explicit add follows local)
+    if (opts && Object.prototype.hasOwnProperty.call(opts, 'isDefault')) {
+      body.isDefault = opts.isDefault;
+    } else if (typeof v.isDefault === 'boolean') {
+      body.isDefault = v.isDefault;
+    }
+    return body;
+  }
+
+  // Convert API response vehicle -> local vehicle shape.
+  apiToLocal(api) {
+    return {
+      id: api.id,
+      nickname: api.nickname || '',
+      year: api.year,
+      make: api.make,
+      model: api.model,
+      trim: api.trim || '',
+      tireSize: api.tireSize || '',
+      isDefault: !!api.isDefault,
+      addedAt: api.createdAt,
+      maintenance: Array.isArray(api.maintenance) ? api.maintenance : [],
+      reminders: api.reminders && Object.keys(api.reminders).length ? api.reminders : null
+    };
+  }
+
+  // Q4 — top-level sync. Migrates legacy localStorage on first run, then
+  // refreshes from the server. Best-effort; failures fall back to local.
+  async startApiSync() {
+    if (this._syncing) return;
+    this._syncing = true;
+    try {
+      var migrationKey = this.storageKey + ':migrated';
+      var alreadyMigrated = localStorage.getItem(migrationKey) === '1';
+
+      if (!alreadyMigrated) {
+        if (this.vehicles.length === 0) {
+          // Nothing to migrate; mark done so we don't retry on every page load.
+          localStorage.setItem(migrationKey, '1');
+        } else {
+          var allOk = await this.migrateLocalToApi();
+          if (allOk) localStorage.setItem(migrationKey, '1');
+        }
+      }
+
+      await this.refreshFromApi();
+    } catch (err) {
+      if (err && err.status === 401) {
+        // Logged out / signature mismatch — stay on localStorage. No migration flag.
+        return;
+      }
+      console.error('[my-garage] api sync failed', err);
+    } finally {
+      this._syncing = false;
+    }
+  }
+
+  // Q4 — POST every local vehicle (idempotent: server uses ON CONFLICT DO
+  // NOTHING). Always sends isDefault=false so we don't trip the
+  // partial-unique index when local data has multiple flagged defaults.
+  // After all POSTs land, set the (single) chosen default explicitly.
+  // Returns true iff every individual POST succeeded.
+  async migrateLocalToApi() {
+    var allOk = true;
+    var localDefault = this.vehicles.find(function(v) { return v.isDefault; })
+                    || this.vehicles[0]
+                    || null;
+
+    for (var i = 0; i < this.vehicles.length; i++) {
+      var v = this.vehicles[i];
+      try {
+        await this.api('POST', '/apps/api/vehicles', this.localToApiBody(v, { isDefault: false }));
+      } catch (err) {
+        if (err && err.status === 401) throw err;
+        allOk = false;
+        console.warn('[my-garage] migrate skipped vehicle', v && v.id, err);
+      }
+    }
+
+    if (localDefault) {
+      try {
+        await this.api('PATCH', '/apps/api/vehicles/' + encodeURIComponent(localDefault.id) + '/default');
+      } catch (err) {
+        if (err && err.status === 401) throw err;
+        // Non-fatal — refreshFromApi will reflect whatever default the server holds.
+        console.warn('[my-garage] post-migrate set-default failed', err);
+      }
+    }
+    return allOk;
+  }
+
+  // Q11 — pull canonical server list and replace local cache. No-op if the
+  // GET fails or the customer isn't logged in.
+  async refreshFromApi() {
+    var data = await this.api('GET', '/apps/api/vehicles');
+    if (!data || !Array.isArray(data.vehicles)) return;
+    this.vehicles = data.vehicles.map(this.apiToLocal);
+    this.saveToStorage();
+    this.renderVehicles();
+  }
+
   /* ---- Vehicle CRUD ---- */
 
-  addVehicle(data) {
+  async addVehicle(data) {
     if (this.vehicles.length >= (this.config.maxVehicles || 10)) return;
 
     var vehicle = {
@@ -115,11 +261,29 @@ class MyGarage extends HTMLElement {
       reminders: this.getDefaultReminders()
     };
 
+    // Optimistic local insert + render
     this.vehicles.push(vehicle);
     this.saveToStorage();
     this.renderVehicles();
     this.toggleAddForm(false);
     this.resetForm();
+
+    if (!this.config.customerId) return;
+
+    try {
+      var resp = await this.api('POST', '/apps/api/vehicles', this.localToApiBody(vehicle));
+      if (resp && resp.vehicle) {
+        var idx = this.vehicles.findIndex(function(v) { return v.id === vehicle.id; });
+        if (idx >= 0) {
+          this.vehicles[idx] = this.apiToLocal(resp.vehicle);
+          this.saveToStorage();
+          this.renderVehicles();
+        }
+      }
+    } catch (err) {
+      console.error('[my-garage] addVehicle failed', err);
+      // Keep optimistic local state; user can retry the action that depends on this row.
+    }
   }
 
   getDefaultReminders() {
@@ -137,13 +301,14 @@ class MyGarage extends HTMLElement {
     };
   }
 
-  removeVehicle(id) {
+  async removeVehicle(id) {
     var vehicle = this.vehicles.find(function(v) { return v.id === id; });
     if (!vehicle) return;
 
     var label = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
     if (!confirm('Remove ' + label + ' from your garage?')) return;
 
+    var snapshot = this.vehicles.slice();
     var wasDefault = vehicle.isDefault;
     this.vehicles = this.vehicles.filter(function(v) { return v.id !== id; });
 
@@ -153,30 +318,85 @@ class MyGarage extends HTMLElement {
 
     this.saveToStorage();
     this.renderVehicles();
+
+    if (!this.config.customerId) return;
+
+    try {
+      var resp = await this.api('DELETE', '/apps/api/vehicles/' + encodeURIComponent(id));
+      if (resp && Array.isArray(resp.vehicles)) {
+        // Q7 — server returned the refreshed list; replace cache atomically.
+        this.vehicles = resp.vehicles.map(this.apiToLocal);
+        this.saveToStorage();
+        this.renderVehicles();
+      }
+    } catch (err) {
+      if (err && err.status === 404) {
+        // Already gone server-side — keep the local removal.
+        return;
+      }
+      console.error('[my-garage] removeVehicle failed', err);
+      // Roll back so the user doesn't lose data on a transient API failure.
+      this.vehicles = snapshot;
+      this.saveToStorage();
+      this.renderVehicles();
+    }
   }
 
-  setDefault(id) {
+  async setDefault(id) {
+    var snapshot = this.vehicles.slice().map(function(v) { return Object.assign({}, v); });
     this.vehicles.forEach(function(v) { v.isDefault = false; });
     var vehicle = this.vehicles.find(function(v) { return v.id === id; });
     if (vehicle) vehicle.isDefault = true;
     this.saveToStorage();
     this.renderVehicles();
+
+    if (!this.config.customerId) return;
+
+    try {
+      var resp = await this.api('PATCH', '/apps/api/vehicles/' + encodeURIComponent(id) + '/default');
+      if (resp && Array.isArray(resp.vehicles)) {
+        this.vehicles = resp.vehicles.map(this.apiToLocal);
+        this.saveToStorage();
+        this.renderVehicles();
+      }
+    } catch (err) {
+      console.error('[my-garage] setDefault failed', err);
+      this.vehicles = snapshot;
+      this.saveToStorage();
+      this.renderVehicles();
+    }
   }
 
-  setNickname(id) {
+  async setNickname(id) {
     var vehicle = this.vehicles.find(function(v) { return v.id === id; });
     if (!vehicle) return;
     var current = vehicle.nickname || '';
     var name = prompt('Enter a nickname for this vehicle (max 20 characters):', current);
     if (name === null) return;
-    vehicle.nickname = name.substring(0, 20).trim();
+    var trimmed = name.substring(0, 20).trim();
+
+    var snapshotNick = vehicle.nickname;
+    vehicle.nickname = trimmed;
     this.saveToStorage();
     this.renderVehicles();
+
+    if (!this.config.customerId) return;
+
+    try {
+      await this.api('PATCH', '/apps/api/vehicles/' + encodeURIComponent(id), {
+        nickname: trimmed || null
+      });
+    } catch (err) {
+      console.error('[my-garage] setNickname failed', err);
+      vehicle.nickname = snapshotNick;
+      this.saveToStorage();
+      this.renderVehicles();
+    }
   }
 
   /* ---- Maintenance Tracking ---- */
 
-  saveMaintenanceEntry(id) {
+  async saveMaintenanceEntry(id) {
     var vehicle = this.vehicles.find(function(v) { return v.id === id; });
     if (!vehicle) return;
     if (!vehicle.maintenance) vehicle.maintenance = [];
@@ -198,6 +418,9 @@ class MyGarage extends HTMLElement {
       date: date,
       mileage: mileage
     };
+
+    var snapshotMaint = (vehicle.maintenance || []).slice();
+    var snapshotRem = vehicle.reminders ? Object.assign({}, vehicle.reminders) : null;
 
     vehicle.maintenance.unshift(entry);
     if (vehicle.maintenance.length > 20) vehicle.maintenance = vehicle.maintenance.slice(0, 20);
@@ -222,6 +445,21 @@ class MyGarage extends HTMLElement {
 
     this.saveToStorage();
     this.renderVehicles();
+
+    if (!this.config.customerId) return;
+
+    try {
+      await this.api('PATCH', '/apps/api/vehicles/' + encodeURIComponent(id), {
+        maintenance: vehicle.maintenance,
+        reminders: vehicle.reminders
+      });
+    } catch (err) {
+      console.error('[my-garage] saveMaintenanceEntry failed', err);
+      vehicle.maintenance = snapshotMaint;
+      vehicle.reminders = snapshotRem;
+      this.saveToStorage();
+      this.renderVehicles();
+    }
   }
 
   /* ---- Status + Reminders ---- */
@@ -342,7 +580,7 @@ class MyGarage extends HTMLElement {
     }
 
     // Show loading state
-    listEl.innerHTML = '<div class="gbk-loading"><div class="gbk-spinner"></div><span>Loading your bookings\u2026</span></div>';
+    listEl.innerHTML = '<div class="gbk-loading"><div class="gbk-spinner"></div><span>Loading your bookings…</span></div>';
 
     try {
       // A01: include HMAC lookup token stored at booking time to prevent IDOR.
@@ -360,7 +598,7 @@ class MyGarage extends HTMLElement {
         if (subEl) subEl.textContent = 'No upcoming appointments';
         listEl.innerHTML = '<div class="gbk-empty">'
           + '<p class="gbk-empty-title">No upcoming bookings</p>'
-          + '<p class="gbk-empty-sub">You don\u2019t have any scheduled installations at the moment.</p>'
+          + '<p class="gbk-empty-sub">You don’t have any scheduled installations at the moment.</p>'
           + '<a href="/pages/services" class="gbk-cta">Book an installation</a>'
           + '</div>';
         return;
@@ -403,7 +641,7 @@ class MyGarage extends HTMLElement {
       }.bind(this)).join('');
     } catch (e) {
       listEl.innerHTML = '<div class="gbk-empty">'
-        + '<p class="gbk-empty-title">Couldn\u2019t load bookings</p>'
+        + '<p class="gbk-empty-title">Couldn’t load bookings</p>'
         + '<p class="gbk-empty-sub">Please try again or contact us directly.</p>'
         + '</div>';
     }
@@ -668,7 +906,7 @@ class MyGarage extends HTMLElement {
             + '<h3 class="garage__card-title">' + title + '</h3>'
             + '<span class="garage__status garage__status--' + status + '">' + this.escapeHtml(statusLabels[status]) + '</span>'
           + '</div>'
-          + (nickname ? '<p class="garage__card-nickname">\u201c' + this.escapeHtml(nickname) + '\u201d</p>' : '')
+          + (nickname ? '<p class="garage__card-nickname">“' + this.escapeHtml(nickname) + '”</p>' : '')
           + '<p class="garage__card-trim">' + this.escapeHtml(vehicle.trim) + '</p>'
           + '<div class="garage__card-footer-row">'
             + '<span class="garage__size-chip">' + this.escapeHtml(vehicle.tireSize) + '</span>'
@@ -1014,14 +1252,14 @@ class MyGarage extends HTMLElement {
     var entries = [];
     this.vehicles.forEach(function(v) {
       var label = v.year + ' ' + v.make + ' ' + v.model;
-      if (v.nickname) label += ' \u201c' + v.nickname + '\u201d';
+      if (v.nickname) label += ' “' + v.nickname + '”';
       (v.maintenance || []).forEach(function(e) {
         entries.push({ type: e.type, date: e.date, mileage: e.mileage, vehicle: label });
       });
     });
 
     if (!entries.length) {
-      this.historyListEl.innerHTML = '<p class="garage__history-empty-msg">No service records yet. Use \u201cLog service\u201d on any vehicle card to get started.</p>';
+      this.historyListEl.innerHTML = '<p class="garage__history-empty-msg">No service records yet. Use “Log service” on any vehicle card to get started.</p>';
       return;
     }
 

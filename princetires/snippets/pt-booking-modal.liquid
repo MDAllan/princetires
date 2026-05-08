@@ -83,6 +83,11 @@
           <span class="bk-addon-name">Tire disposal</span>
           <span class="bk-addon-price">+$5/tire</span>
         </label>
+        <label class="bk-addon" id="bk-addon-lowprofile">
+          <input type="checkbox" id="bk-lowprofile">
+          <span class="bk-addon-name">Low-profile or run-flat tires</span>
+          <span class="bk-addon-price">$40/tire min</span>
+        </label>
       </div>
 
       <div id="bk-price-box" hidden></div>
@@ -342,21 +347,24 @@
   var BOOKING_API = 'https://app.princetires.ca/api/book';
   var AVAILABILITY_API = 'https://app.princetires.ca/api/availability';
 
-  var st = { tireName: '', tireSize: '', tirePrice: 0, vehicle: 'passenger', qty: 4, tpms: false, disposal: true, date: null, time: null, savedVehicle: null, inventorySource: 'store' };
+  var st = { tireName: '', tireSize: '', tirePrice: 0, vehicle: 'passenger', qty: 4, tpms: false, disposal: true, lowProfile: false, date: null, time: null, savedVehicle: null, inventorySource: 'store', supplierTier: 'B', productHandle: '' };
   var wk = 0;
 
+  // Canonical pricing — keep in sync with snippets/pt-service-booking-modal.liquid (sbInstallPrices).
+  // Trailer install is a SPECIAL CASE: flat $120 regardless of qty (handled in vehPrice + calcPrice).
   var vehs = [
     { id: 'passenger', name: 'Sedan', price: 25 },
     { id: 'suv', name: 'SUV / CUV', price: 30 },
-    { id: 'truck', name: 'Truck', price: 35 },
     { id: 'van', name: 'Van', price: 30 },
-    { id: 'electric', name: 'Electric', price: 25 },
-    { id: 'dually', name: 'Dually', price: 40 },
-    { id: 'largetruck', name: 'Large / 21"+', price: 120 },
-    { id: 'trailer', name: 'Trailer', price: 20 },
-    { id: 'racecar', name: 'Race Car', price: 35 },
-    { id: 'other', name: 'Other', price: 0 }
+    { id: 'electric', name: 'Electric', price: 30 },
+    { id: 'truck', name: 'Truck', price: 35 },
+    { id: 'dually', name: 'Dually', price: 45 },
+    { id: 'largetruck', name: 'Large / Cube / 21"+', price: 40 },
+    { id: 'trailer', name: 'Trailer', price: 30 }
   ];
+
+  var BK_LOW_PROFILE_FLOOR = 40;
+  var BK_TRAILER_FLAT = 120;
 
   var vIcons = {
     passenger: '<svg width="40" height="26" viewBox="0 0 40 26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17h26"/><path d="M9 17l2.5-6h17l2.5 6"/><path d="M13.5 11l1.5-5h10l1.5 5"/><circle cx="12" cy="19.5" r="2.5"/><circle cx="28" cy="19.5" r="2.5"/></svg>',
@@ -374,12 +382,14 @@
   // ── Helpers ──────────────────────────────────────────────────────────────
   function vehPrice() {
     var v = vehs.find(function (x) { return x.id === st.vehicle; });
-    return v ? v.price : 30;
+    var base = v ? v.price : 30;
+    return st.lowProfile ? Math.max(base, BK_LOW_PROFILE_FLOOR) : base;
   }
 
   function calcPrice() {
     var tp = st.tirePrice > 0 ? st.tirePrice * st.qty : 0;
-    var i = vehPrice() * st.qty;
+    // Trailer is a flat-rate install regardless of qty.
+    var i = (st.vehicle === 'trailer') ? BK_TRAILER_FLAT : (vehPrice() * st.qty);
     var t = st.tpms ? 75 * st.qty : 0;
     var d = st.disposal ? 5 * st.qty : 0;
     var s = tp + i + t + d;
@@ -425,7 +435,8 @@
     if (st.tirePrice > 0) {
       h += '<div class="bk-order-row"><span>' + st.qty + ' tire' + (st.qty !== 1 ? 's' : '') + ' × $' + st.tirePrice.toFixed(2) + '</span><span>$' + c.tires.toFixed(2) + '</span></div>';
     }
-    h += '<div class="bk-order-row"><span>Installation × ' + st.qty + ' ($' + vehPrice() + '/tire)</span><span>$' + c.install.toFixed(2) + '</span></div>';
+    var installLabel = (st.vehicle === 'trailer') ? 'Installation (trailer flat)' : 'Installation × ' + st.qty + ' ($' + vehPrice() + '/tire)';
+    h += '<div class="bk-order-row"><span>' + installLabel + '</span><span>$' + c.install.toFixed(2) + '</span></div>';
     if (st.tpms) h += '<div class="bk-order-row"><span>TPMS sensors × ' + st.qty + '</span><span>+$' + c.tpms.toFixed(2) + '</span></div>';
     if (st.disposal) h += '<div class="bk-order-row"><span>Tire disposal × ' + st.qty + '</span><span>+$' + c.disposal.toFixed(2) + '</span></div>';
     h += '<div class="bk-order-row"><span>GST (5%)</span><span>$' + c.gst.toFixed(2) + '</span></div>';
@@ -542,57 +553,66 @@
     }
 
     // ── Business-rule blocking ────────────────────────────────────────────
+    // Tier A (Prince Tires / imported brands) = 2 hr lead.
+    // Tier B (Trail Tire Supply) = earliest slot 12:30 PM next business day. Winter rush also enforces 24 hr from now.
+    // Server enforces these too — see princetires-app/src/app/api/book/route.ts.
     var blockReason = {}; // slot → reason string
     var trialNote = '';
     try {
+      var now = new Date();
       var today = new Date(); today.setHours(0, 0, 0, 0);
       var isToday = st.date.getTime() === today.getTime();
-      var now = new Date();
       var nowMins = now.getHours() * 60 + now.getMinutes();
+      var tier = (st.supplierTier === 'A') ? 'A' : 'B';
 
-      // Rule 1: block past slots and slots within 6 hours (today only)
+      // Past slots (any tier, today only)
       if (isToday) {
         slots.forEach(function (s) {
-          var sm = slotToMins(s);
-          if (sm <= nowMins) {
-            blockReason[s] = 'Time has passed';
-          } else if (sm < nowMins + 360) {
-            blockReason[s] = 'Book at least 6 hrs ahead';
-          }
+          if (slotToMins(s) <= nowMins) blockReason[s] = 'Time has passed';
         });
       }
 
-      // Rule 2: Trial inventory restrictions (today only)
-      if (st.inventorySource === 'trial' && isToday) {
-        var month = now.getMonth(); // 0 = Jan … 11 = Dec
-        var isWinter = [9, 10, 11, 0, 1, 2].indexOf(month) > -1; // Oct–Mar
+      if (tier === 'A') {
+        // 2-hour lead time, today only
+        if (isToday) {
+          slots.forEach(function (s) {
+            if (blockReason[s]) return;
+            if (slotToMins(s) < nowMins + 120) blockReason[s] = 'Book at least 2 hrs ahead';
+          });
+        }
+      } else {
+        // Tier B: earliest slot is 12:30 PM next business day (skip Sundays).
+        var earliest = new Date(now);
+        earliest.setDate(earliest.getDate() + 1);
+        if (earliest.getDay() === 0) earliest.setDate(earliest.getDate() + 1);
+        earliest.setHours(12, 30, 0, 0);
 
-        if (isWinter) {
-          slots.forEach(function (s) { blockReason[s] = 'No same-day booking in winter for ordered tires'; });
-          trialNote = 'Ordered tires: same-day bookings are unavailable in winter — please pick a future date.';
-        } else {
-          // Trial ships at 8:30, 11:30, 14:30 — need 4 hrs (240 min) after departure
-          var TRIAL_SHIPS = [510, 690, 870]; // minutes from midnight
-          var nextShip = null;
-          for (var i = 0; i < TRIAL_SHIPS.length; i++) {
-            if (nowMins <= TRIAL_SHIPS[i]) { nextShip = TRIAL_SHIPS[i]; break; }
-          }
+        // Winter rush (Oct 15 – Nov 15): also enforce 24 hr from now
+        var m = now.getMonth(), d = now.getDate();
+        var isWinterRush = (m === 9 && d >= 15) || (m === 10 && d <= 15);
+        if (isWinterRush) {
+          var rush24 = new Date(now.getTime() + 24 * 3600 * 1000);
+          if (rush24.getTime() > earliest.getTime()) earliest = rush24;
+        }
 
-          if (nextShip === null) {
-            slots.forEach(function (s) { blockReason[s] = blockReason[s] || 'No more deliveries today for ordered tires'; });
-            trialNote = 'Ordered tires: no more same-day deliveries today — please pick a future date.';
-          } else {
-            var earliestAllowed = nextShip + 240;
-            slots.forEach(function (s) {
-              if (slotToMins(s) < earliestAllowed) {
-                blockReason[s] = blockReason[s] || 'Waiting for tire delivery';
-              }
-            });
-            var eH = Math.floor(earliestAllowed / 60);
-            var eM = earliestAllowed % 60;
-            var eLabel = (eH > 12 ? eH - 12 : eH) + ':' + (eM < 10 ? '0' : '') + eM + ' ' + (eH >= 12 ? 'PM' : 'AM');
-            trialNote = 'Ordered tires arrive today — earliest available: ' + eLabel + ' (4 hrs after next shipment).';
-          }
+        var earliestDay = earliest.toLocaleDateString('en-US', { weekday: 'long' });
+        var earliestLabel = earliestDay + ' ' + earliest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        var blockMsg = 'Earliest available: ' + earliestLabel + ' (warehouse delivery)';
+
+        // If selected date is BEFORE earliest day → block ALL slots
+        var dateOnly = new Date(st.date); dateOnly.setHours(0,0,0,0);
+        var earliestDateOnly = new Date(earliest); earliestDateOnly.setHours(0,0,0,0);
+        if (dateOnly.getTime() < earliestDateOnly.getTime()) {
+          slots.forEach(function (s) { if (!blockReason[s]) blockReason[s] = blockMsg; });
+          trialNote = blockMsg;
+        } else if (dateOnly.getTime() === earliestDateOnly.getTime()) {
+          // Same day as earliest → block any slot before earliest's time
+          var earliestMins = earliest.getHours() * 60 + earliest.getMinutes();
+          slots.forEach(function (s) {
+            if (blockReason[s]) return;
+            if (slotToMins(s) < earliestMins) blockReason[s] = blockMsg;
+          });
+          trialNote = isWinterRush ? 'Winter rush: tires from our supplier need 24 hr lead time.' : '';
         }
       }
     } catch (ruleErr) {
@@ -662,8 +682,13 @@
     st.tireSize = btn.dataset.tireSize || '';
     st.tirePrice = parseInt(btn.dataset.tirePrice || '0') / 100;
     st.inventorySource = btn.dataset.inventorySource === 'trial' ? 'trial' : 'store';
+    // Tier 'A' = in stock at our shop (Prince Tires / imported brands) → 2 hr lead.
+    // Tier 'B' = Trail Tire warehouse → next business day after 12:30 PM. Default to B (slowest, safest).
+    st.supplierTier = (btn.dataset.supplierTier === 'A') ? 'A' : 'B';
+    st.productHandle = btn.dataset.productHandle || '';
     st.tpms = false;
     st.disposal = true;
+    st.lowProfile = false;
     st.date = null;
     st.time = null;
     wk = 0;
@@ -720,12 +745,66 @@
     // Reset add-on state
     document.getElementById('bk-tpms').checked = false;
     document.getElementById('bk-disposal').checked = true;
+    document.getElementById('bk-lowprofile').checked = false;
     document.getElementById('bk-addon-tpms').classList.remove('bk-addon--active');
     document.getElementById('bk-addon-disposal').classList.add('bk-addon--active');
+    document.getElementById('bk-addon-lowprofile').classList.remove('bk-addon--active');
 
     renderVehicles();
     renderQty();
     renderPrice();
+
+    // Phase 1 Q11 — cache-then-refresh. localStorage above gave us instant
+    // paint; this refresh swaps in the canonical default from /apps/api/vehicles
+    // when it lands. forceVehicle (btn.dataset.vehicleType) and pt-booking-vehicle
+    // (last-used) overrides are already baked into st.vehicle and stay put —
+    // we only update st.savedVehicle and its banner label.
+    fetch('/apps/api/vehicles', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !Array.isArray(data.vehicles)) return;
+        var apiDef = data.vehicles.find(function (v) { return v.isDefault; })
+                  || data.vehicles[0]
+                  || null;
+        if (!apiDef) return;
+
+        var newSaved = {
+          id: apiDef.id,
+          nickname: apiDef.nickname || '',
+          year: apiDef.year,
+          make: apiDef.make,
+          model: apiDef.model,
+          trim: apiDef.trim || '',
+          tireSize: apiDef.tireSize || '',
+          isDefault: !!apiDef.isDefault
+        };
+
+        // Skip pointless re-render if cache already matches.
+        var prev = st.savedVehicle;
+        if (prev && prev.id === newSaved.id
+            && prev.year === newSaved.year
+            && prev.make === newSaved.make
+            && prev.model === newSaved.model
+            && prev.trim === newSaved.trim
+            && prev.tireSize === newSaved.tireSize) {
+          return;
+        }
+
+        var hadSaved = !!prev;
+        st.savedVehicle = newSaved;
+
+        var svEl = document.getElementById('bk-saved-vehicle');
+        var svLbl = document.getElementById('bk-saved-vehicle-label');
+        var vSection = document.getElementById('bk-vehicle-section');
+        if (svLbl) svLbl.textContent = buildVehicleLabel(null);
+        // First-ever-load case: cache had nothing, API returned a default —
+        // promote the banner now (and collapse the grid we'd shown by default).
+        if (!hadSaved) {
+          if (svEl) svEl.hidden = false;
+          if (vSection) vSection.hidden = true;
+        }
+      })
+      .catch(function () { /* keep cached state on failure */ });
 
     // Prefill contact: Shopify customer → localStorage → blank
     try {
@@ -826,6 +905,11 @@
         qty: st.qty,
         tpms: st.tpms,
         disposal: st.disposal,
+        lowProfile: st.lowProfile,
+        serviceId: 'installation_off',
+        mountState: 'off',
+        supplierTier: st.supplierTier,
+        productHandle: st.productHandle,
         inventorySource: st.inventorySource,
         date: st.date.toISOString().split('T')[0],
         time: st.time,
@@ -937,6 +1021,11 @@
   document.getElementById('bk-disposal').addEventListener('change', function () {
     st.disposal = this.checked;
     document.getElementById('bk-addon-disposal').classList.toggle('bk-addon--active', this.checked);
+    renderPrice();
+  });
+  document.getElementById('bk-lowprofile').addEventListener('change', function () {
+    st.lowProfile = this.checked;
+    document.getElementById('bk-addon-lowprofile').classList.toggle('bk-addon--active', this.checked);
     renderPrice();
   });
   document.getElementById('bk-prev-week').addEventListener('click', function () { if (wk > 0) { wk--; renderWeek(); } });
