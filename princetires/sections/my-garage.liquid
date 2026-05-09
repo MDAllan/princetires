@@ -1373,12 +1373,61 @@
   .garage__stat-cards { margin-left: 0; }
 }
 
+/* Phone layout — stack hero vertically; stats in 4-col grid below the title.
+   Without flex-direction:column the badge + stats compete for the same row,
+   producing the overlap reported on iPhone widths. */
+@media (max-width: 768px) {
+  .garage__hero-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+  }
+  .garage__hero-left {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+  .garage__hero-title { font-size: 2.4rem; }
+  .garage__hero-greeting { font-size: 1.05rem; }
+  .garage__hero-sub { font-size: 1.2rem; }
+  .garage__hero-badge { width: 44px; height: 44px; border-radius: 10px; }
+  .garage__stat-cards {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-left: 0;
+  }
+  .garage__stat-card {
+    min-width: 0;
+    padding: 0.7rem 0.5rem;
+    border-radius: 10px;
+  }
+  .garage__stat-num { font-size: 1.7rem; }
+  .garage__stat-label { font-size: 0.78rem; letter-spacing: 0.04em; }
+  .garage__stat-card--next .garage__stat-num { font-size: 1.2rem; }
+
+  /* Toolbar: full-width primary CTA on mobile */
+  .garage__content-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .garage__add-btn {
+    width: 100%;
+    justify-content: center;
+    height: 50px;
+  }
+  .garage__max-msg { text-align: center; }
+
+  /* Tabs: scrollable horizontal strip, no flex:1 cramming */
+  .g-tab {
+    flex: 0 0 auto;
+    padding: 0 14px;
+    font-size: 12.5px;
+  }
+}
+
 @media (max-width: 600px) {
-  .garage__hero-left { gap: 1rem; }
-  .garage__hero-title { font-size: 2.6rem; }
-  .garage__hero-badge { width: 42px; height: 42px; border-radius: 10px; }
-  .garage__stat-card { min-width: 70px; padding: 0.7rem 1rem; }
-  .garage__stat-num { font-size: 2.2rem; }
   .garage__content { padding-top: 2rem; }
   .garage__add-form { padding: 2rem; }
   .garage__selects { grid-template-columns: 1fr; }
@@ -1389,6 +1438,14 @@
 }
 
 @media (max-width: 480px) {
+  .garage__hero { padding: 1.75rem var(--g-px) 1.5rem; }
+  .garage__hero-title { font-size: 2.1rem; }
+  .garage__hero-left { gap: 0.9rem; }
+  .garage__stat-cards { gap: 0.4rem; }
+  .garage__stat-card { padding: 0.6rem 0.35rem; border-width: 1px; }
+  .garage__stat-num { font-size: 1.5rem; }
+  .garage__stat-label { font-size: 0.7rem; }
+  .garage__stat-card--next .garage__stat-num { font-size: 1.1rem; }
   .garage__maint-fields { grid-template-columns: 1fr; }
   .garage__actions-secondary { grid-template-columns: repeat(2, 1fr); }
 }

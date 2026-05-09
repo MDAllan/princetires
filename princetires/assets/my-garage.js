@@ -821,25 +821,70 @@ class MyGarage extends HTMLElement {
   /* ---- Vehicle Icon ---- */
 
   getVehicleIcon(vehicle) {
+    // Per-vehicle uploaded photo wins over everything.
+    if (vehicle.imageUrl) {
+      return '<img src="' + this.escapeAttr(vehicle.imageUrl) + '" class="garage__vehicle-icon garage__vehicle-icon--photo" alt="" aria-hidden="true">';
+    }
+    // Section-level fallback image set by merchant.
     if (this.config.customImage) {
       return '<img src="' + this.config.customImage + '" class="garage__vehicle-icon garage__vehicle-icon--custom" alt="" aria-hidden="true">';
     }
+    return this.getVehicleSvg(this.detectVehicleType(vehicle));
+  }
 
+  detectVehicleType(vehicle) {
+    var make = (vehicle.make || '').toLowerCase();
     var model = (vehicle.model || '').toLowerCase();
+    var trim = (vehicle.trim || '').toLowerCase();
     var tireSize = (vehicle.tireSize || '').toLowerCase();
+    var hay = make + ' ' + model + ' ' + trim;
 
-    var isTruck = /f-?150|f-?250|f-?350|silverado|sierra|ram\b|tundra|tacoma|ridgeline|frontier|colorado|canyon|titan|ranger|maverick|gladiator/.test(model)
-               || /^lt/.test(tireSize);
+    // LT-prefix tire sizes (e.g. LT265/70R17) are the giveaway for light trucks.
+    if (/^lt/.test(tireSize)) return 'truck';
 
-    var isSUV = !isTruck && /cr-?v|rav4|pilot|pathfinder|rogue|explorer|escape|equinox|traverse|highlander|4runner|murano|outback|forester|cx-?5|tucson|santa.?fe|sportage|xc60|xc90|q5|q7|x3|x5|gls|gle|glc|grand.?cherokee|wrangler|cherokee|sequoia|suburban|yukon|tahoe|expedition|navigator|edge|flex|odyssey|sienna|armada|qx/.test(model);
-
-    if (isTruck) {
-      return '<svg class="garage__vehicle-icon" viewBox="0 0 80 34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 24 L12 14 L32 11 L44 11 L56 14 L72 18 L76 22 L76 26 L4 26 Z"/><circle cx="18" cy="27.5" r="5.5"/><circle cx="62" cy="27.5" r="5.5"/><path d="M4 22 L12 22 L12 14"/><path d="M44 11 L44 22 M32 11 L32 22"/></svg>';
+    // Pickup trucks
+    if (/\bf-?(150|250|350|450)\b|silverado|sierra|\bram\b|tundra|tacoma|ridgeline|frontier|colorado|canyon|titan|ranger|maverick|gladiator|cybertruck|rivian.*r1t|\br1t\b|hummer ev pickup/.test(hay)) {
+      return 'truck';
     }
-    if (isSUV) {
-      return '<svg class="garage__vehicle-icon" viewBox="0 0 80 34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 24 L10 11 L24 9 L56 9 L68 14 L76 20 L76 26 L4 26 Z"/><circle cx="18" cy="27.5" r="5.5"/><circle cx="62" cy="27.5" r="5.5"/><path d="M10 23 L10 11 L56 9 L56 23"/></svg>';
+
+    // Vans / minivans (more specific than SUV — check first)
+    if (/odyssey|sienna|pacifica|caravan|town.?and.?country|carnival|sedona|metris|transit\b|sprinter|express\b|savana|promaster|nv200|nv\d|quest\b/.test(hay)) {
+      return 'van';
     }
-    return '<svg class="garage__vehicle-icon" viewBox="0 0 80 30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/><circle cx="18" cy="24" r="5"/><circle cx="62" cy="24" r="5"/><path d="M22 9 L18 21 M58 9 L62 21"/></svg>';
+
+    // SUVs / crossovers
+    if (/cr-?v|hr-?v|rav4|pilot|passport|pathfinder|rogue|kicks|murano|armada|qx\d|explorer|escape|expedition|edge|flex|bronco\b|equinox|traverse|tahoe|suburban|blazer\b|yukon|highlander|4runner|venza|sequoia|outback|forester|ascent|crosstrek|cx-?\d|tucson|santa.?fe|kona|sportage|telluride|sorento|seltos|x[1-7]\b|q[3-8]\b|gl[abces]|gle|glc|gls|wrangler|cherokee|grand.?cherokee|wagoneer|patriot|compass|renegade|navigator|aviator|nautilus|corsair|eclipse cross|outlander|escalade|xt[456]|xc\d{2}|envision|enclave|trailblazer|trax|ev6|ioniq.?5|model.?[xy]|mach-?e|id\.?4|bz4x|defender|range rover|discovery|evoque|velar/.test(hay)) {
+      return 'suv';
+    }
+
+    // Coupes / sports cars (sleek silhouette)
+    if (/\bm[2-8]\b|amg|gt-?[rs]|gt[1234]|corvette|mustang|camaro|challenger|charger.*hellcat|hellcat|demon|nsx|gtr\b|supra|brz|gr86|miata|mx-?5|cayman|boxster|911|panamera|718|f-?type|aston|huracan|aventador|ferrari|lamborghini|porsche|maserati|type.?[rs]|civic.?si|wrx|sti|elantra.?n\b|veloster\b|integra type|rs[3-7]\b|s[3-8]\b|dbs?\b|vantage|continental.?gt/.test(hay)) {
+      return 'coupe';
+    }
+
+    return 'sedan';
+  }
+
+  getVehicleSvg(type) {
+    var common = 'class="garage__vehicle-icon" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+    if (type === 'truck') {
+      // Tall cab + open bed + chunky tires
+      return '<svg ' + common + ' viewBox="0 0 80 34"><path d="M4 24 L12 14 L32 11 L44 11 L56 14 L72 18 L76 22 L76 26 L4 26 Z"/><circle cx="18" cy="27.5" r="5.5"/><circle cx="62" cy="27.5" r="5.5"/><path d="M4 22 L12 22 L12 14"/><path d="M44 11 L44 22 M32 11 L32 22"/></svg>';
+    }
+    if (type === 'suv') {
+      // Tall greenhouse, big quarter window
+      return '<svg ' + common + ' viewBox="0 0 80 34"><path d="M4 24 L10 11 L24 9 L56 9 L68 14 L76 20 L76 26 L4 26 Z"/><circle cx="18" cy="27.5" r="5.5"/><circle cx="62" cy="27.5" r="5.5"/><path d="M10 23 L10 11 L56 9 L56 23"/></svg>';
+    }
+    if (type === 'van') {
+      // Boxy single-volume profile, sliding-door hint
+      return '<svg ' + common + ' viewBox="0 0 80 34"><path d="M4 26 L4 11 L62 11 L72 16 L76 22 L76 26 Z"/><circle cx="18" cy="27.5" r="5.5"/><circle cx="62" cy="27.5" r="5.5"/><path d="M4 22 L72 22"/><path d="M30 11 L30 22 M50 11 L50 22"/></svg>';
+    }
+    if (type === 'coupe') {
+      // Low fastback roofline
+      return '<svg ' + common + ' viewBox="0 0 80 30"><path d="M4 22 L10 17 L26 11 L52 9 L66 12 L76 17 L76 22 L4 22 Z"/><circle cx="18" cy="24" r="5"/><circle cx="62" cy="24" r="5"/><path d="M26 11 L24 19 L60 19 L66 12"/></svg>';
+    }
+    // Default: sedan (3-box silhouette)
+    return '<svg ' + common + ' viewBox="0 0 80 30"><path d="M4 20 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/><circle cx="18" cy="24" r="5"/><circle cx="62" cy="24" r="5"/><path d="M22 9 L18 21 M58 9 L62 21"/></svg>';
   }
 
   /* ---- Rendering ---- */
