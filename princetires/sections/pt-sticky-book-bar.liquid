@@ -17,7 +17,7 @@
     endif
   else
     assign account_url = routes.account_login_url | append: '&return_to=/pages/garage'
-    assign account_label = 'Sign in'
+    assign account_label = 'Sign in & save'
   endif
 
   assign cart_count = cart.item_count
@@ -148,7 +148,9 @@
 .pt-tabbar__icon-wrap { position: relative; display: inline-flex; }
 .pt-tabbar__label { line-height: 1; }
 
-/* Notification dot (e.g. "Sign in needed") */
+/* Notification dot — guests get a pulsing ring to draw the eye toward
+   the "Sign in & save" tab. Subtle, runs only on the first ~3 cycles
+   then settles into a static dot so it doesn't become noise. */
 .pt-tabbar__item--has-dot::before {
   content: "";
   position: absolute;
@@ -158,6 +160,27 @@
   border-radius: 50%;
   background: #DA291C;
   box-shadow: 0 0 0 2px rgba(8, 8, 8, 0.94);
+  z-index: 1;
+}
+.pt-tabbar__item--has-dot::after {
+  content: "";
+  position: absolute;
+  top: 0.55rem;
+  right: calc(50% - 16px);
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #DA291C;
+  opacity: 0.6;
+  animation: pt-tabbar-dot-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) 3;
+  pointer-events: none;
+}
+@keyframes pt-tabbar-dot-pulse {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  70%  { transform: scale(2.6); opacity: 0;   }
+  100% { transform: scale(2.6); opacity: 0;   }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pt-tabbar__item--has-dot::after { animation: none; opacity: 0; }
 }
 
 /* Cart badge */
