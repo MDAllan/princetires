@@ -392,14 +392,15 @@
     service: '',
     vehicle: 'passenger',
     savedVehicle: null,
-    repairType: '',
+    repairType: 'patch', // only option remaining for flat_repair
     looseRims: false,
     qty: 4,
-    addons: { disposal: false, tpms: false },
+    addons: { disposal: false, tpms: false, lowProfile: false },
     date: null,
     time: null
   };
 
+  // Standard add-ons (installation_off + tpms only)
   var sbAddonsList = [
     { id: 'tpms',     name: 'TPMS sensors',  price: 75, unit: '/sensor' },
     { id: 'disposal', name: 'Tire disposal',  price: 5,  unit: '/tire'   }
@@ -411,48 +412,49 @@
   var sbWk = 0;
 
   // ── Services ──────────────────────────────────────────────────────────────
+  // Canonical service list + IDs. Shared with sections/pt-booking-page.liquid.
   var sbServices = [
     {
-      id: 'installation',
-      name: 'Tire Changeover',
-      priceLabel: 'from $25/tire',
-      desc: 'We mount your new tires onto your rims, balance all wheels, reset your TPMS sensors, torque the lug nuts to spec, and get you road-ready.',
+      id: 'installation_off',
+      name: 'Tire Installation',
+      priceLabel: 'from $25 / tire',
+      desc: 'Mount your new (or loose) tires onto your rims, balance all wheels, reset TPMS sensors, torque to spec, and get you road-ready. For tires that are NOT yet on rims.',
       icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>'
+    },
+    {
+      id: 'installation_on',
+      name: 'Seasonal Swap',
+      priceLabel: 'from $60 / car',
+      desc: 'Swap your stored seasonal tires — already mounted on their own rims — onto your vehicle, torque to spec. Tires must be pre-mounted on rims.',
+      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>'
     },
     {
       id: 'balancing',
       name: 'Wheel Balancing',
-      priceLabel: 'from $60',
+      priceLabel: 'from $20 / wheel',
       desc: 'We spin each wheel on a balancer, detect heavy spots, and add weights so there\'s no vibration at highway speed.',
       icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>'
     },
     {
       id: 'rotation',
       name: 'Tire Rotation',
-      priceLabel: 'from $60',
-      desc: 'We move your tires to different positions so they wear evenly, extending their life and keeping handling balanced.',
+      priceLabel: 'from $60 / car',
+      desc: 'We move your tires to different positions so they wear evenly, extending their life and keeping handling balanced. $60 sedan/SUV/truck, $100 dually + large/cube.',
       icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1 .25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>'
     },
     {
       id: 'flat_repair',
       name: 'Flat Repair',
-      priceLabel: 'from $30',
-      desc: 'Plug repair seals a puncture quickly from the outside. Patch repair dismounts the tire for a permanent internal fix.',
+      priceLabel: '$50 / tire',
+      desc: 'Patch repair: we dismount the tire and apply a permanent internal patch. (We don\'t do exterior plug repairs — they\'re not safe long-term.)',
       icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'
     },
     {
       id: 'tpms',
       name: 'TPMS Service',
-      priceLabel: '$75/sensor',
+      priceLabel: '$75 / sensor',
       desc: 'We replace or reprogram your tire pressure monitoring sensors so your dashboard warning light stays off.',
       icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="7"/><path d="M12 8V6M8 13H6M18 13h-1M9.5 10.5l-1-1M15.5 10.5l1-1"/><circle cx="12" cy="13" r="2" fill="currentColor" stroke="none"/></svg>'
-    },
-    {
-      id: 'seasonal',
-      name: 'Seasonal Swap',
-      priceLabel: 'from $60',
-      desc: 'We swap your stored seasonal tires — already on their own rims — onto your vehicle, torque to spec, and you\'re set. Tires must be pre-mounted on rims.',
-      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>'
     }
   ];
 
@@ -464,56 +466,66 @@
     { id: 'van',       name: 'Van' },
     { id: 'electric',  name: 'Electric' },
     { id: 'dually',     name: 'Dually' },
-    { id: 'largetruck', name: 'Large / 21"+' },
+    { id: 'largetruck', name: 'Large / Cube / 21"+' },
     { id: 'trailer',    name: 'Trailer' }
   ];
 
-  // ── Repair options (flat_repair) ──────────────────────────────────────────
-  var sbRepairOptions = [
-    { id: 'plug', name: 'Plug repair', desc: 'Quick fix from outside', price: 30 },
-    { id: 'patch', name: 'Patch repair', desc: 'Full dismount + internal patch', price: 50 }
-  ];
-
   // ── Pricing ───────────────────────────────────────────────────────────────
-  var sbInstallPrices   = { passenger: 25, suv: 30, truck: 35, van: 30, electric: 25, dually: 40, largetruck: 120, trailer: 120 };
-  // Rotation, balancing, and seasonal swap share the same per-vehicle rate
-  var sbServicePrices   = { passenger: 60, suv: 60, truck: 80, van: 60, electric: 60, dually: 100, trailer: 60 };
+  // Canonical pricing. Mirrored in sections/pt-booking-page.liquid + snippets/pt-booking-modal.liquid — keep in sync.
+  // Per-tire rate for installation_off (loose tires, customer brings them in).
+  // Trailer is a SPECIAL CASE: flat $120 regardless of qty — handled in sbCalcPrice.
+  var sbInstallPrices = { passenger: 25, suv: 30, van: 30, electric: 30, truck: 35, largetruck: 40, dually: 45, trailer: 30 };
+  // Flat per-car rate for installation_on (seasonal swap — tires already on rims).
+  // Dually + cube trucks have 6 tires → higher flat. Trailer is flat $120 for any install.
+  var sbOnRimsPrices  = { passenger: 60, suv: 60, van: 60, electric: 60, truck: 80, largetruck: 80, dually: 90, trailer: 120 };
+  var SB_TRAILER_FLAT = 120;
+
+  // Low-profile / run-flat surcharge (installation_off only): per-tire effective rate becomes max(base, 40).
+  var SB_LOW_PROFILE_FLOOR = 40;
 
   function sbCalcPrice() {
     var s = sbSt.service, v = sbSt.vehicle, q = sbSt.qty;
     var subtotal = 0, parts = [];
 
-    if (s === 'installation') {
-      var p = (v === 'trailer' && sbSt.looseRims) ? 80 : (sbInstallPrices[v] || 30);
-      subtotal = p * q;
-      parts.push('$' + p + '/tire × ' + q);
+    if (s === 'installation_off') {
+      if (v === 'trailer') {
+        subtotal = SB_TRAILER_FLAT;
+        parts.push('flat $' + SB_TRAILER_FLAT + ' (trailer)');
+      } else {
+        var base = sbInstallPrices[v] || 30;
+        var per = sbSt.addons.lowProfile ? Math.max(base, SB_LOW_PROFILE_FLOOR) : base;
+        subtotal = per * q;
+        parts.push('$' + per + '/tire × ' + q);
+        if (sbSt.addons.lowProfile && per > base) parts.push('low-profile');
+      }
       if (sbSt.addons.disposal) { subtotal += 5 * q; parts.push('disposal'); }
-      if (sbSt.addons.tpms)    { subtotal += 75 * q; parts.push('TPMS ×' + q); }
+      if (sbSt.addons.tpms)     { subtotal += 75 * q; parts.push('TPMS ×' + q); }
+
+    } else if (s === 'installation_on') {
+      subtotal = sbOnRimsPrices[v] || 60;
+      if (v === 'trailer') {
+        parts.push('flat $' + subtotal + ' (trailer)');
+      } else {
+        var nTires = (v === 'dually' || v === 'largetruck') ? 6 : 4;
+        parts.push('flat $' + subtotal + ' (' + nTires + ' tires on rims)');
+      }
+      if (sbSt.addons.tpms) { subtotal += 75 * q; parts.push('TPMS ×' + q); }
 
     } else if (s === 'balancing') {
-      subtotal = sbServicePrices[v] || 60;
-      parts.push('all ' + q + ' wheels');
+      subtotal = 20 * q;
+      parts.push('$20/wheel × ' + q);
 
     } else if (s === 'rotation') {
-      subtotal = sbServicePrices[v] || 60;
-      parts.push(q + ' tire' + (q > 1 ? 's' : ''));
+      subtotal = (v === 'dually' || v === 'largetruck') ? 100 : 60;
+      parts.push('$' + subtotal + ' flat per car');
 
     } else if (s === 'flat_repair') {
-      if (!sbSt.repairType) return null;
-      var opt = sbRepairOptions.find(function (o) { return o.id === sbSt.repairType; });
-      if (!opt) return null;
-      subtotal = opt.price * q;
-      parts.push(opt.name + ' × ' + q + ' tire' + (q > 1 ? 's' : ''));
+      subtotal = 50 * q;
+      parts.push('$50 patch × ' + q + ' tire' + (q > 1 ? 's' : ''));
 
     } else if (s === 'tpms') {
       subtotal = 75 * q;
       parts.push('$75/sensor × ' + q + ' sensor' + (q > 1 ? 's' : ''));
-
-    } else if (s === 'seasonal') {
-      subtotal = sbServicePrices[v] || 60;
-      parts.push(q + ' tire' + (q > 1 ? 's' : ''));
-      if (sbSt.addons.disposal) { subtotal += 5 * q; parts.push('disposal'); }
-      if (sbSt.addons.tpms)    { subtotal += 75 * q; parts.push('TPMS ×' + q); }
 
     } else {
       return null;
@@ -588,8 +600,8 @@
     if (!sbSt.service) { section.hidden = true; return; }
     section.hidden = false;
 
-    // Trailer not valid for balancing or seasonal changeover — reset to passenger
-    var sbNoTrailer = ['balancing', 'seasonal'];
+    // Trailer not valid for balancing or rotation — reset to passenger
+    var sbNoTrailer = ['balancing', 'rotation'];
     if (sbNoTrailer.indexOf(sbSt.service) > -1 && sbSt.vehicle === 'trailer') {
       sbSt.vehicle = 'passenger';
     }
@@ -597,23 +609,20 @@
     // Vehicle chips
     sbRenderVehicles();
 
-    // Repair options (flat_repair only)
-    var repairSec = document.getElementById('sb-repair-section');
-    repairSec.hidden = sbSt.service !== 'flat_repair';
-    if (sbSt.service === 'flat_repair') sbRenderRepair();
+    // Repair-type chooser is gone (only patch remains). Auto-set:
+    document.getElementById('sb-repair-section').hidden = true;
+    if (sbSt.service === 'flat_repair') sbSt.repairType = 'patch';
 
-    // Trailer setup (installation + trailer only)
-    var looserimSec = document.getElementById('sb-looserim-section');
-    var showLooseRim = sbSt.service === 'installation' && sbSt.vehicle === 'trailer';
-    looserimSec.hidden = !showLooseRim;
-    if (showLooseRim) sbRenderLooseRims();
+    // Trailer-setup chooser is gone (off-rims vs on-rims is now the parent service)
+    document.getElementById('sb-looserim-section').hidden = true;
 
-    // Qty selector — always shown for any service
-    document.getElementById('sb-qty-section').hidden = false;
-    sbRenderQty();
+    // Qty selector — hidden for installation_on (flat per-car) and rotation (flat per-car).
+    var noQty = (sbSt.service === 'installation_on' || sbSt.service === 'rotation');
+    document.getElementById('sb-qty-section').hidden = noQty;
+    if (!noQty) sbRenderQty();
 
-    // Add-ons (installation + seasonal only)
-    var hasAddons = sbSt.service === 'installation' || sbSt.service === 'seasonal';
+    // Add-ons (installation_off + installation_on only)
+    var hasAddons = (sbSt.service === 'installation_off' || sbSt.service === 'installation_on');
     document.getElementById('sb-addons-section').hidden = !hasAddons;
     if (hasAddons) sbRenderAddons();
   }
@@ -622,8 +631,8 @@
   function sbRenderVehicles() {
     var grid = document.getElementById('sb-vehicles');
     if (!grid) return;
-    // Trailers don't get balancing or seasonal changeover
-    var sbNoTrailerSvcs = ['balancing', 'seasonal'];
+    // Trailers don't apply to balancing or rotation
+    var sbNoTrailerSvcs = ['balancing', 'rotation'];
     var vehs = sbNoTrailerSvcs.indexOf(sbSt.service) > -1
       ? sbVehs.filter(function (v) { return v.id !== 'trailer'; })
       : sbVehs;
@@ -634,77 +643,43 @@
     grid.querySelectorAll('.bk-vehicle-card').forEach(function (el) {
       el.addEventListener('click', function () {
         sbSt.vehicle = this.dataset.veh;
-        if (sbSt.vehicle !== 'trailer') sbSt.looseRims = false;
         sbRenderVehicles();
-        sbRenderQty();
-        var looserimSec = document.getElementById('sb-looserim-section');
-        var showLooseRim = sbSt.service === 'installation' && sbSt.vehicle === 'trailer';
-        looserimSec.hidden = !showLooseRim;
-        if (showLooseRim) sbRenderLooseRims();
+        if (sbSt.service !== 'installation_on' && sbSt.service !== 'rotation') sbRenderQty();
         sbUpdatePrice();
         try { localStorage.setItem('pt-booking-vehicle', sbSt.vehicle); } catch (e) {}
       });
     });
   }
 
-  // ── Render: repair type chips ─────────────────────────────────────────────
-  function sbRenderRepair() {
-    var grid = document.getElementById('sb-repair-grid');
-    if (!grid) return;
-    grid.innerHTML = sbRepairOptions.map(function (o) {
-      var active = sbSt.repairType === o.id ? ' sb-repair-chip--active' : '';
-      return '<button class="sb-repair-chip' + active + '" data-repair="' + o.id + '">' +
-        '<span class="sb-repair-name">' + o.name + '</span>' +
-        '<span class="sb-repair-desc">' + o.desc + '</span>' +
-        '<span class="sb-repair-price">$' + o.price + '</span>' +
-        '</button>';
-    }).join('');
-    grid.querySelectorAll('.sb-repair-chip').forEach(function (el) {
-      el.addEventListener('click', function () {
-        sbSt.repairType = this.dataset.repair;
-        sbRenderRepair();
-        sbUpdatePrice();
-        sbUpdateNextBtn();
-      });
-    });
-  }
-
-  // ── Render: trailer setup chips ───────────────────────────────────────────
-  function sbRenderLooseRims() {
-    var grid = document.getElementById('sb-looserim-grid');
-    if (!grid) return;
-    var opts = [
-      { loose: false, name: 'On trailer', desc: 'Tires mounted on trailer', price: 120 },
-      { loose: true,  name: 'Loose rims', desc: 'Off trailer or off vehicle', price: 80 }
-    ];
-    grid.innerHTML = opts.map(function (o) {
-      var active = sbSt.looseRims === o.loose ? ' sb-repair-chip--active' : '';
-      return '<button class="sb-repair-chip' + active + '" data-loose="' + o.loose + '">' +
-        '<span class="sb-repair-name">' + o.name + '</span>' +
-        '<span class="sb-repair-desc">' + o.desc + '</span>' +
-        '<span class="sb-repair-price">$' + o.price + '/tire</span>' +
-      '</button>';
-    }).join('');
-    grid.querySelectorAll('.sb-repair-chip').forEach(function (el) {
-      el.addEventListener('click', function () {
-        sbSt.looseRims = this.dataset.loose === 'true';
-        sbRenderLooseRims();
-        sbUpdatePrice();
-      });
-    });
-  }
-
-  // ── Render: add-ons (installation + seasonal) ────────────────────────────
+  // ── Render: add-ons ───────────────────────────────────────────────────────
+  // installation_off: TPMS, disposal, low-profile/run-flat
+  // installation_on: TPMS only
   function sbRenderAddons() {
     var container = document.getElementById('sb-addons');
     if (!container) return;
-    container.innerHTML = sbAddonsList.map(function (a) {
+
+    var rows = [];
+    var isOff = sbSt.service === 'installation_off';
+    var isOn  = sbSt.service === 'installation_on';
+
+    if (isOff || isOn) {
+      rows.push({ id: 'tpms', name: 'New TPMS sensors', price: 75, unit: '/sensor' });
+    }
+    if (isOff) {
+      rows.push({ id: 'disposal', name: 'Tire disposal', price: 5, unit: '/tire' });
+      rows.push({ id: 'lowProfile', name: 'Low-profile or run-flat tires', priceLabel: '$40/tire min' });
+    }
+
+    container.innerHTML = rows.map(function (a) {
       var active = sbSt.addons[a.id] ? ' bk-addon--active' : '';
       var checked = sbSt.addons[a.id] ? ' checked' : '';
+      var priceTag = a.priceLabel
+        ? '<span class="bk-addon-price">' + a.priceLabel + '</span>'
+        : '<span class="bk-addon-price">+$' + a.price + a.unit + '</span>';
       return '<label class="bk-addon' + active + '">' +
         '<input type="checkbox" data-addon="' + a.id + '"' + checked + '>' +
         '<span class="bk-addon-name">' + a.name + '</span>' +
-        '<span class="bk-addon-price">+$' + a.price + a.unit + '</span>' +
+        priceTag +
         '</label>';
     }).join('');
     container.querySelectorAll('input[data-addon]').forEach(function (el) {
@@ -722,9 +697,15 @@
     var sel = document.getElementById('sb-qty-select');
     var lbl = document.getElementById('sb-qty-label');
     if (!sel) return;
-    var isTpms = sbSt.service === 'tpms';
-    var max = isTpms ? 4 : 8;
-    lbl.textContent = isTpms ? 'How many sensors?' : 'How many tires?';
+    var s = sbSt.service;
+    var isTpms = s === 'tpms';
+    var isBalancing = s === 'balancing';
+    var isRepair = s === 'flat_repair';
+    var max = (isTpms || isBalancing || isRepair) ? 4 : 8;
+    lbl.textContent = isTpms ? 'How many sensors?'
+                    : isBalancing ? 'How many wheels?'
+                    : isRepair ? 'How many tires to patch?'
+                    : 'How many tires?';
     if (!sel._sbWired) {
       sel._sbWired = true;
       sel.addEventListener('change', function () {
@@ -735,9 +716,10 @@
     // Rebuild options if max changed
     if (sel.dataset.max !== String(max)) {
       sel.dataset.max = String(max);
+      var unit = isTpms ? ' sensor' : isBalancing ? ' wheel' : ' tire';
       var html = '';
       for (var i = 1; i <= max; i++) {
-        html += '<option value="' + i + '"' + (i === sbSt.qty ? ' selected' : '') + '>' + i + (isTpms ? ' sensor' : ' tire') + (i > 1 ? 's' : '') + '</option>';
+        html += '<option value="' + i + '"' + (i === sbSt.qty ? ' selected' : '') + '>' + i + unit + (i > 1 ? 's' : '') + '</option>';
       }
       sel.innerHTML = html;
     }
@@ -759,7 +741,6 @@
   // ── Enable / disable next button ──────────────────────────────────────────
   function sbUpdateNextBtn() {
     var ok = !!sbSt.service;
-    if (sbSt.service === 'flat_repair') ok = ok && !!sbSt.repairType;
     document.getElementById('sb-next-1').disabled = !ok;
   }
 
@@ -849,10 +830,26 @@
         var sm = sbSlotToMins(s);
         if (sm <= nowMins) {
           blockReason[s] = 'Time has passed';
-        } else if (sm < nowMins + 360) {
-          blockReason[s] = 'Book at least 6 hrs ahead';
+        } else if (sm < nowMins + 120) {
+          blockReason[s] = 'Book at least 2 hrs ahead';
         }
       });
+    }
+
+    // If every slot ends up blocked (past, lead-time, or booked), don't show
+    // a wall of red — give one clear message and steer them to another day.
+    var pickable = 0;
+    slots.forEach(function (s) {
+      if (booked.indexOf(s) === -1 && !blockReason[s]) pickable++;
+    });
+    if (pickable === 0) {
+      var msg = isToday
+        ? 'No times left today — please pick a future day above.'
+        : 'No openings this day — please pick another date above.';
+      document.getElementById('sb-time-grid').innerHTML =
+        '<p style="color:#9ca3af;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.6rem 0;line-height:1.4">' + msg + '</p>';
+      document.getElementById('sb-next-2').disabled = true;
+      return;
     }
 
     document.getElementById('sb-time-grid').innerHTML = slots.map(function (s) {
@@ -887,14 +884,10 @@
 
     var h = '';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Service</span><span class="bk-summary-val">' + (svc ? svc.name : '—') + '</span></div>';
-    if (sbSt.service === 'flat_repair' && sbSt.repairType) {
-      var ro = sbRepairOptions.find(function (o) { return o.id === sbSt.repairType; });
-      if (ro) h += '<div class="bk-summary-row"><span class="bk-summary-label">Type</span><span class="bk-summary-val">' + ro.name + '</span></div>';
+    if (sbSt.service === 'installation_off' && sbSt.addons.lowProfile) {
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire type</span><span class="bk-summary-val">Low-profile / run-flat</span></div>';
     }
-    if (sbSt.service === 'installation' && sbSt.vehicle === 'trailer') {
-      h += '<div class="bk-summary-row"><span class="bk-summary-label">Trailer setup</span><span class="bk-summary-val">' + (sbSt.looseRims ? 'Loose rims' : 'On trailer') + '</span></div>';
-    }
-    h += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
+    h += '<div class="bk-summary-row"><span class="bk-summary-label">Date &amp; time</span><span class="bk-summary-val">' + ds + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
     if (pr) h += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
     document.getElementById('sb-summary').innerHTML = h;
@@ -933,16 +926,25 @@
     // Match pre-selected service by name
     sbSt.service = '';
     if (pre) {
-      var keywords = { installation: ['install'], balancing: ['balanc'], rotation: ['rotat'], flat_repair: ['flat', 'repair'], tpms: ['tpms', 'sensor'], seasonal: ['season', 'changeover', 'swap'] };
-      Object.keys(keywords).forEach(function (id) {
-        keywords[id].forEach(function (kw) { if (pre.indexOf(kw) > -1) sbSt.service = id; });
+      // Order matters: more specific phrases checked first.
+      var keywordMap = [
+        ['installation_on',  ['season', 'changeover', 'swap', 'on rim', 'on-rim']],
+        ['installation_off', ['install', 'mount', 'changeover-off', 'off rim', 'off-rim']],
+        ['balancing',        ['balanc']],
+        ['rotation',         ['rotat']],
+        ['flat_repair',      ['flat', 'patch', 'repair', 'puncture', 'leak']],
+        ['tpms',             ['tpms', 'sensor']]
+      ];
+      keywordMap.forEach(function (entry) {
+        var id = entry[0]; var kws = entry[1];
+        kws.forEach(function (kw) { if (!sbSt.service && pre.indexOf(kw) > -1) sbSt.service = id; });
       });
     }
 
-    sbSt.repairType = '';
-    sbSt.looseRims = false;
+    sbSt.repairType = 'patch';
     sbSt.qty = 4;
     sbSt.vehicle = 'passenger';
+    sbSt.addons = { disposal: false, tpms: false, lowProfile: false };
     sbSt.savedVehicle = null;
     sbSt.date = null;
     sbSt.time = null;
@@ -1027,11 +1029,14 @@
       var payload = {
         bookType: 'service',
         serviceName: svc ? svc.name : 'Service',
+        serviceId:   sbSt.service,
+        mountState:  sbSt.service === 'installation_off' ? 'off'
+                  : sbSt.service === 'installation_on'  ? 'on' : '',
         repairType: sbSt.repairType || '',
-        looseRims: sbSt.looseRims || false,
         qty: sbSt.qty,
         tpms: sbSt.addons.tpms || false,
         disposal: sbSt.addons.disposal || false,
+        lowProfile: sbSt.addons.lowProfile || false,
         name: name, phone: phone, email: email, notes: notes,
         vehicleType: sbSt.vehicle,
         vehicleYear: sbSt.savedVehicle ? (sbSt.savedVehicle.year || '') : '',
