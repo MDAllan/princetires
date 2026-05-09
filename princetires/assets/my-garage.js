@@ -239,6 +239,50 @@ class MyGarage extends HTMLElement {
     }
   }
 
+  /* Lightbox — tap photo banner to view full-size. Single shared overlay
+     element appended to <body> on first use. */
+  ensureLightbox() {
+    if (this._lightbox) return this._lightbox;
+    var box = document.createElement('div');
+    box.className = 'garage__lightbox';
+    box.hidden = true;
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', 'Vehicle photo');
+    box.innerHTML = '<button type="button" class="garage__lightbox-close" aria-label="Close">&times;</button>'
+      + '<img class="garage__lightbox-img" src="" alt="">';
+    var close = box.querySelector('.garage__lightbox-close');
+    var self = this;
+    var hide = function() { self.closePhotoLightbox(); };
+    box.addEventListener('click', function(e) {
+      // Click on the dim background closes; click on the image itself does not.
+      if (e.target === box || e.target === close) hide();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && !box.hidden) hide();
+    });
+    document.body.appendChild(box);
+    this._lightbox = box;
+    return box;
+  }
+
+  openPhotoLightbox(id) {
+    var v = this.vehicles.find(function(x) { return x.id === id; });
+    if (!v || !v.imageUrl) return;
+    var box = this.ensureLightbox();
+    var img = box.querySelector('.garage__lightbox-img');
+    img.src = v.imageUrl;
+    img.alt = v.year + ' ' + v.make + ' ' + v.model;
+    box.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  closePhotoLightbox() {
+    if (!this._lightbox) return;
+    this._lightbox.hidden = true;
+    document.body.style.overflow = '';
+  }
+
   async removeVehiclePhoto(id) {
     if (!this.config.customerId) return;
     var vehicle = this.vehicles.find(function(v) { return v.id === id; });
@@ -1043,11 +1087,29 @@ class MyGarage extends HTMLElement {
       ? '<span class="garage__badge garage__badge--active">Default</span>'
       : '<button type="button" class="garage__badge garage__badge--inactive" data-action="default" data-id="' + this.escapeAttr(vehicle.id) + '">Set default</button>';
 
-    return '<li class="garage__card' + (vehicle.isDefault ? ' garage__card--default' : '') + '" data-vehicle-id="' + this.escapeAttr(vehicle.id) + '">'
+    // When a customer photo is uploaded, render it as a full-width banner
+    // above the identity row (instead of the small inline icon). The banner
+    // is a button so taps open the lightbox to enlarge.
+    var photoBannerHtml = '';
+    if (vehicle.imageUrl) {
+      photoBannerHtml = '<button type="button" class="garage__photo-banner" data-action="open-photo" data-id="'
+        + this.escapeAttr(vehicle.id) + '" aria-label="View photo full size">'
+        + '<img src="' + this.escapeAttr(vehicle.imageUrl) + '" alt="" loading="lazy">'
+        + '</button>';
+    }
+
+    return '<li class="garage__card' + (vehicle.isDefault ? ' garage__card--default' : '')
+      + (vehicle.imageUrl ? ' garage__card--has-photo' : '')
+      + '" data-vehicle-id="' + this.escapeAttr(vehicle.id) + '">'
+
+      // ── Photo banner (when uploaded) ──
+      + photoBannerHtml
 
       // ── Identity ──
       + '<div class="garage__card-identity">'
-        + '<div class="garage__card-icon-wrap">' + icon + '</div>'
+        // The small icon-wrap is suppressed when a photo banner is present;
+        // banner replaces it as the visual identifier.
+        + (vehicle.imageUrl ? '' : '<div class="garage__card-icon-wrap">' + icon + '</div>')
         + '<div class="garage__card-meta">'
           + '<div class="garage__card-row1">'
             + '<h3 class="garage__card-title">' + title + '</h3>'
@@ -1217,6 +1279,7 @@ class MyGarage extends HTMLElement {
         else if (action === 'remove') self.removeVehicle(id);
         else if (action === 'book-install') self.bookInstallForVehicle(id);
         else if (action === 'photo') self.triggerPhotoUpload(id);
+        else if (action === 'open-photo') self.openPhotoLightbox(id);
         else if (action === 'toggle-maint') self.togglePanel(id, '[data-maint-panel]');
         else if (action === 'save-maint') self.saveMaintenanceEntry(id);
         else if (action === 'toggle-orders') {
