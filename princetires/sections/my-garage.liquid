@@ -1161,13 +1161,22 @@
 }
 
 /* ── Vehicle photo (Phase 1.6) — when a customer uploads an image, the
-   icon swap to a thumbnail of their car. Same slot as the SVG silhouette. */
+   icon slot becomes a real thumbnail. Drop the red gradient/border so the
+   photo carries the visual weight cleanly, give it its own crisp frame. */
+.garage__card-icon-wrap:has(.garage__vehicle-icon--photo) {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  padding: 2px;
+  width: 80px;
+  height: 60px;
+}
 .garage__vehicle-icon--photo {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #f3f4f6;
+  display: block;
 }
 .garage__card--uploading {
   position: relative;
@@ -1395,30 +1404,37 @@
 }
 .garage__login-btn:hover { background: var(--g-red-h); color: #fff; transform: translateY(-1px); }
 
-/* ═══════ RESPONSIVE ═══════ */
+/* ═══════════════════════════════════════════
+   RESPONSIVE — full audit + rebuild for phone
+═══════════════════════════════════════════ */
+
+/* Tablet ≤900px — first compaction step before phone layout kicks in. */
 @media (max-width: 900px) {
   .garage__hero { padding: 2.5rem var(--g-px) 2rem; }
   .garage__hero-inner { gap: 1.5rem; }
   .garage__stat-cards { margin-left: 0; }
+  .garage__vehicles { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 }
 
-/* Phone layout — stack hero vertically; stats in 4-col grid below the title.
-   Without flex-direction:column the badge + stats compete for the same row,
-   producing the overlap reported on iPhone widths. */
+/* ── Phone (≤768px) — full vertical layout ──
+   The hero used to flex-row with stat cards on the right; without
+   flex-direction:column the cards overlapped the title on iPhone widths.
+   Below this breakpoint everything stacks. */
 @media (max-width: 768px) {
+  /* Hero: stacked, badge + text top, stats grid below */
+  .garage__hero { padding: 2rem var(--g-px) 1.75rem; }
   .garage__hero-inner {
     flex-direction: column;
     align-items: stretch;
     gap: 1.25rem;
   }
-  .garage__hero-left {
-    width: 100%;
-    flex: 0 0 auto;
-  }
+  .garage__hero-left { width: 100%; flex: 0 0 auto; }
   .garage__hero-title { font-size: 2.4rem; }
   .garage__hero-greeting { font-size: 1.05rem; }
   .garage__hero-sub { font-size: 1.2rem; }
   .garage__hero-badge { width: 44px; height: 44px; border-radius: 10px; }
+
+  /* Stats: 4-col grid full-width (no fixed min-width competing) */
   .garage__stat-cards {
     width: 100%;
     display: grid;
@@ -1428,55 +1444,130 @@
   }
   .garage__stat-card {
     min-width: 0;
-    padding: 0.7rem 0.5rem;
+    padding: 0.7rem 0.4rem;
     border-radius: 10px;
   }
   .garage__stat-num { font-size: 1.7rem; }
-  .garage__stat-label { font-size: 0.78rem; letter-spacing: 0.04em; }
+  .garage__stat-label { font-size: 0.78rem; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .garage__stat-card--next .garage__stat-num { font-size: 1.2rem; }
 
-  /* Toolbar: full-width primary CTA on mobile */
+  /* Toolbar: full-width Add button */
   .garage__content-toolbar {
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
   }
-  .garage__add-btn {
-    width: 100%;
-    justify-content: center;
-    height: 50px;
-  }
+  .garage__add-btn { width: 100%; justify-content: center; height: 50px; }
   .garage__max-msg { text-align: center; }
 
-  /* Tabs: scrollable horizontal strip, no flex:1 cramming */
-  .g-tab {
-    flex: 0 0 auto;
-    padding: 0 14px;
-    font-size: 12.5px;
-  }
-}
+  /* Tabs: scroll horizontally, don't fight for equal width */
+  .g-tab { flex: 0 0 auto; padding: 0 14px; font-size: 12.5px; }
 
-@media (max-width: 600px) {
-  .garage__content { padding-top: 2rem; }
-  .garage__add-form { padding: 2rem; }
-  .garage__selects { grid-template-columns: 1fr; }
-  .garage__card { padding: 1.75rem; }
+  /* Vehicle grid: single column */
   .garage__vehicles { grid-template-columns: 1fr; gap: 1rem; }
-  .garage__seasonal-tip { flex-wrap: wrap; }
-  .garage__seasonal-tip-action { width: 100%; text-align: center; }
+
+  /* Card: tighter padding, photo gets a more visible icon area */
+  .garage__card { padding: 1.5rem; border-radius: 12px; }
+  .garage__card-identity { gap: 0.9rem; margin-bottom: 1rem; padding-bottom: 1rem; }
+  .garage__card-icon-wrap { width: 60px; height: 44px; }
+  .garage__card-icon-wrap:has(.garage__vehicle-icon--photo) {
+    width: 88px;
+    height: 66px;
+    padding: 3px;
+    border-radius: 12px;
+  }
+  .garage__vehicle-icon { width: 46px; }
+  .garage__card-title { font-size: 1.65rem; }
+  .garage__card-trim { font-size: 1.2rem; margin-bottom: 0.5rem; }
+  .garage__card-nickname { font-size: 1.15rem; }
+
+  /* Reminders: keep on one row but allow wrap for long labels */
+  .garage__reminder { padding: 0.7rem 0.85rem; font-size: 1.2rem; flex-wrap: wrap; }
+  .garage__reminder span { flex: 1 1 100%; min-width: 0; }
+  .garage__reminder-book { margin-left: auto; }
+
+  /* Primary actions: shop + book remain side-by-side via 2-col */
+  .garage__actions-primary { grid-template-columns: 1fr 1fr; }
+
+  /* Secondary chips: 5 chips in 2 rows × 3 then 2 — readable touch targets */
+  .garage__actions-secondary { grid-template-columns: repeat(3, 1fr); }
+  .garage__action-chip { height: 38px; font-size: 1.05rem; padding: 0 0.4rem; }
+
+  /* Maintenance + add form: stack fields */
+  .garage__maint-panel, .garage__orders { padding: 1.25rem; }
+  .garage__maint-fields { grid-template-columns: 1fr; gap: 0.6rem; }
+  .garage__maint-form-actions { gap: 0.5rem; }
+  .garage__maint-save, .garage__maint-cancel { flex: 1 1 0; min-width: 0; }
+  .garage__add-form { padding: 1.75rem; border-radius: 12px; }
+  .garage__add-form-header h2 { font-size: 1.8rem; }
+  .garage__selects { grid-template-columns: 1fr; }
+
+  /* Seasonal tip: wraps the action below the text */
+  .garage__seasonal-tip { flex-wrap: wrap; padding: 1rem 1.25rem; }
+  .garage__seasonal-tip-action { width: 100%; text-align: center; margin-top: 0.5rem; }
+
+  /* Activity feed: drop the km chip on narrow rows so the line doesn't wrap awkwardly */
+  .garage__activity { margin-top: 2.5rem; padding-top: 2rem; }
+  .garage__activity-title { font-size: 1.9rem; }
+  .garage__activity-item { gap: 0.75rem; padding: 0.85rem 0; }
+  .garage__activity-when { font-size: 1.15rem; }
+  .garage__activity-vehicle { font-size: 1.15rem; }
+
+  /* Order history rows on the card: stack reorder button below info */
+  .garage__order-row { flex-wrap: wrap; }
+  .garage__order-info { flex: 1 1 100%; }
+  .garage__order-reorder { margin-left: auto; }
+
+  /* Empty + guest states: less vertical air */
+  .garage__empty { padding: 4rem 1.5rem; }
+  .garage__empty-headline { font-size: 2.1rem; }
+  .garage__empty-sub { font-size: 1.35rem; }
+  .garage--guest { padding: 4rem var(--g-px); min-height: 50vh; }
+  .garage--guest h1 { font-size: 2.6rem; }
+  .garage--guest p { font-size: 1.35rem; margin-bottom: 1.75rem; }
+
+  /* Content wrapper: less top padding */
+  .garage__content { padding-top: 1.75rem; }
 }
 
+/* ── Small phone (≤480px) — minimum padding/font sizes ── */
 @media (max-width: 480px) {
-  .garage__hero { padding: 1.75rem var(--g-px) 1.5rem; }
-  .garage__hero-title { font-size: 2.1rem; }
-  .garage__hero-left { gap: 0.9rem; }
-  .garage__stat-cards { gap: 0.4rem; }
-  .garage__stat-card { padding: 0.6rem 0.35rem; border-width: 1px; }
-  .garage__stat-num { font-size: 1.5rem; }
-  .garage__stat-label { font-size: 0.7rem; }
-  .garage__stat-card--next .garage__stat-num { font-size: 1.1rem; }
-  .garage__maint-fields { grid-template-columns: 1fr; }
+  .garage__hero { padding: 1.5rem var(--g-px) 1.25rem; }
+  .garage__hero-title { font-size: 2.05rem; }
+  .garage__hero-left { gap: 0.85rem; }
+  .garage__hero-badge { width: 40px; height: 40px; }
+
+  /* Stats become 2x2 — 4 across is too cramped at this width */
+  .garage__stat-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem; }
+  .garage__stat-card { padding: 0.65rem 0.5rem; border-width: 1px; min-height: 64px; }
+  .garage__stat-num { font-size: 1.6rem; }
+  .garage__stat-label { font-size: 0.85rem; }
+  .garage__stat-card--next .garage__stat-num { font-size: 1.2rem; }
+
+  /* Card: keep enough room for the 88px photo + identity */
+  .garage__card { padding: 1.25rem; }
+  .garage__card-icon-wrap { width: 54px; height: 40px; }
+  .garage__card-icon-wrap:has(.garage__vehicle-icon--photo) {
+    width: 78px;
+    height: 58px;
+  }
+  .garage__vehicle-icon { width: 40px; }
+  .garage__card-title { font-size: 1.5rem; }
+
+  /* Action chips: 2-column for 5 = tidy 3-row layout (last row centered) */
   .garage__actions-secondary { grid-template-columns: repeat(2, 1fr); }
+  .garage__action-chip { font-size: 1.1rem; }
+  .garage__actions-primary { grid-template-columns: 1fr; }
+  .garage .garage__action-btn { font-size: 1.25rem; }
+
+  /* Tabs even more compact */
+  .g-tab { padding: 0 10px; font-size: 11.5px; height: 46px; }
+
+  /* Add form labels & inputs */
+  .garage__field label { font-size: 1rem; }
+  .garage__field select { height: 44px; font-size: 1.3rem; }
+  .garage__add-form { padding: 1.5rem; }
+  .garage__save-btn, .garage__cancel-btn { flex: 1; height: 44px; font-size: 1.25rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
