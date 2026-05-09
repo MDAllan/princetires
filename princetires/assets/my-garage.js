@@ -163,8 +163,104 @@ class MyGarage extends HTMLElement {
       isDefault: !!api.isDefault,
       addedAt: api.createdAt,
       maintenance: Array.isArray(api.maintenance) ? api.maintenance : [],
-      reminders: api.reminders && Object.keys(api.reminders).length ? api.reminders : null
+      reminders: api.reminders && Object.keys(api.reminders).length ? api.reminders : null,
+      imageUrl: api.imageUrl || null
     };
+  }
+
+  /* ---- Photo upload (Phase 1.6) ---- */
+
+  // Lazily creates a hidden file input (shared across vehicles). Called the
+  // first time the user taps the Photo action on any vehicle card.
+  ensurePhotoInput() {
+    if (this._photoInput) return this._photoInput;
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/jpeg,image/png,image/webp';
+    inp.capture = 'environment'; // hint mobile to open the rear camera
+    inp.style.display = 'none';
+    inp.addEventListener('change', this.onPhotoSelected.bind(this));
+    document.body.appendChild(inp);
+    this._photoInput = inp;
+    return inp;
+  }
+
+  triggerPhotoUpload(id) {
+    if (!this.config.customerId) {
+      alert('Please log in to add a photo.');
+      return;
+    }
+    this._pendingPhotoVehicleId = id;
+    var inp = this.ensurePhotoInput();
+    inp.value = ''; // reset so picking the same file twice still fires change
+    inp.click();
+  }
+
+  async onPhotoSelected(e) {
+    var file = e.target.files && e.target.files[0];
+    var id = this._pendingPhotoVehicleId;
+    this._pendingPhotoVehicleId = null;
+    if (!file || !id) return;
+
+    var MAX = 8 * 1024 * 1024;
+    if (file.size > MAX) {
+      alert('Image is too large. Maximum size is 8 MB.');
+      return;
+    }
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+      alert('Unsupported image type. Use JPEG, PNG, or WEBP.');
+      return;
+    }
+
+    // Optimistic loading state on the card.
+    var card = this.vehicleList && this.vehicleList.querySelector('[data-vehicle-id="' + id + '"]');
+    if (card) card.classList.add('garage__card--uploading');
+
+    var fd = new FormData();
+    fd.append('image', file);
+    try {
+      var res = await fetch('/apps/api/vehicles/' + encodeURIComponent(id) + '/image', {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: fd
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || ('upload failed (' + res.status + ')'));
+      var idx = this.vehicles.findIndex(function(v) { return v.id === id; });
+      if (idx >= 0 && data.vehicle) {
+        this.vehicles[idx] = this.apiToLocal(data.vehicle);
+        this.saveToStorage();
+        this.renderVehicles();
+      }
+    } catch (err) {
+      console.error('[my-garage] photo upload failed', err);
+      alert('Could not upload photo: ' + (err.message || 'unknown error'));
+      if (card) card.classList.remove('garage__card--uploading');
+    }
+  }
+
+  async removeVehiclePhoto(id) {
+    if (!this.config.customerId) return;
+    var vehicle = this.vehicles.find(function(v) { return v.id === id; });
+    if (!vehicle || !vehicle.imageUrl) return;
+    if (!confirm('Remove this photo?')) return;
+    try {
+      var res = await fetch('/apps/api/vehicles/' + encodeURIComponent(id) + '/image', {
+        method: 'DELETE',
+        credentials: 'same-origin'
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || ('remove failed (' + res.status + ')'));
+      var idx = this.vehicles.findIndex(function(v) { return v.id === id; });
+      if (idx >= 0 && data.vehicle) {
+        this.vehicles[idx] = this.apiToLocal(data.vehicle);
+        this.saveToStorage();
+        this.renderVehicles();
+      }
+    } catch (err) {
+      console.error('[my-garage] photo remove failed', err);
+      alert('Could not remove photo: ' + (err.message || 'unknown error'));
+    }
   }
 
   // Q4 — top-level sync. Migrates legacy localStorage on first run, then
@@ -992,6 +1088,10 @@ class MyGarage extends HTMLElement {
             + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
             + (nickname ? 'Rename' : 'Name it')
           + '</button>'
+          + '<button type="button" class="garage__action-chip" data-action="photo" data-id="' + this.escapeAttr(vehicle.id) + '">'
+            + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'
+            + (vehicle.imageUrl ? 'Replace photo' : 'Add photo')
+          + '</button>'
           + '<button type="button" class="garage__action-chip garage__action-chip--danger" data-action="remove" data-id="' + this.escapeAttr(vehicle.id) + '">'
             + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
             + 'Remove'
@@ -1110,6 +1210,7 @@ class MyGarage extends HTMLElement {
         else if (action === 'nickname') self.setNickname(id);
         else if (action === 'remove') self.removeVehicle(id);
         else if (action === 'book-install') self.bookInstallForVehicle(id);
+        else if (action === 'photo') self.triggerPhotoUpload(id);
         else if (action === 'toggle-maint') self.togglePanel(id, '[data-maint-panel]');
         else if (action === 'save-maint') self.saveMaintenanceEntry(id);
         else if (action === 'toggle-orders') {
