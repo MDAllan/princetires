@@ -11,7 +11,19 @@
 
     <div class="ptas__grid">
       {%- for block in section.blocks -%}
-        <a href="{{ block.settings.link | default: '#' }}" class="ptas__card" {{ block.shopify_attributes }}>
+        {%- liquid
+          assign link = block.settings.link
+          if link == blank or link == '#'
+            assign use_modal = true
+          else
+            assign use_modal = false
+          endif
+        -%}
+        {%- if use_modal -%}
+        <button type="button" class="ptas__card" data-book-service data-service-name="{{ block.settings.title | escape }}" {{ block.shopify_attributes }}>
+        {%- else -%}
+        <a href="{{ link }}" class="ptas__card" {{ block.shopify_attributes }}>
+        {%- endif -%}
           <div class="ptas__card-icon">
             {%- case block.settings.icon -%}
               {%- when 'tire' -%}
@@ -37,10 +49,10 @@
           <h2 class="ptas__card-title">{{ block.settings.title }}</h2>
           <p class="ptas__card-desc">{{ block.settings.description }}</p>
           <span class="ptas__card-link">
-            Learn more
+            {%- if use_modal -%}Book now{%- else -%}Learn more{%- endif -%}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </span>
-        </a>
+        {%- if use_modal -%}</button>{%- else -%}</a>{%- endif -%}
       {%- endfor -%}
     </div>
 
@@ -131,7 +143,14 @@
     color: inherit;
     transition: all 0.25s ease;
     border: 1px solid transparent;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
   }
+  button.ptas__card { font-family: inherit; }
 
   .ptas__card:hover {
     background: #fff;
