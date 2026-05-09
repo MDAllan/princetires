@@ -1237,7 +1237,14 @@ class MyGarage extends HTMLElement {
   /* ---- Event Binding ---- */
 
   bindEvents() {
-    this.toggleBtn.addEventListener('click', this.toggleAddForm.bind(this, undefined));
+    // Both the toolbar "Add vehicle" button and the empty-state "Add your
+    // first vehicle" button share the same data-garage-toggle-add hook.
+    // querySelectorAll catches both; the original querySelector grabbed
+    // only the first, leaving the empty-state button silently dead.
+    var self = this;
+    this.querySelectorAll('[data-garage-toggle-add]').forEach(function(btn) {
+      btn.addEventListener('click', function() { self.toggleAddForm(undefined); });
+    });
     this.yearSelect.addEventListener('change', this.onYearChange.bind(this));
     this.makeSelect.addEventListener('change', this.onMakeChange.bind(this));
     this.modelSelect.addEventListener('change', this.onModelChange.bind(this));
