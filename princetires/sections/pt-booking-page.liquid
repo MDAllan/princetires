@@ -1,643 +1,1549 @@
 {%- liquid
-  assign hero_eyebrow = section.settings.hero_eyebrow | default: 'Prince Tires · Calgary'
-  assign hero_title   = section.settings.hero_title   | default: 'Book your appointment'
-  assign hero_sub     = section.settings.hero_sub     | default: 'Pick a service, choose a time. We confirm by email within the day.'
-
-  assign services_default = '4 winter tires (change-over)|4 all-season tires (change-over)|Wheel alignment|Tire rotation & balance|Flat repair|Tire storage|Fleet / commercial inquiry|Other / quote'
-  assign services_raw = section.settings.services | default: services_default
-  assign services_arr = services_raw | split: '|'
+  assign hero_heading = section.settings.hero_heading | default: 'Book a service'
+  assign hero_sub     = section.settings.hero_sub     | default: 'Tell us what you need, pick a time. We confirm by email within the day.'
 -%}
 
-<section class="pt-bp" data-pt-booking-page>
-  <!-- ── Hero band ── -->
-  <div class="pt-bp__hero">
-    <div class="pt-bp__hero-tread" aria-hidden="true"></div>
-    <div class="pt-bp__hero-overlay" aria-hidden="true"></div>
-    <div class="pt-bp__hero-inner">
-      <span class="pt-bp__eyebrow">{{ hero_eyebrow }}</span>
-      <h1 class="pt-bp__hero-title">{{ hero_title }}</h1>
-      <p class="pt-bp__hero-sub">{{ hero_sub }}</p>
-    </div>
-  </div>
+{%- comment -%}
+  Logged-in customer payload — picked up by the booking page JS to prefill
+  the contact + vehicle fields. Cache-then-refresh: localStorage garage gives
+  an instant vehicle prefill; /apps/api/vehicles silently overrides if the
+  server has a newer default. Sensitive data is omitted (only name/email/phone).
+{%- endcomment -%}
+{%- if customer -%}
+  <script id="bp-customer-data" type="application/json">
+  {
+    "name": {{ customer.name | json }},
+    "email": {{ customer.email | json }},
+    "phone": {{ customer.phone | json }},
+    "customerId": {{ customer.id | json }}
+  }
+  </script>
+{%- endif -%}
 
-  <!-- ── Card ── -->
-  <div class="pt-bp__deck">
+<section class="pt-bp">
+  <header class="pt-bp__hero">
+    <p class="pt-bp__eyebrow">Calgary &middot; Same-day available</p>
+    <h1 class="pt-bp__title">{{ hero_heading }}</h1>
+    <p class="pt-bp__sub">{{ hero_sub }}</p>
+  </header>
+
+  <div class="pt-bp__shell">
     <div class="pt-bp__card">
-      <span class="pt-bp__card-accent" aria-hidden="true"></span>
 
-      <form class="pt-bp__form" data-pt-bp-form novalidate>
-        <!-- Hidden state -->
-        <input type="hidden" name="bookType" value="service">
-        <input type="hidden" name="date" data-pt-bp-date value="">
-        <input type="hidden" name="time" data-pt-bp-time value="">
-        <input type="hidden" name="serviceName" data-pt-bp-service value="">
+      {%- comment -%} Saved-vehicle banner — shows when customer just came from tire search {%- endcomment -%}
+      <div class="bp-saved" id="bp-saved" hidden>
+        <div class="bp-saved__main">
+          <span class="bp-saved__icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>
+          </span>
+          <div class="bp-saved__copy">
+            <p class="bp-saved__title">Welcome back &mdash; installing tires for <strong id="bp-saved-vehicle"></strong>?</p>
+            <p class="bp-saved__sub">Tire size: <span id="bp-saved-size"></span></p>
+          </div>
+        </div>
+        <div class="bp-saved__actions">
+          <button type="button" class="bp-saved__cta" id="bp-saved-go">Yes, book install &rarr;</button>
+          <button type="button" class="bp-saved__dismiss" id="bp-saved-clear" aria-label="Not the right car? Clear">Not this car</button>
+        </div>
+      </div>
 
-        <!-- Step header -->
-        <div class="pt-bp__top">
-          <span class="pt-bp__step-eyebrow">Service appointment</span>
-          <h2 class="pt-bp__step-title">Tell us what you need.</h2>
+      {%- comment -%} Stepper {%- endcomment -%}
+      <div class="bk-stepper" id="bp-stepper" aria-label="Booking steps">
+        <div class="bk-step" data-bp-step="1"><div class="bk-step-circle bk-step-circle--active">1</div></div>
+        <div class="bk-step-line"></div>
+        <div class="bk-step" data-bp-step="2"><div class="bk-step-circle">2</div></div>
+        <div class="bk-step-line"></div>
+        <div class="bk-step" data-bp-step="3"><div class="bk-step-circle">3</div></div>
+        <div class="bk-step-line"></div>
+        <div class="bk-step" data-bp-step="4"><div class="bk-step-circle">4</div></div>
+      </div>
+
+      {%- comment -%} Step 1 — What do you need? {%- endcomment -%}
+      <div class="bk-page" id="bp-page-1">
+        <p class="bk-label">What can we help with?</p>
+        <div class="bp-pathways">
+          <button class="bp-pathway" data-bp-path="buy" type="button">
+            <span class="bp-pathway__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+            </span>
+            <span class="bp-pathway__title">I'm buying tires</span>
+            <span class="bp-pathway__sub">Find tires by size or vehicle</span>
+          </button>
+          <button class="bp-pathway" data-bp-path="own" type="button">
+            <span class="bp-pathway__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+            </span>
+            <span class="bp-pathway__title">I have my own tires</span>
+            <span class="bp-pathway__sub">Install or seasonal swap</span>
+          </button>
+          <button class="bp-pathway" data-bp-path="other" type="button">
+            <span class="bp-pathway__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+            </span>
+            <span class="bp-pathway__title">Other service</span>
+            <span class="bp-pathway__sub">Rotation, balance, flat repair, TPMS</span>
+          </button>
         </div>
 
-        <!-- 1. Service select -->
-        <fieldset class="pt-bp__group">
-          <legend class="pt-bp__group-label">1. What service?</legend>
-          <div class="pt-bp__services">
-            {%- for s in services_arr -%}
-              {%- assign svc = s | strip -%}
-              {%- if svc != blank -%}
-                <button
-                  type="button"
-                  class="pt-bp__svc"
-                  data-pt-bp-svc-btn
-                  data-svc="{{ svc | escape }}"
-                >{{ svc }}</button>
-              {%- endif -%}
-            {%- endfor -%}
+        {%- comment -%} 1A — Buying tires: tabbed size + vehicle search {%- endcomment -%}
+        <div class="bp-substep" id="bp-buy" hidden>
+          <p class="bk-label" style="margin-top:1.6rem">Find tires that fit</p>
+          {% render 'pt-tire-search' %}
+          <p class="bp-help bp-help--muted" style="margin-top:1rem">After you've picked tires, come back here and choose <strong>I have my own tires</strong> &rarr; <strong>off rims</strong> to book installation.</p>
+        </div>
+
+        {%- comment -%} 1B — Have own tires: on rims vs off rims {%- endcomment -%}
+        <div class="bp-substep" id="bp-own" hidden>
+          <p class="bk-label" style="margin-top:1.6rem">Are your tires already on rims?</p>
+          <div class="bp-mountstate">
+            <button class="bp-mount-card" data-bp-svc="installation_on" type="button">
+              <span class="bp-mount-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              </span>
+              <span class="bp-mount-title">On rims</span>
+              <span class="bp-mount-sub">Seasonal swap. Tires already mounted on their own rims.</span>
+              <span class="bp-mount-price">From <strong>$60 / car</strong></span>
+            </button>
+            <button class="bp-mount-card" data-bp-svc="installation_off" type="button">
+              <span class="bp-mount-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+              </span>
+              <span class="bp-mount-title">Off rims (loose)</span>
+              <span class="bp-mount-sub">New install. We mount, balance, and torque per tire.</span>
+              <span class="bp-mount-price">From <strong>$25 / tire</strong></span>
+            </button>
           </div>
-        </fieldset>
+        </div>
 
-        <!-- 2. Vehicle -->
-        <fieldset class="pt-bp__group">
-          <legend class="pt-bp__group-label">2. Your vehicle</legend>
-          <div class="pt-bp__row pt-bp__row--4">
-            <label class="pt-bp__field">
-              <span>Year</span>
-              <input type="text" name="vehicleYear" inputmode="numeric" autocomplete="off" placeholder="2024" maxlength="4">
-            </label>
-            <label class="pt-bp__field">
-              <span>Make</span>
-              <input type="text" name="vehicleMake" autocomplete="off" placeholder="Toyota">
-            </label>
-            <label class="pt-bp__field">
-              <span>Model</span>
-              <input type="text" name="vehicleModel" autocomplete="off" placeholder="RAV4">
-            </label>
-            <label class="pt-bp__field">
-              <span>Trim <span class="pt-bp__opt">(opt.)</span></span>
-              <input type="text" name="vehicleTrim" autocomplete="off" placeholder="XLE">
-            </label>
+        {%- comment -%} 1C — Other service: 4 tiles {%- endcomment -%}
+        <div class="bp-substep" id="bp-other" hidden>
+          <p class="bk-label" style="margin-top:1.6rem">Pick the service</p>
+          <div class="bp-other-grid" id="bp-other-grid"></div>
+        </div>
+
+        <button class="bk-next-btn" id="bp-next-1" type="button" disabled style="margin-top:1.4rem">Next: vehicle &rarr;</button>
+      </div>
+
+      {%- comment -%} Step 2 — Vehicle + qty + addons {%- endcomment -%}
+      <div class="bk-page" id="bp-page-2" hidden>
+        <div class="bp-auto-pick" id="bp-auto-pick" hidden>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Auto-picked <strong id="bp-auto-tier"></strong> from <span id="bp-auto-vehicle"></span>. Tap below to change.</span>
+        </div>
+        <p class="bk-label">Vehicle type</p>
+        <div class="bk-vehicle-grid" id="bp-vehicles"></div>
+
+        <div id="bp-qty-section" hidden>
+          <p class="bk-label" id="bp-qty-label" style="margin-top:1.4rem">How many tires?</p>
+          <select class="bk-qty-select" id="bp-qty-select"></select>
+        </div>
+
+        <div id="bp-addons-section" hidden>
+          <p class="bk-label" style="margin-top:1.4rem">Add-ons</p>
+          <div class="bk-addons" id="bp-addons"></div>
+        </div>
+
+        <div class="sb-price-box" id="bp-price-box" hidden>
+          <div class="sb-price-row"><span class="sb-price-label">Subtotal</span><span class="sb-price-sub" id="bp-price-sub"></span></div>
+          <div class="sb-price-row"><span class="sb-price-label">GST (5%)</span><span class="sb-price-gst" id="bp-price-gst"></span></div>
+          <div class="sb-price-divider"></div>
+          <div class="sb-price-row"><span class="sb-price-label sb-price-total-label">Estimated total</span><span class="sb-price-amount" id="bp-price-amount"></span></div>
+          <p class="sb-price-note" id="bp-price-note"></p>
+        </div>
+
+        <div class="bk-nav-row">
+          <button class="bk-back-btn" data-bp-goto="1" type="button">&larr; Back</button>
+          <button class="bk-next-btn" id="bp-next-2" data-bp-goto="3" type="button" disabled>Pick a time &rarr;</button>
+        </div>
+      </div>
+
+      {%- comment -%} Step 3 — Date + time {%- endcomment -%}
+      <div class="bk-page" id="bp-page-3" hidden>
+        <div class="bk-week-nav">
+          <button class="bk-week-arrow" id="bp-prev-week" type="button">&#8249;</button>
+          <span class="bk-week-label" id="bp-week-label"></span>
+          <button class="bk-week-arrow" id="bp-next-week" type="button">&#8250;</button>
+        </div>
+        <div class="bk-day-strip" id="bp-day-strip"></div>
+
+        <p class="bk-label">Time</p>
+        <div class="bk-time-grid" id="bp-time-grid"></div>
+        <p class="bk-hours-note">Mon–Sat 9:30–5:30 &middot; Sun 10:00–3:30</p>
+
+        <div class="bk-nav-row">
+          <button class="bk-back-btn" data-bp-goto="2" type="button">&larr; Back</button>
+          <button class="bk-next-btn" id="bp-next-3" data-bp-goto="4" type="button" disabled>Your details &rarr;</button>
+        </div>
+      </div>
+
+      {%- comment -%} Step 4 — Contact + confirm {%- endcomment -%}
+      <div class="bk-page" id="bp-page-4" hidden>
+        <div class="bk-summary" id="bp-summary"></div>
+
+        <div class="bk-form">
+          <div class="bk-form-row">
+            <div class="bk-field" id="bp-field-name">
+              <label for="bp-name">Name</label>
+              <input type="text" id="bp-name" placeholder="Jane Smith" autocomplete="name">
+            </div>
+            <div class="bk-field" id="bp-field-phone">
+              <label for="bp-phone">Phone</label>
+              <input type="tel" id="bp-phone" placeholder="(403) 555-0123" autocomplete="tel">
+            </div>
           </div>
-        </fieldset>
-
-        <!-- 3. When -->
-        <fieldset class="pt-bp__group">
-          <legend class="pt-bp__group-label">3. When?</legend>
-
-          <div class="pt-bp__day-strip" data-pt-bp-days>
-            <p class="pt-bp__hint">Loading…</p>
+          <div class="bk-field" id="bp-field-email">
+            <label for="bp-email">Email</label>
+            <input type="email" id="bp-email" placeholder="jane@email.com" autocomplete="email">
           </div>
-
-          <div class="pt-bp__time-grid" data-pt-bp-times>
-            <p class="pt-bp__hint pt-bp__hint--mute">Pick a day above to see available times.</p>
+          <div class="bk-field">
+            <label for="bp-vehicle-info">Vehicle (year, make, model)</label>
+            <input type="text" id="bp-vehicle-info" placeholder="2018 Honda Civic LX" autocomplete="off">
           </div>
-        </fieldset>
-
-        <!-- 4. You -->
-        <fieldset class="pt-bp__group">
-          <legend class="pt-bp__group-label">4. Your info</legend>
-          <div class="pt-bp__row pt-bp__row--3">
-            <label class="pt-bp__field">
-              <span>Name</span>
-              <input type="text" name="name" autocomplete="name" placeholder="Your name" required>
-            </label>
-            <label class="pt-bp__field">
-              <span>Email</span>
-              <input type="email" name="email" autocomplete="email" placeholder="you@email.com" required>
-            </label>
-            <label class="pt-bp__field">
-              <span>Phone</span>
-              <input type="tel" name="phone" autocomplete="tel" placeholder="(403) 555-0000" required>
-            </label>
+          <div class="bk-field">
+            <label for="bp-notes">Notes <span class="bk-optional">(optional)</span></label>
+            <textarea id="bp-notes" rows="2" placeholder="Anything we should know..."></textarea>
           </div>
-          <label class="pt-bp__field">
-            <span>Notes <span class="pt-bp__opt">(optional)</span></span>
-            <textarea name="notes" rows="3" placeholder="Anything we should know — TPMS, drop-off time, custom request…"></textarea>
-          </label>
-        </fieldset>
+        </div>
 
-        <!-- Status + submit -->
-        <div class="pt-bp__status" data-pt-bp-status hidden role="alert"></div>
+        <div class="bk-form-error" id="bp-form-error" hidden></div>
 
-        <button type="submit" class="pt-bp__submit" data-pt-bp-submit>
-          <span class="pt-bp__submit-text">Confirm booking</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-        </button>
+        <div class="bk-nav-row">
+          <button class="bk-back-btn" data-bp-goto="3" type="button">&larr; Back</button>
+          <button class="bk-confirm-btn" id="bp-confirm-btn" type="button">Confirm booking</button>
+        </div>
+      </div>
 
-        <p class="pt-bp__foot">By booking, you agree we may contact you about this appointment. We'll reply within the day to confirm.</p>
-      </form>
+      {%- comment -%} Done {%- endcomment -%}
+      <div class="bk-page" id="bp-page-done" hidden>
+        <div class="bk-done-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+        </div>
+        <h2 class="bk-done-title">You're booked!</h2>
+        <p class="bk-done-sub">See you at Prince Tires — 111 42 Ave SW, Calgary.</p>
+        <div class="bk-done-card" id="bp-done-card"></div>
+        <div class="bk-done-actions">
+          <button class="bk-cal-btn" id="bp-cal-btn" type="button">Add to calendar</button>
+          <a class="bk-done-btn" href="{{ routes.root_url }}">Back to home</a>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
 
 {% stylesheet %}
-  .pt-bp {
-    --pt-red: #DA291C;
-    --pt-orange: #F5820B;
-    --pt-card: rgba(15, 15, 15, 0.96);
-    --pt-line: rgba(255, 255, 255, 0.10);
-    --pt-mute: rgba(255, 255, 255, 0.6);
-    background: #050505;
-    color: #fff;
-    font-family: 'Outfit', sans-serif;
-    isolation: isolate;
-    min-height: 60vh;
-  }
-  .pt-bp * { box-sizing: border-box; }
+.pt-bp {
+  background: linear-gradient(180deg, #fff 0%, #f7f7f7 100%);
+  font-family: 'Outfit', sans-serif;
+  color: #111;
+  min-height: 100vh;
+  padding-bottom: 5rem;
+}
 
-  /* ── Hero ── */
-  .pt-bp__hero {
-    position: relative;
-    padding: clamp(4rem, 10vh, 8rem) clamp(1.25rem, 4vw, 3rem) clamp(7rem, 12vh, 10rem);
-    overflow: hidden;
-    background:
-      radial-gradient(ellipse at 30% 30%, rgba(218, 41, 28, 0.32) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 70%, rgba(245, 130, 11, 0.18) 0%, transparent 60%),
-      linear-gradient(135deg, #0a0a0a 0%, #1a0606 100%);
-  }
-  .pt-bp__hero-tread {
-    position: absolute; inset: 0; pointer-events: none;
-    background-image: repeating-linear-gradient(-45deg, transparent 0, transparent 22px, rgba(255,255,255,.022) 22px, rgba(255,255,255,.022) 24px);
-  }
-  .pt-bp__hero-overlay {
-    position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.45) 50%, rgba(5,5,5,1) 100%);
-  }
-  .pt-bp__hero-inner {
-    position: relative;
-    text-align: center;
-    max-width: 900px;
-    margin: 0 auto;
-    display: flex; flex-direction: column; align-items: center; gap: 1rem;
-  }
-  .pt-bp__eyebrow {
-    font-size: 0.92rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.32em;
-    color: rgba(255,255,255,.7);
-    display: inline-flex; align-items: center; gap: 0.7rem;
-  }
-  .pt-bp__eyebrow::before, .pt-bp__eyebrow::after {
-    content: ""; width: 22px; height: 1px; background: var(--pt-red);
-  }
-  .pt-bp__hero-title {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(3rem, 7vw, 6rem); font-weight: 800; line-height: 0.95; letter-spacing: -0.012em;
-    text-transform: uppercase; margin: 0;
-    text-shadow: 0 6px 36px rgba(0,0,0,0.5);
-  }
-  .pt-bp__hero-sub {
-    font-size: clamp(1rem, 1.4vw, 1.3rem); line-height: 1.55; color: rgba(255,255,255,.78); max-width: 56ch; margin: 0;
-  }
+.pt-bp__hero {
+  text-align: center;
+  padding: 4rem 1.6rem 2rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.pt-bp__eyebrow {
+  color: #DA291C;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin: 0 0 0.6rem;
+}
+.pt-bp__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(2.6rem, 5vw, 3.8rem);
+  font-weight: 700;
+  line-height: 1.05;
+  margin: 0 0 0.6rem;
+  color: #0a0a0a;
+  letter-spacing: -0.01em;
+}
+.pt-bp__sub {
+  color: #4b5563;
+  font-size: 1.2rem;
+  margin: 0;
+  line-height: 1.5;
+}
 
-  /* ── Deck / card ── */
-  .pt-bp__deck {
-    position: relative;
-    margin: clamp(-7rem, -10vh, -5rem) auto 0;
-    padding: 0 clamp(1rem, 4vw, 3rem) clamp(3rem, 7vw, 5rem);
-    max-width: 880px;
-  }
-  .pt-bp__card {
-    position: relative;
-    background: var(--pt-card);
-    border: 1px solid var(--pt-line);
-    border-radius: 8px;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 30px 80px -20px rgba(0,0,0,.7);
-    overflow: hidden;
-  }
-  .pt-bp__card-accent {
-    position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, var(--pt-red) 0%, var(--pt-orange) 100%);
-  }
+.pt-bp__shell {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 1.4rem;
+}
+.pt-bp__card {
+  background: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  padding: 2rem 1.8rem 1.8rem;
+}
 
-  .pt-bp__form {
-    display: flex; flex-direction: column; gap: 2rem;
-    padding: clamp(2rem, 4vw, 3rem);
-  }
+@media (max-width: 600px) {
+  .pt-bp__hero { padding: 2.6rem 1rem 1.4rem; }
+  .pt-bp__shell { padding: 0 0.8rem; }
+  .pt-bp__card { padding: 1.4rem 1.2rem 1.2rem; border-radius: 10px; }
+}
 
-  .pt-bp__top { display: flex; flex-direction: column; gap: 0.4rem; }
-  .pt-bp__step-eyebrow {
-    font-size: 0.84rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.28em;
-    color: var(--pt-orange);
-  }
-  .pt-bp__step-title {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: clamp(2rem, 3.4vw, 3rem); font-weight: 800; text-transform: uppercase;
-    line-height: 0.95; letter-spacing: -0.005em; margin: 0;
-  }
+/* ── Saved-vehicle banner ── */
+.pt-bp .bp-saved[hidden] { display: none !important; }
+.pt-bp .bp-saved {
+  background: #fef9e7;
+  border: 1.5px solid #fde68a;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  animation: pt-bp-saved-in 0.25s ease;
+}
+@keyframes pt-bp-saved-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.pt-bp .bp-saved__main {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+.pt-bp .bp-saved__icon {
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: #fde68a;
+  color: #92400e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.pt-bp .bp-saved__copy { flex: 1; min-width: 0; }
+.pt-bp .bp-saved__title {
+  margin: 0;
+  font-size: 1rem;
+  color: #78350f;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.pt-bp .bp-saved__title strong { color: #451a03; font-weight: 700; }
+.pt-bp .bp-saved__sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.88rem;
+  color: #b45309;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+.pt-bp .bp-saved__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pt-bp .bp-saved__cta {
+  flex: 0 0 auto;
+  padding: 0 1rem;
+  height: 38px;
+  border: none;
+  border-radius: 8px;
+  background: #dc2626;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.08s;
+}
+.pt-bp .bp-saved__cta:hover { background: #b91c1c; }
+.pt-bp .bp-saved__cta:active { transform: translateY(1px); }
+.pt-bp .bp-saved__dismiss {
+  background: transparent;
+  border: none;
+  color: #92400e;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.4rem 0.6rem;
+}
+.pt-bp .bp-saved__dismiss:hover { color: #451a03; }
 
-  /* ── Group ── */
-  .pt-bp__group {
-    border: 0; padding: 0; margin: 0;
-    display: flex; flex-direction: column; gap: 0.9rem;
-  }
-  .pt-bp__group-label {
-    font-size: 0.84rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.22em;
-    color: rgba(255,255,255,.85); padding: 0;
-  }
+.pt-bp .bp-auto-pick[hidden] { display: none !important; }
+.pt-bp .bp-auto-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.pt-bp .bp-auto-pick svg { flex-shrink: 0; color: #16a34a; }
+.pt-bp .bp-auto-pick strong { color: #15803d; }
 
-  /* ── Service buttons ── */
-  .pt-bp__services {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem;
-  }
-  @media (min-width: 600px) {
-    .pt-bp__services { grid-template-columns: repeat(3, 1fr); }
-  }
-  .pt-bp__svc {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--pt-line);
-    border-radius: 4px;
-    padding: 0.85rem 0.95rem;
-    color: rgba(255,255,255,.85);
-    font-family: inherit;
-    font-size: 0.95rem;
-    text-align: left;
-    cursor: pointer;
-    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
-  }
-  .pt-bp__svc:hover { background: rgba(255,255,255,0.08); }
-  .pt-bp__svc.is-selected {
-    background: rgba(218, 41, 28, 0.16);
-    border-color: var(--pt-red);
-    color: #fff;
-  }
+.pt-bp .bk-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-bottom: 1.6rem;
+}
+.pt-bp .bk-step-circle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  background: #f3f4f6;
+  color: #9ca3af;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: 1.5px solid #e5e7eb;
+}
+.pt-bp .bk-step-circle--active { background: #dc2626; color: #fff; border-color: #dc2626; }
+.pt-bp .bk-step-circle--done   { background: #16a34a; color: #fff; border-color: #16a34a; }
+.pt-bp .bk-step-line { flex: 0 0 32px; height: 2px; background: #e5e7eb; }
 
-  /* ── Inputs ── */
-  .pt-bp__row { display: grid; grid-template-columns: 1fr; gap: 0.9rem; }
-  @media (min-width: 600px) {
-    .pt-bp__row--3 { grid-template-columns: repeat(3, 1fr); }
-    .pt-bp__row--4 { grid-template-columns: repeat(4, 1fr); }
-  }
-  @media (max-width: 599px) {
-    .pt-bp__row--4 { grid-template-columns: repeat(2, 1fr); }
-  }
-  .pt-bp__field { display: flex; flex-direction: column; gap: 0.4rem; }
-  .pt-bp__field > span {
-    font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.18em;
-    color: var(--pt-mute);
-  }
-  .pt-bp__opt { text-transform: none; letter-spacing: 0; color: rgba(255,255,255,.4); font-weight: 400; }
-  .pt-bp__field input,
-  .pt-bp__field textarea {
-    width: 100%;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--pt-line);
-    color: #fff;
-    font-family: inherit;
-    font-size: 1.02rem;
-    padding: 0.85rem 1rem;
-    border-radius: 4px;
-    transition: border-color 160ms ease, background-color 160ms ease;
-  }
-  .pt-bp__field input::placeholder,
-  .pt-bp__field textarea::placeholder { color: rgba(255,255,255,.32); }
-  .pt-bp__field input:focus,
-  .pt-bp__field textarea:focus {
-    outline: none; border-color: var(--pt-red); background: rgba(255,255,255,0.06);
-  }
-  .pt-bp__field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+.pt-bp .bk-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 0.7rem;
+}
 
-  /* ── Day strip ── */
-  .pt-bp__day-strip {
-    display: flex; gap: 0.5rem;
-    overflow-x: auto; padding-bottom: 0.4rem;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-  }
-  .pt-bp__day-strip::-webkit-scrollbar { display: none; }
-  .pt-bp__day {
-    flex: 0 0 auto; min-width: 64px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--pt-line);
-    border-radius: 6px;
-    padding: 0.55rem 0.7rem;
-    color: #fff;
-    font-family: inherit;
-    cursor: pointer;
-    text-align: center;
-    transition: background-color 140ms ease, border-color 140ms ease, opacity 140ms ease;
-    scroll-snap-align: start;
-  }
-  .pt-bp__day-name {
-    display: block;
-    font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.16em;
-    color: var(--pt-mute);
-  }
-  .pt-bp__day-num {
-    display: block;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.5rem; font-weight: 700; line-height: 1;
-    margin-top: 0.2rem;
-  }
-  .pt-bp__day:hover { background: rgba(255,255,255,0.08); }
-  .pt-bp__day.is-selected {
-    background: rgba(218, 41, 28, 0.16);
-    border-color: var(--pt-red);
-  }
-  .pt-bp__day.is-closed { opacity: 0.36; cursor: not-allowed; }
+.pt-bp .bp-pathways { display: grid; grid-template-columns: 1fr; gap: 0.6rem; }
+.pt-bp .bp-pathway {
+  background: #fafafa;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.18s, background 0.18s, transform 0.08s;
+}
+.pt-bp .bp-pathway:hover { border-color: #dc2626; background: #fff; }
+.pt-bp .bp-pathway:active { transform: translateY(1px); }
+.pt-bp .bp-pathway--active { border-color: #dc2626; background: #fef2f2; }
+.pt-bp .bp-pathway__icon {
+  grid-row: 1 / 3;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #fef2f2;
+  color: #dc2626;
+}
+.pt-bp .bp-pathway__title { grid-column: 2; font-size: 1.1rem; font-weight: 600; color: #0a0a0a; }
+.pt-bp .bp-pathway__sub   { grid-column: 2; font-size: 0.95rem; color: #6b7280; font-weight: 400; }
 
-  /* ── Time grid ── */
-  .pt-bp__time-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;
-  }
-  @media (min-width: 600px) {
-    .pt-bp__time-grid { grid-template-columns: repeat(4, 1fr); }
-  }
-  .pt-bp__time {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--pt-line);
-    border-radius: 4px;
-    padding: 0.7rem 0.5rem;
-    color: #fff;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1rem;
-    font-variant-numeric: tabular-nums;
-    cursor: pointer;
-    transition: background-color 140ms ease, border-color 140ms ease;
-  }
-  .pt-bp__time:hover { background: rgba(255,255,255,0.08); }
-  .pt-bp__time.is-selected { background: rgba(218,41,28,0.16); border-color: var(--pt-red); }
-  .pt-bp__time.is-blocked { opacity: 0.32; cursor: not-allowed; }
+.pt-bp .bp-substep {
+  border-top: 1px solid #f3f4f6;
+  margin-top: 1.2rem;
+  padding-top: 0.4rem;
+}
+.pt-bp .bp-help { color: #6b7280; font-size: 0.95rem; margin: 0 0 0.8rem; line-height: 1.5; }
+.pt-bp .bp-help--muted { color: #9ca3af; font-size: 0.88rem; }
+.pt-bp .bp-help code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px; color: #374151; font-family: ui-monospace, SFMono-Regular, monospace; }
 
-  .pt-bp__hint { color: var(--pt-mute); font-size: 0.95rem; margin: 0; grid-column: 1 / -1; }
-  .pt-bp__hint--mute { font-style: italic; }
+.pt-bp .bp-search { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+.pt-bp .bp-search__input {
+  flex: 1;
+  padding: 0 1rem;
+  height: 46px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 1.05rem;
+  color: #111;
+  background: #f9fafb;
+  outline: none;
+  transition: border-color 0.18s, background 0.18s;
+}
+.pt-bp .bp-search__input:focus { border-color: #dc2626; background: #fff; box-shadow: 0 0 0 3px rgba(220,38,38,0.08); }
+.pt-bp .bp-search__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 1.2rem;
+  height: 46px;
+  border: none;
+  border-radius: 8px;
+  background: #dc2626;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.08s;
+}
+.pt-bp .bp-search__btn:hover { background: #b91c1c; }
+.pt-bp .bp-search__btn:active { transform: translateY(1px); }
 
-  /* ── Status & submit ── */
-  .pt-bp__status {
-    padding: 0.85rem 1.1rem;
-    border-radius: 4px;
-    font-size: 1rem;
-    font-weight: 500;
-  }
-  .pt-bp__status--ok {
-    background: rgba(34,197,94,.12);
-    border: 1px solid rgba(34,197,94,.4);
-    color: #6ee7a3;
-  }
-  .pt-bp__status--err {
-    background: rgba(218,41,28,.12);
-    border: 1px solid var(--pt-red);
-    color: #ff8a82;
-  }
+.pt-bp .bp-mountstate { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+@media (max-width: 480px) { .pt-bp .bp-mountstate { grid-template-columns: 1fr; } }
+.pt-bp .bp-mount-card {
+  background: #fafafa;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.18s, background 0.18s;
+}
+.pt-bp .bp-mount-card:hover, .pt-bp .bp-mount-card--active { border-color: #dc2626; background: #fef2f2; }
+.pt-bp .bp-mount-icon {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: #fef2f2;
+  color: #dc2626;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  margin-bottom: 0.3rem;
+}
+.pt-bp .bp-mount-title { font-size: 1.1rem; font-weight: 600; color: #0a0a0a; }
+.pt-bp .bp-mount-sub   { font-size: 0.92rem; color: #6b7280; line-height: 1.45; }
+.pt-bp .bp-mount-price { font-size: 0.95rem; color: #dc2626; margin-top: 0.3rem; }
+.pt-bp .bp-mount-price strong { font-weight: 700; }
 
-  .pt-bp__submit {
-    display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem;
-    width: 100%;
-    background: linear-gradient(135deg, var(--pt-red) 0%, #b9221a 100%);
-    color: #fff;
-    border: 0; border-radius: 4px;
-    padding: 1.15rem 1.6rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;
-    cursor: pointer;
-    box-shadow: 0 8px 24px -8px rgba(218,41,28,0.5);
-    transition: background 160ms ease, transform 80ms ease, box-shadow 160ms ease, opacity 160ms ease;
-  }
-  .pt-bp__submit:hover { background: linear-gradient(135deg, #f53224 0%, var(--pt-red) 100%); }
-  .pt-bp__submit:active { transform: translateY(1px); }
-  .pt-bp__submit:disabled { opacity: 0.55; cursor: wait; }
+.pt-bp .bp-other-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+@media (max-width: 420px) { .pt-bp .bp-other-grid { grid-template-columns: 1fr; } }
+.pt-bp .bp-other-chip {
+  background: #fafafa;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.18s, background 0.18s;
+}
+.pt-bp .bp-other-chip:hover, .pt-bp .bp-other-chip--active { border-color: #dc2626; background: #fef2f2; }
+.pt-bp .bp-other-chip__name  { font-size: 1rem; font-weight: 600; color: #0a0a0a; }
+.pt-bp .bp-other-chip__price { font-size: 0.88rem; color: #6b7280; }
+.pt-bp .bp-other-chip--active .bp-other-chip__price { color: #dc2626; }
 
-  .pt-bp__foot { color: rgba(255,255,255,.42); font-size: 0.88rem; line-height: 1.4; text-align: center; margin: 0; }
+.pt-bp .bk-vehicle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+@media (max-width: 600px) { .pt-bp .bk-vehicle-grid { grid-template-columns: repeat(2, 1fr); } }
+.pt-bp .bk-vehicle-card {
+  background: #fafafa;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.7rem 0.6rem;
+  text-align: center;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #374151;
+  transition: border-color 0.18s, background 0.18s, color 0.18s;
+}
+.pt-bp .bk-vehicle-card:hover, .pt-bp .bk-vehicle-card--active {
+  border-color: #dc2626;
+  background: #fef2f2;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.pt-bp .bk-qty-select {
+  width: 100%;
+  height: 46px;
+  padding: 0 1rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  font-family: inherit;
+  font-size: 1.05rem;
+  color: #111;
+  cursor: pointer;
+}
+
+.pt-bp .bk-addons { display: flex; flex-direction: column; }
+.pt-bp .bk-addon {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  font-size: 1.02rem;
+  color: #374151;
+}
+.pt-bp .bk-addon:last-child { border-bottom: none; }
+.pt-bp .bk-addon input { accent-color: #dc2626; flex-shrink: 0; width: 19px; height: 19px; cursor: pointer; }
+.pt-bp .bk-addon-name  { flex: 1; font-size: 1.02rem; font-weight: 500; color: #374151; }
+.pt-bp .bk-addon--active .bk-addon-name { color: #111; }
+.pt-bp .bk-addon-price { flex-shrink: 0; color: #9ca3af; font-size: 0.95rem; font-weight: 500; }
+.pt-bp .bk-addon--active .bk-addon-price { color: #dc2626; }
+
+.pt-bp .sb-price-box {
+  margin-top: 1.3rem;
+  padding: 1rem 1.1rem;
+  background: #fafafa;
+  border-radius: 10px;
+  border: 1px solid #f3f4f6;
+}
+.pt-bp .sb-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0;
+  font-size: 0.98rem;
+  color: #6b7280;
+}
+.pt-bp .sb-price-row span:last-child { color: #111; font-weight: 500; }
+.pt-bp .sb-price-divider { height: 1px; background: #e5e7eb; margin: 0.5rem 0; }
+.pt-bp .sb-price-total-label { font-weight: 600; color: #0a0a0a !important; }
+.pt-bp .sb-price-amount { font-size: 1.4rem; font-weight: 700; color: #16a34a !important; }
+.pt-bp .sb-price-note { color: #9ca3af; font-size: 0.85rem; margin: 0.5rem 0 0; }
+
+.pt-bp .bk-next-btn {
+  width: 100%;
+  height: 50px;
+  padding: 0 1.2rem;
+  border: none;
+  border-radius: 10px;
+  background: #dc2626;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.08s;
+}
+.pt-bp .bk-next-btn:hover:not(:disabled) { background: #b91c1c; }
+.pt-bp .bk-next-btn:active:not(:disabled) { transform: translateY(1px); }
+.pt-bp .bk-next-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+
+.pt-bp .bk-back-btn {
+  height: 46px;
+  padding: 0 1.2rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #374151;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pt-bp .bk-back-btn:hover { background: #f9fafb; border-color: #d1d5db; }
+
+.pt-bp .bk-confirm-btn {
+  flex: 1;
+  height: 50px;
+  padding: 0 1.2rem;
+  border: none;
+  border-radius: 10px;
+  background: #16a34a;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.08s;
+}
+.pt-bp .bk-confirm-btn:hover:not(:disabled) { background: #15803d; }
+.pt-bp .bk-confirm-btn:active:not(:disabled) { transform: translateY(1px); }
+.pt-bp .bk-confirm-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+
+.pt-bp .bk-nav-row { display: flex; gap: 0.6rem; margin-top: 1.4rem; }
+.pt-bp .bk-nav-row .bk-back-btn { flex: 0 0 auto; }
+.pt-bp .bk-nav-row .bk-next-btn { flex: 1; height: 46px; }
+
+.pt-bp .bk-week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.7rem;
+}
+.pt-bp .bk-week-arrow {
+  width: 34px; height: 34px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 50%;
+  background: #fff;
+  color: #374151;
+  font-size: 1.4rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  font-family: inherit;
+}
+.pt-bp .bk-week-arrow:hover:not(:disabled) { background: #fef2f2; border-color: #dc2626; color: #dc2626; }
+.pt-bp .bk-week-arrow:disabled { color: #d1d5db; cursor: not-allowed; }
+.pt-bp .bk-week-label { font-size: 1rem; font-weight: 600; color: #111; }
+
+.pt-bp .bk-day-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3rem; margin-bottom: 1.3rem; }
+.pt-bp .bk-day-card {
+  padding: 0.6rem 0.2rem;
+  background: #fafafa;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.pt-bp .bk-day-card:hover:not(.bk-day-card--past) { border-color: #dc2626; background: #fef2f2; color: #dc2626; }
+.pt-bp .bk-day-card--active { background: #fef2f2; border-color: #dc2626; color: #dc2626; }
+.pt-bp .bk-day-card--past { background: #f3f4f6; color: #d1d5db; cursor: not-allowed; opacity: 0.55; }
+.pt-bp .bk-day-card--today { font-weight: 700; }
+.pt-bp .bk-day-name { display: block; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: #9ca3af; }
+.pt-bp .bk-day-card--active .bk-day-name { color: #dc2626; }
+.pt-bp .bk-day-num { display: block; font-size: 1.3rem; font-weight: 600; color: inherit; margin-top: 0.15rem; }
+
+.pt-bp .bk-time-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3rem; margin-bottom: 0.4rem; }
+@media (max-width: 480px) { .pt-bp .bk-time-grid { grid-template-columns: repeat(3, 1fr); } }
+.pt-bp .bk-time-slot {
+  padding: 0.55rem 0.3rem;
+  background: #fafafa;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: #374151;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.pt-bp .bk-time-slot:hover:not(.bk-time-slot--booked) { border-color: #dc2626; background: #fef2f2; color: #dc2626; }
+.pt-bp .bk-time-slot--active { background: #fef2f2; border-color: #dc2626; color: #dc2626; font-weight: 600; }
+.pt-bp .bk-time-slot--booked { background: #fafafa; color: #d1d5db; text-decoration: line-through; cursor: not-allowed; border-color: #f3f4f6; }
+.pt-bp .bk-hours-note { color: #9ca3af; font-size: 0.85rem; margin: 0.4rem 0 0; text-align: center; }
+
+.pt-bp .bk-form { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 1rem; }
+.pt-bp .bk-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+@media (max-width: 480px) { .pt-bp .bk-form-row { grid-template-columns: 1fr; } }
+.pt-bp .bk-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.pt-bp .bk-field label { font-size: 0.92rem; font-weight: 500; color: #374151; }
+.pt-bp .bk-field input,
+.pt-bp .bk-field textarea {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  font-family: inherit;
+  font-size: 1.02rem;
+  color: #111;
+  outline: none;
+  transition: border-color 0.18s, background 0.18s;
+}
+.pt-bp .bk-field input:focus,
+.pt-bp .bk-field textarea:focus {
+  border-color: #dc2626;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+}
+.pt-bp .bk-field--error input,
+.pt-bp .bk-field--error textarea { border-color: #dc2626; background: #fef2f2; }
+.pt-bp .bk-optional { color: #9ca3af; font-weight: 400; }
+
+.pt-bp .bk-form-error {
+  margin-top: 0.8rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.95rem;
+}
+
+.pt-bp .bk-summary {
+  background: #fafafa;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+.pt-bp .bk-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  font-size: 0.98rem;
+  color: #6b7280;
+}
+.pt-bp .bk-summary-row + .bk-summary-row { border-top: 1px solid #f3f4f6; }
+.pt-bp .bk-summary-label { color: #9ca3af; }
+.pt-bp .bk-summary-val   { color: #111; font-weight: 500; }
+.pt-bp .bk-summary-val--green { color: #16a34a; font-weight: 700; }
+
+.pt-bp .bk-done-icon { display: flex; justify-content: center; margin: 0.8rem 0 0.6rem; }
+.pt-bp .bk-done-title {
+  text-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0a0a0a;
+  margin: 0;
+}
+.pt-bp .bk-done-sub { text-align: center; color: #6b7280; font-size: 1rem; margin: 0.4rem 0 1rem; }
+.pt-bp .bk-done-card {
+  background: #fafafa;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+.pt-bp .bk-done-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem; }
+.pt-bp .bk-cal-btn,
+.pt-bp .bk-done-btn {
+  height: 44px;
+  padding: 0 1rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  font-family: inherit;
+  font-size: 0.98rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.pt-bp .bk-cal-btn:hover { border-color: #dc2626; color: #dc2626; }
+.pt-bp .bk-done-btn { background: #dc2626; color: #fff; border-color: #dc2626; }
+.pt-bp .bk-done-btn:hover { background: #b91c1c; }
 {% endstylesheet %}
 
-{% javascript %}
+<script>
 (function () {
-  var root = document.querySelector('[data-pt-booking-page]');
-  if (!root) return;
+  // Canonical pricing — keep in sync with snippets/pt-service-booking-modal.liquid
+  var BOOKING_API = 'https://app.princetires.ca/api/book';
+  var AVAILABILITY_API = 'https://app.princetires.ca/api/availability';
 
-  var form          = root.querySelector('[data-pt-bp-form]');
-  var svcButtons    = root.querySelectorAll('[data-pt-bp-svc-btn]');
-  var hiddenSvc     = root.querySelector('[data-pt-bp-service]');
-  var hiddenDate    = root.querySelector('[data-pt-bp-date]');
-  var hiddenTime    = root.querySelector('[data-pt-bp-time]');
-  var dayStripEl    = root.querySelector('[data-pt-bp-days]');
-  var timeGridEl    = root.querySelector('[data-pt-bp-times]');
-  var statusEl      = root.querySelector('[data-pt-bp-status]');
-  var submitBtn     = root.querySelector('[data-pt-bp-submit]');
-  var submitText    = submitBtn.querySelector('.pt-bp__submit-text');
+  // ── Logged-in customer prefill ──────────────────────────────────────────
+  // Reads the JSON payload Liquid injects when {%- if customer -%}, then
+  // fills name/phone/email and the vehicle text input. Vehicle prefill uses
+  // cache-then-refresh: localStorage garage first (instant), then the App
+  // Proxy /apps/api/vehicles silently corrects if the server has a newer
+  // default. Manual edits are preserved (each field only fills when blank).
+  var customerData = (function () {
+    var el = document.getElementById('bp-customer-data');
+    if (!el) return null;
+    try { return JSON.parse(el.textContent); } catch (e) { return null; }
+  })();
 
-  var API_BASE = 'https://app.princetires.ca';
-  var st = { date: null, time: null, service: null };
-
-  // ── Service select (deep-link via ?service=…) ───────────────────────────
-  var qs = new URLSearchParams(window.location.search);
-  var qpService = qs.get('service');
-  if (qpService) {
-    var match = [].filter.call(svcButtons, function(b){ return b.dataset.svc.toLowerCase() === qpService.toLowerCase(); })[0];
-    if (match) selectService(match);
-  }
-  svcButtons.forEach(function (btn) {
-    btn.addEventListener('click', function() { selectService(btn); });
-  });
-  function selectService(btn) {
-    svcButtons.forEach(function (b) { b.classList.remove('is-selected'); });
-    btn.classList.add('is-selected');
-    st.service = btn.dataset.svc;
-    hiddenSvc.value = btn.dataset.svc;
+  function fillIfEmpty(id, value) {
+    if (!value) return;
+    var el = document.getElementById(id);
+    if (el && !el.value) el.value = value;
   }
 
-  // ── Day strip (next 14 days, Sunday closed) ──────────────────────────────
-  function buildDays() {
-    dayStripEl.innerHTML = '';
-    var today = new Date();
-    today.setHours(0,0,0,0);
-    for (var i = 0; i < 14; i++) {
-      var d = new Date(today.getTime());
-      d.setDate(today.getDate() + i);
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'pt-bp__day';
-      var isSun = d.getDay() === 0;
-      if (isSun) btn.classList.add('is-closed');
-      btn.disabled = isSun;
-      var nameEl = document.createElement('span');
-      nameEl.className = 'pt-bp__day-name';
-      nameEl.textContent = d.toLocaleDateString('en-CA', { weekday: 'short' });
-      var numEl = document.createElement('span');
-      numEl.className = 'pt-bp__day-num';
-      numEl.textContent = String(d.getDate());
-      btn.appendChild(nameEl);
-      btn.appendChild(numEl);
-      btn.dataset.date = d.toISOString().slice(0,10);
-      btn.addEventListener('click', function (ev) {
-        var t = ev.currentTarget;
-        if (t.classList.contains('is-closed')) return;
-        root.querySelectorAll('.pt-bp__day').forEach(function(x){ x.classList.remove('is-selected'); });
-        t.classList.add('is-selected');
-        st.date = t.dataset.date;
-        hiddenDate.value = st.date;
-        loadTimes(st.date);
-      });
-      dayStripEl.appendChild(btn);
-    }
+  function vehicleLabel(v) {
+    return [v.year, v.make, v.model, v.trim].filter(Boolean).join(' ');
   }
-  buildDays();
 
-  // ── Time slots (8–5, half-hour, skip lunch + past + 6h lead) ─────────────
-  function loadTimes(dateStr) {
-    timeGridEl.innerHTML = '<p class="pt-bp__hint">Checking availability…</p>';
-    fetch(API_BASE + '/api/availability?date=' + encodeURIComponent(dateStr))
-      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('availability ' + r.status)); })
+  function prefillCustomer() {
+    if (!customerData) return;
+    fillIfEmpty('bp-name', customerData.name);
+    fillIfEmpty('bp-phone', customerData.phone);
+    fillIfEmpty('bp-email', customerData.email);
+  }
+
+  function prefillVehicleFromCache() {
+    if (!customerData || !customerData.customerId) return;
+    try {
+      var raw = localStorage.getItem('pt-garage-' + customerData.customerId);
+      var vehicles = raw ? JSON.parse(raw) : [];
+      var def = vehicles.find(function (v) { return v.isDefault; }) || vehicles[0];
+      if (def) fillIfEmpty('bp-vehicle-info', vehicleLabel(def));
+    } catch (e) {}
+  }
+
+  function prefillVehicleFromApi() {
+    if (!customerData) return; // not logged in — no App Proxy session anyway
+    fetch('/apps/api/vehicles', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
-        var booked = Array.isArray(data.booked) ? data.booked : [];
-        var allDay = data.allDayBlocked === true;
-        renderTimes(dateStr, booked, allDay);
+        if (!data || !Array.isArray(data.vehicles)) return;
+        var def = data.vehicles.find(function (v) { return v.isDefault; }) || data.vehicles[0];
+        if (!def) return;
+        var label = vehicleLabel(def);
+        var el = document.getElementById('bp-vehicle-info');
+        // Only overwrite if the field is empty OR still matches what we
+        // pre-filled from localStorage (so manual edits never get clobbered).
+        if (el && (!el.value || el.dataset.bpAutofilled === '1')) {
+          el.value = label;
+          el.dataset.bpAutofilled = '1';
+        }
       })
-      .catch(function () {
-        timeGridEl.innerHTML = '<p class="pt-bp__hint">Could not load times — please refresh and try again.</p>';
-      });
+      .catch(function () {});
   }
 
-  function renderTimes(dateStr, booked, allDay) {
-    if (allDay) {
-      timeGridEl.innerHTML = '<p class="pt-bp__hint">Closed this day. Pick another.</p>';
-      return;
-    }
-    var bookedSet = {}; for (var i = 0; i < booked.length; i++) bookedSet[booked[i]] = true;
-    var now = new Date();
-    var sameDay = dateStr === now.toISOString().slice(0,10);
-    var earliestMin = 0;
-    if (sameDay) earliestMin = now.getHours()*60 + now.getMinutes() + 360; // 6h lead
+  // Mark the field as "autofilled" if we set it from cache so the API
+  // refresh can safely overwrite. Any keystroke clears the flag.
+  function trackVehicleField() {
+    var el = document.getElementById('bp-vehicle-info');
+    if (!el) return;
+    var initial = el.value;
+    if (initial) el.dataset.bpAutofilled = '1';
+    el.addEventListener('input', function () { delete el.dataset.bpAutofilled; });
+  }
 
-    var html = '';
-    for (var h = 8; h < 17; h++) {
-      if (h === 12) continue; // lunch
-      for (var mi = 0; mi < 2; mi++) {
-        var m = mi === 0 ? 0 : 30;
-        var slotMin = h*60 + m;
-        var label = formatLabel(h, m);
-        var blocked = bookedSet[label] || (sameDay && slotMin < earliestMin);
-        html += '<button type="button" class="pt-bp__time' + (blocked ? ' is-blocked' : '') + '" data-time="' + label + '"' + (blocked ? ' disabled' : '') + '>' + label + '</button>';
+  prefillCustomer();
+  prefillVehicleFromCache();
+  trackVehicleField();
+  prefillVehicleFromApi();
+  // ────────────────────────────────────────────────────────────────────────
+
+  // Trailer is special-cased to $120 flat for any install (off-rims OR on-rims).
+  var INSTALL_PRICES = { passenger: 25, suv: 30, van: 30, electric: 30, truck: 35, largetruck: 40, dually: 45, trailer: 30 };
+  var ON_RIMS_PRICES = { passenger: 60, suv: 60, van: 60, electric: 60, truck: 80, largetruck: 80, dually: 90, trailer: 120 };
+  var LOW_PROFILE_FLOOR = 40;
+  var TRAILER_FLAT = 120;
+
+  var SERVICES = {
+    installation_off: { name: 'Tire Installation (off rims)' },
+    installation_on:  { name: 'Seasonal Swap (on rims)' },
+    balancing:        { name: 'Wheel Balancing' },
+    rotation:         { name: 'Tire Rotation' },
+    flat_repair:      { name: 'Flat Repair' },
+    tpms:             { name: 'TPMS Service' }
+  };
+  var OTHER_SERVICES = [
+    { id: 'rotation',    name: 'Tire Rotation',  priceLabel: 'from $60 / car' },
+    { id: 'balancing',   name: 'Wheel Balancing', priceLabel: '$20 / wheel' },
+    { id: 'flat_repair', name: 'Flat Repair',    priceLabel: '$50 / tire (patch)' },
+    { id: 'tpms',        name: 'TPMS Service',   priceLabel: '$75 / sensor' }
+  ];
+  var VEHICLES = [
+    { id: 'passenger', name: 'Sedan' },
+    { id: 'suv', name: 'SUV / CUV' },
+    { id: 'van', name: 'Van' },
+    { id: 'electric', name: 'Electric' },
+    { id: 'truck', name: 'Truck' },
+    { id: 'dually', name: 'Dually' },
+    { id: 'largetruck', name: 'Large / Cube / 21"+' },
+    { id: 'trailer', name: 'Trailer' }
+  ];
+
+  var st = {
+    pathway: '',
+    service: '',
+    vehicle: 'passenger',
+    qty: 4,
+    addons: { tpms: false, disposal: false, lowProfile: false },
+    date: null,
+    time: null
+  };
+  var wk = 0;
+
+  function fmtMoney(n) { return '$' + (n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)); }
+
+  // Best-guess vehicle tier from a saved tire-search record.
+  // Returns one of the canonical tier ids (passenger/suv/van/electric/truck/dually/largetruck/trailer).
+  // Customer can always override on step 2 if the guess is wrong.
+  function detectTier(saved) {
+    if (!saved) return 'passenger';
+    var mk = (saved.make || '').toLowerCase();
+    var md = (saved.model || '').toLowerCase();
+    var trim = (saved.trim || '').toLowerCase();
+    var size = (saved.tireSize || '').toUpperCase();
+    var modelTrim = (md + ' ' + trim).trim();
+
+    // EV makes / models (highest priority — Tesla Model Y is "SUV" form factor but priced at electric tier)
+    var evMakes = ['tesla', 'rivian', 'lucid', 'polestar'];
+    var evModels = ['bolt', 'leaf', 'ioniq', 'mustang mach', 'mach-e', 'id.4', 'id.3', 'taycan', 'e-tron', 'lightning', 'lyriq', 'eqs', 'eqe', 'i4', 'ix'];
+    if (evMakes.indexOf(mk) > -1) return 'electric';
+    for (var i = 0; i < evModels.length; i++) { if (modelTrim.indexOf(evModels[i]) > -1) return 'electric'; }
+
+    // Dually & heavy-duty trucks (F-350, Ram 3500, etc.)
+    if (/\b(dually|3500|f-?350|sierra 3500)\b/.test(modelTrim)) return 'dually';
+
+    // Cube vans + big trucks (F-250, Ram 2500, Sprinter cube, ProMaster cargo)
+    if (/\b(2500|f-?250|sierra 2500|sprinter|promaster|cube|cab.{0,3}chassis)\b/.test(modelTrim)) return 'largetruck';
+
+    // Trailer
+    if (/\btrailer\b/.test(modelTrim) || size.indexOf('ST') === 0) return 'trailer';
+
+    // Half-ton & midsize pickups
+    var truckRx = /\b(f-?150|1500|sierra 1500|silverado 1500|ram 1500|tundra|tacoma|titan|frontier|colorado|canyon|ridgeline|ranger|maverick|gladiator|pickup|truck)\b/;
+    if (truckRx.test(modelTrim)) return 'truck';
+
+    // Vans / minivans (passenger vans like Sienna/Odyssey — different from Sprinter)
+    var vanRx = /\b(sienna|odyssey|pacifica|carnival|quest|caravan|town.country|transit connect)\b/;
+    if (vanRx.test(modelTrim)) return 'van';
+
+    // SUVs / CUVs
+    var suvRx = /\b(suv|explorer|tahoe|yukon|suburban|highlander|4runner|pathfinder|pilot|rav4|cr-?v|rogue|murano|escape|edge|bronco|equinox|traverse|blazer|wrangler|cherokee|grand cherokee|durango|tucson|santa fe|palisade|sportage|sorento|telluride|forester|outback|crosstrek|ascent|armada|expedition|sequoia|mdx|rdx|qx|gx|lx|rx|nx|gle|glc|gls|x3|x5|x7|q5|q7|q8)\b/;
+    if (suvRx.test(modelTrim)) return 'suv';
+
+    // Tire-size hints (low-profile sport cars often need largetruck pricing)
+    var rimM = size.match(/R(\d+)/);
+    if (rimM && parseInt(rimM[1]) >= 21) return 'largetruck';
+
+    // Default: sedan/coupe/hatch
+    return 'passenger';
+  }
+
+  function calcPrice() {
+    var s = st.service, v = st.vehicle, q = st.qty;
+    var subtotal = 0, parts = [];
+
+    if (s === 'installation_off') {
+      if (v === 'trailer') {
+        subtotal = TRAILER_FLAT;
+        parts.push('flat $' + TRAILER_FLAT + ' (trailer)');
+      } else {
+        var base = INSTALL_PRICES[v] || 30;
+        var per = st.addons.lowProfile ? Math.max(base, LOW_PROFILE_FLOOR) : base;
+        subtotal = per * q;
+        parts.push('$' + per + '/tire × ' + q);
+        if (st.addons.lowProfile && per > base) parts.push('low-profile');
       }
-    }
-    if (!html) html = '<p class="pt-bp__hint">No times available — try a different day.</p>';
-    timeGridEl.innerHTML = html;
+      if (st.addons.disposal) { subtotal += 5 * q; parts.push('disposal'); }
+      if (st.addons.tpms)     { subtotal += 75 * q; parts.push('TPMS ×' + q); }
+    } else if (s === 'installation_on') {
+      subtotal = ON_RIMS_PRICES[v] || 60;
+      if (v === 'trailer') {
+        parts.push('flat $' + subtotal + ' (trailer)');
+      } else {
+        var n = (v === 'dually' || v === 'largetruck') ? 6 : 4;
+        parts.push('flat $' + subtotal + ' (' + n + ' tires on rims)');
+      }
+      if (st.addons.tpms) { subtotal += 75 * q; parts.push('TPMS ×' + q); }
+    } else if (s === 'balancing') {
+      subtotal = 20 * q;
+      parts.push('$20/wheel × ' + q);
+    } else if (s === 'rotation') {
+      subtotal = (v === 'dually' || v === 'largetruck') ? 100 : 60;
+      parts.push('$' + subtotal + ' flat per car');
+    } else if (s === 'flat_repair') {
+      subtotal = 50 * q;
+      parts.push('$50 patch × ' + q + ' tire' + (q > 1 ? 's' : ''));
+    } else if (s === 'tpms') {
+      subtotal = 75 * q;
+      parts.push('$75/sensor × ' + q + ' sensor' + (q > 1 ? 's' : ''));
+    } else { return null; }
 
-    timeGridEl.querySelectorAll('.pt-bp__time:not(.is-blocked)').forEach(function (t) {
-      t.addEventListener('click', function (ev) {
-        timeGridEl.querySelectorAll('.pt-bp__time').forEach(function(x){ x.classList.remove('is-selected'); });
-        ev.currentTarget.classList.add('is-selected');
-        st.time = ev.currentTarget.dataset.time;
-        hiddenTime.value = st.time;
+    var gst = subtotal * 0.05;
+    return {
+      subtotal: fmtMoney(subtotal),
+      gst: fmtMoney(gst),
+      amount: fmtMoney(subtotal + gst),
+      note: parts.join(' + ') + ' · est. before confirming',
+      raw: { subtotal: subtotal, gst: gst, total: subtotal + gst }
+    };
+  }
+
+  function goTo(step) {
+    [1,2,3,4].forEach(function (s) {
+      var el = document.getElementById('bp-page-' + s);
+      if (el) el.hidden = s !== step;
+    });
+    document.getElementById('bp-page-done').hidden = true;
+    [1,2,3,4].forEach(function (s) {
+      var ci = document.querySelector('[data-bp-step="' + s + '"] .bk-step-circle');
+      if (!ci) return;
+      ci.className = 'bk-step-circle';
+      if (s < step) { ci.classList.add('bk-step-circle--done'); ci.innerHTML = '✓'; }
+      else if (s === step) { ci.classList.add('bk-step-circle--active'); ci.textContent = s; }
+      else { ci.textContent = s; }
+    });
+    if (step === 2) { renderVehicles(); renderAutoPickHint(); }
+    if (step === 3) { if (!st.date) { var t = new Date(); t.setHours(0,0,0,0); st.date = t; } renderWeek(); renderTimes(); }
+    if (step === 4) renderSummary();
+    try { window.scrollTo({ top: document.querySelector('.pt-bp__card').offsetTop - 20, behavior: 'smooth' }); } catch (e) {}
+  }
+
+  function pickPathway(path) {
+    st.pathway = path;
+    document.querySelectorAll('.bp-pathway').forEach(function (b) {
+      b.classList.toggle('bp-pathway--active', b.dataset.bpPath === path);
+    });
+    document.getElementById('bp-buy').hidden = path !== 'buy';
+    document.getElementById('bp-own').hidden = path !== 'own';
+    document.getElementById('bp-other').hidden = path !== 'other';
+    if (path === 'other') renderOtherGrid();
+    st.service = '';
+    document.querySelectorAll('.bp-mount-card').forEach(function (c) { c.classList.remove('bp-mount-card--active'); });
+    updateNextBtn();
+  }
+
+  function renderOtherGrid() {
+    var grid = document.getElementById('bp-other-grid');
+    grid.innerHTML = OTHER_SERVICES.map(function (s) {
+      var active = st.service === s.id ? ' bp-other-chip--active' : '';
+      return '<button type="button" class="bp-other-chip' + active + '" data-bp-svc="' + s.id + '">' +
+        '<span class="bp-other-chip__name">' + s.name + '</span>' +
+        '<span class="bp-other-chip__price">' + s.priceLabel + '</span>' +
+        '</button>';
+    }).join('');
+    grid.querySelectorAll('.bp-other-chip').forEach(function (el) {
+      el.addEventListener('click', function () {
+        st.service = this.dataset.bpSvc;
+        renderOtherGrid();
+        updateNextBtn();
       });
     });
   }
-  function formatLabel(h, m) {
-    var ampm = h >= 12 ? 'PM' : 'AM';
-    var disp = h % 12; if (disp === 0) disp = 12;
-    return disp + ':' + (m === 0 ? '00' : '30') + ' ' + ampm;
+
+  function updateNextBtn() {
+    var btn = document.getElementById('bp-next-1');
+    if (!btn) return;
+    if (st.pathway === 'buy') { btn.hidden = true; return; }
+    btn.hidden = false;
+    btn.disabled = !st.service;
   }
 
-  // ── Submit ───────────────────────────────────────────────────────────────
-  form.addEventListener('submit', function (ev) {
-    ev.preventDefault();
-    statusEl.hidden = true;
-    statusEl.className = 'pt-bp__status';
+  function renderVehicles() {
+    var grid = document.getElementById('bp-vehicles');
+    var noTrailer = ['balancing', 'rotation'];
+    var vehs = noTrailer.indexOf(st.service) > -1 ? VEHICLES.filter(function (v) { return v.id !== 'trailer'; }) : VEHICLES;
+    grid.innerHTML = vehs.map(function (v) {
+      var active = st.vehicle === v.id ? ' bk-vehicle-card--active' : '';
+      return '<button type="button" class="bk-vehicle-card' + active + '" data-veh="' + v.id + '">' + v.name + '</button>';
+    }).join('');
+    grid.querySelectorAll('.bk-vehicle-card').forEach(function (el) {
+      el.addEventListener('click', function () {
+        st.vehicle = this.dataset.veh;
+        // Manual pick overrides the auto-detection — clear the hint so we don't lie to the customer
+        st.autoPickedFromSaved = false;
+        renderAutoPickHint();
+        renderVehicles();
+        updatePrice();
+        document.getElementById('bp-next-2').disabled = false;
+      });
+    });
 
-    if (!st.service) return showStatus('Please pick a service.', false);
-    if (!st.date)    return showStatus('Please pick a day.',     false);
-    if (!st.time)    return showStatus('Please pick a time.',    false);
+    var noQty = (st.service === 'installation_on' || st.service === 'rotation');
+    document.getElementById('bp-qty-section').hidden = noQty;
+    if (!noQty) renderQty();
 
-    var fd = new FormData(form);
-    var payload = {
-      bookType:    'service',
-      serviceName: fd.get('serviceName'),
-      name:        (fd.get('name')||'').trim(),
-      email:       (fd.get('email')||'').trim(),
-      phone:       (fd.get('phone')||'').trim(),
-      vehicleYear: (fd.get('vehicleYear')||'').trim() || null,
-      vehicleMake: (fd.get('vehicleMake')||'').trim() || null,
-      vehicleModel:(fd.get('vehicleModel')||'').trim() || null,
-      vehicleTrim: (fd.get('vehicleTrim')||'').trim() || null,
-      notes:       (fd.get('notes')||'').trim() || null,
-      date:        st.date,
-      time:        st.time
-    };
+    var hasAddons = (st.service === 'installation_off' || st.service === 'installation_on');
+    document.getElementById('bp-addons-section').hidden = !hasAddons;
+    if (hasAddons) renderAddons();
 
-    if (!payload.name || !payload.email || !payload.phone) {
-      return showStatus('Name, email, and phone are required.', false);
+    updatePrice();
+    document.getElementById('bp-next-2').disabled = false;
+  }
+
+  function renderAutoPickHint() {
+    var el = document.getElementById('bp-auto-pick');
+    if (!el) return;
+    if (!st.autoPickedFromSaved) { el.hidden = true; return; }
+    var v = VEHICLES.find(function (x) { return x.id === st.vehicle; });
+    var savedRaw = (function () { try { return localStorage.getItem('pt-tire-search-vehicle'); } catch (e) { return null; } })();
+    var saved = savedRaw ? JSON.parse(savedRaw) : null;
+    if (!saved || !v) { el.hidden = true; return; }
+    var label = [saved.year, saved.make, saved.model, saved.trim].filter(Boolean).join(' ');
+    document.getElementById('bp-auto-tier').textContent = v.name;
+    document.getElementById('bp-auto-vehicle').textContent = label || 'your saved vehicle';
+    el.hidden = false;
+  }
+
+  function renderQty() {
+    var sel = document.getElementById('bp-qty-select');
+    var lbl = document.getElementById('bp-qty-label');
+    if (!sel) return;
+    var s = st.service;
+    var isTpms = s === 'tpms';
+    var isBalancing = s === 'balancing';
+    var isRepair = s === 'flat_repair';
+    var max = (isTpms || isBalancing || isRepair) ? 4 : 8;
+    lbl.textContent = isTpms ? 'How many sensors?'
+                    : isBalancing ? 'How many wheels?'
+                    : isRepair ? 'How many tires to patch?'
+                    : 'How many tires?';
+    if (sel.dataset.max !== String(max)) {
+      sel.dataset.max = String(max);
+      var unit = isTpms ? ' sensor' : isBalancing ? ' wheel' : ' tire';
+      var html = '';
+      for (var i = 1; i <= max; i++) {
+        html += '<option value="' + i + '"' + (i === st.qty ? ' selected' : '') + '>' + i + unit + (i > 1 ? 's' : '') + '</option>';
+      }
+      sel.innerHTML = html;
+    }
+    sel.value = String(Math.min(st.qty, max));
+    if (!sel._wired) {
+      sel._wired = true;
+      sel.addEventListener('change', function () { st.qty = parseInt(this.value); updatePrice(); });
+    }
+  }
+
+  function renderAddons() {
+    var container = document.getElementById('bp-addons');
+    var rows = [];
+    var isOff = st.service === 'installation_off';
+    var isOn  = st.service === 'installation_on';
+    if (isOff || isOn) rows.push({ id: 'tpms', name: 'New TPMS sensors', priceLabel: '+$75/sensor' });
+    if (isOff) {
+      rows.push({ id: 'disposal', name: 'Tire disposal', priceLabel: '+$5/tire' });
+      rows.push({ id: 'lowProfile', name: 'Low-profile or run-flat tires', priceLabel: '$40/tire min' });
+    }
+    container.innerHTML = rows.map(function (a) {
+      var active = st.addons[a.id] ? ' bk-addon--active' : '';
+      var checked = st.addons[a.id] ? ' checked' : '';
+      return '<label class="bk-addon' + active + '">' +
+        '<input type="checkbox" data-bp-addon="' + a.id + '"' + checked + '>' +
+        '<span class="bk-addon-name">' + a.name + '</span>' +
+        '<span class="bk-addon-price">' + a.priceLabel + '</span>' +
+        '</label>';
+    }).join('');
+    container.querySelectorAll('input[data-bp-addon]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        st.addons[this.dataset.bpAddon] = this.checked;
+        this.closest('.bk-addon').classList.toggle('bk-addon--active', this.checked);
+        updatePrice();
+      });
+    });
+  }
+
+  function updatePrice() {
+    var box = document.getElementById('bp-price-box');
+    var pr = calcPrice();
+    if (!pr) { box.hidden = true; return; }
+    box.hidden = false;
+    document.getElementById('bp-price-sub').textContent = pr.subtotal;
+    document.getElementById('bp-price-gst').textContent = pr.gst;
+    document.getElementById('bp-price-amount').textContent = pr.amount;
+    document.getElementById('bp-price-note').textContent = pr.note;
+  }
+
+  function slotMins(slot) {
+    var m = slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return 0;
+    var h = parseInt(m[1]), mn = parseInt(m[2]);
+    if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+    if (m[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    return h * 60 + mn;
+  }
+
+  function renderWeek() {
+    var today = new Date(); today.setHours(0,0,0,0);
+    var start = new Date(today);
+    start.setDate(start.getDate() - start.getDay() + 1 + wk * 7);
+    var dn = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var end = new Date(start); end.setDate(end.getDate() + 6);
+    document.getElementById('bp-week-label').textContent = start.getDate() + ' ' + mn[start.getMonth()] + ' – ' + end.getDate() + ' ' + mn[end.getMonth()];
+    document.getElementById('bp-prev-week').disabled = wk <= 0;
+
+    var html = '';
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(start); d.setDate(d.getDate() + i);
+      var isPast = d < today;
+      var isToday = d.getTime() === today.getTime();
+      var isActive = st.date && d.toDateString() === st.date.toDateString();
+      var cls = 'bk-day-card' + (isPast ? ' bk-day-card--past' : '') + (isToday ? ' bk-day-card--today' : '') + (isActive ? ' bk-day-card--active' : '');
+      var iso = d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + '-' + (d.getDate()<10?'0':'') + d.getDate();
+      html += '<button type="button" class="' + cls + '" data-date="' + iso + '"><span class="bk-day-name">' + dn[i] + '</span><span class="bk-day-num">' + d.getDate() + '</span></button>';
+    }
+    document.getElementById('bp-day-strip').innerHTML = html;
+    document.querySelectorAll('#bp-day-strip .bk-day-card:not(.bk-day-card--past)').forEach(function (el) {
+      el.addEventListener('click', function () {
+        st.date = new Date(this.dataset.date + 'T12:00:00');
+        st.time = null;
+        document.getElementById('bp-next-3').disabled = true;
+        renderWeek();
+        renderTimes();
+      });
+    });
+  }
+
+  async function renderTimes() {
+    var grid = document.getElementById('bp-time-grid');
+    if (!st.date) { grid.innerHTML = '<p style="color:#9ca3af;font-size:0.92rem;grid-column:1/-1;text-align:center">Pick a day above.</p>'; return; }
+    var isSun = st.date.getDay() === 0;
+    var startH = isSun ? 10 : 9, startM = isSun ? 0 : 30, endH = isSun ? 15 : 17, endM = 30;
+    var slots = [];
+    for (var h = startH; h <= endH; h++) {
+      for (var m = (h === startH ? startM : 0); m < 60; m += 30) {
+        if (h === endH && m > endM) break;
+        var hr = h > 12 ? h - 12 : h;
+        slots.push(hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM'));
+      }
+    }
+    grid.innerHTML = '<p style="color:#9ca3af;font-size:0.92rem;grid-column:1/-1;text-align:center">Checking availability...</p>';
+
+    var booked = [], allDayBlocked = false;
+    try {
+      var d = st.date;
+      var dateParam = d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + '-' + (d.getDate()<10?'0':'') + d.getDate();
+      var r = await fetch(AVAILABILITY_API + '?date=' + dateParam);
+      var data = await r.json();
+      booked = data.booked || [];
+      allDayBlocked = data.allDayBlocked || false;
+    } catch (e) {}
+
+    if (allDayBlocked) {
+      grid.innerHTML = '<p style="color:#dc2626;font-size:0.95rem;grid-column:1/-1;text-align:center;padding:0.5rem 0">Not available this day — please pick another.</p>';
+      return;
     }
 
-    submitBtn.disabled = true;
-    submitText.textContent = 'Booking…';
-
-    fetch(API_BASE + '/api/book', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-      .then(function (r) {
-        return r.json().then(function (j) { return { status: r.status, body: j }; });
-      })
-      .then(function (res) {
-        if (res.status === 201) {
-          showStatus('Booked! We sent a confirmation to ' + payload.email + '. We will reply by end of day to confirm.', true);
-          form.reset();
-          root.querySelectorAll('.is-selected').forEach(function(x){ x.classList.remove('is-selected'); });
-          st = { date: null, time: null, service: null };
-          timeGridEl.innerHTML = '<p class="pt-bp__hint pt-bp__hint--mute">Pick a day above to see available times.</p>';
-          if (window.scrollTo) window.scrollTo({ top: root.offsetTop - 80, behavior: 'smooth' });
-        } else if (res.status === 409) {
-          showStatus('That slot was just booked. Please pick another time.', false);
-        } else {
-          showStatus(res.body.error || 'Could not save your booking. Please try again.', false);
-        }
-      })
-      .catch(function () {
-        showStatus('Network error. Check your connection and try again.', false);
-      })
-      .finally(function () {
-        submitBtn.disabled = false;
-        submitText.textContent = 'Confirm booking';
+    var blockReason = {};
+    var now = new Date();
+    var nowMins = now.getHours() * 60 + now.getMinutes();
+    var today = new Date(); today.setHours(0,0,0,0);
+    var isToday = st.date.toDateString() === today.toDateString();
+    if (isToday) {
+      slots.forEach(function (s) {
+        var sm = slotMins(s);
+        if (sm <= nowMins) blockReason[s] = 'Time has passed';
+        else if (sm < nowMins + 120) blockReason[s] = 'Book at least 2 hrs ahead';
       });
-  });
+    }
 
-  function showStatus(msg, ok) {
-    statusEl.textContent = msg;
-    statusEl.className = 'pt-bp__status ' + (ok ? 'pt-bp__status--ok' : 'pt-bp__status--err');
-    statusEl.hidden = false;
-    statusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    grid.innerHTML = slots.map(function (s) {
+      var isCalBooked = booked.indexOf(s) > -1;
+      var isBlocked = isCalBooked || !!blockReason[s];
+      var titleAttr = isCalBooked ? 'Already booked' : (blockReason[s] || '');
+      return '<button type="button" class="bk-time-slot' +
+        (st.time === s ? ' bk-time-slot--active' : '') +
+        (isBlocked ? ' bk-time-slot--booked' : '') +
+        '" data-time="' + s + '"' + (isBlocked ? ' disabled title="' + titleAttr + '"' : '') + '>' + s + '</button>';
+    }).join('');
+    grid.querySelectorAll('.bk-time-slot:not(.bk-time-slot--booked)').forEach(function (el) {
+      el.addEventListener('click', function () {
+        st.time = this.dataset.time;
+        renderTimes();
+        document.getElementById('bp-next-3').disabled = false;
+      });
+    });
   }
+
+  function renderSummary() {
+    var svc = SERVICES[st.service];
+    var veh = VEHICLES.find(function (v) { return v.id === st.vehicle; });
+    var pr = calcPrice();
+    var ds = st.date ? st.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + st.time : '';
+    var h = '';
+    h += '<div class="bk-summary-row"><span class="bk-summary-label">Service</span><span class="bk-summary-val">' + (svc ? svc.name : '—') + '</span></div>';
+    if (st.service === 'installation_off' && st.addons.lowProfile) {
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire type</span><span class="bk-summary-val">Low-profile / run-flat</span></div>';
+    }
+    h += '<div class="bk-summary-row"><span class="bk-summary-label">Date &amp; time</span><span class="bk-summary-val">' + ds + '</span></div>';
+    h += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + (veh ? veh.name : '') + '</span></div>';
+    if (pr) h += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
+    document.getElementById('bp-summary').innerHTML = h;
+  }
+
+  async function submitBooking() {
+    var name = document.getElementById('bp-name').value.trim();
+    var phone = document.getElementById('bp-phone').value.trim();
+    var email = document.getElementById('bp-email').value.trim();
+    var vehInfo = document.getElementById('bp-vehicle-info').value.trim();
+    var notes = document.getElementById('bp-notes').value.trim();
+    var errEl = document.getElementById('bp-form-error');
+
+    ['bp-field-name','bp-field-phone','bp-field-email'].forEach(function (id) { document.getElementById(id).classList.remove('bk-field--error'); });
+    errEl.hidden = true;
+
+    var missing = [];
+    if (!name)  { document.getElementById('bp-field-name').classList.add('bk-field--error'); missing.push('full name'); }
+    if (!phone) { document.getElementById('bp-field-phone').classList.add('bk-field--error'); missing.push('phone number'); }
+    if (!email || email.indexOf('@') < 1) { document.getElementById('bp-field-email').classList.add('bk-field--error'); missing.push('email address'); }
+    if (missing.length) { errEl.textContent = 'Please fill in your ' + missing.join(', ') + '.'; errEl.hidden = false; return; }
+    if (!st.date || !st.time) { errEl.textContent = 'Please select a date and time before confirming.'; errEl.hidden = false; return; }
+
+    var btn = document.getElementById('bp-confirm-btn');
+    btn.disabled = true; btn.textContent = 'Booking...';
+
+    var pr = calcPrice();
+    var d = st.date;
+    var dateStr = d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + '-' + (d.getDate()<10?'0':'') + d.getDate();
+    var svc = SERVICES[st.service];
+
+    var payload = {
+      bookType: 'service',
+      serviceName: svc ? svc.name : 'Service',
+      serviceId: st.service,
+      mountState: st.service === 'installation_off' ? 'off' : st.service === 'installation_on' ? 'on' : '',
+      qty: st.qty,
+      tpms: st.addons.tpms || false,
+      disposal: st.addons.disposal || false,
+      lowProfile: st.addons.lowProfile || false,
+      name: name, phone: phone, email: email,
+      notes: (notes ? notes + ' · ' : '') + (vehInfo || ''),
+      vehicleType: st.vehicle,
+      date: dateStr,
+      time: st.time,
+      subtotal: pr ? pr.raw.subtotal : 0,
+      gst:      pr ? pr.raw.gst      : 0,
+      total:    pr ? pr.raw.total    : 0
+    };
+
+    try {
+      var res;
+      try {
+        res = await fetch(BOOKING_API, { method: 'POST', mode: 'cors', credentials: 'omit', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      } catch (netErr) {
+        throw new Error("Couldn't reach the booking server. Try a different browser or call (403) 452-4283.");
+      }
+      if (!res.ok) {
+        var ed = await res.json().catch(function () { return {}; });
+        if (res.status === 429) throw new Error('Too many bookings from this device — please wait a minute and try again.');
+        if (res.status === 409) throw new Error('That time slot was just booked. Please pick another time.');
+        if (res.status >= 500) throw new Error('Our booking server hit a snag (HTTP ' + res.status + '). Please call (403) 452-4283.');
+        throw new Error(ed.error || ('Booking failed (HTTP ' + res.status + ')'));
+      }
+
+      var doneCard = document.getElementById('bp-done-card');
+      var ds = st.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + st.time;
+      var doneH = '';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Service</span><span class="bk-summary-val">' + (svc ? svc.name : '—') + '</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Date &amp; time</span><span class="bk-summary-val">' + ds + '</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">111 42 Ave SW, Calgary, AB</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">(403) 452-4283</span></div>';
+      if (pr) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
+      doneCard.innerHTML = doneH;
+
+      [1,2,3,4].forEach(function (s) { document.getElementById('bp-page-' + s).hidden = true; });
+      document.getElementById('bp-page-done').hidden = false;
+      document.getElementById('bp-stepper').style.opacity = '0';
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Confirm booking';
+      errEl.textContent = err.message || 'Something went wrong. Please try again or call (403) 452-4283.';
+      errEl.hidden = false;
+    }
+  }
+
+  function downloadICS() {
+    if (!st.date || !st.time) return;
+    var svc = SERVICES[st.service];
+    var tm = st.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    var h = parseInt(tm[1]), m = parseInt(tm[2]);
+    if (tm[3].toUpperCase() === 'PM' && h < 12) h += 12;
+    if (tm[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    var d = st.date;
+    var dstr = d.getFullYear() + '' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + (d.getDate()<10?'0':'') + d.getDate();
+    var ts = (h<10?'0':'') + h + (m<10?'0':'') + m + '00';
+    var eh = h + 1;
+    var te = (eh<10?'0':'') + eh + (m<10?'0':'') + m + '00';
+    var ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART;TZID=America/Edmonton:' + dstr + 'T' + ts + '\nDTEND;TZID=America/Edmonton:' + dstr + 'T' + te + '\nSUMMARY:' + (svc ? svc.name : 'Service') + ' at Prince Tires\nLOCATION:111 42 Ave SW, Calgary, AB T2G 0G3\nEND:VEVENT\nEND:VCALENDAR';
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+    a.download = 'prince-tires-service.ics';
+    a.click();
+  }
+
+  // Wire up
+  document.querySelectorAll('.bp-pathway').forEach(function (b) {
+    b.addEventListener('click', function () { pickPathway(this.dataset.bpPath); });
+  });
+  document.querySelectorAll('.bp-mount-card').forEach(function (b) {
+    b.addEventListener('click', function () {
+      st.service = this.dataset.bpSvc;
+      document.querySelectorAll('.bp-mount-card').forEach(function (c) { c.classList.toggle('bp-mount-card--active', c === b); });
+      updateNextBtn();
+    });
+  });
+  // Buying-tires search is handled by the embedded pt-tire-search snippet (its own JS).
+  document.getElementById('bp-next-1').addEventListener('click', function () { if (!this.disabled) goTo(2); });
+  document.querySelectorAll('[data-bp-goto]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var s = parseInt(this.dataset.bpGoto);
+      if (s) goTo(s);
+    });
+  });
+  document.getElementById('bp-prev-week').addEventListener('click', function () { if (wk > 0) { wk--; renderWeek(); } });
+  document.getElementById('bp-next-week').addEventListener('click', function () { wk++; renderWeek(); });
+  document.getElementById('bp-confirm-btn').addEventListener('click', submitBooking);
+  document.getElementById('bp-cal-btn').addEventListener('click', downloadICS);
+
+  // Deep-link via ?service=installation_off / ?service=balancing / etc.
+  try {
+    var qs = new URLSearchParams(window.location.search);
+    var pre = qs.get('service');
+    if (pre && SERVICES[pre]) {
+      st.service = pre;
+      if (pre === 'installation_off' || pre === 'installation_on') {
+        pickPathway('own');
+        var card = document.querySelector('.bp-mount-card[data-bp-svc="' + pre + '"]');
+        if (card) card.classList.add('bp-mount-card--active');
+      } else {
+        pickPathway('other');
+        renderOtherGrid();
+      }
+      updateNextBtn();
+    }
+  } catch (e) {}
+
+  // Saved-vehicle banner — surfaces if customer just came from the tire search
+  // and the saved record is recent (24 h). Doesn't auto-fill the vehicle tier
+  // (that risks wrong-price quotes); just confirms which tires they're booking
+  // install for and pre-fills the vehicle text input on step 4.
+  try {
+    var savedRaw = localStorage.getItem('pt-tire-search-vehicle');
+    if (savedRaw) {
+      var saved = JSON.parse(savedRaw);
+      var ageMs = Date.now() - new Date(saved.savedAt || 0).getTime();
+      var FRESH_MS = 24 * 60 * 60 * 1000;
+      if (saved && saved.tireSize && ageMs < FRESH_MS) {
+        var label = [saved.year, saved.make, saved.model, saved.trim].filter(Boolean).join(' ');
+        document.getElementById('bp-saved-vehicle').textContent = label;
+        document.getElementById('bp-saved-size').textContent = saved.tireSize;
+        document.getElementById('bp-saved').hidden = false;
+
+        // Pre-fill the contact step's vehicle text input
+        var vehicleInput = document.getElementById('bp-vehicle-info');
+        if (vehicleInput && !vehicleInput.value) vehicleInput.value = label;
+
+        // CTA → off-rims install, auto-detect tier from saved make/model + tire size,
+        // and jump straight to step 3 (date/time). Customer can step back to 2 if the
+        // auto-pick was wrong; we surface a "we picked X from your Honda Civic"
+        // confirmation strip on step 2 so the override is one tap away.
+        document.getElementById('bp-saved-go').addEventListener('click', function () {
+          st.service = 'installation_off';
+          st.vehicle = detectTier(saved);
+          st.qty = 4;
+          st.autoPickedFromSaved = true;
+          pickPathway('own');
+          var card = document.querySelector('.bp-mount-card[data-bp-svc="installation_off"]');
+          if (card) card.classList.add('bp-mount-card--active');
+          updateNextBtn();
+          goTo(3);
+        });
+
+        document.getElementById('bp-saved-clear').addEventListener('click', function () {
+          try { localStorage.removeItem('pt-tire-search-vehicle'); } catch (e) {}
+          document.getElementById('bp-saved').hidden = true;
+          if (vehicleInput) vehicleInput.value = '';
+        });
+      }
+    }
+  } catch (e) {}
 })();
-{% endjavascript %}
+</script>
 
 {% schema %}
 {
   "name": "Booking page",
   "tag": "section",
-  "class": "section section--pt-bp",
+  "class": "section",
   "settings": [
     {
-      "type": "header",
-      "content": "Hero copy"
-    },
-    {
       "type": "text",
-      "id": "hero_eyebrow",
-      "label": "Eyebrow",
-      "default": "Prince Tires · Calgary"
-    },
-    {
-      "type": "text",
-      "id": "hero_title",
-      "label": "Title",
-      "default": "Book your appointment"
+      "id": "hero_heading",
+      "label": "Hero heading",
+      "default": "Book a service"
     },
     {
       "type": "textarea",
       "id": "hero_sub",
-      "label": "Sub-text",
-      "default": "Pick a service, choose a time. We confirm by email within the day."
-    },
-    {
-      "type": "header",
-      "content": "Service options"
-    },
-    {
-      "type": "textarea",
-      "id": "services",
-      "label": "Services (one per line, separated by |)",
-      "default": "4 winter tires (change-over)|4 all-season tires (change-over)|Wheel alignment|Tire rotation & balance|Flat repair|Tire storage|Fleet / commercial inquiry|Other / quote",
-      "info": "Separate with the pipe character |. These appear as buttons in step 1."
+      "label": "Hero subheading",
+      "default": "Tell us what you need, pick a time. We confirm by email within the day."
     }
   ],
   "presets": [
