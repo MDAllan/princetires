@@ -1486,12 +1486,25 @@
   .garage__reminder span { flex: 1 1 100%; min-width: 0; }
   .garage__reminder-book { margin-left: auto; }
 
-  /* Primary actions: shop + book remain side-by-side via 2-col */
-  .garage__actions-primary { grid-template-columns: 1fr 1fr; }
+  /* Primary actions: stack full-width on phone — easier to tap than two
+     half-width buttons, and they're the headline CTAs */
+  .garage__actions-primary { grid-template-columns: 1fr; }
+  .garage .garage__action-btn { height: 46px; font-size: 1.35rem; }
 
-  /* Secondary chips: 5 chips in 2 rows × 3 then 2 — readable touch targets */
+  /* Secondary chips: 3-col gives 5 chips a clean 3 + 2 layout (with the
+     last two centered via auto-margin so the row doesn't look lonely) */
   .garage__actions-secondary { grid-template-columns: repeat(3, 1fr); }
-  .garage__action-chip { height: 38px; font-size: 1.05rem; padding: 0 0.4rem; }
+  .garage__action-chip {
+    height: 44px; /* iOS min touch target */
+    font-size: 1.1rem;
+    padding: 0 0.5rem;
+    border-radius: 8px;
+  }
+  /* Visual balance for the trailing 2 chips on a 3-col grid: left-align
+     them so the dangling Remove sits flush rather than floating in the
+     middle of the row. */
+  .garage__actions-secondary > :nth-child(4) { grid-column: 1 / 2; }
+  .garage__actions-secondary > :nth-child(5) { grid-column: 2 / 3; }
 
   /* Maintenance + add form: stack fields */
   .garage__maint-panel, .garage__orders { padding: 1.25rem; }
@@ -1554,11 +1567,18 @@
   .garage__vehicle-icon { width: 40px; }
   .garage__card-title { font-size: 1.5rem; }
 
-  /* Action chips: 2-column for 5 = tidy 3-row layout (last row centered) */
-  .garage__actions-secondary { grid-template-columns: repeat(2, 1fr); }
-  .garage__action-chip { font-size: 1.1rem; }
-  .garage__actions-primary { grid-template-columns: 1fr; }
-  .garage .garage__action-btn { font-size: 1.25rem; }
+  /* Action chips at tiny widths: 2-col, but center the trailing 5th chip
+     so 3-row layout (2+2+1) doesn't leave it dangling on the left */
+  .garage__actions-secondary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .garage__actions-secondary > :nth-child(4) { grid-column: 2 / 3; }
+  .garage__actions-secondary > :nth-child(5) {
+    grid-column: 1 / -1; /* full-width on the last row, no orphan */
+    justify-self: stretch;
+  }
+  .garage__action-chip { font-size: 1.05rem; height: 42px; }
+  .garage .garage__action-btn { font-size: 1.25rem; height: 44px; }
 
   /* Tabs even more compact */
   .g-tab { padding: 0 10px; font-size: 11.5px; height: 46px; }
