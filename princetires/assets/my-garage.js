@@ -921,8 +921,14 @@ class MyGarage extends HTMLElement {
     if (vehicle.imageUrl) {
       return '<img src="' + this.escapeAttr(vehicle.imageUrl) + '" class="garage__vehicle-icon garage__vehicle-icon--photo" alt="" aria-hidden="true">';
     }
-    // Section-level fallback image set by merchant.
-    if (this.config.customImage) {
+    // Section-level merchant fallback image. Skipped on phones — the
+    // customImage tends to be the shop logo, which competes with the
+    // vehicle title without communicating anything new about the car.
+    // The type-aware SVG silhouette is the smarter no-photo state on
+    // mobile (CSS `:has(--custom)` rule alone wasn't reliable across
+    // Safari versions, hence the JS check).
+    var isPhone = typeof window !== 'undefined' && window.innerWidth <= 768;
+    if (this.config.customImage && !isPhone) {
       return '<img src="' + this.config.customImage + '" class="garage__vehicle-icon garage__vehicle-icon--custom" alt="" aria-hidden="true">';
     }
     return this.getVehicleSvg(this.detectVehicleType(vehicle));
