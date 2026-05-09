@@ -1405,7 +1405,15 @@
 .garage__login-btn:hover { background: var(--g-red-h); color: #fff; transform: translateY(-1px); }
 
 /* ═══════════════════════════════════════════
-   RESPONSIVE — full audit + rebuild for phone
+   RESPONSIVE — design-system pass for phone
+
+   Single-source spacing tokens (kept inside the media query so desktop
+   stays untouched). Every card-like surface (seasonal tip, vehicle card,
+   add form, maint panel, orders panel, empty state) uses the same inner
+   padding, border-radius, and border. Every primary CTA is the same
+   height. Every secondary chip is the same height. That's the fix for
+   "each section is aligned differently" — visual rhythm comes from
+   uniform primitives, not from coincidence.
 ═══════════════════════════════════════════ */
 
 /* Tablet ≤900px — first compaction step before phone layout kicks in. */
@@ -1416,11 +1424,32 @@
   .garage__vehicles { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 }
 
-/* ── Phone (≤768px) — full vertical layout ──
-   The hero used to flex-row with stat cards on the right; without
-   flex-direction:column the cards overlapped the title on iPhone widths.
-   Below this breakpoint everything stacks. */
+/* ── Phone (≤768px) — unified design system ── */
 @media (max-width: 768px) {
+  /* Mobile-only spacing tokens. Every card uses these — no exceptions. */
+  .garage {
+    --m-card-pad: 1.25rem;
+    --m-card-radius: 12px;
+    --m-card-gap: 0.85rem;
+    --m-section-gap: 1.5rem;
+    --m-cta-h: 46px;
+    --m-chip-h: 44px;
+  }
+
+  /* All card surfaces use identical primitives so they read as siblings
+     rather than coincidental shapes. */
+  .garage__seasonal-tip,
+  .garage__card,
+  .garage__add-form,
+  .garage__empty,
+  .garage__maint-panel,
+  .garage__orders {
+    padding: var(--m-card-pad);
+    border-radius: var(--m-card-radius);
+  }
+  .garage__seasonal-tip { margin-bottom: var(--m-section-gap); }
+  .garage__add-section { margin-bottom: var(--m-section-gap); }
+
   /* Hero: stacked, badge + text top, stats grid below */
   .garage__hero { padding: 2rem var(--g-px) 1.75rem; }
   .garage__hero-inner {
@@ -1451,13 +1480,19 @@
   .garage__stat-label { font-size: 0.78rem; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .garage__stat-card--next .garage__stat-num { font-size: 1.2rem; }
 
-  /* Toolbar: full-width Add button */
+  /* Toolbar: full-width Add button at the system CTA height */
   .garage__content-toolbar {
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
+    margin-bottom: var(--m-section-gap);
   }
-  .garage__add-btn { width: 100%; justify-content: center; height: 50px; }
+  .garage__add-btn {
+    width: 100%;
+    justify-content: center;
+    height: var(--m-cta-h);
+    border-radius: 10px;
+  }
   .garage__max-msg { text-align: center; }
 
   /* Tabs: scroll horizontally, don't fight for equal width */
@@ -1466,15 +1501,15 @@
   /* Vehicle grid: single column */
   .garage__vehicles { grid-template-columns: 1fr; gap: 1rem; }
 
-  /* Card: tighter padding. Default icon shrinks to a subtle avatar so the
-     title carries the visual weight; only customer-uploaded photos get the
-     larger thumbnail treatment. */
-  .garage__card { padding: 1.25rem; border-radius: 12px; }
+  /* Card: identity row uses the same gap as the design-system token.
+     Default icon shrinks to a subtle avatar so the title carries the
+     visual weight; only customer-uploaded photos get the larger
+     thumbnail treatment. */
   .garage__card-identity {
-    gap: 0.8rem;
-    margin-bottom: 0.9rem;
-    padding-bottom: 0.9rem;
-    align-items: center; /* vertically center icon with title block */
+    gap: var(--m-card-gap);
+    margin-bottom: var(--m-card-pad);
+    padding-bottom: var(--m-card-pad);
+    align-items: center;
   }
   .garage__card-icon-wrap {
     width: 44px;
@@ -1500,38 +1535,53 @@
   .garage__reminder span { flex: 1 1 100%; min-width: 0; }
   .garage__reminder-book { margin-left: auto; }
 
-  /* Primary actions: stack full-width on phone — easier to tap than two
-     half-width buttons, and they're the headline CTAs */
-  .garage__actions-primary { grid-template-columns: 1fr; }
-  .garage .garage__action-btn { height: 46px; font-size: 1.35rem; }
+  /* Action area: card-actions matches card-identity padding. Primary CTAs
+     stack full-width using the design-system height. Secondary chips use
+     the same height-scale (44px), 3-col grid with explicit anchoring so
+     the trailing 5th chip never orphans. */
+  .garage__card-actions {
+    gap: 0.5rem;
+    padding-top: var(--m-card-pad);
+  }
+  .garage__actions-primary { grid-template-columns: 1fr; gap: 0.5rem; }
+  .garage .garage__action-btn { height: var(--m-cta-h); font-size: 1.35rem; border-radius: 10px; }
 
-  /* Secondary chips: 3-col gives 5 chips a clean 3 + 2 layout (with the
-     last two centered via auto-margin so the row doesn't look lonely) */
-  .garage__actions-secondary { grid-template-columns: repeat(3, 1fr); }
+  .garage__actions-secondary { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
   .garage__action-chip {
-    height: 44px; /* iOS min touch target */
+    height: var(--m-chip-h);
     font-size: 1.1rem;
     padding: 0 0.5rem;
-    border-radius: 8px;
+    border-radius: 10px;
   }
-  /* Visual balance for the trailing 2 chips on a 3-col grid: left-align
-     them so the dangling Remove sits flush rather than floating in the
-     middle of the row. */
   .garage__actions-secondary > :nth-child(4) { grid-column: 1 / 2; }
   .garage__actions-secondary > :nth-child(5) { grid-column: 2 / 3; }
 
   /* Maintenance + add form: stack fields */
-  .garage__maint-panel, .garage__orders { padding: 1.25rem; }
   .garage__maint-fields { grid-template-columns: 1fr; gap: 0.6rem; }
   .garage__maint-form-actions { gap: 0.5rem; }
-  .garage__maint-save, .garage__maint-cancel { flex: 1 1 0; min-width: 0; }
-  .garage__add-form { padding: 1.75rem; border-radius: 12px; }
+  .garage__maint-save, .garage__maint-cancel {
+    flex: 1 1 0;
+    min-width: 0;
+    height: var(--m-cta-h);
+    border-radius: 10px;
+  }
   .garage__add-form-header h2 { font-size: 1.8rem; }
   .garage__selects { grid-template-columns: 1fr; }
+  .garage__save-btn, .garage__cancel-btn {
+    height: var(--m-cta-h);
+    border-radius: 10px;
+  }
 
-  /* Seasonal tip: wraps the action below the text */
-  .garage__seasonal-tip { flex-wrap: wrap; padding: 1rem 1.25rem; }
-  .garage__seasonal-tip-action { width: 100%; text-align: center; margin-top: 0.5rem; }
+  /* Seasonal tip: action wraps below text. Uses card-shared padding via
+     the unified rule above; no padding override here. */
+  .garage__seasonal-tip { flex-wrap: wrap; gap: 0.75rem; }
+  .garage__seasonal-tip-action {
+    width: 100%;
+    text-align: center;
+    margin-top: 0;
+    height: var(--m-cta-h);
+    border-radius: 10px;
+  }
 
   /* Activity feed: drop the km chip on narrow rows so the line doesn't wrap awkwardly */
   .garage__activity { margin-top: 2.5rem; padding-top: 2rem; }
@@ -1545,13 +1595,19 @@
   .garage__order-info { flex: 1 1 100%; }
   .garage__order-reorder { margin-left: auto; }
 
-  /* Empty + guest states: less vertical air */
-  .garage__empty { padding: 4rem 1.5rem; }
+  /* Empty + guest states: less vertical air. Empty state uses the
+     card-shared padding for top/bottom; horizontal handled by var */
+  .garage__empty {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+  }
   .garage__empty-headline { font-size: 2.1rem; }
   .garage__empty-sub { font-size: 1.35rem; }
+  .garage__empty-cta { height: var(--m-cta-h); border-radius: 10px; }
   .garage--guest { padding: 4rem var(--g-px); min-height: 50vh; }
   .garage--guest h1 { font-size: 2.6rem; }
   .garage--guest p { font-size: 1.35rem; margin-bottom: 1.75rem; }
+  .garage__login-btn { height: var(--m-cta-h); border-radius: 10px; }
 
   /* Content wrapper: less top padding */
   .garage__content { padding-top: 1.75rem; }
@@ -1571,8 +1627,12 @@
   .garage__stat-label { font-size: 0.85rem; }
   .garage__stat-card--next .garage__stat-num { font-size: 1.2rem; }
 
-  /* Card: minimum padding, even smaller default icon */
-  .garage__card { padding: 1.1rem; }
+  /* Tighter token values for tiny phones (≤480px) */
+  .garage {
+    --m-card-pad: 1rem;
+    --m-card-gap: 0.75rem;
+    --m-section-gap: 1.25rem;
+  }
   .garage__card-icon-wrap { width: 40px; height: 40px; }
   .garage__card-icon-wrap:has(.garage__vehicle-icon--photo) {
     width: 76px;
@@ -1582,18 +1642,11 @@
   .garage__vehicle-icon--custom { width: 28px; }
   .garage__card-title { font-size: 1.5rem; }
 
-  /* Action chips at tiny widths: 2-col, but center the trailing 5th chip
-     so 3-row layout (2+2+1) doesn't leave it dangling on the left */
-  .garage__actions-secondary {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .garage__actions-secondary > :nth-child(4) { grid-column: 2 / 3; }
-  .garage__actions-secondary > :nth-child(5) {
-    grid-column: 1 / -1; /* full-width on the last row, no orphan */
-    justify-self: stretch;
-  }
-  .garage__action-chip { font-size: 1.05rem; height: 42px; }
-  .garage .garage__action-btn { font-size: 1.25rem; height: 44px; }
+  /* Tiny phone: keep 3-col grid (matches the larger phone breakpoint)
+     so the design-system rhythm is identical — only fonts/icons shrink.
+     Reverting to 2-col would create a different look across phone sizes. */
+  .garage__action-chip { font-size: 1.05rem; }
+  .garage .garage__action-btn { font-size: 1.25rem; }
 
   /* Tabs even more compact */
   .g-tab { padding: 0 10px; font-size: 11.5px; height: 46px; }
