@@ -1392,7 +1392,7 @@ class MyGarage extends HTMLElement {
         label: 'Winter tire season approaching',
         sub: 'Calgary roads get icy fast. Book your winter swap early — slots fill up by late October.',
         cta: 'Book service',
-        href: '/pages/services'
+        href: '/pages/booking'
       };
     } else if (month === 4 || month === 5) {
       tip = {
@@ -1400,7 +1400,7 @@ class MyGarage extends HTMLElement {
         label: 'Summer swap season',
         sub: 'Temps are holding above 7°C — time to switch back to summer or all-season tires.',
         cta: 'Book service',
-        href: '/pages/services'
+        href: '/pages/booking'
       };
     } else if (month === 11 || month === 0 || month === 1 || month === 2) {
       tip = {
