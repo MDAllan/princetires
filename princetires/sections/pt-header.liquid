@@ -82,13 +82,22 @@
           </a>
         {%- endif -%}
         {%- if section.settings.phone_number != blank -%}
-          {%- assign phone_clean = section.settings.phone_number | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
+          {%- assign phone_clean = section.settings.phone_number | remove: ' ' | remove: '(' | remove: ')' | remove: '-' | remove: '.' -%}
+          {%- assign phone_len = phone_clean | size -%}
+          {%- if phone_len == 10 -%}
+            {%- assign phone_a = phone_clean | slice: 0, 3 -%}
+            {%- assign phone_b = phone_clean | slice: 3, 3 -%}
+            {%- assign phone_c = phone_clean | slice: 6, 4 -%}
+            {%- assign phone_display = phone_a | append: '-' | append: phone_b | append: '-' | append: phone_c -%}
+          {%- else -%}
+            {%- assign phone_display = section.settings.phone_number -%}
+          {%- endif -%}
           <a href="tel:+1{{ phone_clean }}" class="pt-header__icon pt-header__icon--stack pt-header__phone" aria-label="{{ 'sections.pt_header.call_us' | t }}">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.18 6.18l.98-.98a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7a2 2 0 0 1 1.72 2.02z"/>
             </svg>
             <span class="pt-header__icon-label">Call</span>
-            <span class="pt-header__phone-tip" aria-hidden="true">{{ section.settings.phone_number }}</span>
+            <span class="pt-header__phone-tip" aria-hidden="true">{{ phone_display }}</span>
           </a>
         {%- endif -%}
         <a href="{{ routes.cart_url }}" class="pt-header__icon pt-header__icon--stack pt-header__cart" aria-label="{{ 'sections.pt_header.cart' | t }}">
