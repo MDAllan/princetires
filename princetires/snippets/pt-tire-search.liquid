@@ -746,7 +746,17 @@
       resetMatch();
       if (!trim || !state.yearData) { writeUrlState(state); return; }
       var sizes = ((state.yearData.models || {})[state.veh.make] || {})[state.veh.model][trim];
-      if (!sizes || !sizes.length) { showError("We don't have OEM size data for that trim. Try search by size."); writeUrlState(state); return; }
+      if (!sizes || !sizes.length) {
+        showError("We don't have OEM size data for that trim. Try search by size.");
+        track('tire_search_no_data', {
+          year:  state.veh.year  || '',
+          make:  state.veh.make  || '',
+          model: state.veh.model || '',
+          trim:  trim || ''
+        });
+        writeUrlState(state);
+        return;
+      }
 
       if (sizes.length === 1) {
         state.veh.oemPick = sizes[0];
