@@ -598,7 +598,20 @@
     }
     function escapeAttr(s) { return escapeHtml(s); }
 
-    // Initial state
+    function hydrateSizeFromUrl(urlState) {
+      if (!urlState.size.width && !urlState.size.aspect && !urlState.size.rim) return;
+      var widthEl  = $('[data-pt-ts-width]');
+      var aspectEl = $('[data-pt-ts-aspect]');
+      var rimEl    = $('[data-pt-ts-rim]');
+      if (urlState.size.width  && widthEl.querySelector('option[value="' + urlState.size.width + '"]'))   widthEl.value  = urlState.size.width;
+      if (urlState.size.aspect && aspectEl.querySelector('option[value="' + urlState.size.aspect + '"]')) aspectEl.value = urlState.size.aspect;
+      if (urlState.size.rim    && rimEl.querySelector('option[value="' + urlState.size.rim + '"]'))       rimEl.value    = urlState.size.rim;
+    }
+
+    // Initial state — hydrate from URL, switch tab if URL says so, then read
+    var urlState = readUrlState();
+    if (urlState.tab === 'vehicle') switchTab('vehicle');
+    hydrateSizeFromUrl(urlState);
     readSizeForm();
   }
 })();
