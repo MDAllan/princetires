@@ -183,7 +183,8 @@
     "minYear": {{ settings.smart_search_min_year | default: 2001 }},
     "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
     "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
-    "fallbackPhone": {{ settings.smart_search_fallback_phone | default: '403 452 4283' | json }}
+    "fallbackPhone": {{ settings.smart_search_fallback_phone | default: '403 452 4283' | json }},
+    "missingVehicleWebhookUrl": {{ settings.missing_vehicle_webhook_url | json }}
   }
 </script>
 
@@ -263,6 +264,15 @@
     transform: scale(1) rotateX(0deg);
     transform-origin: center;
     will-change: transform, opacity;
+  }
+  /* Mobile: switch to `contain` so wide product photos (wheels, tires) show
+     fully without their sides being cropped. Letterbox top/bottom is fine —
+     the slideshow overlay + hero background fill the gap. */
+  @media (max-width: 768px) {
+    .hero-smart-search__slide {
+      object-fit: contain;
+      object-position: center;
+    }
   }
   .hero-smart-search__slide.is-entering {
     animation: hero-slide-in 0.55s cubic-bezier(0.645, 0.045, 0.355, 1.0) forwards;
@@ -1838,6 +1848,31 @@ document.addEventListener('DOMContentLoaded', function() {
       this.selectedIndex = -1;
       this.results.hidden = false;
       this.input.setAttribute('aria-expanded', 'true');
+
+      // Auto-capture every "no match" to the missing-vehicle Sheet / email pipeline.
+      // Light dedup: min 3 chars + don't re-post the exact same query within this session.
+      const webhook = this.config.missingVehicleWebhookUrl;
+      const q = (query || '').trim();
+      if (webhook && q.length >= 3 && this._lastReportedNoMatch !== q) {
+        this._lastReportedNoMatch = q;
+        try {
+          fetch(webhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              vehicle:    q,
+              year:       '',
+              make:       '',
+              model:      '',
+              trim:       '',
+              page_url:   window.location.href,
+              user_agent: navigator.userAgent,
+              timestamp:  new Date().toISOString(),
+              source:     'homepage_smart_search_no_match'
+            })
+          }).catch(() => { /* best-effort; never break the widget */ });
+        } catch (e) { /* never break the widget */ }
+      }
     }
 
     tireIcon() {
