@@ -103,6 +103,58 @@
       </ul>
     {%- endif -%}
 
+    {%- comment -%} Why this brand in Calgary — GEO content block {%- endcomment -%}
+    {%- if section.settings.intro_richtext != blank -%}
+      <div class="ptbd__intro" data-reveal>
+        <div class="ptbd__intro-head">
+          <span class="ptbd__intro-eyebrow">Why we recommend it</span>
+          <h2 class="ptbd__intro-title">{{ section.settings.intro_heading | default: 'Why Calgary drivers choose this brand' | escape }}</h2>
+        </div>
+        <div class="ptbd__intro-body">{{ section.settings.intro_richtext }}</div>
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} FAQ — up to 6 Q&A pairs, emitted as FAQPage schema below {%- endcomment -%}
+    {%- liquid
+      assign faq_count = 0
+      for i in (1..6)
+        assign q_key = 'faq_' | append: i | append: '_q'
+        assign a_key = 'faq_' | append: i | append: '_a'
+        assign q = section.settings[q_key]
+        assign a = section.settings[a_key]
+        if q != blank and a != blank
+          assign faq_count = faq_count | plus: 1
+        endif
+      endfor
+    -%}
+    {%- if faq_count > 0 -%}
+      <div class="ptbd__faq" data-reveal>
+        <div class="ptbd__faq-head">
+          <span class="ptbd__intro-eyebrow">Frequently asked</span>
+          <h2 class="ptbd__intro-title">{{ section.settings.faq_heading | default: 'Calgary driver questions' | escape }}</h2>
+        </div>
+        <div class="ptbd__faq-list">
+          {%- for i in (1..6) -%}
+            {%- liquid
+              assign q_key = 'faq_' | append: i | append: '_q'
+              assign a_key = 'faq_' | append: i | append: '_a'
+              assign q = section.settings[q_key]
+              assign a = section.settings[a_key]
+            -%}
+            {%- if q != blank and a != blank -%}
+              <details class="ptbd__faq-item">
+                <summary class="ptbd__faq-q">
+                  <span>{{ q | escape }}</span>
+                  <span class="ptbd__faq-chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+                </summary>
+                <div class="ptbd__faq-a"><p>{{ a | escape | newline_to_br }}</p></div>
+              </details>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      </div>
+    {%- endif -%}
+
     {%- comment -%} CTA banner {%- endcomment -%}
     <div class="ptbd__cta" data-reveal>
       <div class="ptbd__cta-text">
@@ -126,7 +178,98 @@
       </div>
     </div>
 
+    {%- comment -%} Related — internal-link cluster to Prince Tires hub pages {%- endcomment -%}
+    <div class="ptbd__related" data-reveal>
+      <h2 class="ptbd__related-title">Explore more at Prince Tires</h2>
+      <ul class="ptbd__related-list" role="list">
+        <li><a href="/collections/winter-tires">Winter tires for Calgary →</a></li>
+        <li><a href="/collections/all-weather-tires">All-weather tires (3PMSF rated) →</a></li>
+        <li><a href="/collections/all-season-tires">All-season tires →</a></li>
+        <li><a href="/pages/services">All services (install, balance, repair) →</a></li>
+        <li><a href="/pages/booking">Book an appointment →</a></li>
+        <li><a href="/pages/brands">All 26 brands we stock →</a></li>
+      </ul>
+    </div>
+
+    {%- comment -%} Byline + NAP — E-E-A-T signal {%- endcomment -%}
+    <footer class="ptbd__byline">
+      <p class="ptbd__byline-author">Posted by the Prince Tires team — Calgary's family-owned tire shop since 2021. 4.9★ from {{ section.settings.review_count | default: '562' }}+ Google reviews.</p>
+      <p class="ptbd__byline-nap"><strong>Prince Tires</strong> · 111 42 Ave SW, Calgary, AB T2G 0A4 · Mon–Sat 9:30–5:30 · Sun 10:00–3:30 · <a href="tel:+14034524283">(403) 452-4283</a></p>
+      {%- if section.settings.last_updated != blank -%}
+        <p class="ptbd__byline-updated">Last updated: {{ section.settings.last_updated | escape }}</p>
+      {%- endif -%}
+    </footer>
+
   </div>
+
+  {%- comment -%} JSON-LD: LocalBusiness + FAQPage + BreadcrumbList for GEO citation {%- endcomment -%}
+  {%- liquid
+    capture faq_json_items
+      assign emitted = 0
+      for i in (1..6)
+        assign q_key = 'faq_' | append: i | append: '_q'
+        assign a_key = 'faq_' | append: i | append: '_a'
+        assign q = section.settings[q_key]
+        assign a = section.settings[a_key]
+        if q != blank and a != blank
+          if emitted > 0
+            echo ','
+          endif
+          echo '{"@type":"Question","name":'
+          echo q | json
+          echo ',"acceptedAnswer":{"@type":"Answer","text":'
+          echo a | json
+          echo '}}'
+          assign emitted = emitted | plus: 1
+        endif
+      endfor
+    endcapture
+  -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "AutoPartsStore",
+        "@id": "{{ shop.url }}/#business",
+        "name": "Prince Tires",
+        "url": "{{ shop.url }}",
+        "telephone": "+1-403-452-4283",
+        "priceRange": "$$",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "111 42 Ave SW",
+          "addressLocality": "Calgary",
+          "addressRegion": "AB",
+          "postalCode": "T2G 0A4",
+          "addressCountry": "CA"
+        },
+        "openingHoursSpecification": [
+          { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], "opens": "09:30", "closes": "17:30" },
+          { "@type": "OpeningHoursSpecification", "dayOfWeek": "Sunday", "opens": "10:00", "closes": "15:30" }
+        ],
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "{{ section.settings.aggregate_rating | default: '4.9' }}",
+          "reviewCount": "{{ section.settings.review_count | default: '562' }}",
+          "bestRating": "5",
+          "worstRating": "1"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "{{ shop.url }}" },
+          { "@type": "ListItem", "position": 2, "name": "Brands", "item": "{{ shop.url }}/pages/brands" },
+          { "@type": "ListItem", "position": 3, "name": {{ page.title | json }}, "item": "{{ shop.url }}{{ page.url }}" }
+        ]
+      }
+      {%- if faq_json_items != blank -%}
+      ,{ "@type": "FAQPage", "mainEntity": [ {{ faq_json_items }} ] }
+      {%- endif -%}
+    ]
+  }
+  </script>
 </section>
 
 {% stylesheet %}
@@ -402,6 +545,97 @@
   }
   .ptbd__cta-btn--secondary:hover { background: rgba(10,10,10,0.04); border-color: rgba(10,10,10,0.32); }
 
+  /* Intro / Why-this-brand block */
+  .ptbd__intro { max-width: 880px; margin: 0 auto 5rem; }
+  .ptbd__intro-head { margin-bottom: 1.5rem; }
+  .ptbd__intro-eyebrow {
+    font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--brand-accent);
+    display: block; margin-bottom: 0.5rem;
+  }
+  .ptbd__intro-title {
+    font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+    font-weight: 700; letter-spacing: -0.02em;
+    margin: 0; color: #0a0a0a;
+  }
+  .ptbd__intro-body { font-size: 1rem; line-height: 1.65; color: rgba(10,10,10,0.78); }
+  .ptbd__intro-body p { margin: 0 0 1rem 0; }
+  .ptbd__intro-body p:last-child { margin: 0; }
+  .ptbd__intro-body a { color: var(--brand-accent); text-decoration: underline; text-underline-offset: 2px; }
+
+  /* FAQ */
+  .ptbd__faq { max-width: 880px; margin: 0 auto 5rem; }
+  .ptbd__faq-head { margin-bottom: 1.5rem; }
+  .ptbd__faq-list { display: flex; flex-direction: column; gap: 0.65rem; }
+  .ptbd__faq-item {
+    background: #fafafa;
+    border: 1px solid rgba(10,10,10,0.08);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .ptbd__faq-item[open] {
+    background: #ffffff;
+    border-color: color-mix(in oklab, var(--brand-accent) 45%, rgba(10,10,10,0.08));
+  }
+  .ptbd__faq-q {
+    list-style: none; cursor: pointer;
+    padding: 1.1rem 1.3rem;
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    font-size: 1rem; font-weight: 600;
+    color: #0a0a0a;
+  }
+  .ptbd__faq-q::-webkit-details-marker { display: none; }
+  .ptbd__faq-chev {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--brand-accent);
+    border-radius: 50%;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s;
+  }
+  .ptbd__faq-item[open] .ptbd__faq-chev {
+    transform: rotate(180deg);
+    background: color-mix(in oklab, var(--brand-accent) 12%, transparent);
+  }
+  .ptbd__faq-a { padding: 0 1.3rem 1.3rem; color: rgba(10,10,10,0.72); line-height: 1.6; font-size: 0.95rem; }
+  .ptbd__faq-a p { margin: 0; }
+
+  /* Related */
+  .ptbd__related { max-width: 880px; margin: 4rem auto 0; padding-top: 2rem; border-top: 1px solid rgba(10,10,10,0.08); }
+  .ptbd__related-title {
+    font-size: 0.85rem; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(10,10,10,0.6);
+    margin: 0 0 1rem 0;
+  }
+  .ptbd__related-list {
+    list-style: none; padding: 0; margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.6rem 1.5rem;
+  }
+  .ptbd__related-list a {
+    color: #0a0a0a; text-decoration: none;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+  }
+  .ptbd__related-list a:hover { color: var(--brand-accent); }
+
+  /* Byline */
+  .ptbd__byline {
+    max-width: 880px; margin: 2.5rem auto 0;
+    padding: 1.5rem 0 0;
+    border-top: 1px solid rgba(10,10,10,0.06);
+    font-size: 0.85rem; line-height: 1.55;
+    color: rgba(10,10,10,0.6);
+  }
+  .ptbd__byline p { margin: 0 0 0.4rem 0; }
+  .ptbd__byline-author { color: rgba(10,10,10,0.72); }
+  .ptbd__byline-nap strong { color: rgba(10,10,10,0.9); font-weight: 700; }
+  .ptbd__byline-nap a { color: var(--brand-accent); text-decoration: none; }
+  .ptbd__byline-updated { color: rgba(10,10,10,0.45); font-size: 0.78rem; }
+
   /* Reveal on scroll */
   [data-reveal] { opacity: 0; transform: translateY(20px); transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
   [data-reveal].is-revealed { opacity: 1; transform: translateY(0); }
@@ -557,7 +791,47 @@
       "id": "cta_phone",
       "label": "Phone number",
       "default": "(403) 452-4283"
-    }
+    },
+    {
+      "type": "header",
+      "content": "Why this brand (GEO content)"
+    },
+    {
+      "type": "text",
+      "id": "intro_heading",
+      "label": "Section heading",
+      "default": "Why Calgary drivers choose this brand"
+    },
+    {
+      "type": "richtext",
+      "id": "intro_richtext",
+      "label": "Body (rich text)",
+      "info": "Direct, specific answer — first 2-3 sentences are what AI engines cite. Mention Calgary, specific models, real numbers."
+    },
+    {
+      "type": "header",
+      "content": "FAQ (up to 6 — emitted as FAQPage JSON-LD)"
+    },
+    { "type": "text", "id": "faq_heading", "label": "FAQ heading", "default": "Calgary driver questions" },
+    { "type": "text",     "id": "faq_1_q", "label": "Q1" },
+    { "type": "textarea", "id": "faq_1_a", "label": "A1" },
+    { "type": "text",     "id": "faq_2_q", "label": "Q2" },
+    { "type": "textarea", "id": "faq_2_a", "label": "A2" },
+    { "type": "text",     "id": "faq_3_q", "label": "Q3" },
+    { "type": "textarea", "id": "faq_3_a", "label": "A3" },
+    { "type": "text",     "id": "faq_4_q", "label": "Q4" },
+    { "type": "textarea", "id": "faq_4_a", "label": "A4" },
+    { "type": "text",     "id": "faq_5_q", "label": "Q5" },
+    { "type": "textarea", "id": "faq_5_a", "label": "A5" },
+    { "type": "text",     "id": "faq_6_q", "label": "Q6" },
+    { "type": "textarea", "id": "faq_6_a", "label": "A6" },
+    {
+      "type": "header",
+      "content": "Schema / trust signals"
+    },
+    { "type": "text", "id": "aggregate_rating", "label": "Aggregate rating",  "default": "4.9" },
+    { "type": "text", "id": "review_count",     "label": "Review count",     "default": "562" },
+    { "type": "text", "id": "last_updated",     "label": "Last updated (e.g. '2026-05-11')" }
   ],
   "blocks": [
     {
