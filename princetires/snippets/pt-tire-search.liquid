@@ -509,7 +509,13 @@
     }
     ['width','aspect','rim'].forEach(function (k) {
       var el = $('[data-pt-ts-' + k + ']');
-      if (el) el.addEventListener('change', readSizeForm);
+      if (!el) return;
+      el.addEventListener('change', function () {
+        readSizeForm();
+        if (state.tab !== 'size') return;
+        var completed = (state.size.width ? 1 : 0) + (state.size.aspect ? 1 : 0) + (state.size.rim ? 1 : 0);
+        track('tire_search_size_step', { field: k, value: el.value || '', completed_count: completed });
+      });
     });
     $('[data-pt-ts-submit-size]').addEventListener('click', function () {
       if (this.disabled) return;
