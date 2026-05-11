@@ -75,55 +75,89 @@
       </div>
     </div>
 
-    {%- comment -%} Tire brand grid {%- endcomment -%}
+    {%- comment -%} Tire brands grouped by tier — render 4 tiers in order: Premium, Premium-Adjacent, Best Value, Budget {%- endcomment -%}
     {%- if tire_brands_count > 0 -%}
-      <div class="ptbg__group-head" data-reveal>
-        <span class="ptbg__group-eyebrow">Tire brands</span>
-        <h2 class="ptbg__group-title">{{ tire_brands_count }} tire brands we stock</h2>
-        <p class="ptbg__group-body">From premium Michelin to budget-friendly Radar and Rovelo, every tire passes our same install bay at 111 42 Ave SW. Same warranty, same balance, same calibrated torque — whether you spent $90 or $490 a tire.</p>
-      </div>
-      <ul class="ptbg__grid" role="list">
-        {%- for block in section.blocks -%}
-          {%- if block.settings.brand_type != 'wheel' -%}
-            {%- liquid
-              assign name = block.settings.name
-              assign handle = name | handleize
-              assign card_link = block.settings.page_link
-              if card_link == blank
-                assign card_link = '/collections/' | append: handle
+      {%- assign tier_keys = 'premium,premium-adjacent,best-value,budget' | split: ',' -%}
+      {%- for tier in tier_keys -%}
+        {%- liquid
+          assign tier_label = ''
+          assign tier_blurb = ''
+          case tier
+            when 'premium'
+              assign tier_label = 'Premium'
+              assign tier_blurb = "The flagships. When safety, longevity, and ride quality come ahead of price."
+            when 'premium-adjacent'
+              assign tier_label = 'Premium-Adjacent'
+              assign tier_blurb = "Names you know, often built by the same engineers as Tier 1. Real performance at a friendlier price."
+            when 'best-value'
+              assign tier_label = 'Best Value'
+              assign tier_blurb = "Our curated mid-tier — what we recommend when a customer wants quality without paying premium money."
+            when 'budget'
+              assign tier_label = 'Budget'
+              assign tier_blurb = "Honest, affordable options. We stand behind every install, balance, and torque the same way we do for premium tires."
+          endcase
+
+          assign tier_count = 0
+          for b in section.blocks
+            if b.settings.brand_type != 'wheel'
+              assign b_tier = b.settings.tier | default: 'premium-adjacent'
+              if b_tier == tier
+                assign tier_count = tier_count | plus: 1
               endif
-              assign cats = block.settings.categories | split: ',' | first: 4
-            -%}
-            <li class="ptbg__card" data-reveal {{ block.shopify_attributes }}>
-              <a href="{{ card_link }}" class="ptbg__card-link" aria-label="Shop {{ name | escape }} tires">
-                <div class="ptbg__card-logo">
-                  {%- if block.settings.logo != blank -%}
-                    {{ block.settings.logo | image_url: width: 360 | image_tag: loading: 'lazy', class: 'ptbg__logo-img', alt: name }}
-                  {%- else -%}
-                    <span class="ptbg__logo-initial">{{ name | slice: 0, 1 | upcase }}</span>
-                  {%- endif -%}
-                </div>
-                <div class="ptbg__card-body">
-                  <h3 class="ptbg__card-name">{{ name | escape }}</h3>
-                  {%- if block.settings.tagline != blank -%}
-                    <p class="ptbg__card-tagline">{{ block.settings.tagline | escape }}</p>
-                  {%- endif -%}
-                  {%- if cats.size > 0 -%}
-                    <div class="ptbg__card-tags">
-                      {%- for c in cats -%}
-                        <span class="ptbg__tag">{{ c | strip | escape }}</span>
-                      {%- endfor -%}
+            endif
+          endfor
+        -%}
+        {%- if tier_count > 0 -%}
+          <div class="ptbg__group-head" data-reveal>
+            <span class="ptbg__group-eyebrow ptbg__group-eyebrow--{{ tier }}">{{ tier_label }}</span>
+            <h2 class="ptbg__group-title">{{ tier_count }} {{ tier_label | downcase }} brand{% if tier_count != 1 %}s{% endif %}</h2>
+            <p class="ptbg__group-body">{{ tier_blurb }}</p>
+          </div>
+          <ul class="ptbg__grid" role="list">
+            {%- for block in section.blocks -%}
+              {%- assign b_tier = block.settings.tier | default: 'premium-adjacent' -%}
+              {%- if block.settings.brand_type != 'wheel' and b_tier == tier -%}
+                {%- liquid
+                  assign name = block.settings.name
+                  assign handle = name | handleize
+                  assign card_link = block.settings.page_link
+                  if card_link == blank
+                    assign card_link = '/collections/' | append: handle
+                  endif
+                  assign cats = block.settings.categories | split: ',' | first: 4
+                -%}
+                <li class="ptbg__card" data-reveal {{ block.shopify_attributes }}>
+                  <a href="{{ card_link }}" class="ptbg__card-link" aria-label="Shop {{ name | escape }} tires">
+                    <div class="ptbg__card-logo">
+                      {%- if block.settings.logo != blank -%}
+                        {{ block.settings.logo | image_url: width: 360 | image_tag: loading: 'lazy', class: 'ptbg__logo-img', alt: name }}
+                      {%- else -%}
+                        <span class="ptbg__logo-initial">{{ name | slice: 0, 1 | upcase }}</span>
+                      {%- endif -%}
                     </div>
-                  {%- endif -%}
-                </div>
-                <span class="ptbg__card-arrow" aria-hidden="true">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </span>
-              </a>
-            </li>
-          {%- endif -%}
-        {%- endfor -%}
-      </ul>
+                    <div class="ptbg__card-body">
+                      <h3 class="ptbg__card-name">{{ name | escape }}</h3>
+                      {%- if block.settings.tagline != blank -%}
+                        <p class="ptbg__card-tagline">{{ block.settings.tagline | escape }}</p>
+                      {%- endif -%}
+                      {%- if cats.size > 0 -%}
+                        <div class="ptbg__card-tags">
+                          {%- for c in cats -%}
+                            <span class="ptbg__tag">{{ c | strip | escape }}</span>
+                          {%- endfor -%}
+                        </div>
+                      {%- endif -%}
+                    </div>
+                    <span class="ptbg__card-arrow" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </span>
+                  </a>
+                </li>
+              {%- endif -%}
+            {%- endfor -%}
+          </ul>
+        {%- endif -%}
+      {%- endfor -%}
     {%- endif -%}
 
     {%- comment -%} Wheel brand row — smaller, denser grid {%- endcomment -%}
@@ -768,6 +802,19 @@
             { "value": "wheel", "label": "Wheel brand" }
           ],
           "default": "tire"
+        },
+        {
+          "type": "select",
+          "id": "tier",
+          "label": "Tier (controls grouping)",
+          "info": "Wheel brands ignore this and render in their own group.",
+          "options": [
+            { "value": "premium",          "label": "Premium" },
+            { "value": "premium-adjacent", "label": "Premium-Adjacent" },
+            { "value": "best-value",       "label": "Best Value" },
+            { "value": "budget",           "label": "Budget" }
+          ],
+          "default": "premium-adjacent"
         },
         { "type": "text", "id": "tagline", "label": "Tagline (one line)", "default": "Brand tagline." },
         { "type": "text", "id": "categories", "label": "Categories (comma-separated)", "default": "All-Season, Winter" },
