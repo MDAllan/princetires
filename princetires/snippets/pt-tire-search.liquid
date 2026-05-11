@@ -295,6 +295,51 @@
 (function () {
   var rootList = document.querySelectorAll('[data-pt-ts]');
   if (!rootList.length) return;
+
+  var URL_PREFIX = 'ts_';
+
+  function readUrlState() {
+    var p = new URLSearchParams(window.location.search);
+    return {
+      tab:  p.get(URL_PREFIX + 'tab') || '',
+      size: {
+        width:  p.get(URL_PREFIX + 'w') || '',
+        aspect: p.get(URL_PREFIX + 'a') || '',
+        rim:    p.get(URL_PREFIX + 'r') || ''
+      },
+      veh: {
+        year:  p.get(URL_PREFIX + 'y')   || '',
+        make:  p.get(URL_PREFIX + 'mk')  || '',
+        model: p.get(URL_PREFIX + 'mo')  || '',
+        trim:  p.get(URL_PREFIX + 'tr')  || '',
+        oem:   p.get(URL_PREFIX + 'oem') || ''
+      }
+    };
+  }
+
+  function writeUrlState(state) {
+    var p = new URLSearchParams(window.location.search);
+    ['tab','w','a','r','y','mk','mo','tr','oem'].forEach(function (k) {
+      p.delete(URL_PREFIX + k);
+    });
+    if (state.tab) p.set(URL_PREFIX + 'tab', state.tab);
+    if (state.tab === 'size') {
+      if (state.size.width)  p.set(URL_PREFIX + 'w', state.size.width);
+      if (state.size.aspect) p.set(URL_PREFIX + 'a', state.size.aspect);
+      if (state.size.rim)    p.set(URL_PREFIX + 'r', state.size.rim);
+    }
+    if (state.tab === 'vehicle') {
+      if (state.veh.year)  p.set(URL_PREFIX + 'y',   state.veh.year);
+      if (state.veh.make)  p.set(URL_PREFIX + 'mk',  state.veh.make);
+      if (state.veh.model) p.set(URL_PREFIX + 'mo',  state.veh.model);
+      if (state.veh.trim)  p.set(URL_PREFIX + 'tr',  state.veh.trim);
+      if (state.veh.oem)   p.set(URL_PREFIX + 'oem', state.veh.oem);
+    }
+    var qs = p.toString();
+    var newUrl = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+    window.history.replaceState(null, '', newUrl);
+  }
+
   rootList.forEach(initOne);
 
   function initOne(root) {
