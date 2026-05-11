@@ -152,7 +152,12 @@
           <span class="pt-ts__match-label">Rear</span>
           <span class="pt-ts__match-size" data-pt-ts-veh-rear></span>
         </div>
-        <p class="pt-ts__match-note">Staggered fitment — we'll show front-tire matches first. Need both sizes? Call us at <a href="tel:{{ shop_phone_dial }}">{{ shop_phone_display }}</a>.</p>
+        <div class="pt-ts__stagger-pick" data-pt-ts-stagger-pick role="radiogroup" aria-label="Which tires to shop">
+          <label class="pt-ts__stagger-opt"><input type="radio" name="pt-ts-stagger-pick" value="front" checked> Shop front</label>
+          <label class="pt-ts__stagger-opt"><input type="radio" name="pt-ts-stagger-pick" value="rear"> Shop rear</label>
+          <label class="pt-ts__stagger-opt" data-pt-ts-stagger-both hidden><input type="radio" name="pt-ts-stagger-pick" value="both"> Shop both</label>
+        </div>
+        <p class="pt-ts__match-note">Staggered fitment. Pick which size to shop. Need help? Call <a href="tel:{{ shop_phone_dial }}">{{ shop_phone_display }}</a>.</p>
       </div>
     </div>
 
@@ -344,6 +349,22 @@
   font-family: ui-monospace, SFMono-Regular, monospace;
 }
 .pt-ts__match-stagger { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid rgba(22,101,52,0.12); }
+.pt-ts__stagger-pick {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+.pt-ts__stagger-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  color: #15803d;
+  cursor: pointer;
+  user-select: none;
+}
+.pt-ts__stagger-opt input { accent-color: #15803d; cursor: pointer; }
 .pt-ts__match-note { margin: 0.4rem 0 0; font-size: 0.85rem; color: #15803d; line-height: 1.5; }
 .pt-ts__match-note a { color: #15803d; font-weight: 700; text-decoration: underline; }
 
@@ -952,6 +973,14 @@
       writeUrlState(state);
     }
 
+    root.querySelectorAll('input[name="pt-ts-stagger-pick"]').forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        if (!this.checked) return;
+        state.veh.staggeredPick = this.value;
+        track('tire_search_stagger_pick', { value: this.value });
+      });
+    });
+
     function showVehMatch(size) {
       $('[data-pt-ts-veh-stagger]').hidden = true;
       $('[data-pt-ts-veh-size]').textContent = size;
@@ -966,6 +995,15 @@
       $('[data-pt-ts-veh-front]').textContent = front;
       $('[data-pt-ts-veh-rear]').textContent = rear;
       $('[data-pt-ts-veh-stagger]').hidden = false;
+      // Show "Shop both" only when front + rear share aspect (so combined URL is exact)
+      var pf = parseSize(front), pr = parseSize(rear);
+      var aspectsMatch = pf && pr && pf.aspect === pr.aspect;
+      var bothLabel = $('[data-pt-ts-stagger-both]');
+      if (bothLabel) bothLabel.hidden = !aspectsMatch;
+      // Reset radio to front
+      var frontRadio = root.querySelector('input[name="pt-ts-stagger-pick"][value="front"]');
+      if (frontRadio) frontRadio.checked = true;
+      state.veh.staggeredPick = 'front';
       elMatch.hidden = false;
     }
 
