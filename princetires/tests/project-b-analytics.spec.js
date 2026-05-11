@@ -13,6 +13,9 @@ const PAGE = '/pages/booking';
 
 async function setup(page) {
   // Hook into dataLayer BEFORE the script runs by injecting an init script.
+  // GTM + GA4 + Google Ads + FB Pixel each do `dataLayer = dataLayer || []`,
+  // so the setter fires multiple times. Mark the array with __pt_wrapped after
+  // the first wrap so subsequent assignments are no-ops.
   await page.addInitScript(() => {
     window.__tireSearchEvents = [];
     Object.defineProperty(window, 'dataLayer', {
@@ -20,6 +23,7 @@ async function setup(page) {
       get() { return this.__dl; },
       set(v) {
         this.__dl = v;
+        if (!v || v.__pt_wrapped) return;
         const origPush = v.push.bind(v);
         v.push = function (item) {
           if (item && item.event && String(item.event).startsWith('tire_search_')) {
@@ -27,6 +31,7 @@ async function setup(page) {
           }
           return origPush(item);
         };
+        Object.defineProperty(v, '__pt_wrapped', { value: true, enumerable: false });
       }
     });
   });
@@ -89,13 +94,13 @@ test('5. tire_search_cascade_step fires for make/model/trim/oem picks', async ({
   await setup(page);
   await page.locator('[data-pt-ts-tab="vehicle"]').click();
   await page.locator('[data-pt-ts-year]').selectOption('2020');
-  await page.locator('[data-pt-ts-make] option[value="Honda"]').waitFor({ timeout: 5000 });
+  await page.locator('[data-pt-ts-make] option[value="Honda"]').waitFor({ state: 'attached', timeout: 5000 });
   await page.locator('[data-pt-ts-make]').selectOption('Honda');
-  await page.locator('[data-pt-ts-model] option[value="Civic"]').waitFor({ timeout: 5000 });
+  await page.locator('[data-pt-ts-model] option[value="Civic"]').waitFor({ state: 'attached', timeout: 5000 });
   await page.locator('[data-pt-ts-model]').selectOption('Civic');
-  await page.locator('[data-pt-ts-trim] option[value="LX Hatchback"]').waitFor({ timeout: 5000 });
+  await page.locator('[data-pt-ts-trim] option[value="LX Hatchback"]').waitFor({ state: 'attached', timeout: 5000 });
   await page.locator('[data-pt-ts-trim]').selectOption('LX Hatchback');
-  await page.locator('[data-pt-ts-oem] option[value="215/55R16"]').waitFor({ timeout: 5000 });
+  await page.locator('[data-pt-ts-oem] option[value="215/55R16"]').waitFor({ state: 'attached', timeout: 5000 });
   await page.locator('[data-pt-ts-oem]').selectOption('215/55R16');
 
   const e = await events(page);
@@ -114,15 +119,30 @@ test('5. tire_search_cascade_step fires for make/model/trim/oem picks', async ({
 
 test('6. tire_search_submit fires on size submit', async ({ page }) => {
   await setup(page);
+  // The submit handler navigates away, wiping window.__tireSearchEvents.
+  // Persist the event to sessionStorage (which survives same-origin navigation)
+  // by wrapping window.pt.track.
+  await page.evaluate(() => {
+    sessionStorage.removeItem('__pt_submit_log');
+    const orig = window.pt.track;
+    window.pt.track = function (eventName, props) {
+      if (eventName === 'tire_search_submit') {
+        const stored = JSON.parse(sessionStorage.getItem('__pt_submit_log') || '[]');
+        stored.push(Object.assign({ event: eventName }, props || {}));
+        sessionStorage.setItem('__pt_submit_log', JSON.stringify(stored));
+      }
+      return orig.call(this, eventName, props);
+    };
+  });
   await page.locator('[data-pt-ts-width]').selectOption('225');
   await page.locator('[data-pt-ts-aspect]').selectOption('45');
   await page.locator('[data-pt-ts-rim]').selectOption('17');
-  // Block the navigation so we can read the event after the click
-  await page.route('**/collections/tires*', route => route.fulfill({ status: 200, body: 'blocked' }));
   await page.locator('[data-pt-ts-submit-size]').click();
-  await page.waitForTimeout(500);
-  const e = await events(page);
-  const submit = e.find(x => x.event === 'tire_search_submit');
+  // Wait for the navigation to finish (lands somewhere on princetires.ca)
+  await page.waitForLoadState('domcontentloaded');
+  // Read from sessionStorage on the destination page (same origin)
+  const submits = await page.evaluate(() => JSON.parse(sessionStorage.getItem('__pt_submit_log') || '[]'));
+  const submit = submits.find(x => x.event === 'tire_search_submit');
   expect(submit, 'tire_search_submit should fire').toBeTruthy();
   expect(submit).toMatchObject({ tab: 'size', width: '225', aspect: '45', rim: '17' });
 });
