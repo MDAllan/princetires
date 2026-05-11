@@ -34,6 +34,8 @@
   data-collection-handle="{{ collection_handle }}"
   data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}"
   data-asset-version="{%- assign _pt_ts_au = 'pt-vehicle-2025.json' | asset_url -%}{%- if _pt_ts_au contains '?' -%}{{ _pt_ts_au | split: '?' | last }}{%- endif -%}"
+  data-missing-webhook="{{ settings.missing_vehicle_webhook_url }}"
+  data-shop-email="info@princetires.ca"
 >
   <div class="pt-ts__tabs" role="tablist">
     <button type="button" class="pt-ts__tab pt-ts__tab--active" role="tab" aria-selected="true" data-pt-ts-tab="size">By tire size</button>
@@ -532,6 +534,80 @@
     if (elMissingInput && elMissingSend) {
       elMissingInput.addEventListener('input', function () {
         elMissingSend.disabled = this.value.trim().length < 3;
+      });
+    }
+
+    var missingWebhook = root.dataset.missingWebhook || '';
+    var shopEmail      = root.dataset.shopEmail || 'info@princetires.ca';
+
+    function buildMissingPayload() {
+      return {
+        vehicle:    elMissingInput.value.trim(),
+        year:       state.veh.year  || '',
+        make:       state.veh.make  || '',
+        model:      state.veh.model || '',
+        trim:       state.veh.trim  || '',
+        page_url:   window.location.href,
+        user_agent: navigator.userAgent,
+        timestamp:  new Date().toISOString()
+      };
+    }
+
+    function openMailtoFallback(payload) {
+      var subject = 'Missing vehicle: ' + payload.vehicle;
+      var bodyLines = [
+        'Vehicle: ' + payload.vehicle,
+        'Year/Make/Model/Trim picked: ' + [payload.year, payload.make, payload.model, payload.trim].filter(Boolean).join(' / '),
+        'Page: ' + payload.page_url,
+        'Time: ' + payload.timestamp
+      ];
+      var href = 'mailto:' + shopEmail
+        + '?subject=' + encodeURIComponent(subject)
+        + '&body=' + encodeURIComponent(bodyLines.join('\n'));
+      window.open(href, '_blank');
+    }
+
+    function setMissingStatus(msg, kind) {
+      elMissingStatus.textContent = msg;
+      elMissingStatus.className = 'pt-ts__missing-status' + (kind ? ' is-' + kind : '');
+      elMissingStatus.hidden = !msg;
+    }
+
+    if (elMissingSend) {
+      elMissingSend.addEventListener('click', async function () {
+        if (this.disabled) return;
+        var payload = buildMissingPayload();
+        if (!payload.vehicle) return;
+
+        var originalLabel = this.textContent;
+        this.disabled = true;
+        this.textContent = 'Sending…';
+        setMissingStatus('', '');
+
+        if (!missingWebhook) {
+          openMailtoFallback(payload);
+          setMissingStatus("We couldn't send that automatically — opening your email app instead.", 'error');
+          this.disabled = false;
+          this.textContent = originalLabel;
+          return;
+        }
+
+        try {
+          var res = await fetch(missingWebhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          setMissingStatus("Thanks — we'll add it.", 'success');
+          elMissingInput.value = '';
+        } catch (err) {
+          openMailtoFallback(payload);
+          setMissingStatus("We couldn't send that automatically — opening your email app instead.", 'error');
+        } finally {
+          this.disabled = false;
+          this.textContent = originalLabel;
+        }
       });
     }
 
