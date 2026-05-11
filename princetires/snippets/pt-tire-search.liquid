@@ -551,6 +551,45 @@
       elMatch.hidden = false;
     }
 
+    async function hydrateVehicleFromUrl(urlState) {
+      if (!urlState.veh.year) return;
+
+      // Year — sets state.veh.year and awaits the JSON fetch
+      elYear.value = urlState.veh.year;
+      await onYearChange(urlState.veh.year);
+      if (!state.yearData) return; // fetch failed
+
+      // Make
+      if (!urlState.veh.make) return;
+      if (!elMake.querySelector('option[value="' + cssEscape(urlState.veh.make) + '"]')) return;
+      elMake.value = urlState.veh.make;
+      onMakeChange(urlState.veh.make);
+
+      // Model
+      if (!urlState.veh.model) return;
+      if (!elModel.querySelector('option[value="' + cssEscape(urlState.veh.model) + '"]')) return;
+      elModel.value = urlState.veh.model;
+      onModelChange(urlState.veh.model);
+
+      // Trim
+      if (!urlState.veh.trim) return;
+      if (!elTrim.querySelector('option[value="' + cssEscape(urlState.veh.trim) + '"]')) return;
+      elTrim.value = urlState.veh.trim;
+      onTrimChange(urlState.veh.trim);
+
+      // OEM (only if the 5th dropdown opened — trim had >1 non-staggered size)
+      if (!urlState.veh.oem) return;
+      if (elOemWrap.hidden) return;
+      if (!elOem.querySelector('option[value="' + cssEscape(urlState.veh.oem) + '"]')) return;
+      elOem.value = urlState.veh.oem;
+      onOemPick(urlState.veh.oem);
+    }
+
+    function cssEscape(s) {
+      // Minimal escape for attribute selectors. Modern browsers have CSS.escape.
+      return (window.CSS && window.CSS.escape) ? window.CSS.escape(s) : String(s).replace(/"/g, '\\"');
+    }
+
     elSubmitVeh.addEventListener('click', function () {
       if (this.disabled) return;
       var size = state.veh.oemPick;
@@ -614,6 +653,7 @@
     if (urlState.tab === 'vehicle') switchTab('vehicle');
     hydrateSizeFromUrl(urlState);
     readSizeForm();
+    if (urlState.tab === 'vehicle') hydrateVehicleFromUrl(urlState); // fire-and-forget async
   }
 })();
 </script>
