@@ -48,12 +48,12 @@
   data-shop-email="info@princetires.ca"
 >
   <div class="pt-ts__filters" data-pt-ts-filters>
-    <div class="pt-ts__season-group" role="radiogroup" aria-label="Tire season">
-      <button type="button" class="pt-ts__season pt-ts__season--active" role="radio" aria-checked="true" data-pt-ts-season="">Any season</button>
-      <button type="button" class="pt-ts__season" role="radio" aria-checked="false" data-pt-ts-season="Summer">Summer</button>
-      <button type="button" class="pt-ts__season" role="radio" aria-checked="false" data-pt-ts-season="Winter">Winter</button>
-      <button type="button" class="pt-ts__season" role="radio" aria-checked="false" data-pt-ts-season="All-Season">All-season</button>
-      <button type="button" class="pt-ts__season" role="radio" aria-checked="false" data-pt-ts-season="All-Weather">All-weather</button>
+    <div class="pt-ts__season-group" role="group" aria-label="Tire season — pick one or more">
+      <button type="button" class="pt-ts__season pt-ts__season--active" aria-pressed="true" data-pt-ts-season="">Any season</button>
+      <button type="button" class="pt-ts__season" aria-pressed="false" data-pt-ts-season="Summer">Summer</button>
+      <button type="button" class="pt-ts__season" aria-pressed="false" data-pt-ts-season="Winter">Winter</button>
+      <button type="button" class="pt-ts__season" aria-pressed="false" data-pt-ts-season="All-Season">All-season</button>
+      <button type="button" class="pt-ts__season" aria-pressed="false" data-pt-ts-season="All-Weather">All-weather</button>
     </div>
     <label class="pt-ts__instock">
       <input type="checkbox" data-pt-ts-instock checked>
@@ -493,15 +493,25 @@
   function readFilterPrefs() {
     try {
       var raw = localStorage.getItem(FILTER_STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        // Migrate old single-string `season` to new `seasons` array
+        if (typeof parsed.season === 'string') {
+          parsed.seasons = parsed.season ? [parsed.season] : [];
+          delete parsed.season;
+        }
+        if (!Array.isArray(parsed.seasons)) parsed.seasons = [];
+        if (typeof parsed.inStock !== 'boolean') parsed.inStock = true;
+        return parsed;
+      }
     } catch (e) {}
-    return { season: isWinterAutoWindow() ? 'Winter' : '', inStock: true };
+    return { seasons: isWinterAutoWindow() ? ['Winter'] : [], inStock: true };
   }
 
   function writeFilterPrefs(prefs) {
     try {
       localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
-        season:  prefs.season || '',
+        seasons: Array.isArray(prefs.seasons) ? prefs.seasons.slice() : [],
         inStock: !!prefs.inStock,
         savedAt: new Date().toISOString()
       }));
@@ -593,10 +603,12 @@
 
     // ── Season + in-stock filters ──
     function syncSeasonUI() {
+      var noneSelected = !state.filters.seasons.length;
       $$('[data-pt-ts-season]').forEach(function (btn) {
-        var active = btn.dataset.ptTsSeason === state.filters.season;
+        var v = btn.dataset.ptTsSeason;
+        var active = v === '' ? noneSelected : state.filters.seasons.indexOf(v) !== -1;
         btn.classList.toggle('pt-ts__season--active', active);
-        btn.setAttribute('aria-checked', active ? 'true' : 'false');
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
       });
     }
     function syncInStockUI() {
@@ -608,10 +620,18 @@
 
     $$('[data-pt-ts-season]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        state.filters.season = this.dataset.ptTsSeason || '';
+        var v = this.dataset.ptTsSeason;
+        if (v === '') {
+          // "Any season" clears all selections
+          state.filters.seasons = [];
+        } else {
+          var idx = state.filters.seasons.indexOf(v);
+          if (idx === -1) state.filters.seasons.push(v);
+          else state.filters.seasons.splice(idx, 1);
+        }
         writeFilterPrefs(state.filters);
         syncSeasonUI();
-        track('tire_search_filter_change', { field: 'season', value: state.filters.season });
+        track('tire_search_filter_change', { field: 'seasons', value: state.filters.seasons.join(',') });
       });
     });
 
@@ -1072,10 +1092,12 @@
       qs.set('filter.p.m.custom.tire_width', w);
       qs.set('filter.p.m.custom.tire_profile', a);
       qs.set('filter.p.m.custom.rim_diameter', r);
-      var season = state.filters && state.filters.season;
-      if (season === 'Summer' || season === 'Winter' || season === 'All-Season' || season === 'All-Weather') {
-        qs.append('filter.p.m.custom.seasonality', season);
-      }
+      var seasons = (state.filters && state.filters.seasons) || [];
+      seasons.forEach(function (s) {
+        if (s === 'Summer' || s === 'Winter' || s === 'All-Season' || s === 'All-Weather') {
+          qs.append('filter.p.m.custom.seasonality', s);
+        }
+      });
       if (state.filters && state.filters.inStock) {
         qs.set('filter.v.availability', '1');
       }

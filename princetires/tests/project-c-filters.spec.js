@@ -34,8 +34,41 @@ test('2. Clicking Winter activates it + persists to localStorage', async ({ page
   await winterBtn.click();
   await expect(winterBtn).toHaveClass(/pt-ts__season--active/);
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('pt-tire-search-filters') || '{}'));
-  expect(stored.season).toBe('Winter');
+  expect(stored.seasons).toEqual(['Winter']);
   expect(stored.inStock).toBe(true);
+});
+
+test('2b. Multi-select: clicking Winter + All-Weather activates both, stored as array', async ({ page }) => {
+  await page.goto(BASE);
+  await page.evaluate(() => localStorage.removeItem('pt-tire-search-filters'));
+  await openWidget(page);
+
+  await page.locator('[data-pt-ts-season="Winter"]').click();
+  await page.locator('[data-pt-ts-season="All-Weather"]').click();
+
+  await expect(page.locator('[data-pt-ts-season="Winter"]')).toHaveClass(/pt-ts__season--active/);
+  await expect(page.locator('[data-pt-ts-season="All-Weather"]')).toHaveClass(/pt-ts__season--active/);
+  await expect(page.locator('[data-pt-ts-season=""]')).not.toHaveClass(/pt-ts__season--active/);
+
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('pt-tire-search-filters') || '{}'));
+  expect(stored.seasons).toEqual(['Winter', 'All-Weather']);
+});
+
+test('2c. Clicking "Any season" clears all selected seasons', async ({ page }) => {
+  await page.goto(BASE);
+  await page.evaluate(() => localStorage.removeItem('pt-tire-search-filters'));
+  await openWidget(page);
+
+  await page.locator('[data-pt-ts-season="Winter"]').click();
+  await page.locator('[data-pt-ts-season="All-Weather"]').click();
+  await page.locator('[data-pt-ts-season=""]').click();
+
+  await expect(page.locator('[data-pt-ts-season=""]')).toHaveClass(/pt-ts__season--active/);
+  await expect(page.locator('[data-pt-ts-season="Winter"]')).not.toHaveClass(/pt-ts__season--active/);
+  await expect(page.locator('[data-pt-ts-season="All-Weather"]')).not.toHaveClass(/pt-ts__season--active/);
+
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('pt-tire-search-filters') || '{}'));
+  expect(stored.seasons).toEqual([]);
 });
 
 test('3. In-stock toggle defaults checked + persists when unchecked', async ({ page }) => {
@@ -74,13 +107,13 @@ test('4. buildCollectionUrl includes season + availability params on submit', as
   expect(target).toContain('filter.v.availability=1');
 });
 
-test('5. All-Season and All-Weather are independent options, each mapping to its own metafield value', async ({ page }) => {
-  // Part 1: All-Season → only All-Season filter
+test('5. Multi-select: selecting All-Season + All-Weather appends BOTH metafield values on submit', async ({ page }) => {
   await page.goto(BASE);
   await page.evaluate(() => localStorage.removeItem('pt-tire-search-filters'));
   await openWidget(page);
 
   await page.locator('[data-pt-ts-season="All-Season"]').click();
+  await page.locator('[data-pt-ts-season="All-Weather"]').click();
   await page.locator('[data-pt-ts-width]').selectOption('225');
   await page.locator('[data-pt-ts-aspect]').selectOption('45');
   await page.locator('[data-pt-ts-rim]').selectOption('17');
@@ -93,26 +126,30 @@ test('5. All-Season and All-Weather are independent options, each mapping to its
   await page.waitForTimeout(500);
 
   expect(target).toContain('filter.p.m.custom.seasonality=All-Season');
-  expect(target).not.toContain('seasonality=All-Weather');
+  expect(target).toContain('filter.p.m.custom.seasonality=All-Weather');
+});
 
-  // Part 2: All-Weather → only All-Weather filter
+test('5b. Old localStorage shape (season as string) is migrated to seasons array', async ({ page }) => {
   await page.goto(BASE);
-  await page.evaluate(() => localStorage.removeItem('pt-tire-search-filters'));
+  // Inject the OLD shape with a single-string season
+  await page.evaluate(() => localStorage.setItem('pt-tire-search-filters', JSON.stringify({
+    season: 'Winter',
+    inStock: true,
+    savedAt: '2026-01-01T00:00:00.000Z'
+  })));
   await openWidget(page);
 
-  await page.locator('[data-pt-ts-season="All-Weather"]').click();
-  await page.locator('[data-pt-ts-width]').selectOption('225');
-  await page.locator('[data-pt-ts-aspect]').selectOption('45');
-  await page.locator('[data-pt-ts-rim]').selectOption('17');
+  // Winter should be activated from the migrated value
+  await expect(page.locator('[data-pt-ts-season="Winter"]')).toHaveClass(/pt-ts__season--active/);
 
-  let target2 = '';
-  page.on('request', req => { if (req.url().includes('/collections/tires')) target2 = req.url(); });
-
-  await page.locator('[data-pt-ts-submit-size]').click();
-  await page.waitForTimeout(500);
-
-  expect(target2).toContain('filter.p.m.custom.seasonality=All-Weather');
-  expect(target2).not.toContain('seasonality=All-Season&');
+  // The stored value should now be the new shape after readFilterPrefs migrated it
+  // (writeFilterPrefs only writes on user interaction, so trigger one)
+  await page.locator('[data-pt-ts-season="Summer"]').click();
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('pt-tire-search-filters') || '{}'));
+  expect(Array.isArray(stored.seasons)).toBe(true);
+  expect(stored.seasons).toContain('Winter');
+  expect(stored.seasons).toContain('Summer');
+  expect(stored.season).toBeUndefined();
 });
 
 test('6. Any season + in-stock OFF produces a URL with neither filter', async ({ page }) => {
