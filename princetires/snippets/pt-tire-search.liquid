@@ -574,7 +574,7 @@
     var state = {
       tab: 'size',
       size: { width: '', aspect: '', rim: '' },
-      veh:  { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false },
+      veh:  { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false, staggeredFront: '', staggeredRear: '', staggeredPick: 'front' },
       filters: readFilterPrefs(),
       yearData: null
     };
@@ -916,22 +916,22 @@
         return;
       }
 
-      // Multiple sizes — detect staggered (same rim, different widths → front+rear)
+      // Multiple sizes — detect staggered (find a pair sharing rim + aspect, differing in width)
       var parsed = sizes.map(parseSize).filter(Boolean);
-      var isStaggered = parsed.length === 2
-        && parsed[0].rim === parsed[1].rim
-        && parsed[0].width !== parsed[1].width;
-      state.veh.isStaggered = isStaggered;
+      var staggeredPair = findStaggeredPair(parsed);
+      state.veh.isStaggered = !!staggeredPair;
 
-      if (isStaggered) {
-        // Smaller width = front, larger = rear (typical performance car convention)
-        var front = parsed[0].width <= parsed[1].width ? parsed[0] : parsed[1];
-        var rear  = parsed[0].width <= parsed[1].width ? parsed[1] : parsed[0];
-        state.veh.oemPick = front.raw;
-        state.veh.oem = front.raw;
-        showStaggerMatch(front.raw, rear.raw);
+      if (staggeredPair) {
+        state.veh.staggeredFront = staggeredPair.front.raw;
+        state.veh.staggeredRear  = staggeredPair.rear.raw;
+        state.veh.staggeredPick  = 'front';
+        state.veh.oemPick = staggeredPair.front.raw;
+        state.veh.oem     = staggeredPair.front.raw;
+        showStaggerMatch(staggeredPair.front.raw, staggeredPair.rear.raw);
         elSubmitVeh.disabled = false;
       } else {
+        state.veh.staggeredFront = state.veh.staggeredRear = '';
+        state.veh.staggeredPick = 'front';
         // OEM options — show 5th dropdown
         state.veh.oemSizes = sizes;
         fillSelect(elOem, '— pick OEM size —', sizes);
@@ -1059,7 +1059,7 @@
     }
 
     function clearVehicleTab() {
-      state.veh = { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false };
+      state.veh = { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false, staggeredFront: '', staggeredRear: '', staggeredPick: 'front' };
       state.yearData = null;
       elYear.value = '';
       resetSelect(elMake, ['—']); elMake.disabled = true;
@@ -1080,6 +1080,20 @@
     }
     function resetSelect(el, opts) {
       el.innerHTML = '<option value="">' + (opts[0] || '—') + '</option>';
+    }
+    function findStaggeredPair(parsed) {
+      // Returns { front, rear } where rim matches, aspect matches, widths differ.
+      // Picks the first such pair found. Smaller width = front.
+      for (var i = 0; i < parsed.length; i++) {
+        for (var j = i + 1; j < parsed.length; j++) {
+          var a = parsed[i], b = parsed[j];
+          if (a.rim === b.rim && a.aspect === b.aspect && a.width !== b.width) {
+            var aw = parseInt(a.width, 10), bw = parseInt(b.width, 10);
+            return aw <= bw ? { front: a, rear: b } : { front: b, rear: a };
+          }
+        }
+      }
+      return null;
     }
     function parseSize(s) {
       if (!s) return null;
