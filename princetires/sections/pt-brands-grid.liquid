@@ -1,435 +1,691 @@
-{%- comment -%} PrinceTires – Brands Overview Grid {%- endcomment -%}
+{%- comment -%}
+  PrinceTires — Brands overview (the only section on /pages/brands).
+  Premium dark template matching pt-brand-detail.liquid. Same block schema
+  as before so existing templates/page.brands.json keeps working.
+{%- endcomment -%}
 
-<div class="ptbg">
+{%- liquid
+  assign accent = section.settings.accent_color | default: '#DA291C'
+  assign show_filter = section.settings.show_filter
+  assign tire_brands = section.blocks | where: 'type', 'brand'
+  assign wheel_brands_count = 0
+  assign tire_brands_count = 0
+  for b in tire_brands
+    if b.settings.brand_type == 'wheel'
+      assign wheel_brands_count = wheel_brands_count | plus: 1
+    else
+      assign tire_brands_count = tire_brands_count | plus: 1
+    endif
+  endfor
+-%}
+
+<section class="ptbg" style="--brand-accent: {{ accent }};">
   <div class="ptbg__container">
 
-    <div class="ptbg__hero">
-      <span class="ptbg__eyebrow">{{ section.settings.eyebrow }}</span>
-      <h1 class="ptbg__heading">{{ page.title }}</h1>
-      <p class="ptbg__subtitle">{{ section.settings.subtitle }}</p>
+    {%- comment -%} Breadcrumb {%- endcomment -%}
+    <nav class="ptbg__breadcrumb" aria-label="Breadcrumb">
+      <a href="{{ routes.root_url }}" class="ptbg__crumb">Home</a>
+      <span class="ptbg__crumb-sep" aria-hidden="true">/</span>
+      <span class="ptbg__crumb ptbg__crumb--current">Brands</span>
+    </nav>
 
-      {%- if section.settings.show_filter -%}
-        <div class="ptbg__filters" role="tablist" aria-label="{{ 'sections.brands_grid.filter_label' | t }}">
-          <button class="ptbg__filter ptbg__filter--active" data-filter="all" role="tab" aria-selected="true">{{ 'sections.brands_grid.filter_all' | t }}</button>
-          <button class="ptbg__filter" data-filter="tire" role="tab" aria-selected="false">{{ 'sections.brands_grid.filter_tire' | t }}</button>
-          <button class="ptbg__filter" data-filter="wheel" role="tab" aria-selected="false">{{ 'sections.brands_grid.filter_wheel' | t }}</button>
+    {%- comment -%} Hero — asymmetric: eyebrow+H1 left, TL;DR right {%- endcomment -%}
+    <header class="ptbg__hero" data-reveal>
+      <div class="ptbg__hero-left">
+        {%- if section.settings.eyebrow != blank -%}
+          <span class="ptbg__eyebrow">{{ section.settings.eyebrow | escape }}</span>
+        {%- endif -%}
+        <h1 class="ptbg__title">{{ section.settings.heading | default: 'Tire & wheel brands in Calgary' | escape }}</h1>
+      </div>
+      <div class="ptbg__hero-right">
+        {%- if section.settings.tldr != blank -%}
+          <p class="ptbg__tldr">{{ section.settings.tldr | escape }}</p>
+        {%- elsif section.settings.subtitle != blank -%}
+          <p class="ptbg__tldr">{{ section.settings.subtitle | escape }}</p>
+        {%- endif -%}
+        <div class="ptbg__hero-meta">
+          <a href="/pages/booking" class="ptbg__hero-cta">
+            Book installation
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          {%- assign hero_phone = section.settings.cta_phone | default: '(403) 452-4283' -%}
+          {%- assign hero_phone_clean = hero_phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
+          <a href="tel:+1{{ hero_phone_clean }}" class="ptbg__hero-call">Call {{ hero_phone }}</a>
         </div>
-      {%- endif -%}
+      </div>
+    </header>
+
+    {%- comment -%} Stats strip — 4 GEO-friendly numbers {%- endcomment -%}
+    <div class="ptbg__stats" data-reveal>
+      <div class="ptbg__stat">
+        <span class="ptbg__stat-value">{{ section.settings.stat_1_value | default: '60+' | escape }}</span>
+        <span class="ptbg__stat-label">{{ section.settings.stat_1_label | default: 'Tire & wheel brands stocked' | escape }}</span>
+      </div>
+      <div class="ptbg__stat">
+        <span class="ptbg__stat-value">{{ section.settings.stat_2_value | default: '3,923' | escape }}</span>
+        <span class="ptbg__stat-label">{{ section.settings.stat_2_label | default: 'Active SKUs in inventory' | escape }}</span>
+      </div>
+      <div class="ptbg__stat">
+        <span class="ptbg__stat-value">{{ section.settings.stat_3_value | default: '4.9' | escape }}<span class="ptbg__stat-suffix">★</span></span>
+        <span class="ptbg__stat-label">{{ section.settings.stat_3_label | default: 'From 562+ Google reviews' | escape }}</span>
+      </div>
+      <div class="ptbg__stat">
+        <span class="ptbg__stat-value">{{ section.settings.stat_4_value | default: 'Same-day' | escape }}</span>
+        <span class="ptbg__stat-label">{{ section.settings.stat_4_label | default: 'Installation in most cases' | escape }}</span>
+      </div>
     </div>
 
-    <div class="ptbg__grid" id="ptbg-grid">
-      {%- for block in section.blocks -%}
-        {%- if block.type == 'brand' -%}
-          <a
-            href="{{ block.settings.page_link | default: '#' }}"
-            class="ptbg__card"
-            data-brand-type="{{ block.settings.brand_type }}"
-            {{ block.shopify_attributes }}
-          >
-            <div class="ptbg__card-logo">
-              {%- if block.settings.logo != blank -%}
-                {{ block.settings.logo | image_url: width: 160 | image_tag: loading: 'lazy', class: 'ptbg__logo-img', alt: block.settings.name }}
-              {%- else -%}
-                <span class="ptbg__logo-initial">{{ block.settings.name | slice: 0, 1 | upcase }}</span>
-              {%- endif -%}
-            </div>
-
-            <div class="ptbg__card-body">
-              <div class="ptbg__card-top">
-                <h2 class="ptbg__card-name">{{ block.settings.name }}</h2>
-                <span class="ptbg__card-type-badge ptbg__card-type-badge--{{ block.settings.brand_type }}">
-                  {%- if block.settings.brand_type == 'tire' -%}
-                    {{ 'sections.brands_grid.badge_tire' | t }}
+    {%- comment -%} Tire brand grid {%- endcomment -%}
+    {%- if tire_brands_count > 0 -%}
+      <div class="ptbg__group-head" data-reveal>
+        <span class="ptbg__group-eyebrow">Tire brands</span>
+        <h2 class="ptbg__group-title">{{ tire_brands_count }} tire brands we stock</h2>
+        <p class="ptbg__group-body">From premium Michelin to budget-friendly Radar and Rovelo, every tire passes our same install bay at 111 42 Ave SW. Same warranty, same balance, same calibrated torque — whether you spent $90 or $490 a tire.</p>
+      </div>
+      <ul class="ptbg__grid" role="list">
+        {%- for block in section.blocks -%}
+          {%- if block.settings.brand_type != 'wheel' -%}
+            {%- liquid
+              assign name = block.settings.name
+              assign handle = name | handleize
+              assign card_link = block.settings.page_link
+              if card_link == blank
+                assign card_link = '/collections/' | append: handle
+              endif
+              assign cats = block.settings.categories | split: ',' | first: 4
+            -%}
+            <li class="ptbg__card" data-reveal {{ block.shopify_attributes }}>
+              <a href="{{ card_link }}" class="ptbg__card-link" aria-label="Shop {{ name | escape }} tires">
+                <div class="ptbg__card-logo">
+                  {%- if block.settings.logo != blank -%}
+                    {{ block.settings.logo | image_url: width: 360 | image_tag: loading: 'lazy', class: 'ptbg__logo-img', alt: name }}
                   {%- else -%}
-                    {{ 'sections.brands_grid.badge_wheel' | t }}
+                    <span class="ptbg__logo-initial">{{ name | slice: 0, 1 | upcase }}</span>
                   {%- endif -%}
-                </span>
-              </div>
-
-              <p class="ptbg__card-tagline">{{ block.settings.tagline }}</p>
-
-              {%- if block.settings.categories != blank -%}
-                <div class="ptbg__card-chips">
-                  {%- assign cats = block.settings.categories | split: ',' -%}
-                  {%- for cat in cats -%}
-                    <span class="ptbg__chip">{{ cat | strip }}</span>
-                  {%- endfor -%}
                 </div>
-              {%- endif -%}
+                <div class="ptbg__card-body">
+                  <h3 class="ptbg__card-name">{{ name | escape }}</h3>
+                  {%- if block.settings.tagline != blank -%}
+                    <p class="ptbg__card-tagline">{{ block.settings.tagline | escape }}</p>
+                  {%- endif -%}
+                  {%- if cats.size > 0 -%}
+                    <div class="ptbg__card-tags">
+                      {%- for c in cats -%}
+                        <span class="ptbg__tag">{{ c | strip | escape }}</span>
+                      {%- endfor -%}
+                    </div>
+                  {%- endif -%}
+                </div>
+                <span class="ptbg__card-arrow" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </span>
+              </a>
+            </li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
 
-              <span class="ptbg__card-link">
-                {{ 'sections.brands_grid.view_brand' | t }}
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </span>
-            </div>
-          </a>
-        {%- endif -%}
-      {%- endfor -%}
+    {%- comment -%} Wheel brand row — smaller, denser grid {%- endcomment -%}
+    {%- if wheel_brands_count > 0 -%}
+      <div class="ptbg__group-head" data-reveal>
+        <span class="ptbg__group-eyebrow">Wheel brands</span>
+        <h2 class="ptbg__group-title">{{ wheel_brands_count }} wheel brands in our showroom</h2>
+        <p class="ptbg__group-body">Off-road stance, Canadian-winter-rated finishes, premium daily-driver looks — all fitment-checked against your make &amp; model before purchase.</p>
+      </div>
+      <ul class="ptbg__grid ptbg__grid--wheels" role="list">
+        {%- for block in section.blocks -%}
+          {%- if block.settings.brand_type == 'wheel' -%}
+            {%- liquid
+              assign name = block.settings.name
+              assign handle = name | handleize
+              assign card_link = block.settings.page_link
+              if card_link == blank
+                assign card_link = '/collections/wheels'
+              endif
+              assign cats = block.settings.categories | split: ',' | first: 3
+            -%}
+            <li class="ptbg__card ptbg__card--wheel" data-reveal {{ block.shopify_attributes }}>
+              <a href="{{ card_link }}" class="ptbg__card-link" aria-label="Shop {{ name | escape }} wheels">
+                <div class="ptbg__card-logo">
+                  {%- if block.settings.logo != blank -%}
+                    {{ block.settings.logo | image_url: width: 360 | image_tag: loading: 'lazy', class: 'ptbg__logo-img', alt: name }}
+                  {%- else -%}
+                    <span class="ptbg__logo-initial">{{ name | slice: 0, 1 | upcase }}</span>
+                  {%- endif -%}
+                </div>
+                <div class="ptbg__card-body">
+                  <h3 class="ptbg__card-name">{{ name | escape }}</h3>
+                  {%- if block.settings.tagline != blank -%}
+                    <p class="ptbg__card-tagline">{{ block.settings.tagline | escape }}</p>
+                  {%- endif -%}
+                  {%- if cats.size > 0 -%}
+                    <div class="ptbg__card-tags">
+                      {%- for c in cats -%}
+                        <span class="ptbg__tag">{{ c | strip | escape }}</span>
+                      {%- endfor -%}
+                    </div>
+                  {%- endif -%}
+                </div>
+                <span class="ptbg__card-arrow" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </span>
+              </a>
+            </li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+
+    {%- comment -%} Built for Calgary roads — 3 seasonal context cards {%- endcomment -%}
+    <div class="ptbg__group-head ptbg__group-head--center" data-reveal>
+      <span class="ptbg__group-eyebrow">Built for Calgary</span>
+      <h2 class="ptbg__group-title">Brands we lean on for our weather</h2>
+      <p class="ptbg__group-body ptbg__group-body--center">Calgary asks more from tires than almost any city in Canada. Chinooks swing temps 20°C in an afternoon. The October winter-tire deadline collides with potholes that show up by April. These are the matchups we run all year.</p>
+    </div>
+    <div class="ptbg__context" data-reveal>
+      <article class="ptbg__ctx-card">
+        <span class="ptbg__ctx-badge ptbg__ctx-badge--winter">Winter</span>
+        <h3 class="ptbg__ctx-title">Cold, ice, and chinook swings</h3>
+        <p class="ptbg__ctx-body">Michelin X-Ice Snow and Bridgestone Blizzak WS90 are our two most-installed winter tires. Both stay flexible below -20°C, which matters on January mornings when the rubber on cheaper tires goes glassy.</p>
+        <a href="/collections/winter-tires" class="ptbg__ctx-link">Shop winter tires<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+      </article>
+      <article class="ptbg__ctx-card">
+        <span class="ptbg__ctx-badge ptbg__ctx-badge--allweather">All-weather</span>
+        <h3 class="ptbg__ctx-title">One tire, all year</h3>
+        <p class="ptbg__ctx-body">Michelin CrossClimate2 wears a 3PMSF snowflake and meets Alberta's winter-tire law. If you don't want to swap twice a year, this is the category we point most Calgary drivers to.</p>
+        <a href="/collections/all-weather-tires" class="ptbg__ctx-link">Shop all-weather<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+      </article>
+      <article class="ptbg__ctx-card">
+        <span class="ptbg__ctx-badge ptbg__ctx-badge--at">All-terrain</span>
+        <h3 class="ptbg__ctx-title">Trucks, trailers, and gravel</h3>
+        <p class="ptbg__ctx-body">BFGoodrich KO3, Toyo Open Country A/T III, and Mickey Thompson Baja Boss A/T. Built for the gravel east of Calgary and the BC mountain runs along Highway 1 and 93 — both under Alberta's winter-tire mandate from October.</p>
+        <a href="/collections/all-terrain-tires" class="ptbg__ctx-link">Shop all-terrain<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+      </article>
     </div>
 
-    {%- comment -%} CTA {%- endcomment -%}
-    <div class="ptbg__cta">
-      <h2 class="ptbg__cta-heading">{{ section.settings.cta_heading }}</h2>
-      <p class="ptbg__cta-desc">{{ section.settings.cta_description }}</p>
+    {%- comment -%} FAQ — pulled from section settings, max 6, emitted as FAQPage schema {%- endcomment -%}
+    {%- liquid
+      assign faq_qs = '' | split: ','
+      for i in (1..6)
+        assign q_key = 'faq_' | append: i | append: '_q'
+        assign a_key = 'faq_' | append: i | append: '_a'
+        assign q = section.settings[q_key]
+        assign a = section.settings[a_key]
+        if q != blank and a != blank
+          assign faq_qs = faq_qs | concat: q
+        endif
+      endfor
+    -%}
+    <div class="ptbg__faq" data-reveal>
+      <div class="ptbg__faq-head">
+        <span class="ptbg__group-eyebrow">Frequently asked</span>
+        <h2 class="ptbg__group-title">Calgary driver FAQs</h2>
+      </div>
+      <div class="ptbg__faq-list">
+        {%- for i in (1..6) -%}
+          {%- liquid
+            assign q_key = 'faq_' | append: i | append: '_q'
+            assign a_key = 'faq_' | append: i | append: '_a'
+            assign q = section.settings[q_key]
+            assign a = section.settings[a_key]
+          -%}
+          {%- if q != blank and a != blank -%}
+            <details class="ptbg__faq-item">
+              <summary class="ptbg__faq-q">
+                <span>{{ q | escape }}</span>
+                <span class="ptbg__faq-chev" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                </span>
+              </summary>
+              <div class="ptbg__faq-a">
+                <p>{{ a | escape | newline_to_br }}</p>
+              </div>
+            </details>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    </div>
+
+    {%- comment -%} CTA banner — accent gradient {%- endcomment -%}
+    <div class="ptbg__cta" data-reveal>
+      <div class="ptbg__cta-text">
+        <h2 class="ptbg__cta-heading">{{ section.settings.cta_heading | default: "Don't see your brand?" | escape }}</h2>
+        <p class="ptbg__cta-desc">{{ section.settings.cta_description | default: 'Tell us your year, make, and tire size and we will source it. Same-day on most stocked sizes, two business days on special orders.' | escape }}</p>
+      </div>
       <div class="ptbg__cta-buttons">
-        {%- if section.settings.cta_primary_label != blank -%}
-          <a href="{{ section.settings.cta_primary_link | default: '/collections/all' }}" class="ptbg__cta-btn ptbg__cta-btn--primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            {{ section.settings.cta_primary_label }}
-          </a>
-        {%- endif -%}
-        {%- if section.settings.cta_phone != blank -%}
-          <a href="tel:{{ section.settings.cta_phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' }}" class="ptbg__cta-btn ptbg__cta-btn--secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-            {{ section.settings.cta_phone }}
-          </a>
-        {%- endif -%}
+        <a href="{{ section.settings.cta_primary_link | default: '/pages/booking' }}" class="ptbg__cta-btn ptbg__cta-btn--primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          {{ section.settings.cta_primary_label | default: 'Book installation' | escape }}
+        </a>
+        {%- assign cta_phone_clean = section.settings.cta_phone | default: '(403) 452-4283' | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
+        <a href="tel:+1{{ cta_phone_clean }}" class="ptbg__cta-btn ptbg__cta-btn--secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Call {{ section.settings.cta_phone | default: '(403) 452-4283' | escape }}
+        </a>
+      </div>
+      <div class="ptbg__cta-nap">
+        <strong>Prince Tires</strong> · 111 42 Ave SW, Calgary, AB T2G 0A4 · Mon–Sat 9:30–5:30, Sun 10:00–3:30
       </div>
     </div>
 
   </div>
-</div>
+
+  {%- comment -%} JSON-LD: LocalBusiness + FAQPage for GEO citation {%- endcomment -%}
+  {%- liquid
+    capture faq_questions_json
+      assign faq_count = 0
+      for i in (1..6)
+        assign q_key = 'faq_' | append: i | append: '_q'
+        assign a_key = 'faq_' | append: i | append: '_a'
+        assign q = section.settings[q_key]
+        assign a = section.settings[a_key]
+        if q != blank and a != blank
+          if faq_count > 0
+            echo ','
+          endif
+          echo '{"@type":"Question","name":'
+          echo q | json
+          echo ',"acceptedAnswer":{"@type":"Answer","text":'
+          echo a | json
+          echo '}}'
+          assign faq_count = faq_count | plus: 1
+        endif
+      endfor
+    endcapture
+  -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "AutoPartsStore",
+        "@id": "{{ shop.url }}/#business",
+        "name": "Prince Tires",
+        "url": "{{ shop.url }}",
+        "telephone": "+1-403-452-4283",
+        "priceRange": "$$",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "111 42 Ave SW",
+          "addressLocality": "Calgary",
+          "addressRegion": "AB",
+          "postalCode": "T2G 0A4",
+          "addressCountry": "CA"
+        },
+        "openingHoursSpecification": [
+          { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], "opens": "09:30", "closes": "17:30" },
+          { "@type": "OpeningHoursSpecification", "dayOfWeek": "Sunday", "opens": "10:00", "closes": "15:30" }
+        ],
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "{{ section.settings.aggregate_rating | default: '4.9' }}",
+          "reviewCount": "{{ section.settings.review_count | default: '562' }}",
+          "bestRating": "5",
+          "worstRating": "1"
+        }
+      }
+      {%- if faq_count > 0 -%}
+      ,{ "@type": "FAQPage", "mainEntity": [ {{ faq_questions_json }} ] }
+      {%- endif -%}
+    ]
+  }
+  </script>
+</section>
 
 {% stylesheet %}
   .ptbg {
-    background: #fff;
-    padding: 5rem 0 7rem;
-  }
-
-  .ptbg__container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 6rem;
-  }
-
-  /* ── Hero ── */
-  .ptbg__hero {
-    text-align: center;
-    margin-bottom: 4rem;
-  }
-
-  .ptbg__eyebrow {
-    display: block;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 400;
-    color: #dc2626;
-    letter-spacing: 0.02em;
-    margin-bottom: 0.5rem;
-  }
-
-  .ptbg__heading {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 3.6rem;
-    font-weight: 700;
-    color: #111;
-    margin: 0 0 1rem;
-    line-height: 1.05;
-  }
-
-  .ptbg__subtitle {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 300;
-    color: #6b7280;
-    margin: 0 auto 2.5rem;
-    max-width: 600px;
-    line-height: 1.6;
-  }
-
-  /* ── Filters ── */
-  .ptbg__filters {
-    display: inline-flex;
-    gap: 0.5rem;
-    background: #f3f4f6;
-    border-radius: 100px;
-    padding: 0.4rem;
-    margin-bottom: 1rem;
-  }
-
-  .ptbg__filter {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.25rem;
-    font-weight: 500;
-    padding: 0.6rem 2rem;
-    border-radius: 100px;
-    border: none;
-    background: transparent;
-    color: #6b7280;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .ptbg__filter--active,
-  .ptbg__filter:hover {
-    background: #fff;
-    color: #111;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-  }
-
-  .ptbg__filter--active {
-    color: #dc2626;
-    font-weight: 600;
-  }
-
-  /* ── Grid ── */
-  .ptbg__grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2rem;
-    margin-bottom: 5rem;
-  }
-
-  .ptbg__card--hidden {
-    display: none !important;
-  }
-
-  /* ── Card ── */
-  .ptbg__card {
-    display: flex;
-    flex-direction: column;
-    background: #fafafa;
-    border-radius: 14px;
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.25s ease;
-    border: 1px solid transparent;
+    position: relative;
+    background: #0a0a0a;
+    color: #f5f5f5;
+    padding: 4.5rem 0 6rem;
+    isolation: isolate;
+    font-family: 'Outfit', system-ui, sans-serif;
     overflow: hidden;
   }
+  .ptbg::before {
+    content: "";
+    position: absolute; inset: 0; z-index: -1;
+    background:
+      radial-gradient(ellipse 70% 50% at 85% 0%, color-mix(in oklab, var(--brand-accent) 14%, transparent), transparent 65%),
+      radial-gradient(ellipse 50% 40% at 0% 30%, color-mix(in oklab, var(--brand-accent) 8%, transparent), transparent 70%);
+  }
+  .ptbg__container { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
 
-  .ptbg__card:hover {
-    background: #fff;
-    border-color: #e5e7eb;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
-    transform: translateY(-3px);
+  /* Breadcrumb */
+  .ptbg__breadcrumb { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: rgba(245,245,245,0.5); margin-bottom: 2.5rem; }
+  .ptbg__crumb { color: inherit; text-decoration: none; transition: color 0.18s; }
+  .ptbg__crumb:hover { color: #fff; }
+  .ptbg__crumb--current { color: #fff; font-weight: 600; }
+  .ptbg__crumb-sep { color: rgba(245,245,245,0.25); }
+
+  /* Hero — asymmetric grid */
+  .ptbg__hero {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 3rem;
+    align-items: end;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 3rem;
+  }
+  .ptbg__hero-left { display: flex; flex-direction: column; gap: 1.25rem; align-items: flex-start; }
+  .ptbg__hero-right { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .ptbg__eyebrow {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--brand-accent);
+    padding: 0.45rem 0.8rem;
+    background: color-mix(in oklab, var(--brand-accent) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--brand-accent) 35%, transparent);
+    border-radius: 999px;
+  }
+  .ptbg__eyebrow::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--brand-accent);
+    box-shadow: 0 0 12px var(--brand-accent);
   }
 
-  /* Logo area */
-  .ptbg__card-logo {
-    height: 10rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f3f4f6;
-    border-bottom: 1px solid #f0f0f0;
-    transition: background 0.25s;
-  }
-
-  .ptbg__card:hover .ptbg__card-logo {
-    background: #fef2f2;
-  }
-
-  .ptbg__logo-img {
-    max-height: 6rem;
-    max-width: 14rem;
-    width: auto;
-    object-fit: contain;
-    filter: grayscale(30%);
-    transition: filter 0.25s;
-  }
-
-  .ptbg__card:hover .ptbg__logo-img {
-    filter: grayscale(0%);
-  }
-
-  .ptbg__logo-initial {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 4rem;
-    font-weight: 700;
-    color: #dc2626;
-    line-height: 1;
-  }
-
-  /* Body */
-  .ptbg__card-body {
-    padding: 1.8rem 2rem 2rem;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-  }
-
-  .ptbg__card-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.8rem;
-    margin-bottom: 0.6rem;
-  }
-
-  .ptbg__card-name {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #111;
+  .ptbg__title {
+    font-size: clamp(2.4rem, 5.4vw, 4.6rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.96;
     margin: 0;
-    line-height: 1.2;
+    background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.72) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-
-  .ptbg__card-type-badge {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1rem;
-    font-weight: 500;
-    padding: 0.25rem 0.8rem;
-    border-radius: 100px;
-    white-space: nowrap;
-    flex-shrink: 0;
+  .ptbg__tldr {
+    font-size: clamp(1rem, 1.3vw, 1.12rem);
+    line-height: 1.55;
+    color: rgba(245,245,245,0.78);
+    margin: 0;
+    max-width: 56ch;
   }
-
-  .ptbg__card-type-badge--tire {
-    background: #fef2f2;
-    color: #dc2626;
-  }
-
-  .ptbg__card-type-badge--wheel {
-    background: #f0f9ff;
-    color: #0284c7;
-  }
-
-  .ptbg__card-tagline {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 300;
-    color: #6b7280;
-    margin: 0 0 1rem;
-    line-height: 1.5;
-    flex: 1;
-  }
-
-  .ptbg__card-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-bottom: 1.2rem;
-  }
-
-  .ptbg__chip {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.05rem;
-    font-weight: 400;
-    color: #374151;
-    background: #f3f4f6;
-    border-radius: 6px;
-    padding: 0.2rem 0.7rem;
-  }
-
-  .ptbg__card-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 500;
-    color: #dc2626;
-    transition: gap 0.2s;
-  }
-
-  .ptbg__card:hover .ptbg__card-link {
-    gap: 0.7rem;
-  }
-
-  /* ── CTA ── */
-  .ptbg__cta {
-    text-align: center;
-    padding: 4rem 3rem;
-    background: #111;
+  .ptbg__hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+  .ptbg__hero-cta {
+    display: inline-flex; align-items: center; gap: 0.55rem;
+    padding: 0.85rem 1.25rem;
+    background: var(--brand-accent);
+    color: #fff;
     border-radius: 12px;
-  }
-
-  .ptbg__cta-heading {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 2.4rem;
-    font-weight: 700;
-    color: #fff;
-    margin: 0 0 0.6rem;
-    line-height: 1.1;
-  }
-
-  .ptbg__cta-desc {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.25rem;
-    font-weight: 300;
-    color: #9ca3af;
-    margin: 0 0 2rem;
-  }
-
-  .ptbg__cta-buttons {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .ptbg__cta-btn {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.25rem;
     font-weight: 600;
-    padding: 1rem 2.4rem;
-    border-radius: 8px;
     text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s;
+    box-shadow: 0 12px 32px -12px color-mix(in oklab, var(--brand-accent) 60%, transparent);
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+  }
+  .ptbg__hero-cta:hover { transform: translateY(-2px); box-shadow: 0 18px 38px -12px color-mix(in oklab, var(--brand-accent) 80%, transparent); }
+  .ptbg__hero-call { color: #fff; text-decoration: none; font-weight: 500; opacity: 0.7; transition: opacity 0.18s; }
+  .ptbg__hero-call:hover { opacity: 1; }
+
+  /* Stats strip */
+  .ptbg__stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+    margin-bottom: 4.5rem;
+  }
+  .ptbg__stat {
+    position: relative;
+    padding: 1.5rem 1.4rem;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    display: flex; flex-direction: column; gap: 0.45rem;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, background 0.25s;
+  }
+  .ptbg__stat:hover {
+    transform: translateY(-3px);
+    background: rgba(255,255,255,0.045);
+    border-color: color-mix(in oklab, var(--brand-accent) 50%, rgba(255,255,255,0.08));
+  }
+  .ptbg__stat-value {
+    font-size: clamp(1.7rem, 2.6vw, 2.4rem);
+    font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+    color: var(--brand-accent);
+  }
+  .ptbg__stat-suffix { font-size: 0.7em; margin-left: 0.1em; opacity: 0.8; }
+  .ptbg__stat-label { font-size: 0.85rem; color: rgba(245,245,245,0.6); }
+
+  /* Section heads */
+  .ptbg__group-head { display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1.75rem; max-width: 64ch; }
+  .ptbg__group-head--center { text-align: center; align-items: center; margin: 5rem auto 2.25rem; max-width: 64ch; }
+  .ptbg__group-eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--brand-accent); }
+  .ptbg__group-title { font-size: clamp(1.7rem, 2.8vw, 2.4rem); font-weight: 700; letter-spacing: -0.02em; margin: 0; color: #fff; }
+  .ptbg__group-body { font-size: 1rem; line-height: 1.6; color: rgba(245,245,245,0.7); margin: 0; }
+  .ptbg__group-body--center { text-align: center; }
+
+  /* Brand card grid */
+  .ptbg__grid {
+    list-style: none; padding: 0; margin: 0 0 5rem 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+  .ptbg__grid--wheels { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-bottom: 0; }
+
+  .ptbg__card { list-style: none; }
+  .ptbg__card-link {
+    position: relative;
+    display: flex; flex-direction: column; gap: 1.1rem;
+    padding: 1.5rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    color: inherit; text-decoration: none;
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, box-shadow 0.3s;
+    height: 100%;
+  }
+  .ptbg__card-link::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 0% 0%, color-mix(in oklab, var(--brand-accent) 16%, transparent), transparent 60%);
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  .ptbg__card-link:hover {
+    transform: translateY(-4px);
+    border-color: color-mix(in oklab, var(--brand-accent) 50%, rgba(255,255,255,0.08));
+    box-shadow: 0 24px 50px -22px rgba(0,0,0,0.65);
+  }
+  .ptbg__card-link:hover::before { opacity: 1; }
+
+  .ptbg__card-logo {
+    width: 100%; aspect-ratio: 2.2 / 1;
+    background: #fff;
+    border-radius: 12px;
+    padding: 0.9rem;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .ptbg__logo-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .ptbg__logo-initial {
+    font-size: 2rem; font-weight: 800; letter-spacing: -0.04em;
+    color: #0a0a0a;
   }
 
-  .ptbg__cta-btn--primary {
-    background: #dc2626;
+  .ptbg__card-body { display: flex; flex-direction: column; gap: 0.65rem; flex: 1; }
+  .ptbg__card-name { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; color: #fff; }
+  .ptbg__card-tagline { font-size: 0.9rem; line-height: 1.5; color: rgba(245,245,245,0.65); margin: 0; }
+  .ptbg__card-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: auto; }
+  .ptbg__tag {
+    display: inline-flex; align-items: center;
+    padding: 0.28rem 0.55rem;
+    font-size: 0.68rem; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(245,245,245,0.85);
+    border-radius: 6px;
+  }
+  .ptbg__card-arrow {
+    position: absolute; top: 1.25rem; right: 1.25rem;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--brand-accent);
+    background: color-mix(in oklab, var(--brand-accent) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--brand-accent) 35%, transparent);
+    border-radius: 50%;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s;
+  }
+  .ptbg__card-link:hover .ptbg__card-arrow { transform: translate(3px, -3px); background: var(--brand-accent); color: #fff; }
+
+  /* Calgary context cards */
+  .ptbg__context {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 5rem;
+  }
+  .ptbg__ctx-card {
+    padding: 1.75rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    display: flex; flex-direction: column; gap: 0.85rem;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s;
+  }
+  .ptbg__ctx-card:hover { transform: translateY(-3px); border-color: color-mix(in oklab, var(--brand-accent) 40%, rgba(255,255,255,0.08)); }
+  .ptbg__ctx-badge {
+    align-self: flex-start;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    border-radius: 999px;
+  }
+  .ptbg__ctx-badge--winter { background: rgba(59, 130, 246, 0.14); color: #60a5fa; border: 1px solid rgba(59,130,246,0.32); }
+  .ptbg__ctx-badge--allweather { background: rgba(99, 102, 241, 0.14); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.32); }
+  .ptbg__ctx-badge--at { background: rgba(245, 158, 11, 0.14); color: #fbbf24; border: 1px solid rgba(245,158,11,0.32); }
+  .ptbg__ctx-title { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; color: #fff; }
+  .ptbg__ctx-body { font-size: 0.92rem; line-height: 1.55; color: rgba(245,245,245,0.65); margin: 0; flex: 1; }
+  .ptbg__ctx-link {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    align-self: flex-start;
+    font-size: 0.85rem; font-weight: 600;
+    color: var(--brand-accent);
+    text-decoration: none;
+    padding-bottom: 2px;
+    border-bottom: 1px solid color-mix(in oklab, var(--brand-accent) 50%, transparent);
+    transition: gap 0.2s, border-color 0.2s;
+  }
+  .ptbg__ctx-link:hover { gap: 0.6rem; border-color: var(--brand-accent); }
+
+  /* FAQ */
+  .ptbg__faq { max-width: 880px; margin: 0 auto 5rem; }
+  .ptbg__faq-head { text-align: center; margin-bottom: 2rem; }
+  .ptbg__faq-head .ptbg__group-title { color: #fff; }
+  .ptbg__faq-list { display: flex; flex-direction: column; gap: 0.65rem; }
+  .ptbg__faq-item {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .ptbg__faq-item[open] { border-color: color-mix(in oklab, var(--brand-accent) 45%, rgba(255,255,255,0.08)); }
+  .ptbg__faq-q {
+    list-style: none;
+    cursor: pointer;
+    padding: 1.2rem 1.4rem;
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    font-size: 1rem; font-weight: 600;
     color: #fff;
   }
+  .ptbg__faq-q::-webkit-details-marker { display: none; }
+  .ptbg__faq-chev {
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--brand-accent);
+    border-radius: 50%;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s;
+  }
+  .ptbg__faq-item[open] .ptbg__faq-chev { transform: rotate(180deg); background: color-mix(in oklab, var(--brand-accent) 14%, transparent); }
+  .ptbg__faq-a { padding: 0 1.4rem 1.4rem; color: rgba(245,245,245,0.72); line-height: 1.6; font-size: 0.95rem; }
+  .ptbg__faq-a p { margin: 0; }
 
-  .ptbg__cta-btn--primary:hover { background: #b91c1c; color: #fff; }
+  /* CTA banner */
+  .ptbg__cta {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 2rem;
+    padding: 2.5rem;
+    background: linear-gradient(135deg, color-mix(in oklab, var(--brand-accent) 18%, #161616) 0%, #0e0e0e 100%);
+    border: 1px solid color-mix(in oklab, var(--brand-accent) 25%, rgba(255,255,255,0.05));
+    border-radius: 22px;
+    overflow: hidden;
+  }
+  .ptbg__cta::after {
+    content: ""; position: absolute;
+    top: -50%; right: -10%; width: 60%; height: 200%;
+    background: radial-gradient(circle, color-mix(in oklab, var(--brand-accent) 24%, transparent), transparent 60%);
+    pointer-events: none;
+  }
+  .ptbg__cta-text { position: relative; z-index: 1; }
+  .ptbg__cta-heading { font-size: clamp(1.4rem, 2.2vw, 1.85rem); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 0.5rem 0; color: #fff; }
+  .ptbg__cta-desc { font-size: 0.98rem; line-height: 1.55; color: rgba(245,245,245,0.72); margin: 0; max-width: 56ch; }
+  .ptbg__cta-buttons { display: flex; flex-direction: column; gap: 0.65rem; align-self: center; position: relative; z-index: 1; }
+  .ptbg__cta-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+    padding: 0.95rem 1.4rem;
+    font-size: 0.95rem; font-weight: 600;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s, background 0.2s;
+    white-space: nowrap;
+  }
+  .ptbg__cta-btn--primary { background: var(--brand-accent); color: #fff; box-shadow: 0 12px 32px -10px color-mix(in oklab, var(--brand-accent) 70%, transparent); }
+  .ptbg__cta-btn--primary:hover { transform: translateY(-2px); box-shadow: 0 18px 40px -10px color-mix(in oklab, var(--brand-accent) 80%, transparent); }
+  .ptbg__cta-btn--secondary { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.18); }
+  .ptbg__cta-btn--secondary:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.3); }
+  .ptbg__cta-nap {
+    grid-column: 1 / -1;
+    position: relative; z-index: 1;
+    padding-top: 1.5rem; margin-top: 0.5rem;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.82rem; color: rgba(245,245,245,0.55); letter-spacing: 0.01em;
+  }
+  .ptbg__cta-nap strong { color: rgba(245,245,245,0.9); font-weight: 700; }
 
-  .ptbg__cta-btn--secondary {
-    background: transparent;
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.2);
+  /* Reveal-on-scroll */
+  [data-reveal] { opacity: 0; transform: translateY(20px); transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1); }
+  [data-reveal].is-revealed { opacity: 1; transform: translateY(0); }
+  .ptbg__card[data-reveal] { transition-delay: calc(var(--idx, 0) * 50ms); }
+  @media (prefers-reduced-motion: reduce) {
+    [data-reveal] { opacity: 1; transform: none; transition: none; }
   }
 
-  .ptbg__cta-btn--secondary:hover { border-color: rgba(255,255,255,0.5); }
-
-  /* ── Responsive ── */
-  @media (max-width: 1100px) {
-    .ptbg__container { padding: 0 4rem; }
-    .ptbg__grid { grid-template-columns: repeat(2, 1fr); }
+  /* Responsive */
+  @media (max-width: 960px) {
+    .ptbg__hero { grid-template-columns: 1fr; gap: 1.5rem; padding-bottom: 2rem; margin-bottom: 2rem; }
+    .ptbg__stats { grid-template-columns: repeat(2, 1fr); margin-bottom: 3rem; }
+    .ptbg__context { grid-template-columns: 1fr; }
+    .ptbg__cta { grid-template-columns: 1fr; padding: 1.75rem; }
   }
-
-  @media (max-width: 749px) {
-    .ptbg { padding: 4rem 0 5rem; }
-    .ptbg__container { padding: 0 2rem; }
-    .ptbg__grid { grid-template-columns: 1fr; gap: 1.2rem; }
-    .ptbg__heading { font-size: 2.8rem; }
-    .ptbg__cta { padding: 3rem 2rem; }
-    .ptbg__cta-heading { font-size: 2rem; }
-    .ptbg__filters { flex-wrap: wrap; border-radius: 12px; }
+  @media (max-width: 560px) {
+    .ptbg__title { font-size: clamp(2rem, 9vw, 2.8rem); }
+    .ptbg__stats { grid-template-columns: 1fr; }
+    .ptbg__grid, .ptbg__grid--wheels { grid-template-columns: 1fr; }
   }
 {% endstylesheet %}
 
 {% javascript %}
-  (function() {
-    var filters = document.querySelectorAll('.ptbg__filter');
-    var cards   = document.querySelectorAll('.ptbg__card');
-    if (!filters.length) return;
-
-    filters.forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var type = this.dataset.filter;
-
-        filters.forEach(function(b) {
-          b.classList.remove('ptbg__filter--active');
-          b.setAttribute('aria-selected', 'false');
-        });
-        this.classList.add('ptbg__filter--active');
-        this.setAttribute('aria-selected', 'true');
-
-        cards.forEach(function(card) {
-          if (type === 'all' || card.dataset.brandType === type) {
-            card.classList.remove('ptbg__card--hidden');
-          } else {
-            card.classList.add('ptbg__card--hidden');
-          }
-        });
-      });
+  (function () {
+    var els = document.querySelectorAll('.ptbg [data-reveal]');
+    if (!els.length || typeof IntersectionObserver === 'undefined') {
+      els.forEach(function (el) { el.classList.add('is-revealed'); });
+      return;
+    }
+    document.querySelectorAll('.ptbg__card').forEach(function (el, i) {
+      el.style.setProperty('--idx', i);
     });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-revealed');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+    els.forEach(function (el) { io.observe(el); });
   })();
 {% endjavascript %}
 
@@ -443,70 +699,88 @@
       "type": "text",
       "id": "eyebrow",
       "label": "Eyebrow",
-      "default": "Trusted brands"
+      "default": "60+ trusted brands in stock"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading (H1)",
+      "default": "Tire & wheel brands in Calgary"
+    },
+    {
+      "type": "textarea",
+      "id": "tldr",
+      "label": "TL;DR / direct answer (first 2 sentences for GEO)",
+      "default": "Prince Tires stocks over 60 tire and wheel brands at our 111 42 Ave SW Calgary shop — from premium Michelin and Bridgestone down to value picks like Radar and Rovelo. Price-match guarantee, same-day installation, 4.9★ from 562+ Google reviews."
     },
     {
       "type": "textarea",
       "id": "subtitle",
-      "label": "Subtitle",
-      "default": "We stock the world's top tire and wheel brands — browse by brand and find the perfect fit for your vehicle."
+      "label": "Subtitle (legacy, used if TL;DR is blank)"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent color",
+      "default": "#DA291C"
     },
     {
       "type": "checkbox",
       "id": "show_filter",
-      "label": "Show tire / wheel filter",
-      "default": true
+      "label": "Show tire / wheel filter (legacy, no longer rendered)",
+      "default": false
     },
     {
       "type": "header",
-      "content": "Call to action"
+      "content": "Hero stats (4 tiles)"
     },
+    { "type": "text", "id": "stat_1_value", "label": "Stat 1 value", "default": "60+" },
+    { "type": "text", "id": "stat_1_label", "label": "Stat 1 label", "default": "Tire & wheel brands stocked" },
+    { "type": "text", "id": "stat_2_value", "label": "Stat 2 value", "default": "3,923" },
+    { "type": "text", "id": "stat_2_label", "label": "Stat 2 label", "default": "Active SKUs in inventory" },
+    { "type": "text", "id": "stat_3_value", "label": "Stat 3 value", "default": "4.9" },
+    { "type": "text", "id": "stat_3_label", "label": "Stat 3 label", "default": "From 562+ Google reviews" },
+    { "type": "text", "id": "stat_4_value", "label": "Stat 4 value", "default": "Same-day" },
+    { "type": "text", "id": "stat_4_label", "label": "Stat 4 label", "default": "Installation in most cases" },
     {
-      "type": "text",
-      "id": "cta_heading",
-      "label": "CTA heading",
-      "default": "Can't find your brand?"
+      "type": "header",
+      "content": "Schema / LocalBusiness"
     },
+    { "type": "text", "id": "aggregate_rating", "label": "Aggregate rating", "default": "4.9" },
+    { "type": "text", "id": "review_count", "label": "Review count", "default": "562" },
     {
-      "type": "text",
-      "id": "cta_description",
-      "label": "CTA description",
-      "default": "We stock 50+ brands and can special-order almost anything. Give us a call."
+      "type": "header",
+      "content": "FAQ (up to 6 — emitted as FAQPage JSON-LD)"
     },
+    { "type": "text",     "id": "faq_1_q", "label": "Q1", "default": "What tire brands does Prince Tires carry in Calgary?" },
+    { "type": "textarea", "id": "faq_1_a", "label": "A1", "default": "We stock 60+ tire and wheel brands at our 111 42 Ave SW Calgary location. Top sellers include Michelin, Bridgestone, BFGoodrich, Toyo, Yokohama, Mickey Thompson, Continental, Cooper, Firestone, Kumho, and General Tire. Value lines include Radar, Rovelo, Tesche, and Cargomax." },
+    { "type": "text",     "id": "faq_2_q", "label": "Q2", "default": "Do you carry budget tire brands?" },
+    { "type": "textarea", "id": "faq_2_a", "label": "A2", "default": "Yes. Radar, Rovelo, Tesche, and Cargomax cover the under-$150-per-tire range in common sizes. Every budget tire we install passes the same balance, torque, and TPMS reset as a premium tire — we don't cut corners based on what you paid." },
+    { "type": "text",     "id": "faq_3_q", "label": "Q3", "default": "Do you price-match other Calgary tire shops?" },
+    { "type": "textarea", "id": "faq_3_a", "label": "A3", "default": "Yes. Show us a written quote on the same tire from another Calgary tire shop and we will match it. The match applies to in-stock equivalents; out-of-stock or special orders are handled on a case-by-case basis." },
+    { "type": "text",     "id": "faq_4_q", "label": "Q4", "default": "Are all the tires you list actually in stock?" },
+    { "type": "textarea" ,"id": "faq_4_a", "label": "A4", "default": "Most sizes in our top brands are in stock at 111 42 Ave SW. If a tire is on order, we will tell you up front and quote a realistic ETA — usually next business day from our Calgary supplier, or up to 5 days for special-order imports." },
+    { "type": "text",     "id": "faq_5_q", "label": "Q5", "default": "Can I get same-day installation in Calgary?" },
+    { "type": "textarea", "id": "faq_5_a", "label": "A5", "default": "Yes for most stocked sizes if you book before midday. Bigger jobs (3/4-ton trucks, duallies, trailers) need a 60-minute slot — book online or call (403) 452-4283 to confirm we have a bay free." },
+    { "type": "text",     "id": "faq_6_q", "label": "Q6", "default": "Do you carry winter-rated 3PMSF tires for Alberta's winter-tire law?" },
+    { "type": "textarea", "id": "faq_6_a", "label": "A6", "default": "Yes. Every winter and all-weather tire we sell carries the 3PMSF (three-peak mountain snowflake) certification required by Alberta and BC winter-tire laws. Highway 93 and Trans-Canada through Banff require 3PMSF or chains from October 1 through April 30." },
     {
-      "type": "text",
-      "id": "cta_primary_label",
-      "label": "Primary button label",
-      "default": "Browse all tires"
+      "type": "header",
+      "content": "Bottom CTA"
     },
-    {
-      "type": "url",
-      "id": "cta_primary_link",
-      "label": "Primary button link"
-    },
-    {
-      "type": "text",
-      "id": "cta_phone",
-      "label": "Phone number",
-      "default": "(403) 452-4283"
-    }
+    { "type": "text",     "id": "cta_heading",     "label": "CTA heading", "default": "Don't see your brand?" },
+    { "type": "textarea", "id": "cta_description", "label": "CTA description", "default": "Tell us your year, make, and tire size and we will source it. Same-day on most stocked sizes, two business days on special orders." },
+    { "type": "text",     "id": "cta_primary_label", "label": "Primary button label", "default": "Book installation" },
+    { "type": "url",      "id": "cta_primary_link",  "label": "Primary button link", "info": "Defaults to /pages/booking if left blank." },
+    { "type": "text",     "id": "cta_phone",         "label": "Phone number", "default": "(403) 452-4283" }
   ],
   "blocks": [
     {
       "type": "brand",
       "name": "Brand",
       "settings": [
-        {
-          "type": "text",
-          "id": "name",
-          "label": "Brand name",
-          "default": "Brand Name"
-        },
-        {
-          "type": "image_picker",
-          "id": "logo",
-          "label": "Brand logo"
-        },
+        { "type": "text", "id": "name", "label": "Brand name", "default": "Brand Name" },
+        { "type": "image_picker", "id": "logo", "label": "Brand logo" },
         {
           "type": "select",
           "id": "brand_type",
@@ -517,162 +791,15 @@
           ],
           "default": "tire"
         },
-        {
-          "type": "text",
-          "id": "tagline",
-          "label": "Tagline",
-          "default": "Quality tires for every road."
-        },
-        {
-          "type": "text",
-          "id": "categories",
-          "label": "Categories (comma-separated)",
-          "info": "e.g. Winter, All-Season, Performance",
-          "default": "All-Season, Winter"
-        },
-        {
-          "type": "url",
-          "id": "page_link",
-          "label": "Brand page link"
-        }
+        { "type": "text", "id": "tagline", "label": "Tagline (one line)", "default": "Brand tagline." },
+        { "type": "text", "id": "categories", "label": "Categories (comma-separated)", "default": "All-Season, Winter" },
+        { "type": "url", "id": "page_link", "label": "Card link (collection or page)", "info": "Defaults to /collections/{brand-handle} if left blank." }
       ]
     }
   ],
   "presets": [
     {
-      "name": "Brands grid",
-      "blocks": [
-        {
-          "type": "brand",
-          "settings": {
-            "name": "Michelin",
-            "brand_type": "tire",
-            "tagline": "French engineering. Premium safety and longevity in every tire.",
-            "categories": "All-Season, Winter, Performance",
-            "page_link": "/pages/brand-michelin"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "Bridgestone",
-            "brand_type": "tire",
-            "tagline": "World's largest tire manufacturer. Engineered for performance and comfort.",
-            "categories": "All-Season, Winter, All-Terrain",
-            "page_link": "/pages/brand-bridgestone"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "Continental",
-            "brand_type": "tire",
-            "tagline": "German precision. Outstanding wet and winter grip.",
-            "categories": "All-Season, Winter, All-Terrain",
-            "page_link": "/pages/brand-continental"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "Toyo",
-            "brand_type": "tire",
-            "tagline": "Japanese innovation. Popular with Calgary truck and SUV owners.",
-            "categories": "All-Terrain, Winter, All-Weather",
-            "page_link": "/pages/brand-toyo"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "Yokohama",
-            "brand_type": "tire",
-            "tagline": "Advanced compounds for sport, touring, and winter driving.",
-            "categories": "All-Season, Winter, Performance",
-            "page_link": "/pages/brand-yokohama"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "BFGoodrich",
-            "brand_type": "tire",
-            "tagline": "American off-road legend. Built for adventure on and off the pavement.",
-            "categories": "All-Terrain, Winter, Performance",
-            "page_link": "/pages/brand-bfgoodrich"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "Kumho",
-            "brand_type": "tire",
-            "tagline": "Korean-engineered value without compromising safety or grip.",
-            "categories": "All-Season, Winter, All-Terrain",
-            "page_link": "/pages/brand-kumho"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "Cooper",
-            "brand_type": "tire",
-            "tagline": "North American dependability for everyday driving and all seasons.",
-            "categories": "All-Season, Winter, All-Weather",
-            "page_link": "/pages/brand-cooper"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "Firestone",
-            "brand_type": "tire",
-            "tagline": "Trusted for over 100 years. Reliable performance at every price point.",
-            "categories": "All-Season, Winter, All-Weather",
-            "page_link": "/pages/brand-firestone"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "General",
-            "brand_type": "tire",
-            "tagline": "Continental-backed engineering. Great value all-weather and all-terrain tires.",
-            "categories": "All-Weather, All-Terrain, Winter",
-            "page_link": "/pages/brand-general"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "XF Off-Road",
-            "brand_type": "wheel",
-            "tagline": "Aggressive off-road styling for trucks and SUVs.",
-            "categories": "Off-Road, Truck, SUV",
-            "page_link": "/collections/wheels"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "RTX",
-            "brand_type": "wheel",
-            "tagline": "Canadian-designed wheels built for harsh winters and daily driving.",
-            "categories": "All-Season, Truck, Passenger",
-            "page_link": "/collections/wheels"
-          }
-        },
-        {
-          "type": "brand",
-          "settings": {
-            "name": "ENVY",
-            "brand_type": "wheel",
-            "tagline": "Premium finishes and bold designs to elevate any vehicle.",
-            "categories": "Sport, Luxury, Performance",
-            "page_link": "/collections/wheels"
-          }
-        }
-      ]
+      "name": "Brands grid"
     }
   ]
 }
