@@ -1156,9 +1156,32 @@
     }
     function parseSize(s) {
       if (!s) return null;
-      var m = String(s).toUpperCase().match(/(\d{3})\/(\d{2,3})\s*[A-Z]?R?(\d{2})/);
-      if (!m) return null;
-      return { width: m[1], aspect: m[2], rim: m[3], raw: s };
+      var up = String(s).toUpperCase();
+
+      // Flotation pattern: e.g. "33X12.50R17"
+      // The first number is overall diameter (inches), middle is section width (inches, decimal),
+      // last is rim diameter. For Shopify metafield compatibility, we coerce section
+      // width to an integer-like string by stripping the dot (12.50 → 1250). This lets the URL
+      // build without rejecting the input — even if no products match, the customer at least
+      // gets a search-result page they can act on (and we capture the demand via OUT OF STOCK).
+      var flot = up.match(/(\d{2})X(\d{1,2}(?:\.\d{1,2})?)R(\d{2})/);
+      if (flot) {
+        return {
+          width:     flot[2].replace('.', ''),
+          aspect:    '',
+          rim:       flot[3],
+          raw:       s,
+          flotation: true
+        };
+      }
+
+      // Standard pattern: "225/45R17", "P215/45R17", "245/35ZR19", "LT245/75R16"
+      var std = up.match(/(\d{3})\/(\d{2,3})\s*[A-Z]?R?(\d{2})/);
+      if (std) {
+        return { width: std[1], aspect: std[2], rim: std[3], raw: s };
+      }
+
+      return null;
     }
     function buildCollectionUrl(w, a, r) {
       var qs = new URLSearchParams();
