@@ -141,9 +141,22 @@
       <button type="button" class="pt-ts__btn pt-ts__btn--secondary" data-pt-ts-clear="vehicle">Clear</button>
     </div>
 
-    <p class="pt-ts__help">
-      Don't see your vehicle? <a href="#" data-pt-ts-flip-to-size>Search by tire size →</a> or give us a call at <a href="tel:{{ shop_phone_dial }}">{{ shop_phone_display }}</a>.
-    </p>
+    <div class="pt-ts__missing" data-pt-ts-missing>
+      <button type="button" class="pt-ts__missing-toggle" data-pt-ts-missing-toggle aria-expanded="false">
+        Don't see your vehicle?
+      </button>
+      <div class="pt-ts__missing-body" data-pt-ts-missing-body hidden>
+        <p class="pt-ts__missing-intro">Tell us about your car and we'll find the right tires for you.</p>
+        <div class="pt-ts__missing-row">
+          <input type="text" class="pt-ts__missing-input" data-pt-ts-missing-input placeholder="e.g. 2018 Subaru Crosstrek Touring" maxlength="120">
+          <button type="button" class="pt-ts__btn" data-pt-ts-missing-send disabled>Send</button>
+        </div>
+        <p class="pt-ts__missing-status" data-pt-ts-missing-status aria-live="polite" hidden></p>
+        <p class="pt-ts__missing-fallback">
+          Or <a href="#" data-pt-ts-flip-to-size>search by tire size →</a> or call us at <a href="tel:{{ shop_phone_dial }}">{{ shop_phone_display }}</a>.
+        </p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -307,6 +320,67 @@
 .pt-ts__help a { color: #dc2626; font-weight: 600; text-decoration: none; }
 .pt-ts__help a:hover { text-decoration: underline; }
 
+.pt-ts__missing { margin-top: 0.8rem; }
+.pt-ts__missing-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #dc2626;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.pt-ts__missing-toggle:hover { color: #b91c1c; }
+.pt-ts__missing-body {
+  margin-top: 0.6rem;
+  padding: 0.9rem 1rem;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  animation: pt-ts-fade 0.2s ease;
+}
+.pt-ts__missing-intro {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  color: #374151;
+  line-height: 1.5;
+}
+.pt-ts__missing-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  margin-bottom: 0.4rem;
+}
+.pt-ts__missing-input {
+  flex: 1;
+  height: 44px;
+  padding: 0 0.85rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+}
+.pt-ts__missing-input:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.08); }
+.pt-ts__missing-status {
+  margin: 0.4rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.pt-ts__missing-status.is-success { color: #15803d; }
+.pt-ts__missing-status.is-error   { color: #dc2626; }
+.pt-ts__missing-fallback {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+.pt-ts__missing-fallback a { color: #dc2626; font-weight: 600; text-decoration: none; }
+.pt-ts__missing-fallback a:hover { text-decoration: underline; }
+
 @media (max-width: 480px) {
   .pt-ts__row { grid-template-columns: 1fr 1fr; }
 }
@@ -440,6 +514,26 @@
 
     var flipLink = $('[data-pt-ts-flip-to-size]');
     if (flipLink) flipLink.addEventListener('click', function (e) { e.preventDefault(); switchTab('size'); });
+
+    var elMissingToggle = $('[data-pt-ts-missing-toggle]');
+    var elMissingBody   = $('[data-pt-ts-missing-body]');
+    var elMissingInput  = $('[data-pt-ts-missing-input]');
+    var elMissingSend   = $('[data-pt-ts-missing-send]');
+    var elMissingStatus = $('[data-pt-ts-missing-status]');
+
+    if (elMissingToggle) {
+      elMissingToggle.addEventListener('click', function () {
+        var open = elMissingBody.hidden;
+        elMissingBody.hidden = !open;
+        elMissingToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open && elMissingInput) elMissingInput.focus();
+      });
+    }
+    if (elMissingInput) {
+      elMissingInput.addEventListener('input', function () {
+        elMissingSend.disabled = this.value.trim().length < 3;
+      });
+    }
 
     function showError(msg) {
       elErr.textContent = msg || '';
