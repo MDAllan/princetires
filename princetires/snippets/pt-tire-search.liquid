@@ -403,6 +403,14 @@
   var rootList = document.querySelectorAll('[data-pt-ts]');
   if (!rootList.length) return;
 
+  function track(eventName, props) {
+    try {
+      if (window.pt && typeof window.pt.track === 'function') {
+        window.pt.track(eventName, props || {});
+      }
+    } catch (e) { /* analytics must never break the widget */ }
+  }
+
   var URL_PREFIX = 'ts_';
 
   function readUrlState() {
@@ -904,6 +912,7 @@
     hydrateSizeFromUrl(urlState);
     readSizeForm();
     if (urlState.tab === 'vehicle') hydrateVehicleFromUrl(urlState); // fire-and-forget async
+    track('tire_search_view', { tab: state.tab });
   }
 })();
 </script>
