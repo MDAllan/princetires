@@ -26,6 +26,10 @@
     </nav>
 
     {%- comment -%} Hero — asymmetric, logo + heading + subtitle {%- endcomment -%}
+    {%- liquid
+      assign brand_handle = page.handle | remove_first: 'brand-'
+      assign brand_asset = 'brand-' | append: brand_handle | append: '.webp'
+    -%}
     <header class="ptbd__hero" data-reveal>
       <div class="ptbd__hero-left">
         {%- if section.settings.logo != blank -%}
@@ -33,8 +37,8 @@
             {{ section.settings.logo | image_url: width: 480 | image_tag: loading: 'eager', class: 'ptbd__logo-img', alt: page.title }}
           </div>
         {%- else -%}
-          <div class="ptbd__hero-logo ptbd__hero-logo--initial">
-            <span>{{ page.title | slice: 0, 2 | upcase }}</span>
+          <div class="ptbd__hero-logo" data-brand-logo>
+            <img src="{{ brand_asset | asset_url }}" alt="{{ page.title | escape }}" class="ptbd__logo-img" loading="eager" onerror="this.parentElement.classList.add('ptbd__hero-logo--initial');this.replaceWith(Object.assign(document.createElement('span'),{textContent:'{{ page.title | slice: 0, 2 | upcase | escape }}'}));">
           </div>
         {%- endif -%}
         {%- if section.settings.eyebrow != blank -%}
