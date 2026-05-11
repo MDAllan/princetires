@@ -685,6 +685,17 @@
       writeUrlState(state);
     }
 
+    function emitCascadeStep(field, value) {
+      track('tire_search_cascade_step', {
+        field: field,
+        value: value || '',
+        year:  state.veh.year  || '',
+        make:  state.veh.make  || '',
+        model: state.veh.model || '',
+        trim:  state.veh.trim  || ''
+      });
+    }
+
     function onMakeChange(make) {
       state.veh.make = make;
       state.veh.model = state.veh.trim = state.veh.oemPick = '';
@@ -699,6 +710,7 @@
       models.sort();
       fillSelect(elModel, '— pick model —', models);
       elModel.disabled = false;
+      emitCascadeStep('make', make);
       writeUrlState(state);
     }
 
@@ -715,6 +727,7 @@
       trims.sort();
       fillSelect(elTrim, '— pick trim —', trims);
       elTrim.disabled = false;
+      emitCascadeStep('model', model);
       writeUrlState(state);
     }
 
@@ -760,6 +773,7 @@
         elOem.disabled = false;
         elOemWrap.hidden = false;
       }
+      emitCascadeStep('trim', trim);
       writeUrlState(state);
     }
 
@@ -769,6 +783,7 @@
       if (!size) { resetMatch(); writeUrlState(state); return; }
       showVehMatch(size);
       elSubmitVeh.disabled = false;
+      emitCascadeStep('oem', size);
       writeUrlState(state);
     }
 
