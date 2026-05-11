@@ -519,6 +519,12 @@
     });
     $('[data-pt-ts-submit-size]').addEventListener('click', function () {
       if (this.disabled) return;
+      track('tire_search_submit', {
+        tab:    'size',
+        width:  state.size.width,
+        aspect: state.size.aspect,
+        rim:    state.size.rim
+      });
       window.location.href = buildCollectionUrl(state.size.width, state.size.aspect, state.size.rim);
     });
 
@@ -848,6 +854,17 @@
       var size = state.veh.oemPick;
       var p = parseSize(size);
       if (!p) return;
+      track('tire_search_submit', {
+        tab:    'vehicle',
+        width:  p.width,
+        aspect: p.aspect,
+        rim:    p.rim,
+        year:   state.veh.year  || '',
+        make:   state.veh.make  || '',
+        model:  state.veh.model || '',
+        trim:   state.veh.trim  || '',
+        is_staggered: !!state.veh.isStaggered
+      });
       // Save vehicle for the install path to pre-fill
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
