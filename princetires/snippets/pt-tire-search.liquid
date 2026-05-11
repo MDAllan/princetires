@@ -470,6 +470,38 @@
   }
 
   var URL_PREFIX = 'ts_';
+  var FILTER_STORAGE_KEY = 'pt-tire-search-filters';
+  var WINTER_AUTO_START_MONTH = 9; // October (0-indexed)
+  var WINTER_AUTO_START_DAY = 15;
+  var WINTER_AUTO_END_MONTH = 10;  // November (0-indexed)
+  var WINTER_AUTO_END_DAY = 15;
+
+  function isWinterAutoWindow(now) {
+    now = now || new Date();
+    var m = now.getMonth();
+    var d = now.getDate();
+    if (m === WINTER_AUTO_START_MONTH && d >= WINTER_AUTO_START_DAY) return true;
+    if (m === WINTER_AUTO_END_MONTH && d <= WINTER_AUTO_END_DAY) return true;
+    return false;
+  }
+
+  function readFilterPrefs() {
+    try {
+      var raw = localStorage.getItem(FILTER_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { season: isWinterAutoWindow() ? 'Winter' : '', inStock: true };
+  }
+
+  function writeFilterPrefs(prefs) {
+    try {
+      localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
+        season:  prefs.season || '',
+        inStock: !!prefs.inStock,
+        savedAt: new Date().toISOString()
+      }));
+    } catch (e) {}
+  }
 
   function readUrlState() {
     var p = new URLSearchParams(window.location.search);
@@ -528,6 +560,7 @@
       tab: 'size',
       size: { width: '', aspect: '', rim: '' },
       veh:  { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false },
+      filters: readFilterPrefs(),
       yearData: null
     };
 
