@@ -481,6 +481,7 @@
       btn.addEventListener('click', function () { switchTab(this.dataset.ptTsTab); });
     });
     function switchTab(tab) {
+      var fromTab = state.tab;
       state.tab = tab;
       $$('[data-pt-ts-tab]').forEach(function (b) {
         var on = b.dataset.ptTsTab === tab;
@@ -491,6 +492,7 @@
         p.hidden = p.dataset.ptTsPanel !== tab;
       });
       writeUrlState(state);
+      if (fromTab !== tab) track('tire_search_tab_switch', { from: fromTab || '', to: tab });
     }
 
     // ── Tab A: by size ──
