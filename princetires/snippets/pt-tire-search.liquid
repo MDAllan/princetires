@@ -586,6 +586,39 @@
       if (fromTab !== tab) track('tire_search_tab_switch', { from: fromTab || '', to: tab });
     }
 
+    // ── Season + in-stock filters ──
+    function syncSeasonUI() {
+      $$('[data-pt-ts-season]').forEach(function (btn) {
+        var active = btn.dataset.ptTsSeason === state.filters.season;
+        btn.classList.toggle('pt-ts__season--active', active);
+        btn.setAttribute('aria-checked', active ? 'true' : 'false');
+      });
+    }
+    function syncInStockUI() {
+      var box = $('[data-pt-ts-instock]');
+      if (box) box.checked = !!state.filters.inStock;
+    }
+    syncSeasonUI();
+    syncInStockUI();
+
+    $$('[data-pt-ts-season]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.filters.season = this.dataset.ptTsSeason || '';
+        writeFilterPrefs(state.filters);
+        syncSeasonUI();
+        track('tire_search_filter_change', { field: 'season', value: state.filters.season });
+      });
+    });
+
+    var elInStock = $('[data-pt-ts-instock]');
+    if (elInStock) {
+      elInStock.addEventListener('change', function () {
+        state.filters.inStock = !!this.checked;
+        writeFilterPrefs(state.filters);
+        track('tire_search_filter_change', { field: 'inStock', value: String(state.filters.inStock) });
+      });
+    }
+
     // ── Tab A: by size ──
     function readSizeForm() {
       state.size.width = ($('[data-pt-ts-width]') || {}).value || '';
