@@ -1,3 +1,45 @@
+{%- comment -%}
+  Auto-defaults on first visit: cheapest-first sort + seasonal pre-filter.
+  - Oct → Feb: pre-select Winter
+  - Mar → Sep: pre-select All-Season + All-Weather
+  Skipped on already-seasonal collections (e.g. /collections/winter-tires) where
+  re-filtering would be redundant.
+{%- endcomment -%}
+<script>
+(function () {
+  if (window.__ptCollSeed) return;
+  window.__ptCollSeed = true;
+  var SEASONAL = { 'tires': 1, 'imported-tires': 1 }; // collections that span all seasons
+  var handle = {{ collection.handle | json }};
+  if (!SEASONAL[handle]) return;
+
+  var qs = new URLSearchParams(window.location.search);
+  var hasSort = qs.has('sort_by');
+  var hasSeason = false;
+  qs.forEach(function (_v, k) { if (k === 'filter.p.m.custom.seasonality') hasSeason = true; });
+  if (hasSort && hasSeason) return;
+
+  var changed = false;
+  if (!hasSort) { qs.set('sort_by', 'price-ascending'); changed = true; }
+  if (!hasSeason) {
+    var m = new Date().getMonth(); // 0 = Jan
+    if (m >= 9 || m <= 1) {
+      // Oct, Nov, Dec, Jan, Feb → Winter
+      qs.set('filter.p.m.custom.seasonality', 'Winter');
+      changed = true;
+    } else if (m >= 2 && m <= 8) {
+      // Mar → Sep → All-Season + All-Weather
+      qs.append('filter.p.m.custom.seasonality', 'All-Season');
+      qs.append('filter.p.m.custom.seasonality', 'All-Weather');
+      changed = true;
+    }
+  }
+  if (changed) {
+    window.location.replace(window.location.pathname + '?' + qs.toString());
+  }
+})();
+</script>
+
 {%- comment -%} Smart search config for collection page {%- endcomment -%}
 <script data-smart-search-config type="application/json">
 {
@@ -453,11 +495,14 @@
                         endif
                       endif
                     -%}
+                    {%- capture grid_supplier_tier -%}{% render 'pt-supplier-tier', product: product %}{%- endcapture -%}
                     <button type="button" class="ptg__card-book"
                       data-tire-name="{{ product.title | escape }}"
                       data-tire-size="{{ product.metafields.custom.tire_size | default: '' | escape }}"
                       data-vehicle-type="{{ grid_vtype }}"
                       data-tire-price="{{ product.selected_or_first_available_variant.price }}"
+                      data-supplier-tier="{{ grid_supplier_tier | strip }}"
+                      data-product-handle="{{ product.handle }}"
                       onclick="event.preventDefault();event.stopPropagation();if(typeof openBookingModal==='function')openBookingModal(this)">Book Install</button>
                     <button type="button" class="ptg__card-cart"
                       data-variant="{{ product.selected_or_first_available_variant.id }}"
@@ -502,6 +547,37 @@
             <p>No products found.</p>
             <a href="{{ routes.collections_url }}/tires">Browse all tires →</a>
           </div>
+          {%- if settings.missing_vehicle_webhook_url != blank -%}
+          <script>
+            (function () {
+              try {
+                var params = new URLSearchParams(window.location.search);
+                var w = params.get('filter.p.m.custom.tire_width');
+                var a = params.get('filter.p.m.custom.tire_profile');
+                var r = params.get('filter.p.m.custom.rim_diameter');
+                if (!w && !a && !r) return; // only fire when the user came in with size filters
+                var sizeStr = (w || '?') + '/' + (a || '?') + 'R' + (r || '?');
+                var dedupKey = '__pt_empty_' + sizeStr;
+                if (sessionStorage.getItem(dedupKey)) return;
+                sessionStorage.setItem(dedupKey, '1');
+                fetch({{ settings.missing_vehicle_webhook_url | json }}, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                  body: JSON.stringify({
+                    vehicle:    'OUT OF STOCK: ' + sizeStr,
+                    year:       '',
+                    make:       '',
+                    model:      '',
+                    trim:       '',
+                    page_url:   window.location.href,
+                    user_agent: navigator.userAgent,
+                    timestamp:  new Date().toISOString()
+                  })
+                }).catch(function () { /* best-effort */ });
+              } catch (e) { /* never break the page */ }
+            })();
+          </script>
+          {%- endif -%}
         {%- endif -%}
       </div>
 
