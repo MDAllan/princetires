@@ -1048,9 +1048,30 @@
 
     elSubmitVeh.addEventListener('click', function () {
       if (this.disabled) return;
-      var size = state.veh.oemPick;
-      var p = parseSize(size);
-      if (!p) return;
+
+      var url, p;
+      if (state.veh.isStaggered) {
+        if (state.veh.staggeredPick === 'rear') {
+          p = parseSize(state.veh.staggeredRear);
+          if (!p) return;
+          url = buildCollectionUrl(p.width, p.aspect, p.rim);
+        } else if (state.veh.staggeredPick === 'both') {
+          url = buildStaggeredCollectionUrl(state.veh.staggeredFront, state.veh.staggeredRear);
+          if (!url) return;
+          p = parseSize(state.veh.staggeredFront);
+          if (!p) return;
+        } else {
+          // 'front' (default)
+          p = parseSize(state.veh.staggeredFront || state.veh.oemPick);
+          if (!p) return;
+          url = buildCollectionUrl(p.width, p.aspect, p.rim);
+        }
+      } else {
+        p = parseSize(state.veh.oemPick);
+        if (!p) return;
+        url = buildCollectionUrl(p.width, p.aspect, p.rim);
+      }
+
       track('tire_search_submit', {
         tab:    'vehicle',
         width:  p.width,
@@ -1060,21 +1081,21 @@
         make:   state.veh.make  || '',
         model:  state.veh.model || '',
         trim:   state.veh.trim  || '',
-        is_staggered: !!state.veh.isStaggered
+        is_staggered:    !!state.veh.isStaggered,
+        staggered_pick:  state.veh.isStaggered ? (state.veh.staggeredPick || 'front') : ''
       });
-      // Save vehicle for the install path to pre-fill
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           year: state.veh.year,
           make: state.veh.make,
           model: state.veh.model,
           trim: state.veh.trim,
-          tireSize: size,
+          tireSize: state.veh.oemPick,
           isStaggered: state.veh.isStaggered,
           savedAt: new Date().toISOString()
         }));
       } catch (e) {}
-      window.location.href = buildCollectionUrl(p.width, p.aspect, p.rim);
+      window.location.href = url;
     });
 
     $$('[data-pt-ts-clear]').forEach(function (btn) {
@@ -1144,6 +1165,26 @@
       qs.set('filter.p.m.custom.tire_width', w);
       qs.set('filter.p.m.custom.tire_profile', a);
       qs.set('filter.p.m.custom.rim_diameter', r);
+      var seasons = (state.filters && state.filters.seasons) || [];
+      seasons.forEach(function (s) {
+        if (s === 'Summer' || s === 'Winter' || s === 'All-Season' || s === 'All-Weather') {
+          qs.append('filter.p.m.custom.seasonality', s);
+        }
+      });
+      if (state.filters && state.filters.inStock) {
+        qs.set('filter.v.availability', '1');
+      }
+      return '/collections/' + collectionHandle + '?' + qs.toString();
+    }
+    function buildStaggeredCollectionUrl(frontRaw, rearRaw) {
+      // Both share aspect (we only render "Shop both" when aspects match).
+      var pf = parseSize(frontRaw), pr = parseSize(rearRaw);
+      if (!pf || !pr) return '';
+      var qs = new URLSearchParams();
+      qs.append('filter.p.m.custom.tire_width', pf.width);
+      qs.append('filter.p.m.custom.tire_width', pr.width);
+      qs.set('filter.p.m.custom.tire_profile', pf.aspect);
+      qs.set('filter.p.m.custom.rim_diameter', pf.rim);
       var seasons = (state.filters && state.filters.seasons) || [];
       seasons.forEach(function (s) {
         if (s === 'Summer' || s === 'Winter' || s === 'All-Season' || s === 'All-Weather') {
