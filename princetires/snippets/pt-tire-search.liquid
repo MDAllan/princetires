@@ -69,10 +69,13 @@
       </label>
     </div>
     <p class="pt-ts__match" data-pt-ts-size-match aria-live="polite"></p>
-    <button type="button" class="pt-ts__btn" data-pt-ts-submit-size disabled>
-      Show me tires
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-    </button>
+    <div class="pt-ts__actions">
+      <button type="button" class="pt-ts__btn" data-pt-ts-submit-size disabled>
+        Show me tires
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <button type="button" class="pt-ts__btn pt-ts__btn--secondary" data-pt-ts-clear="size">Clear</button>
+    </div>
   </div>
 
   {%- comment -%} Tab B — by vehicle {%- endcomment -%}
@@ -130,10 +133,13 @@
     <p class="pt-ts__loading" data-pt-ts-loading hidden>Loading vehicles…</p>
     <p class="pt-ts__error" data-pt-ts-error hidden></p>
 
-    <button type="button" class="pt-ts__btn" data-pt-ts-submit-veh disabled>
-      Show me tires
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-    </button>
+    <div class="pt-ts__actions">
+      <button type="button" class="pt-ts__btn" data-pt-ts-submit-veh disabled>
+        Show me tires
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <button type="button" class="pt-ts__btn pt-ts__btn--secondary" data-pt-ts-clear="vehicle">Clear</button>
+    </div>
 
     <p class="pt-ts__help">
       Don't see your vehicle? <a href="#" data-pt-ts-flip-to-size>Search by tire size →</a> or give us a call at <a href="tel:{{ shop_phone_dial }}">{{ shop_phone_display }}</a>.
@@ -276,6 +282,21 @@
 .pt-ts__btn:hover:not(:disabled) { background: #b91c1c; }
 .pt-ts__btn:active:not(:disabled) { transform: translateY(1px); }
 .pt-ts__btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+
+.pt-ts__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.pt-ts__btn--secondary {
+  background: transparent;
+  color: #6b7280;
+  border: 1.5px solid #e5e7eb;
+}
+.pt-ts__btn--secondary:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #111;
+}
 
 .pt-ts__help {
   margin: 0.8rem 0 0;
@@ -624,6 +645,40 @@
       } catch (e) {}
       window.location.href = buildCollectionUrl(p.width, p.aspect, p.rim);
     });
+
+    $$('[data-pt-ts-clear]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var which = this.dataset.ptTsClear;
+        if (which === 'size') clearSizeTab();
+        if (which === 'vehicle') clearVehicleTab();
+      });
+    });
+
+    function clearSizeTab() {
+      state.size.width = state.size.aspect = state.size.rim = '';
+      ['width','aspect','rim'].forEach(function (k) {
+        var el = $('[data-pt-ts-' + k + ']');
+        if (el) el.value = '';
+      });
+      $('[data-pt-ts-submit-size]').disabled = true;
+      $('[data-pt-ts-size-match]').textContent = '';
+      writeUrlState(state);
+    }
+
+    function clearVehicleTab() {
+      state.veh = { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false };
+      state.yearData = null;
+      elYear.value = '';
+      resetSelect(elMake, ['—']); elMake.disabled = true;
+      resetSelect(elModel, ['—']); elModel.disabled = true;
+      resetSelect(elTrim, ['—']); elTrim.disabled = true;
+      elOemWrap.hidden = true; resetSelect(elOem, ['—']); elOem.disabled = true;
+      elMatch.hidden = true;
+      $('[data-pt-ts-veh-stagger]').hidden = true;
+      elSubmitVeh.disabled = true;
+      showError('');
+      writeUrlState(state);
+    }
 
     // ── Helpers ──
     function fillSelect(el, placeholder, options) {
