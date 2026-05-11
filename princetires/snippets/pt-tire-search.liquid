@@ -432,6 +432,7 @@
     async function onYearChange(year) {
       state.veh.year = year;
       state.veh.make = state.veh.model = state.veh.trim = state.veh.oemPick = '';
+      state.veh.oem = '';
       state.veh.oemSizes = []; state.veh.isStaggered = false;
       resetSelect(elMake, ['—']); elMake.disabled = true;
       resetSelect(elModel, ['—']); elModel.disabled = true;
@@ -439,6 +440,7 @@
       elOemWrap.hidden = true; resetSelect(elOem, ['—']); elOem.disabled = true;
       resetMatch();
       showError('');
+      writeUrlState(state);
       if (!year) return;
 
       elLoad.hidden = false;
@@ -456,51 +458,59 @@
       } finally {
         elLoad.hidden = true;
       }
+      writeUrlState(state);
     }
 
     function onMakeChange(make) {
       state.veh.make = make;
       state.veh.model = state.veh.trim = state.veh.oemPick = '';
+      state.veh.oem = '';
       state.veh.oemSizes = []; state.veh.isStaggered = false;
       resetSelect(elModel, ['—']); elModel.disabled = true;
       resetSelect(elTrim, ['—']);  elTrim.disabled = true;
       elOemWrap.hidden = true; resetSelect(elOem, ['—']); elOem.disabled = true;
       resetMatch();
-      if (!make || !state.yearData) return;
+      if (!make || !state.yearData) { writeUrlState(state); return; }
       var models = Object.keys((state.yearData.models || {})[make] || {});
       models.sort();
       fillSelect(elModel, '— pick model —', models);
       elModel.disabled = false;
+      writeUrlState(state);
     }
 
     function onModelChange(model) {
       state.veh.model = model;
       state.veh.trim = state.veh.oemPick = '';
+      state.veh.oem = '';
       state.veh.oemSizes = []; state.veh.isStaggered = false;
       resetSelect(elTrim, ['—']); elTrim.disabled = true;
       elOemWrap.hidden = true; resetSelect(elOem, ['—']); elOem.disabled = true;
       resetMatch();
-      if (!model || !state.yearData) return;
+      if (!model || !state.yearData) { writeUrlState(state); return; }
       var trims = Object.keys(((state.yearData.models || {})[state.veh.make] || {})[model] || {});
       trims.sort();
       fillSelect(elTrim, '— pick trim —', trims);
       elTrim.disabled = false;
+      writeUrlState(state);
     }
 
     function onTrimChange(trim) {
       state.veh.trim = trim;
       state.veh.oemPick = '';
+      state.veh.oem = '';
       state.veh.oemSizes = []; state.veh.isStaggered = false;
       elOemWrap.hidden = true; resetSelect(elOem, ['—']); elOem.disabled = true;
       resetMatch();
-      if (!trim || !state.yearData) return;
+      if (!trim || !state.yearData) { writeUrlState(state); return; }
       var sizes = ((state.yearData.models || {})[state.veh.make] || {})[state.veh.model][trim];
-      if (!sizes || !sizes.length) { showError("We don't have OEM size data for that trim. Try search by size."); return; }
+      if (!sizes || !sizes.length) { showError("We don't have OEM size data for that trim. Try search by size."); writeUrlState(state); return; }
 
       if (sizes.length === 1) {
         state.veh.oemPick = sizes[0];
+        state.veh.oem = sizes[0];
         showVehMatch(sizes[0]);
         elSubmitVeh.disabled = false;
+        writeUrlState(state);
         return;
       }
 
@@ -516,6 +526,7 @@
         var front = parsed[0].width <= parsed[1].width ? parsed[0] : parsed[1];
         var rear  = parsed[0].width <= parsed[1].width ? parsed[1] : parsed[0];
         state.veh.oemPick = front.raw;
+        state.veh.oem = front.raw;
         showStaggerMatch(front.raw, rear.raw);
         elSubmitVeh.disabled = false;
       } else {
@@ -525,13 +536,16 @@
         elOem.disabled = false;
         elOemWrap.hidden = false;
       }
+      writeUrlState(state);
     }
 
     function onOemPick(size) {
       state.veh.oemPick = size;
-      if (!size) { resetMatch(); return; }
+      state.veh.oem = size; // mirror for URL state
+      if (!size) { resetMatch(); writeUrlState(state); return; }
       showVehMatch(size);
       elSubmitVeh.disabled = false;
+      writeUrlState(state);
     }
 
     function showVehMatch(size) {
