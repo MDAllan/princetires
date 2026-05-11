@@ -74,7 +74,8 @@ test('4. buildCollectionUrl includes season + availability params on submit', as
   expect(target).toContain('filter.v.availability=1');
 });
 
-test('5. "All-season" UI option appends BOTH All-Season and All-Weather metafield values', async ({ page }) => {
+test('5. All-Season and All-Weather are independent options, each mapping to its own metafield value', async ({ page }) => {
+  // Part 1: All-Season → only All-Season filter
   await page.goto(BASE);
   await page.evaluate(() => localStorage.removeItem('pt-tire-search-filters'));
   await openWidget(page);
@@ -92,7 +93,26 @@ test('5. "All-season" UI option appends BOTH All-Season and All-Weather metafiel
   await page.waitForTimeout(500);
 
   expect(target).toContain('filter.p.m.custom.seasonality=All-Season');
-  expect(target).toContain('filter.p.m.custom.seasonality=All-Weather');
+  expect(target).not.toContain('seasonality=All-Weather');
+
+  // Part 2: All-Weather → only All-Weather filter
+  await page.goto(BASE);
+  await page.evaluate(() => localStorage.removeItem('pt-tire-search-filters'));
+  await openWidget(page);
+
+  await page.locator('[data-pt-ts-season="All-Weather"]').click();
+  await page.locator('[data-pt-ts-width]').selectOption('225');
+  await page.locator('[data-pt-ts-aspect]').selectOption('45');
+  await page.locator('[data-pt-ts-rim]').selectOption('17');
+
+  let target2 = '';
+  page.on('request', req => { if (req.url().includes('/collections/tires')) target2 = req.url(); });
+
+  await page.locator('[data-pt-ts-submit-size]').click();
+  await page.waitForTimeout(500);
+
+  expect(target2).toContain('filter.p.m.custom.seasonality=All-Weather');
+  expect(target2).not.toContain('seasonality=All-Season&');
 });
 
 test('6. Any season + in-stock OFF produces a URL with neither filter', async ({ page }) => {
