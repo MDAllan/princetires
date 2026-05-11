@@ -662,17 +662,23 @@
       if (!year) return;
 
       elLoad.hidden = false;
+      var startedAt = performance.now();
+      var fetchStatus = null;
       try {
         var url = assetBase + 'pt-vehicle-' + year + '.json' + (assetVersion ? '?' + assetVersion : '');
         var r = await fetch(url, { cache: 'force-cache' });
+        fetchStatus = r.status;
         if (!r.ok) throw new Error('HTTP ' + r.status);
         state.yearData = await r.json();
         var makes = state.yearData.makes || Object.keys(state.yearData.models || {});
         makes.sort();
         fillSelect(elMake, '— pick make —', makes);
         elMake.disabled = false;
+        track('tire_search_year_load', { year: year, success: true, latency_ms: Math.round(performance.now() - startedAt) });
       } catch (err) {
         showError("Couldn't load vehicle data for " + year + '. Try another year or search by size.');
+        track('tire_search_year_load', { year: year, success: false, latency_ms: Math.round(performance.now() - startedAt) });
+        track('tire_search_error', { year: year, status: fetchStatus || 0 });
       } finally {
         elLoad.hidden = true;
       }
