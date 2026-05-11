@@ -1067,6 +1067,16 @@
       qs.set('filter.p.m.custom.tire_width', w);
       qs.set('filter.p.m.custom.tire_profile', a);
       qs.set('filter.p.m.custom.rim_diameter', r);
+      var season = state.filters && state.filters.season;
+      if (season === 'Summer' || season === 'Winter') {
+        qs.append('filter.p.m.custom.seasonality', season);
+      } else if (season === 'All-Season') {
+        qs.append('filter.p.m.custom.seasonality', 'All-Season');
+        qs.append('filter.p.m.custom.seasonality', 'All-Weather');
+      }
+      if (state.filters && state.filters.inStock) {
+        qs.set('filter.v.availability', '1');
+      }
       return '/collections/' + collectionHandle + '?' + qs.toString();
     }
     function escapeHtml(s) {
