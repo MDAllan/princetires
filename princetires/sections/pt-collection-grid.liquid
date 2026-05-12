@@ -155,7 +155,7 @@
             </a>
             <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.service_type" data-filter-value="ST">
               <span class="ptg__filter-check"></span>
-              Trailer <span class="ptg__filter-symbol">(C)</span>
+              Trailer <span class="ptg__filter-symbol">(ST)</span>
             </a>
           </div>
         </details>
@@ -167,14 +167,37 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
           </summary>
           <div class="ptg__filter-options ptg__filter-options--scroll">
-            {%- assign brand_list = 'BFGoodrich,Bridgestone,CARLSTAR,Continental,Cooper,Falken,Farroad,Firemax,Firestone,Fortune,General,Goodyear,Haida,Kumho,Linglong,Michelin,Mickey Thompson,Pirelli,Radar,Rotalla,Tesche,Toyo,Uniroyal,Yeada,Yokohama' | split: ',' -%}
-            {%- for brand in brand_list -%}
-              <a href="#" class="ptg__filter-link" data-filter-key="filter.p.vendor" data-filter-value="{{ brand }}">
-                <span class="ptg__filter-check"></span>
-                {{ brand }}
-                <span class="ptg__filter-cnt" data-filter-cnt="vendor:{{ brand | handleize }}"></span>
-              </a>
+            {%- comment -%}
+              Pulled from collection.filters (Shopify's native filter facet) so
+              every stocked vendor appears, with live product counts.
+              Falls back to a hardcoded list if the native filter isn't
+              available (e.g. on /search results or a metaobject page).
+            {%- endcomment -%}
+            {%- assign vendor_filter = blank -%}
+            {%- for f in collection.filters -%}
+              {%- if f.param_name == 'filter.p.vendor' -%}
+                {%- assign vendor_filter = f -%}
+                {%- break -%}
+              {%- endif -%}
             {%- endfor -%}
+            {%- if vendor_filter != blank -%}
+              {%- for v in vendor_filter.values -%}
+                <a href="#" class="ptg__filter-link" data-filter-key="filter.p.vendor" data-filter-value="{{ v.label | escape }}">
+                  <span class="ptg__filter-check"></span>
+                  {{ v.label }}
+                  <span class="ptg__filter-cnt" data-filter-cnt="vendor:{{ v.label | handleize }}">({{ v.count }})</span>
+                </a>
+              {%- endfor -%}
+            {%- else -%}
+              {%- assign brand_list = 'BFGoodrich,Bridgestone,CARLSTAR,Continental,Cooper,Falken,Farroad,Firemax,Firestone,Fortune,General,Goodyear,Haida,Kumho,Linglong,Michelin,Mickey Thompson,Pirelli,Radar,Rotalla,Tesche,Toyo,Uniroyal,Yeada,Yokohama' | split: ',' -%}
+              {%- for brand in brand_list -%}
+                <a href="#" class="ptg__filter-link" data-filter-key="filter.p.vendor" data-filter-value="{{ brand }}">
+                  <span class="ptg__filter-check"></span>
+                  {{ brand }}
+                  <span class="ptg__filter-cnt" data-filter-cnt="vendor:{{ brand | handleize }}"></span>
+                </a>
+              {%- endfor -%}
+            {%- endif -%}
           </div>
         </details>
 
@@ -205,7 +228,7 @@
           <div class="ptg__filter-options ptg__filter-options--wrap">
             {%- assign rims = '13,14,15,16,17,18,19,20,22,24' | split: ',' -%}
             {%- for r in rims -%}
-              <a href="{{ collection.url }}?filter.p.m.custom.rim_diameter={{ r }}{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}" class="ptg__filter-pill">{{ r }}"</a>
+              <a href="#" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.rim_diameter" data-filter-set-value="{{ r }}">{{ r }}"</a>
             {%- endfor -%}
           </div>
         </details>
@@ -217,8 +240,8 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
           </summary>
           <div class="ptg__filter-options">
-            <a href="{{ collection.url }}?filter.v.availability=1{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}" class="ptg__filter-link">In stock</a>
-            <a href="{{ collection.url }}?filter.v.availability=0{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}" class="ptg__filter-link">Out of stock</a>
+            <a href="#" class="ptg__filter-link" data-filter-set-key="filter.v.availability" data-filter-set-value="1">In stock</a>
+            <a href="#" class="ptg__filter-link" data-filter-set-key="filter.v.availability" data-filter-set-value="0">Out of stock</a>
           </div>
         </details>
 
@@ -292,6 +315,7 @@
               <select id="ptg-sort" class="ptg__sort-select" data-ptg-sort>
                 <option value="manual" {% if sort_by == 'manual' %}selected{% endif %}>Featured</option>
                 <option value="best-selling" {% if sort_by == 'best-selling' %}selected{% endif %}>Best selling</option>
+                <option value="created-descending" {% if sort_by == 'created-descending' %}selected{% endif %}>Newest</option>
                 <option value="price-ascending" {% if sort_by == 'price-ascending' %}selected{% endif %}>Price ↑</option>
                 <option value="price-descending" {% if sort_by == 'price-descending' %}selected{% endif %}>Price ↓</option>
               </select>
@@ -300,7 +324,7 @@
           </div>
         </div>
 
-        <div class="ptg__results" data-ptg-result-count style="display:none">
+        <div class="ptg__results" data-ptg-result-count>
           Showing <span class="ptg__results-count">{{ collection.products_count }}</span> tires
           <span class="ptg__results-size" data-results-size hidden>for <strong data-results-size-val></strong></span>
         </div>
@@ -363,7 +387,7 @@
                   endif
                 endfor
               -%}
-              <a href="{{ product.url }}" class="ptg__card" data-vendor="{{ product.vendor | handleize }}" data-season="{{ season_tag | handleize }}" data-type="{{ product.type | downcase }}" data-price="{{ product.price | money_without_currency | strip_html | strip }}" data-tire-size="{{ tire_size_display }}" data-product-title="{{ card_title | escape }}">
+              <a href="{{ product.url }}" class="ptg__card{% unless product.available %} ptg__card--unavailable{% endunless %}" data-vendor="{{ product.vendor | handleize }}" data-season="{{ season_tag | handleize }}" data-type="{{ product.type | downcase }}" data-price="{{ product.price | money_without_currency | strip_html | strip }}" data-tire-size="{{ tire_size_display }}" data-product-title="{{ card_title | escape }}"{% unless product.available %} aria-label="Out of stock — {{ card_title | escape }}"{% endunless %}>
                 <div class="ptg__card-img">
                   {%- if product.featured_image -%}
                     {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'ptg__img', loading: 'lazy' }}
@@ -372,6 +396,9 @@
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
                     </div>
                   {%- endif -%}
+                  {%- unless product.available -%}
+                    <span class="ptg__card-oos">Out of stock</span>
+                  {%- endunless -%}
                   {%- if product.compare_at_price > product.price -%}
                     <span class="ptg__card-sale">Sale</span>
                   {%- endif -%}
@@ -1401,6 +1428,25 @@
 
   .ptg__card-ph { display: flex; align-items: center; justify-content: center; }
 
+  .ptg__card--unavailable { opacity: 0.55; }
+  .ptg__card--unavailable .ptg__img { filter: grayscale(80%); }
+  .ptg__card-oos {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(17, 24, 39, 0.85);
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.3rem 0.7rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    pointer-events: none;
+    z-index: 2;
+  }
   .ptg__card-sale {
     position: absolute;
     top: 0.6rem;
@@ -2151,6 +2197,24 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+
+  /* ── Filter pills with [data-filter-set-key] preserve all active filters ──
+     Set the named filter to the named value (or delete it if no value),
+     keep every other URL param intact, then navigate. */
+  document.addEventListener('click', function (e) {
+    var pill = e.target.closest('[data-filter-set-key]');
+    if (!pill) return;
+    e.preventDefault();
+    var key = pill.dataset.filterSetKey;
+    var val = pill.dataset.filterSetValue;
+    var qs = new URLSearchParams(window.location.search);
+    if (val === undefined || val === '') {
+      qs.delete(key);
+    } else {
+      qs.set(key, val);
+    }
+    window.location.href = window.location.pathname + (qs.toString() ? '?' + qs.toString() : '');
+  });
 
   /* ── Typewriter placeholder ── */
   (function() {
