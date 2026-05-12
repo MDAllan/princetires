@@ -16,7 +16,14 @@
   var qs = new URLSearchParams(window.location.search);
   var hasSort = qs.has('sort_by');
   var hasSeason = false;
-  qs.forEach(function (_v, k) { if (k === 'filter.p.m.custom.seasonality') hasSeason = true; });
+  var hasUserFilter = false;
+  qs.forEach(function (_v, k) {
+    if (k === 'filter.p.m.custom.seasonality') hasSeason = true;
+    if (k.indexOf('filter.') === 0) hasUserFilter = true;
+  });
+  // If the user arrived with any explicit filter (size, vendor, rim, etc.),
+  // respect their intent — don't override their season choice (including "Any season").
+  if (hasUserFilter) return;
   if (hasSort && hasSeason) return;
 
   var changed = false;
