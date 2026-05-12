@@ -1209,6 +1209,18 @@ document.addEventListener('DOMContentLoaded', function() {
       var euro = query.match(/(?:^|[\s,])(\d{3})[A-Za-z]?[Rr](\d{2})[A-Za-z]?(?:\s|$|,)/);
       if (euro) return { width: euro[1], aspect: '', rim: euro[2], size: euro[1] + 'R' + euro[2] };
 
+      /* 7-digit compact embedded in text (e.g. "2055515 cooper tires") */
+      var dmOrig = query.match(/\b(\d{3})(\d{2})(\d{2})\b/);
+      if (dmOrig) return { width: dmOrig[1], aspect: dmOrig[2], rim: dmOrig[3], size: dmOrig[1] + '/' + dmOrig[2] + 'R' + dmOrig[3] };
+
+      /* 8-digit compressed flotation embedded in text (e.g. "33125020 lt") */
+      var fdmOrig = query.match(/\b(\d{2})(\d{2})(\d{2})(\d{2})\b/);
+      if (fdmOrig) {
+        var odO = fdmOrig[1], wIntO = fdmOrig[2], wDecO = fdmOrig[3], rimO = fdmOrig[4];
+        var sectionWidthO = wIntO + '.' + wDecO;
+        return { width: odO, aspect: sectionWidthO, rim: rimO, size: odO + 'x' + sectionWidthO + 'R' + rimO, flotation: true };
+      }
+
       /* Compact digits only (also strip dots so "3512.5020" → "35125020") */
       var compact = query.replace(/[\s\/\-xXrR.]/g, '');
 

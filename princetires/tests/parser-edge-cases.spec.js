@@ -79,6 +79,18 @@ test('5b. Flotation with dot but no x: 35.12.50.20 / 3512.5020 normalize correct
   expect(url).not.toContain('tire_width=351');
 });
 
+test('5c. Compact 7-digit size + brand: "2055515 cooper tires" → size + brand filters', async ({ page }) => {
+  const targets = await searchAndCapture(page, '2055515 cooper tires');
+  expect(targets.length, 'should route to collection').toBeGreaterThan(0);
+  const url = targets[0];
+  // 2055515 → 205/55R15
+  expect(url).toContain('tire_width=205');
+  expect(url).toContain('tire_profile=55');
+  expect(url).toContain('rim_diameter=15');
+  // Brand from parseSearchIntent
+  expect(url).toContain('filter.p.vendor=Cooper');
+});
+
 test('5. Lowercase still works: 185/65r15', async ({ page }) => {
   const targets = await searchAndCapture(page, '185/65r15');
   expect(targets.length).toBeGreaterThan(0);
