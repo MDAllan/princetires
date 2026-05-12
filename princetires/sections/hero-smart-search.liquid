@@ -1104,12 +1104,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     parseSearchIntent(query) {
       const q = query.toLowerCase();
-      const intent = { season: null, brand: null };
+      const intent = { season: null, brand: null, serviceType: null, rim: null };
 
       if (q.includes('winter') || q.includes('snow') || q.includes('ice')) intent.season = 'Winter';
       else if (q.includes('all-season') || q.includes('all season') || q.includes('allseason')) intent.season = 'All-Season';
       else if (q.includes('all-weather') || q.includes('all weather')) intent.season = 'All-Weather';
       else if (q.includes('summer') || q.includes('performance')) intent.season = 'Summer';
+
+      /* Service-type intent: "trailer tires", "truck tires", "passenger tires", or standalone ST/LT/P keywords */
+      if (/\btrailer\b|\bst\s+tires?\b/i.test(query)) intent.serviceType = 'ST';
+      else if (/\btruck\s+tires?\b|\blight\s+truck\b|\blt\s+tires?\b/i.test(query)) intent.serviceType = 'LT';
+      else if (/\bpassenger\s+tires?\b|\bp.metric\b/i.test(query)) intent.serviceType = 'P';
+
+      /* Standalone rim size: "13 inch", "13in", "13"", "R13".
+         Only meaningful when no full size present; downstream code prefers size when both exist. */
+      var rimMatch = query.match(/(?:^|\s)(\d{2})\s*(?:inch|in|")|(?:^|\s)R\s*(\d{2})\b/i);
+      if (rimMatch) intent.rim = rimMatch[1] || rimMatch[2];
 
       for (const brand of this.brands) {
         var escapedBrand = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1149,8 +1159,9 @@ document.addEventListener('DOMContentLoaded', function() {
       if (params.aspect) urlParams.set('filter.p.m.custom.tire_profile',  params.aspect);
       if (params.rim)    urlParams.set('filter.p.m.custom.rim_diameter',  params.rim);
 
-      if (params.brand)  urlParams.set('filter.p.vendor',                  params.brand);
-      if (params.season) urlParams.set('filter.p.m.custom.seasonality',    params.season);
+      if (params.brand)        urlParams.set('filter.p.vendor',                params.brand);
+      if (params.season)       urlParams.set('filter.p.m.custom.seasonality',  params.season);
+      if (params.serviceType)  urlParams.set('filter.p.m.custom.service_type', params.serviceType);
 
       const qs = urlParams.toString();
       return qs ? base + '?' + qs : base;
@@ -1832,11 +1843,14 @@ document.addEventListener('DOMContentLoaded', function() {
           rim: parsed.rim,
           brand: intent.brand,
           season: intent.season,
+          serviceType: intent.serviceType,
         });
-      } else if (intent.brand || intent.season) {
+      } else if (intent.brand || intent.season || intent.serviceType || intent.rim) {
         window.location.href = this.buildCollectionUrl({
           brand: intent.brand,
           season: intent.season,
+          serviceType: intent.serviceType,
+          rim: intent.rim,
         });
       } else {
         this.showFallback(query);
