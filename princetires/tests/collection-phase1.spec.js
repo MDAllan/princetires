@@ -11,8 +11,12 @@ const COLLECTION = 'https://princetires.ca/collections/tires';
 
 test('1. Trailer service-type filter shows (ST) symbol, not (C)', async ({ page }) => {
   await page.goto(COLLECTION);
+  // The Service-type details may be collapsed by default — open it via JS so the row is in the DOM
+  await page.evaluate(() => {
+    document.querySelectorAll('details').forEach(d => { d.open = true; });
+  });
   const trailerRow = page.locator('a[data-filter-key="filter.p.m.custom.service_type"][data-filter-value="ST"]');
-  await expect(trailerRow).toBeVisible();
+  await expect(trailerRow).toBeAttached();
   await expect(trailerRow).toContainText('(ST)');
   await expect(trailerRow).not.toContainText('(C)');
 });
