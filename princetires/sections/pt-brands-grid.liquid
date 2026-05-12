@@ -108,56 +108,82 @@
           endfor
         -%}
         {%- if tier_count > 0 -%}
-          <div class="ptbg__group-head" data-reveal>
-            <span class="ptbg__group-eyebrow ptbg__group-eyebrow--{{ tier }}">{{ tier_label }}</span>
-            <h2 class="ptbg__group-title">{{ tier_label }}</h2>
-            <p class="ptbg__group-body">{{ tier_blurb }}</p>
-          </div>
-          <ul class="ptbg__grid" role="list">
-            {%- for block in section.blocks -%}
-              {%- assign b_tier = block.settings.tier | default: 'premium-adjacent' -%}
-              {%- if block.settings.brand_type != 'wheel' and b_tier == tier -%}
-                {%- liquid
-                  assign name = block.settings.name
-                  assign handle = name | handleize
-                  assign card_link = block.settings.page_link
-                  if card_link == blank
-                    assign card_link = '/collections/' | append: handle
-                  endif
-                  assign cats = block.settings.categories | split: ',' | first: 4
-                -%}
-                <li class="ptbg__card" data-reveal {{ block.shopify_attributes }}>
-                  <a href="{{ card_link }}" class="ptbg__card-link" aria-label="Shop {{ name | escape }} tires">
-                    <div class="ptbg__card-logo">
+          <section class="ptbg__tier" data-tier="{{ tier }}">
+            <div class="ptbg__group-head" data-reveal>
+              <span class="ptbg__group-eyebrow ptbg__group-eyebrow--{{ tier }}">{{ tier_label }}</span>
+              <h2 class="ptbg__group-title">{{ tier_label }}</h2>
+              <p class="ptbg__group-body">{{ tier_blurb }}</p>
+            </div>
+
+            {%- comment -%} Brand logo bar — clickable, filters the carousel below {%- endcomment -%}
+            <div class="ptbg__brand-bar" role="tablist" aria-label="{{ tier_label }} brands" data-tier-tabs data-reveal>
+              <button class="ptbg__brand-tab ptbg__brand-tab--active" type="button" role="tab" aria-selected="true" data-brand="all">All</button>
+              {%- for block in section.blocks -%}
+                {%- assign b_tier = block.settings.tier | default: 'premium-adjacent' -%}
+                {%- if block.settings.brand_type != 'wheel' and b_tier == tier -%}
+                  {%- assign b_name = block.settings.name -%}
+                  {%- assign b_handle = b_name | handleize -%}
+                  {%- assign b_link = block.settings.page_link -%}
+                  {%- if b_link == blank -%}
+                    {%- assign b_link = '/collections/' | append: b_handle -%}
+                  {%- endif -%}
+                  <button class="ptbg__brand-tab" type="button" role="tab" aria-selected="false" data-brand="{{ b_handle }}" data-href="{{ b_link }}" title="View {{ b_name | escape }}">
+                    <span class="ptbg__brand-tab-logo">
                       {%- if block.settings.logo != blank -%}
-                        {{ block.settings.logo | image_url: width: 360 | image_tag: loading: 'lazy', class: 'ptbg__logo-img', alt: name }}
+                        {{ block.settings.logo | image_url: height: 56 | image_tag: loading: 'lazy', class: 'ptbg__brand-tab-img', alt: b_name }}
                       {%- else -%}
-                        {%- assign asset_filename = 'brand-' | append: handle | append: '.webp' -%}
-                        <img src="{{ asset_filename | asset_url }}" alt="{{ name | escape }}" class="ptbg__logo-img" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                        <span class="ptbg__logo-initial" style="display:none">{{ name | slice: 0, 1 | upcase }}</span>
+                        {%- assign asset_filename = 'brand-' | append: b_handle | append: '.webp' -%}
+                        <img src="{{ asset_filename | asset_url }}" alt="{{ b_name | escape }}" class="ptbg__brand-tab-img" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+                        <span class="ptbg__brand-tab-text" style="display:none">{{ b_name | escape }}</span>
                       {%- endif -%}
-                    </div>
-                    <div class="ptbg__card-body">
-                      <h3 class="ptbg__card-name">{{ name | escape }}</h3>
-                      {%- if block.settings.tagline != blank -%}
-                        <p class="ptbg__card-tagline">{{ block.settings.tagline | escape }}</p>
-                      {%- endif -%}
-                      {%- if cats.size > 0 -%}
-                        <div class="ptbg__card-tags">
-                          {%- for c in cats -%}
-                            <span class="ptbg__tag">{{ c | strip | escape }}</span>
-                          {%- endfor -%}
-                        </div>
-                      {%- endif -%}
-                    </div>
-                    <span class="ptbg__card-arrow" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </span>
-                  </a>
-                </li>
-              {%- endif -%}
-            {%- endfor -%}
-          </ul>
+                    <span class="ptbg__brand-tab-name">{{ b_name | escape }}</span>
+                  </button>
+                {%- endif -%}
+              {%- endfor -%}
+            </div>
+
+            {%- comment -%} Tire-product carousel — pulls top products from each brand's smart collection {%- endcomment -%}
+            <div class="ptbg__products-wrap" data-reveal>
+              <button class="ptbg__products-arrow ptbg__products-arrow--prev" type="button" aria-label="Previous" data-tier-prev>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <ul class="ptbg__products" role="list" data-tier-carousel>
+                {%- for block in section.blocks -%}
+                  {%- assign b_tier = block.settings.tier | default: 'premium-adjacent' -%}
+                  {%- if block.settings.brand_type != 'wheel' and b_tier == tier -%}
+                    {%- assign b_name = block.settings.name -%}
+                    {%- assign b_handle = b_name | handleize -%}
+                    {%- assign b_collection = collections[b_handle] -%}
+                    {%- for product in b_collection.products limit: 3 -%}
+                      <li class="ptbg__product" data-brand="{{ b_handle }}">
+                        <a href="{{ product.url }}" class="ptbg__product-link" aria-label="Shop {{ product.title | escape }}">
+                          <div class="ptbg__product-img">
+                            {%- if product.featured_image != blank -%}
+                              {{ product.featured_image | image_url: width: 500 | image_tag: loading: 'lazy', class: 'ptbg__product-image', alt: product.title }}
+                            {%- else -%}
+                              <svg viewBox="0 0 24 24" width="80" height="80" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
+                            {%- endif -%}
+                          </div>
+                          <div class="ptbg__product-meta">
+                            <span class="ptbg__product-brand">{{ b_name | escape }}</span>
+                            <h3 class="ptbg__product-title">{{ product.title | remove_first: '[' | replace: ']', '' | escape }}</h3>
+                            <div class="ptbg__product-foot">
+                              <span class="ptbg__product-price">{{ product.price | money_without_trailing_zeros }}</span>
+                              <span class="ptbg__product-cta">Shop →</span>
+                            </div>
+                          </div>
+                        </a>
+                      </li>
+                    {%- endfor -%}
+                  {%- endif -%}
+                {%- endfor -%}
+              </ul>
+              <button class="ptbg__products-arrow ptbg__products-arrow--next" type="button" aria-label="Next" data-tier-next>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+              </button>
+            </div>
+          </section>
         {%- endif -%}
       {%- endfor -%}
     {%- endif -%}
@@ -553,6 +579,175 @@
   }
   .ptbg__card-link:hover .ptbg__card-arrow { transform: translate(3px, -3px); background: var(--brand-accent); color: #fff; }
 
+  /* Per-tier section (brand bar + product carousel) */
+  .ptbg__tier { margin-bottom: 5rem; }
+
+  /* Brand logo bar */
+  .ptbg__brand-bar {
+    display: flex;
+    gap: 0.6rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.6rem 0.25rem 1rem;
+    margin-bottom: 1.5rem;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(10,10,10,0.15) transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ptbg__brand-bar::-webkit-scrollbar { height: 4px; }
+  .ptbg__brand-bar::-webkit-scrollbar-thumb { background: rgba(10,10,10,0.15); border-radius: 2px; }
+  .ptbg__brand-tab {
+    flex: 0 0 auto;
+    appearance: none;
+    border: 1px solid rgba(10,10,10,0.1);
+    background: #ffffff;
+    padding: 0.6rem 1rem;
+    border-radius: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgba(10,10,10,0.78);
+    transition: border-color 0.2s, background 0.2s, color 0.2s, transform 0.2s;
+    white-space: nowrap;
+    min-height: 56px;
+  }
+  .ptbg__brand-tab:hover {
+    border-color: color-mix(in oklab, var(--brand-accent) 40%, rgba(10,10,10,0.1));
+    transform: translateY(-1px);
+  }
+  .ptbg__brand-tab--active {
+    background: var(--brand-accent);
+    border-color: var(--brand-accent);
+    color: #ffffff;
+  }
+  .ptbg__brand-tab--active:hover {
+    color: #ffffff;
+    background: var(--brand-accent);
+  }
+  .ptbg__brand-tab-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px; height: 36px;
+    flex-shrink: 0;
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 4px;
+    box-shadow: 0 0 0 1px rgba(10,10,10,0.06);
+  }
+  .ptbg__brand-tab--active .ptbg__brand-tab-logo {
+    background: #ffffff;
+  }
+  .ptbg__brand-tab-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .ptbg__brand-tab-text { font-size: 0.85rem; font-weight: 800; color: #0a0a0a; }
+  .ptbg__brand-tab-name { letter-spacing: -0.01em; }
+  /* The "All" tab has no logo box */
+  .ptbg__brand-tab[data-brand="all"] .ptbg__brand-tab-logo { display: none; }
+  .ptbg__brand-tab[data-brand="all"] { padding: 0.65rem 1.2rem; }
+
+  /* Tire products carousel */
+  .ptbg__products-wrap { position: relative; }
+  .ptbg__products-arrow {
+    appearance: none;
+    border: 1px solid rgba(10,10,10,0.1);
+    background: #ffffff;
+    color: #0a0a0a;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    position: absolute; top: 110px; transform: translateY(-50%);
+    cursor: pointer; z-index: 2;
+    box-shadow: 0 8px 18px -10px rgba(10,10,10,0.18);
+    transition: transform 0.18s, border-color 0.18s, color 0.18s;
+  }
+  .ptbg__products-arrow:hover {
+    border-color: var(--brand-accent);
+    color: var(--brand-accent);
+    transform: translateY(-50%) scale(1.06);
+  }
+  .ptbg__products-arrow:disabled { opacity: 0.3; cursor: default; transform: translateY(-50%); }
+  .ptbg__products-arrow--prev { left: -22px; }
+  .ptbg__products-arrow--next { right: -22px; }
+  @media (max-width: 1320px) {
+    .ptbg__products-arrow--prev { left: 6px; }
+    .ptbg__products-arrow--next { right: 6px; }
+  }
+  @media (max-width: 600px) { .ptbg__products-arrow { display: none; } }
+
+  .ptbg__products {
+    list-style: none; padding: 0.25rem 0.25rem 1rem; margin: 0;
+    display: flex;
+    gap: 0.9rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(10,10,10,0.15) transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ptbg__products::-webkit-scrollbar { height: 6px; }
+  .ptbg__products::-webkit-scrollbar-thumb { background: rgba(10,10,10,0.18); border-radius: 3px; }
+  .ptbg__product {
+    flex: 0 0 auto;
+    width: clamp(200px, 24%, 260px);
+    scroll-snap-align: start;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  @media (max-width: 720px) { .ptbg__product { width: 70vw; } }
+  .ptbg__product[hidden] { display: none; }
+  .ptbg__product.is-filtered-out { display: none; }
+  .ptbg__product-link {
+    display: flex; flex-direction: column;
+    height: 100%;
+    background: #ffffff;
+    border: 1px solid rgba(10,10,10,0.08);
+    border-radius: 18px;
+    text-decoration: none;
+    color: inherit;
+    overflow: hidden;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, box-shadow 0.25s;
+  }
+  .ptbg__product-link:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in oklab, var(--brand-accent) 50%, rgba(10,10,10,0.08));
+    box-shadow: 0 16px 30px -18px rgba(10,10,10,0.2);
+  }
+  .ptbg__product-img {
+    aspect-ratio: 1 / 1;
+    background: #fafafa;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1.1rem;
+    border-bottom: 1px solid rgba(10,10,10,0.05);
+  }
+  .ptbg__product-image { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .ptbg__product-meta { padding: 1rem 1.1rem 1.1rem; display: flex; flex-direction: column; gap: 0.4rem; flex: 1; }
+  .ptbg__product-brand {
+    font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brand-accent);
+  }
+  .ptbg__product-title {
+    font-size: 0.95rem; font-weight: 600;
+    color: #0a0a0a;
+    margin: 0;
+    line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .ptbg__product-foot {
+    margin-top: auto;
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 0.6rem;
+  }
+  .ptbg__product-price { font-size: 1rem; font-weight: 700; color: #0a0a0a; }
+  .ptbg__product-cta { font-size: 0.85rem; font-weight: 600; color: var(--brand-accent); }
+
   /* Calgary context cards */
   .ptbg__context {
     display: grid;
@@ -685,23 +880,78 @@
 
 {% javascript %}
   (function () {
+    // Scroll-reveal
     var els = document.querySelectorAll('.ptbg [data-reveal]');
-    if (!els.length || typeof IntersectionObserver === 'undefined') {
+    if (els.length && typeof IntersectionObserver !== 'undefined') {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-revealed');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+      els.forEach(function (el) { io.observe(el); });
+    } else {
       els.forEach(function (el) { el.classList.add('is-revealed'); });
-      return;
     }
-    document.querySelectorAll('.ptbg__card').forEach(function (el, i) {
-      el.style.setProperty('--idx', i);
-    });
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-revealed');
-          io.unobserve(entry.target);
-        }
+
+    // Per-tier brand tabs filter the tier's product carousel.
+    // Brand tabs are also clickable as nav links (data-href) if held by ctrl/cmd,
+    // but a plain click just filters. We add a separate "View brand →" affordance.
+    document.querySelectorAll('.ptbg__tier').forEach(function (tierEl) {
+      var tabs = tierEl.querySelectorAll('.ptbg__brand-tab');
+      var carousel = tierEl.querySelector('.ptbg__products');
+      var prev = tierEl.querySelector('[data-tier-prev]');
+      var next = tierEl.querySelector('[data-tier-next]');
+      if (!carousel) return;
+      var products = carousel.querySelectorAll('.ptbg__product');
+
+      function setArrowState() {
+        if (!prev || !next) return;
+        var maxScroll = carousel.scrollWidth - carousel.clientWidth;
+        prev.disabled = carousel.scrollLeft <= 2;
+        next.disabled = carousel.scrollLeft >= maxScroll - 2;
+      }
+      carousel.addEventListener('scroll', setArrowState, { passive: true });
+      if (prev) prev.addEventListener('click', function () {
+        var step = (carousel.querySelector('.ptbg__product:not(.is-filtered-out)') || {}).offsetWidth || 240;
+        carousel.scrollBy({ left: -(step + 16), behavior: 'smooth' });
       });
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
-    els.forEach(function (el) { io.observe(el); });
+      if (next) next.addEventListener('click', function () {
+        var step = (carousel.querySelector('.ptbg__product:not(.is-filtered-out)') || {}).offsetWidth || 240;
+        carousel.scrollBy({ left: step + 16, behavior: 'smooth' });
+      });
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function (e) {
+          // Cmd/Ctrl-click on a brand tab: open the brand page directly.
+          if ((e.metaKey || e.ctrlKey) && tab.dataset.href) {
+            window.open(tab.dataset.href, '_blank');
+            return;
+          }
+          // Double-click: go to the brand page.
+          // (single click just filters)
+          var brand = tab.dataset.brand;
+          tabs.forEach(function (t) {
+            var on = (t === tab);
+            t.classList.toggle('ptbg__brand-tab--active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+          });
+          products.forEach(function (p) {
+            var match = (brand === 'all' || p.dataset.brand === brand);
+            p.classList.toggle('is-filtered-out', !match);
+          });
+          carousel.scrollTo({ left: 0, behavior: 'smooth' });
+          setTimeout(setArrowState, 350);
+        });
+        // Double-click on a brand tab: navigate to the brand's dedicated page.
+        tab.addEventListener('dblclick', function () {
+          if (tab.dataset.href) window.location.href = tab.dataset.href;
+        });
+      });
+      setArrowState();
+    });
   })();
 {% endjavascript %}
 
