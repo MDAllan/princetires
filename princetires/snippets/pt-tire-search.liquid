@@ -1175,19 +1175,26 @@
         };
       }
 
-      // Standard pattern: "225/45R17", "P215/45R17", "245/35ZR19", "LT245/75R16"
-      var std = up.match(/(\d{3})\/(\d{2,3})\s*[A-Z]?R?(\d{2})/);
+      // Standard pattern: "225/45R17", "P215/45R17", "245/35ZR19", "LT245/75R16", "205/55ZRF16"
+      // [A-Z]{0,2} before R allows speed-rating letters; [A-Z]? after R allows run-flat F.
+      var std = up.match(/(\d{3})\/(\d{2,3})\s*[A-Z]{0,2}R[A-Z]?(\d{2})/);
       if (std) {
         return { width: std[1], aspect: std[2], rim: std[3], raw: s };
+      }
+
+      // Euro-metric no-aspect: "145R12", "185R14", "185R14C"
+      var euro = up.match(/(\d{3})[A-Z]?R(\d{2})/);
+      if (euro) {
+        return { width: euro[1], aspect: '', rim: euro[2], raw: s };
       }
 
       return null;
     }
     function buildCollectionUrl(w, a, r) {
       var qs = new URLSearchParams();
-      qs.set('filter.p.m.custom.tire_width', w);
-      qs.set('filter.p.m.custom.tire_profile', a);
-      qs.set('filter.p.m.custom.rim_diameter', r);
+      if (w) qs.set('filter.p.m.custom.tire_width', w);
+      if (a) qs.set('filter.p.m.custom.tire_profile', a);
+      if (r) qs.set('filter.p.m.custom.rim_diameter', r);
       var seasons = (state.filters && state.filters.seasons) || [];
       seasons.forEach(function (s) {
         if (s === 'Summer' || s === 'Winter' || s === 'All-Season' || s === 'All-Weather') {
@@ -1204,10 +1211,10 @@
       var pf = parseSize(frontRaw), pr = parseSize(rearRaw);
       if (!pf || !pr) return '';
       var qs = new URLSearchParams();
-      qs.append('filter.p.m.custom.tire_width', pf.width);
-      qs.append('filter.p.m.custom.tire_width', pr.width);
-      qs.set('filter.p.m.custom.tire_profile', pf.aspect);
-      qs.set('filter.p.m.custom.rim_diameter', pf.rim);
+      if (pf.width) qs.append('filter.p.m.custom.tire_width', pf.width);
+      if (pr.width) qs.append('filter.p.m.custom.tire_width', pr.width);
+      if (pf.aspect) qs.set('filter.p.m.custom.tire_profile', pf.aspect);
+      if (pf.rim) qs.set('filter.p.m.custom.rim_diameter', pf.rim);
       var seasons = (state.filters && state.filters.seasons) || [];
       seasons.forEach(function (s) {
         if (s === 'Summer' || s === 'Winter' || s === 'All-Season' || s === 'All-Weather') {

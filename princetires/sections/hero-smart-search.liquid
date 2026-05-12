@@ -1032,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       this.awaitingTrim = false;
 
-      this.tireSizeRegex = /(?:^|[\s,])([Pp]?(?:[Ll][Tt]|[Ss][Tt])?\d{3}\/?\d{2,3}[Rr]\d{2}(?:\.\d)?|(?:[Ll][Tt])?\d{2}[xX\/]\d{2}\.\d{1,2}[Rr]\d{2})/;
+      this.tireSizeRegex = /(?:^|[\s,])([Pp]?(?:[Ll][Tt]|[Ss][Tt])?\d{3}\/?\d{2,3}[A-Za-z]{0,2}[Rr][A-Za-z]?\d{2}(?:\.\d)?|(?:[Ll][Tt])?\d{2}[xX\/]\d{2}\.\d{1,2}[Rr]\d{2}|\d{3}[A-Za-z]?[Rr]\d{2}[A-Za-z]?)/;
       this.brands = ['michelin','bridgestone','goodyear','continental','toyo','pirelli','falken','kumho','yokohama','firestone','cooper','bfgoodrich','bf goodrich','general','uniroyal','hankook','nitto','mickey thompson','firemax','linglong','farroad','yeada','fortune','radar','rotalla','haida','carlstar'];
 
       this.knownMakes = ['acura','alfa romeo','aston martin','audi','bmw','bentley','buick','cadillac','chevrolet','chevy','chrysler','dodge','ferrari','fiat','ford','gmc','genesis','honda','hyundai','ineos','infiniti','jaguar','jeep','karma','kia','lamborghini','land rover','lexus','lincoln','lotus','lucid','maserati','mazda','mclaren','mercedes-benz','mercedes','benz','mini','mitsubishi','nissan','polestar','porsche','ram','rivian','rolls-royce','subaru','tesla','toyota','vinfast','volkswagen','vw','volvo'];
@@ -1183,8 +1183,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     normalizeTireSize(query) {
-      /* Standard metric format: 225/65R17, P225/65R17, LT225/65R17 */
-      var m = query.match(/[Pp]?(?:[Ll][Tt]|[Ss][Tt])?(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/);
+      /* Standard metric format: 225/65R17, P225/65R17, LT225/65R17, 245/35ZR19, 205/55ZRF16
+         [A-Za-z]{0,2} before R allows speed-rating letters (Z, ZR equivalent);
+         [A-Za-z]? after R allows run-flat indicator (F → ZRF, RF). */
+      var m = query.match(/[Pp]?(?:[Ll][Tt]|[Ss][Tt])?(\d{3})\/?(\d{2,3})[A-Za-z]{0,2}[Rr][A-Za-z]?(\d{2}(?:\.\d)?)/);
       if (m) return { width: m[1], aspect: m[2], rim: m[3], size: m[1] + '/' + m[2] + 'R' + m[3] };
 
       /* Flotation/inch format: 33x12.50R20, LT33x12.50R20, 33/12.50R20
@@ -1192,8 +1194,22 @@ document.addEventListener('DOMContentLoaded', function() {
       var fi = query.match(/(?:[Ll][Tt])?(\d{2})[xX\/](\d{2}\.\d{1,2})[Rr](\d{2})/);
       if (fi) return { width: fi[1], aspect: fi[2], rim: fi[3], size: fi[1] + 'x' + fi[2] + 'R' + fi[3] };
 
-      /* Compact digits only: 2255517 (7 digits, width=3, aspect=2, rim=2) */
-      var compact = query.replace(/[\s\/\-rR]/g, '');
+      /* Euro-metric no-aspect: 145R12, 155R12C, 185R14, 185R15 (aspect implied) */
+      var euro = query.match(/(?:^|[\s,])(\d{3})[A-Za-z]?[Rr](\d{2})[A-Za-z]?(?:\s|$|,)/);
+      if (euro) return { width: euro[1], aspect: '', rim: euro[2], size: euro[1] + 'R' + euro[2] };
+
+      /* Compact digits only */
+      var compact = query.replace(/[\s\/\-xXrR]/g, '');
+
+      /* 8-digit compressed flotation: 33125020 → 33 x 12.50 R 20 (split as 2/4/2) */
+      var fdm = compact.match(/^(\d{2})(\d{2})(\d{2})(\d{2})$/);
+      if (fdm) {
+        var od = fdm[1], wInt = fdm[2], wDec = fdm[3], rim = fdm[4];
+        var sectionWidth = wInt + '.' + wDec;
+        return { width: od, aspect: sectionWidth, rim: rim, size: od + 'x' + sectionWidth + 'R' + rim, flotation: true };
+      }
+
+      /* 7-digit compact: 2255517 (width=3, aspect=2, rim=2) */
       var dm = compact.match(/[Pp]?(?:[Ll][Tt]|[Ss][Tt])?(\d{3})(\d{2})(\d{2})$/);
       if (dm) return { width: dm[1], aspect: dm[2], rim: dm[3], size: dm[1] + '/' + dm[2] + 'R' + dm[3] };
 
