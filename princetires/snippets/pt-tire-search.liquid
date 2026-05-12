@@ -49,11 +49,10 @@
 >
   <div class="pt-ts__filters" data-pt-ts-filters>
     <div class="pt-ts__season-group" role="group" aria-label="Tire season — pick one or more">
-      <button type="button" class="pt-ts__season pt-ts__season--active" aria-pressed="true" data-pt-ts-season="">Any season</button>
       <button type="button" class="pt-ts__season" aria-pressed="false" data-pt-ts-season="Summer">Summer</button>
       <button type="button" class="pt-ts__season" aria-pressed="false" data-pt-ts-season="Winter">Winter</button>
       <button type="button" class="pt-ts__season" aria-pressed="false" data-pt-ts-season="All-Season">All-season</button>
-      <button type="button" class="pt-ts__season" aria-pressed="false" data-pt-ts-season="All-Weather">All-weather</button>
+      <button type="button" class="pt-ts__season-clear" data-pt-ts-season-clear hidden>× Clear</button>
     </div>
     <label class="pt-ts__instock">
       <input type="checkbox" data-pt-ts-instock checked>
@@ -238,6 +237,20 @@
   user-select: none;
 }
 .pt-ts__instock input { width: 16px; height: 16px; accent-color: #dc2626; cursor: pointer; }
+.pt-ts__season-clear {
+  margin-left: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: background 0.15s, color 0.15s;
+}
+.pt-ts__season-clear:hover { background: #f3f4f6; color: #dc2626; }
 
 .pt-ts__tabs {
   display: inline-flex;
@@ -522,6 +535,11 @@
           delete parsed.season;
         }
         if (!Array.isArray(parsed.seasons)) parsed.seasons = [];
+        // Migration: the 'All-Weather' UI label was retired; map to 'All-Season'
+        // which now emits both metafield values at URL-build time. Dedupe.
+        parsed.seasons = Array.from(new Set(parsed.seasons.map(function (s) {
+          return s === 'All-Weather' ? 'All-Season' : s;
+        })));
         if (typeof parsed.inStock !== 'boolean') parsed.inStock = true;
         return parsed;
       }
@@ -624,13 +642,15 @@
 
     // ── Season + in-stock filters ──
     function syncSeasonUI() {
-      var noneSelected = !state.filters.seasons.length;
       $$('[data-pt-ts-season]').forEach(function (btn) {
         var v = btn.dataset.ptTsSeason;
-        var active = v === '' ? noneSelected : state.filters.seasons.indexOf(v) !== -1;
+        var active = state.filters.seasons.indexOf(v) !== -1;
         btn.classList.toggle('pt-ts__season--active', active);
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
       });
+      // Show "× Clear" only when at least one season is selected
+      var clearBtn = $('[data-pt-ts-season-clear]');
+      if (clearBtn) clearBtn.hidden = state.filters.seasons.length === 0;
     }
     function syncInStockUI() {
       var box = $('[data-pt-ts-instock]');
@@ -642,19 +662,24 @@
     $$('[data-pt-ts-season]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var v = this.dataset.ptTsSeason;
-        if (v === '') {
-          // "Any season" clears all selections
-          state.filters.seasons = [];
-        } else {
-          var idx = state.filters.seasons.indexOf(v);
-          if (idx === -1) state.filters.seasons.push(v);
-          else state.filters.seasons.splice(idx, 1);
-        }
+        var idx = state.filters.seasons.indexOf(v);
+        if (idx === -1) state.filters.seasons.push(v);
+        else state.filters.seasons.splice(idx, 1);
         writeFilterPrefs(state.filters);
         syncSeasonUI();
         track('tire_search_filter_change', { field: 'seasons', value: state.filters.seasons.join(',') });
       });
     });
+
+    var elSeasonClear = $('[data-pt-ts-season-clear]');
+    if (elSeasonClear) {
+      elSeasonClear.addEventListener('click', function () {
+        state.filters.seasons = [];
+        writeFilterPrefs(state.filters);
+        syncSeasonUI();
+        track('tire_search_filter_change', { field: 'seasons', value: '' });
+      });
+    }
 
     var elInStock = $('[data-pt-ts-instock]');
     if (elInStock) {
@@ -1197,8 +1222,12 @@
       if (r) qs.set('filter.p.m.custom.rim_diameter', r);
       var seasons = (state.filters && state.filters.seasons) || [];
       seasons.forEach(function (s) {
-        if (s === 'Summer' || s === 'Winter' || s === 'All-Season' || s === 'All-Weather') {
+        if (s === 'Summer' || s === 'Winter') {
           qs.append('filter.p.m.custom.seasonality', s);
+        } else if (s === 'All-Season') {
+          // "All-season" UI option emits BOTH metafield values (All-Season + All-Weather)
+          qs.append('filter.p.m.custom.seasonality', 'All-Season');
+          qs.append('filter.p.m.custom.seasonality', 'All-Weather');
         }
       });
       if (state.filters && state.filters.inStock) {
@@ -1217,8 +1246,12 @@
       if (pf.rim) qs.set('filter.p.m.custom.rim_diameter', pf.rim);
       var seasons = (state.filters && state.filters.seasons) || [];
       seasons.forEach(function (s) {
-        if (s === 'Summer' || s === 'Winter' || s === 'All-Season' || s === 'All-Weather') {
+        if (s === 'Summer' || s === 'Winter') {
           qs.append('filter.p.m.custom.seasonality', s);
+        } else if (s === 'All-Season') {
+          // "All-season" UI option emits BOTH metafield values (All-Season + All-Weather)
+          qs.append('filter.p.m.custom.seasonality', 'All-Season');
+          qs.append('filter.p.m.custom.seasonality', 'All-Weather');
         }
       });
       if (state.filters && state.filters.inStock) {
