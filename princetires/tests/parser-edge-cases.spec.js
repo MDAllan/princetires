@@ -69,6 +69,16 @@ test('4. Standard format still works: 225/45R17', async ({ page }) => {
   expect(targets[0]).toContain('rim_diameter=17');
 });
 
+test('5b. Flotation with dot but no x: 35.12.50.20 / 3512.5020 normalize correctly', async ({ page }) => {
+  const targets = await searchAndCapture(page, '3512.5020');
+  expect(targets.length, 'should route to collection').toBeGreaterThan(0);
+  const url = targets[0];
+  // 35 / 1250 / 20 → OD=35, rim=20, NOT misparsed as 351/25.0/20
+  expect(url).toContain('tire_width=35');
+  expect(url).toContain('rim_diameter=20');
+  expect(url).not.toContain('tire_width=351');
+});
+
 test('5. Lowercase still works: 185/65r15', async ({ page }) => {
   const targets = await searchAndCapture(page, '185/65r15');
   expect(targets.length).toBeGreaterThan(0);
