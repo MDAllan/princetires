@@ -1,0 +1,211 @@
+{% doc %}
+  My Garage pill — sits above the re-search strip on the collection page.
+  Renders a "Use my saved car" shortcut for customers who already have a
+  vehicle on file (either from a prior tire-search, or from the My Garage
+  feature for logged-in customers).
+
+  Sources, in priority order:
+    1. pt-garage-{customerId} localStorage — default vehicle (logged-in customers)
+    2. pt-tire-search-vehicle localStorage — last-used search vehicle (everyone)
+
+  Hidden by default — only shown after JS confirms a saved vehicle exists.
+
+  @example
+  {% render 'pt-collection-garage-pill' %}
+{% enddoc %}
+
+<div class="pt-gp" data-pt-gp hidden>
+  <span class="pt-gp__icon" aria-hidden="true">
+    <svg width="20" height="14" viewBox="0 0 80 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 20 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/>
+      <circle cx="18" cy="24" r="5"/>
+      <circle cx="62" cy="24" r="5"/>
+    </svg>
+  </span>
+  <span class="pt-gp__label">Your saved car</span>
+  <select class="pt-gp__picker" data-pt-gp-picker aria-label="Pick a saved vehicle">
+    {%- comment -%} Populated by JS {%- endcomment -%}
+  </select>
+  <button type="button" class="pt-gp__apply" data-pt-gp-apply>Apply →</button>
+</div>
+
+{% stylesheet %}
+  .pt-gp {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 0.75rem;
+    padding: 0.6rem 0.9rem;
+    background: linear-gradient(90deg, rgba(245,130,11,0.08), rgba(245,130,11,0.02));
+    border: 1px solid rgba(245,130,11,0.25);
+    border-radius: 10px;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .pt-gp[hidden] { display: none; }
+
+  .pt-gp__icon {
+    color: #F5820B;
+    flex-shrink: 0;
+    display: inline-flex;
+  }
+
+  .pt-gp__label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    flex-shrink: 0;
+  }
+
+  .pt-gp__picker {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 34px;
+    padding: 0 0.55rem;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #111;
+    cursor: pointer;
+  }
+
+  .pt-gp__apply {
+    height: 34px;
+    padding: 0 0.9rem;
+    background: #F5820B;
+    color: #fff;
+    border: 0;
+    border-radius: 6px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .pt-gp__apply:hover { background: #d76d00; }
+
+  @media (max-width: 600px) {
+    .pt-gp {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .pt-gp__label { flex-basis: 100%; }
+    .pt-gp__picker { flex: 1 1 60%; }
+    .pt-gp__apply { flex: 0 0 auto; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function () {
+    var root = document.querySelector('[data-pt-gp]');
+    if (!root) return;
+    var picker = root.querySelector('[data-pt-gp-picker]');
+    var applyBtn = root.querySelector('[data-pt-gp-apply]');
+
+    // ─── Collect every saved vehicle ───────────────────────────────────
+    var vehicles = [];
+    try {
+      var garageKeys = Object.keys(localStorage).filter(function (k) {
+        return k.indexOf('pt-garage-') === 0;
+      });
+      garageKeys.forEach(function (k) {
+        var arr = JSON.parse(localStorage.getItem(k) || '[]');
+        if (Array.isArray(arr)) {
+          arr.forEach(function (v) {
+            if (v && v.year && v.make && v.model) {
+              vehicles.push({
+                source: 'garage',
+                isDefault: !!v.isDefault,
+                year: v.year,
+                make: v.make,
+                model: v.model,
+                trim: v.trim || '',
+                nickname: v.nickname || '',
+                size: v.tireSize || (v.sizes && v.sizes[0]) || ''
+              });
+            }
+          });
+        }
+      });
+    } catch (e) {}
+
+    try {
+      var raw = localStorage.getItem('pt-tire-search-vehicle');
+      if (raw) {
+        var ts = JSON.parse(raw);
+        if (ts && ts.year && ts.make && ts.model) {
+          var firstSize = ts.sizes && ts.sizes.length ? ts.sizes[0] : '';
+          // Only add if NOT already represented by a garage entry
+          var dup = vehicles.some(function (v) {
+            return v.year === ts.year && v.make === ts.make && v.model === ts.model && v.trim === (ts.trim || '');
+          });
+          if (!dup) {
+            vehicles.push({
+              source: 'search',
+              isDefault: false,
+              year: ts.year, make: ts.make, model: ts.model,
+              trim: ts.trim || '', nickname: '',
+              size: firstSize
+            });
+          }
+        }
+      }
+    } catch (e) {}
+
+    // ─── Drop entries with no size — they can't be applied ─────────────
+    vehicles = vehicles.filter(function (v) { return v.size; });
+    if (vehicles.length === 0) return;
+
+    // ─── Sort: default garage vehicle first, then garage, then search ──
+    vehicles.sort(function (a, b) {
+      if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+      if (a.source !== b.source) return a.source === 'garage' ? -1 : 1;
+      return 0;
+    });
+
+    // ─── Build the picker options ──────────────────────────────────────
+    function vehicleLabel(v) {
+      var name = v.nickname || (v.year + ' ' + v.make + ' ' + v.model + (v.trim ? ' ' + v.trim : ''));
+      return name + ' (' + v.size + ')';
+    }
+    var html = '';
+    vehicles.forEach(function (v, i) {
+      html += '<option value="' + i + '">' + vehicleLabel(v).replace(/"/g, '&quot;') + '</option>';
+    });
+    picker.innerHTML = html;
+
+    // ─── Reveal the pill ───────────────────────────────────────────────
+    root.hidden = false;
+
+    // ─── Apply: navigate to the collection with the size as filter ─────
+    function parseSize(s) {
+      var m = String(s || '').match(/(\d{3})\s*\/\s*(\d{2,3})\s*R\s*(\d{2})/i);
+      return m ? { w: m[1], a: m[2], r: m[3] } : null;
+    }
+
+    applyBtn.addEventListener('click', function () {
+      var v = vehicles[parseInt(picker.value, 10) || 0];
+      if (!v) return;
+      var parts = parseSize(v.size);
+      if (!parts) return;
+      var params = new URLSearchParams(window.location.search);
+      var newParams = new URLSearchParams();
+      // Keep vendor + season + service_type from the current URL
+      params.forEach(function (val, k) {
+        if (k === 'filter.p.vendor' ||
+            k === 'filter.p.m.custom.seasonality' ||
+            k === 'filter.p.m.custom.service_type') {
+          newParams.append(k, val);
+        }
+      });
+      newParams.set('filter.p.m.custom.tire_width', parts.w);
+      newParams.set('filter.p.m.custom.tire_profile', parts.a);
+      newParams.set('filter.p.m.custom.rim_diameter', parts.r);
+      window.location.href = window.location.pathname + '?' + newParams.toString();
+    });
+  })();
+{% endjavascript %}
