@@ -84,7 +84,34 @@ test('4. Multiple saved cars all appear in the picker (default first)', async ({
   expect(first).toContain('2022 Honda CR-V');
 });
 
-test('5. Chip is compact on mobile (height ~26px)', async ({ page }) => {
+test('5. Multi-car chip shows a +N badge', async ({ page }) => {
+  await page.goto(COLLECTION + '?filter.p.vendor=Michelin');
+  await page.evaluate(() => {
+    localStorage.setItem('pt-garage-test', JSON.stringify([
+      { year: 2018, make: 'Toyota', model: 'Camry', trim: 'LE', tireSize: '215/55R17', isDefault: false },
+      { year: 2022, make: 'Honda', model: 'CR-V', trim: 'EX', tireSize: '235/65R18', isDefault: true },
+      { year: 2020, make: 'Ford', model: 'F-150', trim: 'XLT', tireSize: '275/55R20', isDefault: false }
+    ]));
+  });
+  await page.reload();
+  const badge = page.locator('[data-pt-gp-chip-badge]');
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveText('+2');
+});
+
+test('6. Single-car chip hides the +N badge', async ({ page }) => {
+  await page.goto(COLLECTION + '?filter.p.vendor=Michelin');
+  await page.evaluate(() => {
+    localStorage.setItem('pt-tire-search-vehicle', JSON.stringify({
+      year: '2020', make: 'Honda', model: 'Civic', trim: 'LX', sizes: ['215/55R16']
+    }));
+  });
+  await page.reload();
+  const badge = page.locator('[data-pt-gp-chip-badge]');
+  await expect(badge).toBeHidden();
+});
+
+test('7. Chip is compact on mobile (height ~26px)', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(COLLECTION + '?filter.p.vendor=Michelin');
   await page.evaluate(() => {

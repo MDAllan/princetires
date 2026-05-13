@@ -27,6 +27,7 @@
       </svg>
     {%- endif -%}
     <span class="pt-gp__chip-label" data-pt-gp-chip-label>Garage</span>
+    <span class="pt-gp__chip-badge" data-pt-gp-chip-badge hidden></span>
     <svg class="pt-gp__chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
       <polyline points="6 9 12 15 18 9"/>
     </svg>
@@ -101,6 +102,23 @@
   }
 
   .pt-gp__chevron { flex-shrink: 0; transition: transform 0.15s; opacity: 0.7; }
+
+  .pt-gp__chip-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    background: #dc2626;
+    color: #fff;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .pt-gp__chip-badge[hidden] { display: none; }
 
   .pt-gp__popover {
     position: absolute;
@@ -253,6 +271,11 @@
       picker.innerHTML = html;
       var primary = vehicles[0];
       setChip(primary.nickname || (primary.make + ' ' + primary.model));
+      var badge = root.querySelector('[data-pt-gp-chip-badge]');
+      if (badge && vehicles.length > 1) {
+        badge.textContent = '+' + (vehicles.length - 1);
+        badge.hidden = false;
+      }
       showState('has');
     }
 
