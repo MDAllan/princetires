@@ -1337,6 +1337,14 @@ class MyGarage extends HTMLElement {
         if (target === 'bookings') self.loadBookings();
       });
     });
+
+    // "View full garage" buttons jump to the vehicles tab
+    var vehiclesTab = this.querySelector('[data-garage-tab="vehicles"]');
+    this.querySelectorAll('[data-garage-go-vehicles]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (vehiclesTab) vehiclesTab.click();
+      });
+    });
   }
 
   /* ---- Dashboard ---- */
