@@ -16,11 +16,15 @@
 
 <div class="pt-gp" data-pt-gp hidden>
   <span class="pt-gp__icon" aria-hidden="true">
-    <svg width="20" height="14" viewBox="0 0 80 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 20 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/>
-      <circle cx="18" cy="24" r="5"/>
-      <circle cx="62" cy="24" r="5"/>
-    </svg>
+    {%- if settings.garage_pill_icon -%}
+      {{ settings.garage_pill_icon | image_url: width: 32 | image_tag: class: 'pt-gp__icon-img', loading: 'lazy', alt: '' }}
+    {%- else -%}
+      <svg width="20" height="14" viewBox="0 0 80 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 20 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/>
+        <circle cx="18" cy="24" r="5"/>
+        <circle cx="62" cy="24" r="5"/>
+      </svg>
+    {%- endif -%}
   </span>
   <span class="pt-gp__label">Your saved car</span>
   <select class="pt-gp__picker" data-pt-gp-picker aria-label="Pick a saved vehicle">
@@ -48,6 +52,16 @@
     color: #dc2626;
     flex-shrink: 0;
     display: inline-flex;
+    align-items: center;
+    width: 22px;
+    height: 22px;
+    justify-content: center;
+  }
+
+  .pt-gp__icon-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
   }
 
   .pt-gp__label {
