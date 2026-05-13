@@ -13,6 +13,12 @@
   var handle = {{ collection.handle | json }};
   if (!SEASONAL[handle]) return;
 
+  // Auto-default runs AT MOST ONCE per browser tab. After the user has touched
+  // anything (cleared the season, picked a brand, etc.), the marker keeps the
+  // script from re-applying the default and overriding their choice.
+  var SEEDED = 'ptg_auto_seeded_' + handle;
+  try { if (sessionStorage.getItem(SEEDED)) return; } catch (e) {}
+
   var qs = new URLSearchParams(window.location.search);
   var hasSort = qs.has('sort_by');
   var hasSeason = false;
@@ -21,10 +27,14 @@
     if (k === 'filter.p.m.custom.seasonality') hasSeason = true;
     if (k.indexOf('filter.') === 0) hasUserFilter = true;
   });
-  // If the user arrived with any explicit filter (size, vendor, rim, etc.),
-  // respect their intent — don't override their season choice (including "Any season").
-  if (hasUserFilter) return;
-  if (hasSort && hasSeason) return;
+
+  // Always mark as seeded — even on early returns — so the user's subsequent
+  // edits (e.g. clearing the season) are respected for the rest of this tab session.
+  function markSeeded() { try { sessionStorage.setItem(SEEDED, '1'); } catch (e) {} }
+
+  // If the user arrived with any explicit filter, respect their intent.
+  if (hasUserFilter) { markSeeded(); return; }
+  if (hasSort && hasSeason) { markSeeded(); return; }
 
   var changed = false;
   if (!hasSort) { qs.set('sort_by', 'price-ascending'); changed = true; }
@@ -41,6 +51,7 @@
       changed = true;
     }
   }
+  markSeeded();
   if (changed) {
     window.location.replace(window.location.pathname + '?' + qs.toString());
   }
