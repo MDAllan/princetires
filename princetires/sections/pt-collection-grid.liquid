@@ -2691,12 +2691,24 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Price slider
+  // Price slider — Shopify expects filter.v.price.gte / filter.v.price.lte
   var minSlider = document.querySelector('[data-price-min]');
   var maxSlider = document.querySelector('[data-price-max]');
   var minDisplay = document.querySelector('[data-price-min-display]');
   var maxDisplay = document.querySelector('[data-price-max-display]');
   if (minSlider && maxSlider) {
+    // Seed slider from URL so it reflects the active filter on page load
+    var urlMin = params.get('filter.v.price.gte');
+    var urlMax = params.get('filter.v.price.lte');
+    if (urlMin !== null) {
+      minSlider.value = urlMin;
+      if (minDisplay) minDisplay.textContent = '$' + urlMin;
+    }
+    if (urlMax !== null) {
+      maxSlider.value = urlMax;
+      if (maxDisplay) maxDisplay.textContent = '$' + urlMax;
+    }
+
     var priceTimer = null;
     function updatePrice() {
       var mn = parseInt(minSlider.value);
@@ -2711,12 +2723,15 @@ document.addEventListener('DOMContentLoaded', function() {
       priceTimer = setTimeout(function() {
         var mn = parseInt(minSlider.value);
         var mx = parseInt(maxSlider.value);
+        var sliderMin = parseInt(minSlider.min);
+        var sliderMax = parseInt(maxSlider.max);
         var newParams = new URLSearchParams();
         params.forEach(function(v, k) {
           if (!k.includes('price')) newParams.append(k, v);
         });
-        newParams.set('filter.price.min', mn);
-        newParams.set('filter.price.max', mx);
+        // Only emit the bound when it constrains the result.
+        if (mn > sliderMin) newParams.set('filter.v.price.gte', mn);
+        if (mx < sliderMax) newParams.set('filter.v.price.lte', mx);
         try { sessionStorage.setItem('ptg_filter_open', '1'); } catch(e) {}
         window.location.href = baseUrl + '?' + newParams.toString();
       }, 800);
