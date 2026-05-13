@@ -361,29 +361,27 @@
               <ul class="ptg__search-list" data-ptg-list></ul>
             </div>
           </div>
-          <div class="ptg__sort">
-            <label for="ptg-sort" class="ptg__sort-label">Sort by</label>
-            <div class="ptg__sort-wrap">
-              {%- assign sort_by = collection.sort_by | default: collection.default_sort_by -%}
-              <select id="ptg-sort" class="ptg__sort-select" data-ptg-sort>
-                <option value="manual" {% if sort_by == 'manual' %}selected{% endif %}>Featured</option>
-                <option value="best-selling" {% if sort_by == 'best-selling' %}selected{% endif %}>Best selling</option>
-                <option value="created-descending" {% if sort_by == 'created-descending' %}selected{% endif %}>Newest</option>
-                <option value="price-ascending" {% if sort_by == 'price-ascending' %}selected{% endif %}>Price ↑</option>
-                <option value="price-descending" {% if sort_by == 'price-descending' %}selected{% endif %}>Price ↓</option>
-              </select>
-              <svg class="ptg__sort-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          <div class="ptg__toolbar-right">
+            {% render 'pt-collection-garage-pill' %}
+            <div class="ptg__sort">
+              <label for="ptg-sort" class="ptg__sort-label">Sort by</label>
+              <div class="ptg__sort-wrap">
+                {%- assign sort_by = collection.sort_by | default: collection.default_sort_by -%}
+                <select id="ptg-sort" class="ptg__sort-select" data-ptg-sort>
+                  <option value="manual" {% if sort_by == 'manual' %}selected{% endif %}>Featured</option>
+                  <option value="best-selling" {% if sort_by == 'best-selling' %}selected{% endif %}>Best selling</option>
+                  <option value="created-descending" {% if sort_by == 'created-descending' %}selected{% endif %}>Newest</option>
+                  <option value="price-ascending" {% if sort_by == 'price-ascending' %}selected{% endif %}>Price ↑</option>
+                  <option value="price-descending" {% if sort_by == 'price-descending' %}selected{% endif %}>Price ↓</option>
+                </select>
+                <svg class="ptg__sort-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="ptg__results" data-ptg-result-count>
-          <span class="ptg__results-text">
-            Showing <span class="ptg__results-count">{{ collection.products_count }}</span> tires
-            <span class="ptg__results-size" data-results-size hidden>for <strong data-results-size-val></strong></span>
-          </span>
-          {% render 'pt-collection-garage-pill' %}
-        </div>
+        {%- comment -%} Hidden marker kept for JS that reads tire-size context {%- endcomment -%}
+        <span data-results-size hidden><strong data-results-size-val></strong></span>
 
         {% render 'pt-collection-research-strip' %}
 
@@ -1275,21 +1273,12 @@
     margin-bottom: 1.6rem;
   }
 
-  .ptg__results {
+  .ptg__toolbar-right {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 300;
-    color: #9ca3af;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.3rem;
   }
-
-  .ptg__results-text { min-width: 0; flex: 1 1 auto; }
-  .ptg__results-count { font-weight: 500; color: #111; }
-  .ptg__results-size { font-weight: 300; }
-  .ptg__results-size strong { font-weight: 600; color: #F5820B; }
 
   .ptg__search {
     flex: 1;
