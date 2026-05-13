@@ -14,7 +14,7 @@
   {% render 'pt-collection-garage-pill' %}
 {% enddoc %}
 
-<div class="pt-gp" data-pt-gp hidden>
+<div class="pt-gp" data-pt-gp data-logged-in="{%- if customer -%}1{%- else -%}0{%- endif -%}" hidden>
   <span class="pt-gp__icon" aria-hidden="true">
     {%- if settings.garage_pill_icon -%}
       {{ settings.garage_pill_icon | image_url: width: 32 | image_tag: class: 'pt-gp__icon-img', loading: 'lazy', alt: '' }}
@@ -26,11 +26,25 @@
       </svg>
     {%- endif -%}
   </span>
-  <span class="pt-gp__label">Your saved car</span>
-  <select class="pt-gp__picker" data-pt-gp-picker aria-label="Pick a saved vehicle">
-    {%- comment -%} Populated by JS {%- endcomment -%}
-  </select>
-  <button type="button" class="pt-gp__apply" data-pt-gp-apply>Apply →</button>
+
+  {%- comment -%} State A — has a saved vehicle (filled in by JS) {%- endcomment -%}
+  <span class="pt-gp__has" data-pt-gp-has hidden>
+    <span class="pt-gp__label">Your saved car</span>
+    <select class="pt-gp__picker" data-pt-gp-picker aria-label="Pick a saved vehicle"></select>
+    <button type="button" class="pt-gp__apply" data-pt-gp-apply>Apply →</button>
+  </span>
+
+  {%- comment -%} State B — guest, no saved vehicle → sign-in CTA {%- endcomment -%}
+  <span class="pt-gp__signin" data-pt-gp-signin hidden>
+    <span class="pt-gp__label">Sign in to see your saved cars</span>
+    <a class="pt-gp__signin-cta" href="{{ routes.account_login_url }}">Sign in →</a>
+  </span>
+
+  {%- comment -%} State C — logged in but garage is empty → add-vehicle CTA {%- endcomment -%}
+  <span class="pt-gp__add" data-pt-gp-add hidden>
+    <span class="pt-gp__label">No cars in your garage yet</span>
+    <a class="pt-gp__signin-cta" href="/pages/garage#add">Add a vehicle →</a>
+  </span>
 </div>
 
 {% stylesheet %}
@@ -102,6 +116,36 @@
 
   .pt-gp__apply:hover { background: #b91c1c; }
 
+  .pt-gp__has,
+  .pt-gp__signin,
+  .pt-gp__add {
+    display: contents;
+  }
+
+  .pt-gp__has[hidden],
+  .pt-gp__signin[hidden],
+  .pt-gp__add[hidden] { display: none; }
+
+  .pt-gp__signin-cta {
+    height: 34px;
+    padding: 0 0.9rem;
+    background: #dc2626;
+    color: #fff;
+    border: 0;
+    border-radius: 6px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    margin-left: auto;
+  }
+
+  .pt-gp__signin-cta:hover { background: #b91c1c; }
+
   @media (max-width: 600px) {
     .pt-gp {
       flex-wrap: wrap;
@@ -119,6 +163,17 @@
     if (!root) return;
     var picker = root.querySelector('[data-pt-gp-picker]');
     var applyBtn = root.querySelector('[data-pt-gp-apply]');
+    var stateHas = root.querySelector('[data-pt-gp-has]');
+    var stateSignin = root.querySelector('[data-pt-gp-signin]');
+    var stateAdd = root.querySelector('[data-pt-gp-add]');
+    var isLoggedIn = root.dataset.loggedIn === '1';
+
+    function showState(name) {
+      if (stateHas) stateHas.hidden = name !== 'has';
+      if (stateSignin) stateSignin.hidden = name !== 'signin';
+      if (stateAdd) stateAdd.hidden = name !== 'add';
+      root.hidden = false;
+    }
 
     // ─── Collect every saved vehicle ───────────────────────────────────
     var vehicles = [];
@@ -172,7 +227,12 @@
 
     // ─── Drop entries with no size — they can't be applied ─────────────
     vehicles = vehicles.filter(function (v) { return v.size; });
-    if (vehicles.length === 0) return;
+    if (vehicles.length === 0) {
+      // No saved cars — show the right CTA based on auth state
+      if (isLoggedIn) showState('add');
+      else showState('signin');
+      return;
+    }
 
     // ─── Sort: default garage vehicle first, then garage, then search ──
     vehicles.sort(function (a, b) {
@@ -192,8 +252,8 @@
     });
     picker.innerHTML = html;
 
-    // ─── Reveal the pill ───────────────────────────────────────────────
-    root.hidden = false;
+    // ─── Reveal the pill in 'has' state ────────────────────────────────
+    showState('has');
 
     // ─── Apply: navigate to the collection with the size as filter ─────
     function parseSize(s) {

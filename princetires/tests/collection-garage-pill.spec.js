@@ -17,11 +17,13 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('1. Pill is hidden when no saved vehicle exists', async ({ page }) => {
+test('1. Guest with no saved vehicle sees the sign-in CTA', async ({ page }) => {
   await page.goto(COLLECTION + '?filter.p.vendor=Michelin');
   const pill = page.locator('[data-pt-gp]');
-  // The element is in the DOM but hidden until JS reveals it
-  await expect(pill).toBeHidden();
+  await expect(pill).toBeVisible();
+  await expect(page.locator('[data-pt-gp-signin]')).toBeVisible();
+  await expect(page.locator('[data-pt-gp-signin] a')).toHaveAttribute('href', /account/);
+  await expect(page.locator('[data-pt-gp-has]')).toBeHidden();
 });
 
 test('2. Pill shows the saved tire-search vehicle (anonymous user)', async ({ page }) => {
@@ -80,7 +82,7 @@ test('4. Multiple saved garage cars all appear in the picker, default first', as
   expect(second).toContain('2018 Toyota Camry');
 });
 
-test('5. Pill is hidden when the saved vehicle has no size data', async ({ page }) => {
+test('5. Saved vehicle with no size falls back to the sign-in CTA (guest)', async ({ page }) => {
   await page.goto(COLLECTION + '?filter.p.vendor=Michelin');
   await page.evaluate(() => {
     localStorage.setItem('pt-tire-search-vehicle', JSON.stringify({
@@ -88,7 +90,7 @@ test('5. Pill is hidden when the saved vehicle has no size data', async ({ page 
     }));
   });
   await page.reload();
-  // Pill should remain hidden since no usable size
-  const pill = page.locator('[data-pt-gp]');
-  await expect(pill).toBeHidden();
+  // No usable size → CTA falls back. As a guest we see the sign-in option.
+  await expect(page.locator('[data-pt-gp-signin]')).toBeVisible();
+  await expect(page.locator('[data-pt-gp-has]')).toBeHidden();
 });
