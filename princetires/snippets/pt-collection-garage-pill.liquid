@@ -7,10 +7,13 @@
     1. pt-garage-{customerId} localStorage — default vehicle (logged-in customers)
     2. pt-tire-search-vehicle localStorage — last-used search vehicle (everyone)
 
+  Not rendered for wholesale customers (business account, not personal).
+
   @example
   {% render 'pt-collection-garage-pill' %}
 {% enddoc %}
 
+{%- if customer.tags contains 'wholesale' -%}{%- comment -%}wholesale: skip{%- endcomment -%}{%- else -%}
 <div class="pt-gp" data-pt-gp data-logged-in="{%- if customer -%}1{%- else -%}0{%- endif -%}" hidden>
   {%- comment -%} Has-state chip: button that opens a popover {%- endcomment -%}
   <button type="button" class="pt-gp__chip pt-gp__chip--has" data-pt-gp-chip-has aria-haspopup="true" aria-expanded="false" hidden>
@@ -52,6 +55,7 @@
     <button type="button" class="pt-gp__apply" data-pt-gp-apply>Apply →</button>
   </div>
 </div>
+{%- endif -%}
 
 {% stylesheet %}
   .pt-gp {
