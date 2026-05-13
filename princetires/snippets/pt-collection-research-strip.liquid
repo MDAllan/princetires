@@ -1,0 +1,505 @@
+{% doc %}
+  Re-search strip rendered at the top of the tires collection page.
+  Two tabs:
+    - By size: Width / Aspect / Rim dropdowns, pre-filled from URL params.
+    - By vehicle: Year / Make / Model / Trim cascade, reuses pt-vehicle-{year}.json
+      assets (same data source as the homepage tire-search widget).
+
+  Submit behavior: keeps vendor + seasonality from the current URL, swaps the
+  size dimensions. The vehicle tab redirects to the collection page with the
+  OEM size as filters.
+
+  Mobile: collapsed behind a "Change search ▾" toggle.
+
+  @example
+  {% render 'pt-collection-research-strip' %}
+{% enddoc %}
+
+{%- liquid
+  assign min_year = settings.smart_search_min_year | default: 2001
+  assign max_year = settings.smart_search_max_year | default: 2026
+-%}
+
+<div
+  class="pt-rs"
+  data-pt-rs
+  data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}"
+  data-asset-version="{%- assign _au = 'pt-vehicle-2025.json' | asset_url -%}{%- if _au contains '?' -%}{{ _au | split: '?' | last }}{%- endif -%}"
+>
+  <button type="button" class="pt-rs__toggle" data-pt-rs-toggle aria-expanded="false">
+    Change search
+    <svg class="pt-rs__toggle-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <path d="M6 9l6 6 6-6"/>
+    </svg>
+  </button>
+
+  <div class="pt-rs__body" data-pt-rs-body>
+    <div class="pt-rs__tabs" role="tablist">
+      <button type="button" class="pt-rs__tab pt-rs__tab--active" role="tab" aria-selected="true" data-pt-rs-tab="size">By tire size</button>
+      <button type="button" class="pt-rs__tab" role="tab" aria-selected="false" data-pt-rs-tab="vehicle">By vehicle</button>
+    </div>
+
+    {%- comment -%} Tab A — by size {%- endcomment -%}
+    <div class="pt-rs__panel pt-rs__panel--active" data-pt-rs-panel="size" role="tabpanel">
+      <label class="pt-rs__field">
+        <span class="pt-rs__label">Width</span>
+        <select data-pt-rs-width>
+          <option value="">—</option>
+          {%- assign widths = '155,165,175,185,195,205,215,225,235,245,255,265,275,285,295,305,315,325' | split: ',' -%}
+          {%- for w in widths -%}<option value="{{ w }}">{{ w }}</option>{%- endfor -%}
+        </select>
+      </label>
+      <label class="pt-rs__field">
+        <span class="pt-rs__label">Aspect</span>
+        <select data-pt-rs-aspect>
+          <option value="">—</option>
+          {%- assign aspects = '30,35,40,45,50,55,60,65,70,75,80,85' | split: ',' -%}
+          {%- for a in aspects -%}<option value="{{ a }}">{{ a }}</option>{%- endfor -%}
+        </select>
+      </label>
+      <label class="pt-rs__field">
+        <span class="pt-rs__label">Rim</span>
+        <select data-pt-rs-rim>
+          <option value="">—</option>
+          {%- assign rims = '13,14,15,16,17,18,19,20,21,22,24,26' | split: ',' -%}
+          {%- for r in rims -%}<option value="{{ r }}">{{ r }}</option>{%- endfor -%}
+        </select>
+      </label>
+      <button type="button" class="pt-rs__submit" data-pt-rs-submit-size>Search</button>
+    </div>
+
+    {%- comment -%} Tab B — by vehicle {%- endcomment -%}
+    <div class="pt-rs__panel" data-pt-rs-panel="vehicle" role="tabpanel" hidden>
+      <label class="pt-rs__field">
+        <span class="pt-rs__label">Year</span>
+        <select data-pt-rs-year>
+          <option value="">—</option>
+          {%- assign y = max_year -%}
+          {%- assign min_y = min_year | times: 1 -%}
+          {%- for i in (1..30) -%}
+            {%- if y >= min_y -%}<option value="{{ y }}">{{ y }}</option>{%- assign y = y | minus: 1 -%}{%- endif -%}
+          {%- endfor -%}
+        </select>
+      </label>
+      <label class="pt-rs__field">
+        <span class="pt-rs__label">Make</span>
+        <select data-pt-rs-make disabled><option value="">—</option></select>
+      </label>
+      <label class="pt-rs__field">
+        <span class="pt-rs__label">Model</span>
+        <select data-pt-rs-model disabled><option value="">—</option></select>
+      </label>
+      <label class="pt-rs__field">
+        <span class="pt-rs__label">Trim</span>
+        <select data-pt-rs-trim disabled><option value="">—</option></select>
+      </label>
+      <button type="button" class="pt-rs__submit" data-pt-rs-submit-vehicle disabled>Find tires</button>
+      <p class="pt-rs__status" data-pt-rs-status hidden></p>
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+  .pt-rs {
+    margin: 0 0 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .pt-rs__toggle {
+    display: none;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: #f9fafb;
+    border: 0;
+    border-bottom: 1px solid #e5e7eb;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #111;
+    cursor: pointer;
+    text-align: left;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .pt-rs__toggle-icon {
+    transition: transform 0.2s;
+  }
+
+  .pt-rs[data-open] .pt-rs__toggle-icon {
+    transform: rotate(180deg);
+  }
+
+  .pt-rs__body {
+    padding: 1rem;
+  }
+
+  .pt-rs__tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 1rem;
+  }
+
+  .pt-rs__tab {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    margin-bottom: -1px;
+  }
+
+  .pt-rs__tab--active {
+    color: #111;
+    border-bottom-color: #F5820B;
+    font-weight: 600;
+  }
+
+  .pt-rs__panel {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .pt-rs__panel--active {
+    display: flex;
+  }
+
+  .pt-rs__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1 1 100px;
+    min-width: 0;
+  }
+
+  .pt-rs__label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .pt-rs__field select {
+    height: 40px;
+    padding: 0 0.6rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    color: #111;
+    cursor: pointer;
+  }
+
+  .pt-rs__field select:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .pt-rs__submit {
+    height: 40px;
+    padding: 0 1.25rem;
+    background: #F5820B;
+    color: #fff;
+    border: 0;
+    border-radius: 6px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .pt-rs__submit:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+  }
+
+  .pt-rs__submit:not(:disabled):hover {
+    background: #d76d00;
+  }
+
+  .pt-rs__status {
+    flex-basis: 100%;
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: #fef3c7;
+    color: #92400e;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 768px) {
+    .pt-rs__toggle {
+      display: flex;
+    }
+    .pt-rs__body {
+      display: none;
+    }
+    .pt-rs[data-open] .pt-rs__body {
+      display: block;
+    }
+    .pt-rs__field {
+      flex: 1 1 calc(50% - 0.5rem);
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function () {
+    var root = document.querySelector('[data-pt-rs]');
+    if (!root) return;
+
+    var assetBase = root.dataset.assetBase;
+    var assetVersion = root.dataset.assetVersion || '';
+    var STORAGE_KEY = 'pt-tire-search-vehicle';
+
+    var elToggle = root.querySelector('[data-pt-rs-toggle]');
+    var elBody = root.querySelector('[data-pt-rs-body]');
+    var tabs = root.querySelectorAll('[data-pt-rs-tab]');
+    var panels = root.querySelectorAll('[data-pt-rs-panel]');
+
+    var elWidth = root.querySelector('[data-pt-rs-width]');
+    var elAspect = root.querySelector('[data-pt-rs-aspect]');
+    var elRim = root.querySelector('[data-pt-rs-rim]');
+    var elSubmitSize = root.querySelector('[data-pt-rs-submit-size]');
+
+    var elYear = root.querySelector('[data-pt-rs-year]');
+    var elMake = root.querySelector('[data-pt-rs-make]');
+    var elModel = root.querySelector('[data-pt-rs-model]');
+    var elTrim = root.querySelector('[data-pt-rs-trim]');
+    var elSubmitVeh = root.querySelector('[data-pt-rs-submit-vehicle]');
+    var elStatus = root.querySelector('[data-pt-rs-status]');
+
+    var yearData = null;
+    var params = new URLSearchParams(window.location.search);
+
+    // ─── Tab switching ───────────────────────────────────────────────
+    function activateTab(name) {
+      tabs.forEach(function (t) {
+        var active = t.dataset.ptRsTab === name;
+        t.classList.toggle('pt-rs__tab--active', active);
+        t.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      panels.forEach(function (p) {
+        var active = p.dataset.ptRsPanel === name;
+        p.classList.toggle('pt-rs__panel--active', active);
+        p.hidden = !active;
+      });
+    }
+    tabs.forEach(function (t) {
+      t.addEventListener('click', function () { activateTab(t.dataset.ptRsTab); });
+    });
+
+    // ─── Mobile toggle ───────────────────────────────────────────────
+    if (elToggle) {
+      elToggle.addEventListener('click', function () {
+        var open = root.hasAttribute('data-open');
+        if (open) root.removeAttribute('data-open');
+        else root.setAttribute('data-open', '');
+        elToggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+      });
+    }
+
+    // ─── Pre-fill the Size tab from URL ──────────────────────────────
+    var urlW = params.get('filter.p.m.custom.tire_width');
+    var urlA = params.get('filter.p.m.custom.tire_profile');
+    var urlR = params.get('filter.p.m.custom.rim_diameter');
+    if (urlW) elWidth.value = urlW;
+    if (urlA) elAspect.value = urlA;
+    if (urlR) elRim.value = urlR;
+
+    // ─── Pre-fill the Vehicle tab from localStorage ──────────────────
+    var savedVeh = null;
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.year) savedVeh = parsed;
+      }
+    } catch (e) {}
+
+    // ─── Tab default ─────────────────────────────────────────────────
+    var hasSize = !!(urlW || urlA || urlR);
+    if (!hasSize && savedVeh) activateTab('vehicle');
+
+    // ─── Size tab submit ─────────────────────────────────────────────
+    elSubmitSize.addEventListener('click', function () {
+      var w = elWidth.value;
+      var a = elAspect.value;
+      var r = elRim.value;
+      if (!w || !a || !r) {
+        flashStatus('Pick width, aspect, and rim to search.');
+        return;
+      }
+      var newParams = new URLSearchParams();
+      // Keep vendor + seasonality + service_type from the current URL
+      params.forEach(function (v, k) {
+        if (k === 'filter.p.vendor' ||
+            k === 'filter.p.m.custom.seasonality' ||
+            k === 'filter.p.m.custom.service_type') {
+          newParams.append(k, v);
+        }
+      });
+      newParams.set('filter.p.m.custom.tire_width', w);
+      newParams.set('filter.p.m.custom.tire_profile', a);
+      newParams.set('filter.p.m.custom.rim_diameter', r);
+      window.location.href = window.location.pathname + '?' + newParams.toString();
+    });
+
+    // ─── Vehicle cascade ─────────────────────────────────────────────
+    function resetSelect(el, placeholder) {
+      el.innerHTML = '<option value="">' + placeholder + '</option>';
+      el.disabled = true;
+    }
+    function fillSelect(el, placeholder, items) {
+      var html = '<option value="">' + placeholder + '</option>';
+      items.forEach(function (it) { html += '<option value="' + it + '">' + it + '</option>'; });
+      el.innerHTML = html;
+      el.disabled = false;
+    }
+    function flashStatus(msg) {
+      if (!elStatus) return;
+      elStatus.textContent = msg;
+      elStatus.hidden = false;
+      setTimeout(function () { elStatus.hidden = true; }, 4000);
+    }
+
+    elYear.addEventListener('change', function () { onYearChange(elYear.value); });
+    elMake.addEventListener('change', function () { onMakeChange(elMake.value); });
+    elModel.addEventListener('change', function () { onModelChange(elModel.value); });
+    elTrim.addEventListener('change', function () { onTrimChange(elTrim.value); });
+
+    function onYearChange(year) {
+      yearData = null;
+      resetSelect(elMake, '—');
+      resetSelect(elModel, '—');
+      resetSelect(elTrim, '—');
+      elSubmitVeh.disabled = true;
+      if (!year) return;
+      var url = assetBase + 'pt-vehicle-' + year + '.json' + (assetVersion ? '?' + assetVersion : '');
+      fetch(url, { cache: 'force-cache' })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (data) {
+          yearData = data;
+          var makes = data.makes || Object.keys(data.models || {});
+          makes.sort();
+          fillSelect(elMake, '— pick make —', makes);
+        })
+        .catch(function () { flashStatus("Couldn't load data for " + year + ". Try another year."); });
+    }
+
+    function onMakeChange(make) {
+      resetSelect(elModel, '—');
+      resetSelect(elTrim, '—');
+      elSubmitVeh.disabled = true;
+      if (!make || !yearData) return;
+      var models = Object.keys((yearData.models || {})[make] || {});
+      models.sort();
+      fillSelect(elModel, '— pick model —', models);
+    }
+
+    function onModelChange(model) {
+      resetSelect(elTrim, '—');
+      elSubmitVeh.disabled = true;
+      if (!model || !yearData) return;
+      var make = elMake.value;
+      var trims = Object.keys(((yearData.models || {})[make] || {})[model] || {});
+      trims.sort();
+      fillSelect(elTrim, '— pick trim —', trims);
+    }
+
+    function onTrimChange(trim) {
+      elSubmitVeh.disabled = !trim;
+    }
+
+    elSubmitVeh.addEventListener('click', function () {
+      var make = elMake.value;
+      var model = elModel.value;
+      var trim = elTrim.value;
+      if (!yearData || !trim) return;
+      var sizes = ((yearData.models || {})[make] || {})[model][trim];
+      if (!sizes || !sizes.length) {
+        flashStatus("We don't have OEM size data for this trim.");
+        return;
+      }
+      // Use the first size (staggered front, typically). Persist the vehicle.
+      var firstSize = sizes[0];
+      var parsed = parseSize(firstSize);
+      if (!parsed) {
+        flashStatus("Couldn't parse size '" + firstSize + "'. Try another trim.");
+        return;
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          year: elYear.value, make: make, model: model, trim: trim,
+          sizes: sizes, savedAt: new Date().toISOString()
+        }));
+      } catch (e) {}
+      var newParams = new URLSearchParams();
+      // Keep vendor + seasonality + service_type from the current URL
+      params.forEach(function (v, k) {
+        if (k === 'filter.p.vendor' ||
+            k === 'filter.p.m.custom.seasonality' ||
+            k === 'filter.p.m.custom.service_type') {
+          newParams.append(k, v);
+        }
+      });
+      newParams.set('filter.p.m.custom.tire_width', parsed.w);
+      newParams.set('filter.p.m.custom.tire_profile', parsed.a);
+      newParams.set('filter.p.m.custom.rim_diameter', parsed.r);
+      window.location.href = window.location.pathname + '?' + newParams.toString();
+    });
+
+    // ─── Helpers ─────────────────────────────────────────────────────
+    function parseSize(s) {
+      if (!s) return null;
+      var m = String(s).match(/(\d{3})\s*\/\s*(\d{2,3})\s*R\s*(\d{2})/i);
+      if (!m) return null;
+      return { w: m[1], a: m[2], r: m[3] };
+    }
+
+    // Pre-seed the vehicle cascade from savedVeh
+    if (savedVeh) {
+      elYear.value = savedVeh.year || '';
+      if (savedVeh.year) {
+        onYearChange(savedVeh.year);
+        // Sequencing: makes load async; we wait for the fetch to populate makes
+        // before applying make/model/trim. Use a chained timeout-based wait.
+        var waitForMakes = function (tries) {
+          if (tries > 30) return;
+          if (elMake.options.length > 1) {
+            if (savedVeh.make) {
+              elMake.value = savedVeh.make;
+              onMakeChange(savedVeh.make);
+              if (savedVeh.model) {
+                elModel.value = savedVeh.model;
+                onModelChange(savedVeh.model);
+                if (savedVeh.trim) {
+                  elTrim.value = savedVeh.trim;
+                  onTrimChange(savedVeh.trim);
+                }
+              }
+            }
+            return;
+          }
+          setTimeout(function () { waitForMakes(tries + 1); }, 100);
+        };
+        waitForMakes(0);
+      }
+    }
+  })();
+{% endjavascript %}
