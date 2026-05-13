@@ -226,6 +226,64 @@
           </div>
         </details>
 
+        {%- comment -%}
+          Tire Model — sourced from collection.filters when the
+          custom.tire_model metafield is configured under
+          Shopify admin → Search & Discovery → Filters.
+          Falls back to scanning collection.products for unique values
+          if the storefront filter facet hasn't been set up yet.
+          Hidden entirely when neither source returns any values.
+        {%- endcomment -%}
+        {%- assign model_filter = blank -%}
+        {%- for f in collection.filters -%}
+          {%- if f.param_name == 'filter.p.m.custom.tire_model' -%}
+            {%- assign model_filter = f -%}
+            {%- break -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- assign model_values_fallback = '' -%}
+        {%- if model_filter == blank -%}
+          {%- for p in collection.products -%}
+            {%- assign m = p.metafields.custom.tire_model -%}
+            {%- if m != blank and m != nil -%}
+              {%- assign mv = m | strip -%}
+              {%- unless model_values_fallback contains mv -%}
+                {%- assign model_values_fallback = model_values_fallback | append: mv | append: '|' -%}
+              {%- endunless -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {%- if model_filter != blank or model_values_fallback != '' -%}
+          <details class="ptg__filter">
+            <summary class="ptg__filter-label">
+              Model
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <input type="search" class="ptg__filter-search" data-model-search placeholder="Search models..." aria-label="Search models">
+            <div class="ptg__filter-options ptg__filter-options--scroll" data-model-list>
+              {%- if model_filter != blank -%}
+                {%- for v in model_filter.values -%}
+                  <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.tire_model" data-filter-value="{{ v.label | escape }}">
+                    <span class="ptg__filter-check"></span>
+                    {{ v.label }}
+                    <span class="ptg__filter-cnt">({{ v.count }})</span>
+                  </a>
+                {%- endfor -%}
+              {%- else -%}
+                {%- assign mvals = model_values_fallback | split: '|' | uniq | sort -%}
+                {%- for mv in mvals -%}
+                  {%- if mv != '' -%}
+                    <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.tire_model" data-filter-value="{{ mv | escape }}">
+                      <span class="ptg__filter-check"></span>
+                      {{ mv }}
+                    </a>
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- endif -%}
+            </div>
+          </details>
+        {%- endif -%}
+
         {%- comment -%} Product Type {%- endcomment -%}
         <details class="ptg__filter">
           <summary class="ptg__filter-label">
@@ -2519,6 +2577,20 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   })();
 
+  // Model list search — type to filter visible model options
+  (function () {
+    var modelSearch = document.querySelector('[data-model-search]');
+    var modelList = document.querySelector('[data-model-list]');
+    if (!modelSearch || !modelList) return;
+    modelSearch.addEventListener('input', function () {
+      var q = this.value.trim().toLowerCase();
+      modelList.querySelectorAll('[data-filter-key="filter.p.m.custom.tire_model"]').forEach(function (link) {
+        var label = (link.textContent || '').toLowerCase();
+        link.style.display = !q || label.indexOf(q) !== -1 ? '' : 'none';
+      });
+    });
+  })();
+
   // Empty-state "Clear all filters" button — navigates to /collections/tires with no params
   (function () {
     var btn = document.querySelector('[data-clear-all-empty]');
@@ -2616,6 +2688,7 @@ document.addEventListener('DOMContentLoaded', function() {
       case 'filter.p.m.custom.tire_profile': return 'Aspect: ' + value;
       case 'filter.p.m.custom.rim_diameter': return 'Rim: ' + value + '"';
       case 'filter.p.m.custom.service_type': return serviceMap[value] || value;
+      case 'filter.p.m.custom.tire_model':   return 'Model: ' + value;
       case 'filter.v.availability':          return value === '1' ? 'In stock' : 'Out of stock';
       default:                                return value;
     }
