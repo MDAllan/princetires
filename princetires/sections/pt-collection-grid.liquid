@@ -377,13 +377,10 @@
           </div>
         </div>
 
-        {%- comment -%} Garage chip — aligned with the products row, above the grid {%- endcomment -%}
-        <div class="ptg__garage-row">
-          {% render 'pt-collection-garage-pill' %}
-        </div>
-
-        {%- comment -%} Hidden marker kept for JS that reads tire-size context {%- endcomment -%}
-        <span data-results-size hidden><strong data-results-size-val></strong></span>
+        {%- comment -%} Tire-size + saved-car context line (text only) {%- endcomment -%}
+        <p class="ptg__context" data-ptg-context hidden>
+          Searching for <span data-results-size><strong data-results-size-val></strong></span><span data-ptg-context-car></span>
+        </p>
 
         {% render 'pt-collection-research-strip' %}
 
@@ -1275,13 +1272,17 @@
     margin-bottom: 1.6rem;
   }
 
-  .ptg__garage-row {
-    display: flex;
-    align-items: center;
+  .ptg__context {
     margin: 0.6rem 0 0.4rem;
-    min-height: 1.6rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: #6b7280;
   }
-  .ptg__garage-row:empty { display: none; }
+  .ptg__context[hidden] { display: none; }
+  .ptg__context strong { color: #dc2626; font-weight: 600; }
+  [data-ptg-context-car] { color: #111; font-weight: 500; }
+  [data-ptg-context-car]:not(:empty)::before { content: ' — '; color: #9ca3af; font-weight: 300; }
 
   .ptg__search {
     flex: 1;
@@ -2450,26 +2451,28 @@ document.addEventListener('DOMContentLoaded', function() {
   (function() {
     var sizeParam = getSizeFromParams(params);
     if (!sizeParam) return;
-    var sizeSpan = document.querySelector('[data-results-size]');
+    var contextRow = document.querySelector('[data-ptg-context]');
     var sizeVal = document.querySelector('[data-results-size-val]');
-    if (!sizeSpan || !sizeVal) return;
+    var carEl = document.querySelector('[data-ptg-context-car]');
+    if (!contextRow || !sizeVal) return;
 
-    var label = sizeParam;
-    // If the customer just searched by vehicle and we stored their car,
-    // surface that context — but only when the saved size matches the URL size.
-    try {
-      var raw = localStorage.getItem('pt-tire-search-vehicle');
-      if (raw) {
-        var v = JSON.parse(raw);
-        if (v && v.tireSize && v.tireSize.indexOf(sizeParam.split('/')[0]) !== -1) {
-          var car = [v.year, v.make, v.model, v.trim].filter(Boolean).join(' ');
-          if (car) label = sizeParam + ' — ' + car;
+    sizeVal.textContent = sizeParam;
+
+    // Surface saved-car name when its size matches the URL filter
+    if (carEl) {
+      try {
+        var raw = localStorage.getItem('pt-tire-search-vehicle');
+        if (raw) {
+          var v = JSON.parse(raw);
+          if (v && v.tireSize && v.tireSize.indexOf(sizeParam.split('/')[0]) !== -1) {
+            var car = [v.year, v.make, v.model, v.trim].filter(Boolean).join(' ');
+            if (car) carEl.textContent = car;
+          }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
 
-    sizeVal.textContent = label;
-    sizeSpan.hidden = false;
+    contextRow.hidden = false;
   })();
 
   function isFilterActive(key, value) {

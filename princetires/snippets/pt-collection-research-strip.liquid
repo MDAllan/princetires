@@ -41,59 +41,76 @@
 
     {%- comment -%} Tab A — by size {%- endcomment -%}
     <div class="pt-rs__panel pt-rs__panel--active" data-pt-rs-panel="size" role="tabpanel">
-      <label class="pt-rs__field">
-        <span class="pt-rs__label">Width</span>
-        <select data-pt-rs-width>
-          <option value="">—</option>
-          {%- assign widths = '155,165,175,185,195,205,215,225,235,245,255,265,275,285,295,305,315,325' | split: ',' -%}
-          {%- for w in widths -%}<option value="{{ w }}">{{ w }}</option>{%- endfor -%}
-        </select>
-      </label>
-      <label class="pt-rs__field">
-        <span class="pt-rs__label">Aspect</span>
-        <select data-pt-rs-aspect>
-          <option value="">—</option>
-          {%- assign aspects = '30,35,40,45,50,55,60,65,70,75,80,85' | split: ',' -%}
-          {%- for a in aspects -%}<option value="{{ a }}">{{ a }}</option>{%- endfor -%}
-        </select>
-      </label>
-      <label class="pt-rs__field">
-        <span class="pt-rs__label">Rim</span>
-        <select data-pt-rs-rim>
-          <option value="">—</option>
-          {%- assign rims = '13,14,15,16,17,18,19,20,21,22,24,26' | split: ',' -%}
-          {%- for r in rims -%}<option value="{{ r }}">{{ r }}</option>{%- endfor -%}
-        </select>
-      </label>
-      <button type="button" class="pt-rs__submit" data-pt-rs-submit-size>Search</button>
+      <div class="pt-rs__size-row">
+        <label class="pt-rs__field">
+          <span class="pt-rs__label">Width</span>
+          <select data-pt-rs-width>
+            <option value="">—</option>
+            {%- assign widths = '155,165,175,185,195,205,215,225,235,245,255,265,275,285,295,305,315,325' | split: ',' -%}
+            {%- for w in widths -%}<option value="{{ w }}">{{ w }}</option>{%- endfor -%}
+          </select>
+        </label>
+        <label class="pt-rs__field">
+          <span class="pt-rs__label">Aspect</span>
+          <select data-pt-rs-aspect>
+            <option value="">—</option>
+            {%- assign aspects = '30,35,40,45,50,55,60,65,70,75,80,85' | split: ',' -%}
+            {%- for a in aspects -%}<option value="{{ a }}">{{ a }}</option>{%- endfor -%}
+          </select>
+        </label>
+        <label class="pt-rs__field">
+          <span class="pt-rs__label">Rim</span>
+          <select data-pt-rs-rim>
+            <option value="">—</option>
+            {%- assign rims = '13,14,15,16,17,18,19,20,21,22,24,26' | split: ',' -%}
+            {%- for r in rims -%}<option value="{{ r }}">{{ r }}</option>{%- endfor -%}
+          </select>
+        </label>
+      </div>
+      <div class="pt-rs__actions">
+        <button type="button" class="pt-rs__submit" data-pt-rs-submit-size>Search</button>
+        <button type="button" class="pt-rs__clear" data-pt-rs-clear-size hidden>Clear</button>
+      </div>
     </div>
 
     {%- comment -%} Tab B — by vehicle {%- endcomment -%}
     <div class="pt-rs__panel" data-pt-rs-panel="vehicle" role="tabpanel" hidden>
-      <label class="pt-rs__field">
-        <span class="pt-rs__label">Year</span>
-        <select data-pt-rs-year>
-          <option value="">—</option>
-          {%- assign y = max_year -%}
-          {%- assign min_y = min_year | times: 1 -%}
-          {%- for i in (1..30) -%}
-            {%- if y >= min_y -%}<option value="{{ y }}">{{ y }}</option>{%- assign y = y | minus: 1 -%}{%- endif -%}
-          {%- endfor -%}
-        </select>
-      </label>
-      <label class="pt-rs__field">
-        <span class="pt-rs__label">Make</span>
-        <select data-pt-rs-make disabled><option value="">—</option></select>
-      </label>
-      <label class="pt-rs__field">
-        <span class="pt-rs__label">Model</span>
-        <select data-pt-rs-model disabled><option value="">—</option></select>
-      </label>
-      <label class="pt-rs__field">
-        <span class="pt-rs__label">Trim</span>
-        <select data-pt-rs-trim disabled><option value="">—</option></select>
-      </label>
-      <button type="button" class="pt-rs__submit" data-pt-rs-submit-vehicle disabled>Find tires</button>
+      {%- comment -%} Saved-car quick-pick row (populated by JS) {%- endcomment -%}
+      <div class="pt-rs__saved" data-pt-rs-saved hidden>
+        <span class="pt-rs__saved-label">Your saved cars</span>
+        <div class="pt-rs__saved-list" data-pt-rs-saved-list></div>
+      </div>
+
+      <div class="pt-rs__vehicle-row">
+        <label class="pt-rs__field">
+          <span class="pt-rs__label">Year</span>
+          <select data-pt-rs-year>
+            <option value="">—</option>
+            {%- assign y = max_year -%}
+            {%- assign min_y = min_year | times: 1 -%}
+            {%- for i in (1..30) -%}
+              {%- if y >= min_y -%}<option value="{{ y }}">{{ y }}</option>{%- assign y = y | minus: 1 -%}{%- endif -%}
+            {%- endfor -%}
+          </select>
+        </label>
+        <label class="pt-rs__field">
+          <span class="pt-rs__label">Make</span>
+          <select data-pt-rs-make disabled><option value="">—</option></select>
+        </label>
+        <label class="pt-rs__field">
+          <span class="pt-rs__label">Model</span>
+          <select data-pt-rs-model disabled><option value="">—</option></select>
+        </label>
+        <label class="pt-rs__field">
+          <span class="pt-rs__label">Trim</span>
+          <select data-pt-rs-trim disabled><option value="">—</option></select>
+        </label>
+      </div>
+
+      <div class="pt-rs__actions">
+        <button type="button" class="pt-rs__submit" data-pt-rs-submit-vehicle disabled>Find tires</button>
+        <button type="button" class="pt-rs__clear" data-pt-rs-clear-vehicle hidden>Clear</button>
+      </div>
       <p class="pt-rs__status" data-pt-rs-status hidden></p>
     </div>
   </div>
@@ -163,22 +180,70 @@
     font-weight: 600;
   }
 
-  .pt-rs__panel {
-    display: none;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    align-items: flex-end;
-  }
+  .pt-rs__panel { display: none; flex-direction: column; gap: 0.75rem; }
+  .pt-rs__panel--active { display: flex; }
 
-  .pt-rs__panel--active {
-    display: flex;
+  .pt-rs__size-row,
+  .pt-rs__vehicle-row {
+    display: grid;
+    gap: 0.6rem;
   }
+  .pt-rs__size-row    { grid-template-columns: repeat(3, 1fr); }
+  .pt-rs__vehicle-row { grid-template-columns: repeat(4, 1fr); }
+
+  .pt-rs__actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .pt-rs__actions .pt-rs__submit { flex: 1 1 auto; }
+  .pt-rs__clear {
+    height: 40px;
+    padding: 0 0.9rem;
+    background: transparent;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .pt-rs__clear:hover { color: #dc2626; border-color: #dc2626; }
+  .pt-rs__clear[hidden] { display: none; }
+
+  .pt-rs__saved {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .pt-rs__saved[hidden] { display: none; }
+  .pt-rs__saved-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .pt-rs__saved-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .pt-rs__saved-chip {
+    padding: 0.35rem 0.7rem;
+    background: rgba(220,38,38,0.06);
+    color: #dc2626;
+    border: 1px solid rgba(220,38,38,0.3);
+    border-radius: 999px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .pt-rs__saved-chip:hover { background: rgba(220,38,38,0.14); }
 
   .pt-rs__field {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    flex: 1 1 100px;
     min-width: 0;
   }
 
@@ -243,18 +308,13 @@
   }
 
   @media (max-width: 768px) {
-    .pt-rs__toggle {
-      display: flex;
-    }
-    .pt-rs__body {
-      display: none;
-    }
-    .pt-rs[data-open] .pt-rs__body {
-      display: block;
-    }
-    .pt-rs__field {
-      flex: 1 1 calc(50% - 0.5rem);
-    }
+    .pt-rs__toggle { display: flex; }
+    .pt-rs__body { display: none; }
+    .pt-rs[data-open] .pt-rs__body { display: block; }
+    /* Size tab stays 3-up; vehicle cascade re-flows to 2-up to keep tap targets large */
+    .pt-rs__vehicle-row { grid-template-columns: repeat(2, 1fr); }
+    .pt-rs__size-row { gap: 0.4rem; }
+    .pt-rs__field select { font-size: 0.92rem; padding: 0 0.45rem; }
   }
 {% endstylesheet %}
 
@@ -283,6 +343,10 @@
     var elTrim = root.querySelector('[data-pt-rs-trim]');
     var elSubmitVeh = root.querySelector('[data-pt-rs-submit-vehicle]');
     var elStatus = root.querySelector('[data-pt-rs-status]');
+    var elClearSize = root.querySelector('[data-pt-rs-clear-size]');
+    var elClearVeh = root.querySelector('[data-pt-rs-clear-vehicle]');
+    var elSaved = root.querySelector('[data-pt-rs-saved]');
+    var elSavedList = root.querySelector('[data-pt-rs-saved-list]');
 
     var yearData = null;
     var params = new URLSearchParams(window.location.search);
@@ -321,20 +385,98 @@
     if (urlW) elWidth.value = urlW;
     if (urlA) elAspect.value = urlA;
     if (urlR) elRim.value = urlR;
+    function updateSizeClear() {
+      if (!elClearSize) return;
+      elClearSize.hidden = !(elWidth.value || elAspect.value || elRim.value);
+    }
+    [elWidth, elAspect, elRim].forEach(function (s) { s.addEventListener('change', updateSizeClear); });
+    updateSizeClear();
+    if (elClearSize) elClearSize.addEventListener('click', function () {
+      elWidth.value = elAspect.value = elRim.value = '';
+      updateSizeClear();
+    });
 
-    // ─── Pre-fill the Vehicle tab from localStorage ──────────────────
+    // ─── Collect every saved vehicle (garage + tire-search) ──────────
+    var savedVehicles = [];
+    try {
+      Object.keys(localStorage).filter(function (k) {
+        return k.indexOf('pt-garage-') === 0;
+      }).forEach(function (k) {
+        var arr = JSON.parse(localStorage.getItem(k) || '[]');
+        if (Array.isArray(arr)) arr.forEach(function (v) {
+          if (v && v.year && v.make && v.model) {
+            savedVehicles.push({
+              isDefault: !!v.isDefault,
+              year: String(v.year), make: v.make, model: v.model,
+              trim: v.trim || '', nickname: v.nickname || '',
+              size: v.tireSize || (v.sizes && v.sizes[0]) || ''
+            });
+          }
+        });
+      });
+    } catch (e) {}
     var savedVeh = null;
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         var parsed = JSON.parse(raw);
-        if (parsed && parsed.year) savedVeh = parsed;
+        if (parsed && parsed.year) {
+          savedVeh = parsed;
+          var dup = savedVehicles.some(function (v) {
+            return v.year === String(parsed.year) && v.make === parsed.make && v.model === parsed.model;
+          });
+          if (!dup) savedVehicles.push({
+            isDefault: false,
+            year: String(parsed.year), make: parsed.make, model: parsed.model,
+            trim: parsed.trim || '', nickname: '',
+            size: (parsed.sizes && parsed.sizes[0]) || parsed.tireSize || ''
+          });
+        }
       }
     } catch (e) {}
 
     // ─── Tab default ─────────────────────────────────────────────────
     var hasSize = !!(urlW || urlA || urlR);
     if (!hasSize && savedVeh) activateTab('vehicle');
+
+    // ─── Render saved-cars quick-pick row ────────────────────────────
+    function renderSavedCars() {
+      if (!elSaved || !elSavedList) return;
+      if (savedVehicles.length === 0) { elSaved.hidden = true; return; }
+      savedVehicles.sort(function (a, b) {
+        if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+        return 0;
+      });
+      var html = '';
+      savedVehicles.forEach(function (v, i) {
+        var label = v.nickname || (v.year + ' ' + v.make + ' ' + v.model + (v.trim ? ' ' + v.trim : ''));
+        html += '<button type="button" class="pt-rs__saved-chip" data-saved-i="' + i + '">' + label.replace(/"/g, '&quot;') + '</button>';
+      });
+      elSavedList.innerHTML = html;
+      elSaved.hidden = false;
+      elSavedList.querySelectorAll('[data-saved-i]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var v = savedVehicles[parseInt(btn.dataset.savedI, 10) || 0];
+          if (!v || !v.size) { flashStatus('No size on file for this car.'); return; }
+          applyVehicleSize(v);
+        });
+      });
+    }
+    function applyVehicleSize(v) {
+      var m = String(v.size).match(/(\d{3})\s*\/\s*(\d{2,3})\s*R\s*(\d{2})/i);
+      if (!m) { flashStatus("Couldn't parse size '" + v.size + "'."); return; }
+      var newParams = new URLSearchParams();
+      params.forEach(function (val, k) {
+        if (k === 'filter.p.vendor' ||
+            k === 'filter.p.m.custom.seasonality' ||
+            k === 'filter.p.m.custom.service_type') newParams.append(k, val);
+      });
+      newParams.set('filter.p.m.custom.tire_width', m[1]);
+      newParams.set('filter.p.m.custom.tire_profile', m[2]);
+      newParams.set('filter.p.m.custom.rim_diameter', m[3]);
+      window.location.href = window.location.pathname + '?' + newParams.toString();
+    }
+    renderSavedCars();
 
     // ─── Size tab submit ─────────────────────────────────────────────
     elSubmitSize.addEventListener('click', function () {
@@ -424,7 +566,22 @@
 
     function onTrimChange(trim) {
       elSubmitVeh.disabled = !trim;
+      updateVehicleClear();
     }
+    function updateVehicleClear() {
+      if (!elClearVeh) return;
+      elClearVeh.hidden = !(elYear.value || elMake.value || elModel.value || elTrim.value);
+    }
+    [elYear, elMake, elModel, elTrim].forEach(function (s) { s.addEventListener('change', updateVehicleClear); });
+    if (elClearVeh) elClearVeh.addEventListener('click', function () {
+      yearData = null;
+      elYear.value = '';
+      resetSelect(elMake, '—');
+      resetSelect(elModel, '—');
+      resetSelect(elTrim, '—');
+      elSubmitVeh.disabled = true;
+      updateVehicleClear();
+    });
 
     elSubmitVeh.addEventListener('click', function () {
       var make = elMake.value;
