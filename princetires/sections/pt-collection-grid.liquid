@@ -505,7 +505,11 @@
               <a href="{{ product.url }}" class="ptg__card{% unless product.available %} ptg__card--unavailable{% endunless %}" data-vendor="{{ product.vendor | handleize }}" data-season="{{ season_tag | handleize }}" data-type="{{ product.type | downcase }}" data-price="{{ product.price | money_without_currency | strip_html | strip }}" data-tire-size="{{ tire_size_display }}" data-product-title="{{ card_title | escape }}"{% unless product.available %} aria-label="Out of stock — {{ card_title | escape }}"{% endunless %}>
                 <div class="ptg__card-img">
                   {%- if product.featured_image -%}
-                    {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'ptg__img', loading: 'lazy' }}
+                    {%- if forloop.index <= 4 -%}
+                      {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'ptg__img', loading: 'eager', fetchpriority: 'high', widths: '200,300,400,600', sizes: '(max-width: 768px) 50vw, (max-width: 989px) 30vw, 25vw', alt: product.title }}
+                    {%- else -%}
+                      {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'ptg__img', loading: 'lazy', widths: '200,300,400,600', sizes: '(max-width: 768px) 50vw, (max-width: 989px) 30vw, 25vw', alt: product.title }}
+                    {%- endif -%}
                   {%- else -%}
                     <div class="ptg__card-ph">
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
