@@ -444,29 +444,6 @@
 
         {% render 'pt-collection-research-strip' %}
 
-        {%- comment -%}
-          Popular models pill row — sorted by product count desc, top 10.
-          Sourced from the same `model_filter` facet rendered in the sidebar.
-        {%- endcomment -%}
-        {%- if model_filter != blank -%}
-          {%- assign top_models = model_filter.values | sort: 'count' | reverse -%}
-          <div class="ptg__popular-models" data-popular-models>
-            <span class="ptg__popular-models-label">Popular models</span>
-            <div class="ptg__popular-models-pills">
-              {%- assign shown = 0 -%}
-              {%- for v in top_models -%}
-                {%- if v.count > 0 and shown < 10 -%}
-                  <a href="{{ collection.url }}?filter.p.m.custom.tire_model={{ v.label | url_encode }}" class="ptg__popular-model-pill" data-filter-key="filter.p.m.custom.tire_model" data-filter-value="{{ v.label | escape }}">
-                    {{ v.label }}
-                    <span class="ptg__popular-model-cnt">{{ v.count }}</span>
-                  </a>
-                  {%- assign shown = shown | plus: 1 -%}
-                {%- endif -%}
-              {%- endfor -%}
-            </div>
-          </div>
-        {%- endif -%}
-
         {%- if collection.products.size > 0 -%}
           <div class="ptg__grid">
             {%- for product in collection.products -%}
@@ -2106,58 +2083,6 @@
     border-radius: 999px;
   }
   .ptg__cmp-table .ptg__cmp-link:hover { background: #b91c1c; }
-
-  /* ══ Popular Models pill row ══ */
-  .ptg__popular-models {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.55rem;
-    margin: 0.6rem 0 1.2rem;
-    padding: 0.7rem 0;
-    border-top: 1px solid #f0f0f0;
-  }
-  .ptg__popular-models-label {
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    flex-shrink: 0;
-    margin-right: 0.4rem;
-  }
-  .ptg__popular-models-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-  .ptg__popular-model-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.8rem;
-    background: #fff;
-    color: #111;
-    border: 1px solid #e5e7eb;
-    border-radius: 999px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-    white-space: nowrap;
-  }
-  .ptg__popular-model-pill:hover {
-    border-color: #dc2626;
-    color: #dc2626;
-    background: rgba(220, 38, 38, 0.04);
-  }
-  .ptg__popular-model-cnt {
-    font-size: 0.72rem;
-    color: #9ca3af;
-    font-weight: 600;
-  }
 
   /* ══ Pagination ══ */
   .ptg__pages {
