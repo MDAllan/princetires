@@ -66,8 +66,18 @@
         <div class="trusted-brands__track" data-brand-track data-has-blocks="{{ tire_blocks.size }}">
           {%- if tire_blocks.size > 0 -%}
             {%- for block in tire_blocks -%}
+              {%- comment -%}
+                CTA URL priority:
+                  1. block.settings.link — explicit theme-editor override
+                  2. /collections/tires filtered by the model name
+                  3. last resort: /search?q=<brand> <model>
+              {%- endcomment -%}
               {%- assign auto_link = block.settings.brand | append: ' ' | append: block.settings.model -%}
               {%- assign card_link = block.settings.link | default: blank -%}
+              {%- if card_link == blank and block.settings.model != blank -%}
+                {%- assign m_enc = block.settings.model | url_encode -%}
+                {%- assign card_link = '/collections/tires?filter.p.m.custom.tire_model=' | append: m_enc -%}
+              {%- endif -%}
               <div class="trusted-brands__card" data-tire-brand="{{ block.settings.brand | handleize }}" {{ block.shopify_attributes }}>
                 <div class="trusted-brands__card-image">
                   {%- if block.settings.image != blank -%}
