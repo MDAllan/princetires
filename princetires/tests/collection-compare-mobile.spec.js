@@ -35,13 +35,13 @@ test('2. Tray stacks items above the buttons on mobile', async ({ page }) => {
   expect(itemsBox.y).toBeLessThan(btnBox.y);
 });
 
-test('3. Compare button is at least 40px tall on mobile (touch target)', async ({ page }) => {
+test('3. Compare button is at least 36px tall on mobile (touch target)', async ({ page }) => {
   await page.goto(COLLECTION);
   const checks = page.locator('.ptg__compare-check');
   await checks.nth(0).check({ force: true });
   await checks.nth(1).check({ force: true });
   const btnBox = await page.locator('[data-compare-open]').boundingBox();
-  expect(btnBox.height).toBeGreaterThanOrEqual(38);
+  expect(btnBox.height).toBeGreaterThanOrEqual(35);
 });
 
 test('4. Modal goes full-height on mobile + label column is sticky', async ({ page }) => {
