@@ -1,0 +1,632 @@
+{% doc %}
+  Compare drawer + modal for the tires collection.
+  Customers tick the `.ptg__compare-check` checkbox inside each product
+  card (rendered by the section, not this snippet) to add tires to the
+  tray. Tapping 'Compare' opens a modal with a side-by-side table plus
+  a hexagon radar chart of trade-offs.
+
+  Caps at 3 tires (see MAX_COMPARE in the JS).
+
+  @example
+  {% if section.settings.enable_compare %}
+    {% render 'pt-collection-compare' %}
+  {% endif %}
+{% enddoc %}
+
+<div class="ptg__compare-tray" data-compare-tray hidden>
+  <div class="ptg__compare-tray-inner">
+    <div class="ptg__compare-items" data-compare-items></div>
+    <button type="button" class="ptg__compare-btn" data-compare-open disabled>Compare (<span data-compare-count>0</span>)</button>
+    <button type="button" class="ptg__compare-clear" data-compare-clear>Clear</button>
+  </div>
+</div>
+
+<div class="ptg__compare-modal" data-compare-modal hidden>
+  <div class="ptg__compare-modal-backdrop" data-compare-modal-close></div>
+  <div class="ptg__compare-modal-content">
+    <div class="ptg__compare-modal-head">
+      <h3>Compare tires</h3>
+      <button type="button" class="ptg__compare-modal-x" data-compare-modal-close aria-label="Close comparison">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="ptg__compare-table-wrap" data-compare-table></div>
+    <div class="ptg__compare-radar-wrap" data-compare-radar></div>
+    <div class="ptg__compare-modal-foot">
+      <button type="button" class="ptg__compare-modal-done" data-compare-modal-close>Close comparison</button>
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+  /* Compare tray — pinned, slides in via .is-visible */
+  .ptg__compare-tray {
+    display: block;
+    position: fixed;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    left: 1rem;
+    right: 1rem;
+    z-index: 1001;
+    background: #fff;
+    border: 1px solid rgba(220,38,38,0.25);
+    border-radius: 14px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.18);
+    padding: 0.85rem 1rem;
+    transform: translateY(150%);
+    transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  }
+  .ptg__compare-tray[hidden] { display: block; transform: translateY(150%); }
+  .ptg__compare-tray.is-visible { transform: translateY(0); }
+  @media (min-width: 769px) {
+    .ptg__compare-tray { bottom: 1.2rem; left: 50%; right: auto; transform: translate(-50%, 150%); max-width: 880px; width: calc(100% - 2.4rem); }
+    .ptg__compare-tray.is-visible { transform: translate(-50%, 0); }
+  }
+  .ptg__compare-tray-inner { display: flex; align-items: center; gap: 0.8rem; }
+  .ptg__compare-items { display: flex; gap: 0.5rem; flex: 1; overflow-x: auto; padding: 2px 0; }
+  .ptg__compare-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(220,38,38,0.06);
+    border: 1px solid rgba(220,38,38,0.25);
+    border-radius: 999px;
+    padding: 0.3rem 0.5rem 0.3rem 0.35rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.82rem;
+    color: #111;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .ptg__compare-item img { width: 26px; height: 26px; object-fit: contain; background: #fff; border-radius: 50%; }
+  .ptg__compare-item-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    padding: 0;
+    font-size: 1.05rem;
+    line-height: 1;
+    border-radius: 50%;
+  }
+  .ptg__compare-item-remove:hover { color: #dc2626; background: rgba(220,38,38,0.1); }
+  .ptg__compare-btn {
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .ptg__compare-btn:hover { background: #b91c1c; }
+  .ptg__compare-btn:disabled { background: #d1d5db; cursor: not-allowed; }
+  .ptg__compare-clear {
+    background: none;
+    border: 0;
+    padding: 0.5rem 0.6rem;
+    border-radius: 999px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    color: #6b7280;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .ptg__compare-clear:hover { color: #dc2626; background: rgba(220,38,38,0.06); }
+
+  /* Modal */
+  .ptg__compare-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .ptg__compare-modal[hidden] { display: none; }
+  .ptg__compare-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 15, 15, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .ptg__compare-modal-content {
+    position: relative;
+    background: #fff;
+    border-radius: 16px;
+    width: min(96vw, 1040px);
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+  }
+  .ptg__compare-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.4rem;
+    border-bottom: 1px solid #f1f1f1;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+    border-radius: 16px 16px 0 0;
+  }
+  .ptg__compare-modal-head h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .ptg__compare-modal-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    border-radius: 999px;
+  }
+  .ptg__compare-modal-x:hover { color: #dc2626; background: rgba(220,38,38,0.08); }
+
+  /* Comparison table */
+  .ptg__cmp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Outfit', sans-serif;
+  }
+  .ptg__cmp-table th {
+    text-align: left;
+    padding: 0.7rem 1.2rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #6b7280;
+    background: #fafafa;
+    white-space: nowrap;
+    width: 130px;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .ptg__cmp-table td {
+    padding: 0.7rem 1.2rem;
+    font-size: 0.92rem;
+    color: #1f2937;
+    border-bottom: 1px solid #f5f5f5;
+    vertical-align: middle;
+    text-align: center;
+  }
+  .ptg__cmp-table td img { width: 88px; height: 88px; object-fit: contain; }
+  .ptg__cmp-table .ptg__cmp-price { font-weight: 700; color: #dc2626; font-size: 1.15rem; }
+  .ptg__cmp-table .ptg__cmp-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    background: #dc2626;
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.82rem;
+    border-radius: 999px;
+  }
+  .ptg__cmp-table .ptg__cmp-link:hover { background: #b91c1c; }
+
+  /* Hexagon radar */
+  .ptg__compare-radar-wrap {
+    padding: 1.4rem 1.4rem 0.6rem;
+    border-top: 1px solid #f1f1f1;
+  }
+  .ptg__compare-radar-wrap:empty { display: none; }
+  .ptg__cmp-radar-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 0.2rem;
+  }
+  .ptg__cmp-radar-sub {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin: 0 0 1rem;
+  }
+  .ptg__cmp-radar-chart-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 0.5rem 0;
+  }
+  .ptg__cmp-radar-svg {
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    font-family: 'Outfit', sans-serif;
+  }
+  .ptg__cmp-radar-grid { fill: none; stroke: #e5e7eb; stroke-width: 1; }
+  .ptg__cmp-radar-axis { stroke: #e5e7eb; stroke-width: 1; }
+  .ptg__cmp-radar-axis-label {
+    font-size: 11px;
+    fill: #374151;
+    font-weight: 600;
+  }
+  .ptg__cmp-radar-poly { stroke-width: 2; fill-opacity: 0.18; }
+  .ptg__cmp-radar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.8rem;
+    margin-top: 0.6rem;
+  }
+  .ptg__cmp-radar-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    color: #374151;
+  }
+  .ptg__cmp-radar-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+  }
+
+  /* Modal footer */
+  .ptg__compare-modal-foot {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.85), #fff 30%);
+    padding: 0.85rem 1.2rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+    border-top: 1px solid #f5f5f5;
+  }
+  .ptg__compare-modal-done {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 160px;
+    height: 40px;
+    padding: 0 1.4rem;
+    background: #111;
+    color: #fff;
+    border: 0;
+    border-radius: 999px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .ptg__compare-modal-done:hover { background: #000; }
+
+  /* Mobile overrides */
+  @media (max-width: 768px) {
+    .ptg__compare-tray { padding: 0.55rem 0.7rem; bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+    .ptg__compare-tray-inner { flex-wrap: wrap; gap: 0.45rem; }
+    .ptg__compare-items {
+      flex: 1 1 100%;
+      order: 1;
+      gap: 0.35rem;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .ptg__compare-btn { order: 2; flex: 1 1 auto; height: 36px; font-size: 0.88rem; padding: 0 1rem; }
+    .ptg__compare-clear { order: 3; flex: 0 0 auto; padding: 0.4rem 0.6rem; font-size: 0.82rem; }
+    .ptg__compare-item img { width: 22px; height: 22px; }
+    .ptg__compare-item {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.35rem 0.25rem 0.28rem;
+      gap: 0.35rem;
+      max-width: 130px;
+    }
+    .ptg__compare-item > span:not(.ptg__compare-item-remove) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 80px;
+      display: inline-block;
+    }
+    .ptg__compare-item-remove { width: 18px; height: 18px; font-size: 1rem; }
+
+    .ptg__compare-modal-content {
+      width: 100%;
+      max-width: 100%;
+      max-height: 100vh;
+      border-radius: 0;
+      height: 100vh;
+    }
+    .ptg__compare-modal { padding: 0; }
+    .ptg__compare-modal-head { border-radius: 0; padding: 0.85rem 1rem; }
+    .ptg__compare-modal-head h3 { font-size: 1rem; }
+    .ptg__compare-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .ptg__cmp-table th {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      width: 92px;
+      min-width: 92px;
+      font-size: 0.65rem;
+      padding: 0.55rem 0.7rem;
+      background: #fafafa;
+      border-right: 1px solid #f0f0f0;
+    }
+    .ptg__cmp-table td {
+      font-size: 0.82rem;
+      padding: 0.55rem 0.7rem;
+      min-width: 110px;
+    }
+    .ptg__cmp-table td img { width: 64px; height: 64px; }
+    .ptg__cmp-table .ptg__cmp-price { font-size: 1rem; }
+    .ptg__cmp-table .ptg__cmp-link { padding: 0.5rem 0.85rem; font-size: 0.85rem; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function() {
+    var tray = document.querySelector('[data-compare-tray]');
+    var itemsWrap = document.querySelector('[data-compare-items]');
+    var countEl = document.querySelector('[data-compare-count]');
+    var openBtn = document.querySelector('[data-compare-open]');
+    var clearBtn = document.querySelector('[data-compare-clear]');
+    var modal = document.querySelector('[data-compare-modal]');
+    var tableWrap = document.querySelector('[data-compare-table]');
+    var radarWrap = document.querySelector('[data-compare-radar]');
+    if (!tray) return;
+
+    var compareList = [];
+    var MAX_COMPARE = 3;
+
+    function updateTray() {
+      if (compareList.length === 0) {
+        tray.classList.remove('is-visible');
+        return;
+      }
+      tray.classList.add('is-visible');
+      countEl.textContent = compareList.length;
+      openBtn.disabled = compareList.length < 2;
+
+      var html = '';
+      compareList.forEach(function(item) {
+        html += '<div class="ptg__compare-item">' +
+          (item.img ? '<img src="' + item.img + '" alt="">' : '') +
+          '<span>' + item.vendor + ' ' + item.title + '</span>' +
+          '<button type="button" class="ptg__compare-item-remove" data-remove-id="' + item.id + '">&times;</button>' +
+        '</div>';
+      });
+      itemsWrap.innerHTML = html;
+
+      itemsWrap.querySelectorAll('[data-remove-id]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          removeFromCompare(this.dataset.removeId);
+        });
+      });
+    }
+
+    function addToCompare(data) {
+      if (compareList.length >= MAX_COMPARE) return;
+      if (compareList.find(function(i) { return i.id === data.id; })) return;
+      compareList.push(data);
+      updateTray();
+    }
+
+    function removeFromCompare(id) {
+      compareList = compareList.filter(function(i) { return i.id !== id; });
+      var cb = document.querySelector('.ptg__compare-check[data-compare-id="' + id + '"]');
+      if (cb) cb.checked = false;
+      updateTray();
+    }
+
+    document.querySelectorAll('.ptg__compare-check').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        if (this.checked) {
+          if (compareList.length >= MAX_COMPARE) { this.checked = false; return; }
+          addToCompare({
+            id: this.dataset.compareId,
+            title: this.dataset.compareTitle,
+            vendor: this.dataset.compareVendor,
+            price: this.dataset.comparePrice,
+            setPrice: this.dataset.compareSet,
+            img: this.dataset.compareImg,
+            size: this.dataset.compareSize,
+            url: this.dataset.compareUrl,
+            season: this.dataset.compareSeason,
+            type: this.dataset.compareType,
+            speed: this.dataset.compareSpeed,
+            load: this.dataset.compareLoad,
+            warranty: this.dataset.compareWarranty
+          });
+        } else {
+          removeFromCompare(this.dataset.compareId);
+        }
+      });
+    });
+
+    if (clearBtn) clearBtn.addEventListener('click', function() {
+      compareList = [];
+      document.querySelectorAll('.ptg__compare-check').forEach(function(cb) { cb.checked = false; });
+      updateTray();
+    });
+
+    function buildTable() {
+      var rows = [
+        { label: '', key: 'img', render: function(v) { return v.img ? '<img src="' + v.img + '" alt="">' : ''; } },
+        { label: 'Brand', key: 'vendor' },
+        { label: 'Model', key: 'title' },
+        { label: 'Size', key: 'size' },
+        { label: 'Price / tire', key: 'price', cls: 'ptg__cmp-price', render: function(v) { return '$' + v.price; } },
+        { label: 'Set of 4', key: 'setPrice', render: function(v) { return '$' + v.setPrice; } },
+        { label: 'Season', key: 'season' },
+        { label: 'Type', key: 'type' },
+        { label: 'Speed rating', key: 'speed' },
+        { label: 'Load index', key: 'load' },
+        { label: 'Warranty', key: 'warranty' },
+        { label: '', key: 'url', render: function(v) { return '<a href="' + v.url + '" class="ptg__cmp-link">View tire →</a>'; } }
+      ];
+
+      var html = '<table class="ptg__cmp-table">';
+      rows.forEach(function(row) {
+        html += '<tr><th>' + row.label + '</th>';
+        compareList.forEach(function(item) {
+          var val = row.render ? row.render(item) : (item[row.key] || '—');
+          html += '<td' + (row.cls ? ' class="' + row.cls + '"' : '') + '>' + val + '</td>';
+        });
+        html += '</tr>';
+      });
+      html += '</table>';
+      tableWrap.innerHTML = html;
+    }
+
+    // Hexagon radar — six axes derived from existing compare data
+    function scoreFor(item, axis) {
+      function pickNum(s, def) {
+        var m = String(s || '').match(/(\d+)/);
+        return m ? parseInt(m[1], 10) : def;
+      }
+      var speedRank = { Y: 100, W: 90, V: 80, ZR: 95, H: 70, U: 65, T: 60, S: 50, R: 45, Q: 40 };
+      switch (axis) {
+        case 'performance': {
+          var c = String(item.speed || '').toUpperCase().match(/[A-Z]{1,2}/);
+          return c && speedRank[c[0]] != null ? speedRank[c[0]] : 50;
+        }
+        case 'load': {
+          var li = pickNum(item.load, 90);
+          return Math.max(20, Math.min(100, (li - 70) * 3));
+        }
+        case 'snow': {
+          var s = String(item.season || '').toLowerCase();
+          if (s.indexOf('winter') !== -1) return 95;
+          if (s.indexOf('all-weather') !== -1) return 80;
+          if (s.indexOf('all-season') !== -1) return 50;
+          if (s.indexOf('summer') !== -1 || s.indexOf('performance') !== -1) return 15;
+          return 45;
+        }
+        case 'durability': {
+          var w = pickNum(item.warranty, 0);
+          if (!w) return 50;
+          return Math.max(30, Math.min(100, w / 1000));
+        }
+        case 'comfort': {
+          var t = String(item.type || '').toLowerCase();
+          if (t.indexOf('mud') !== -1) return 35;
+          if (t.indexOf('all-terrain') !== -1 || t.indexOf('a/t') !== -1) return 55;
+          if (t.indexOf('performance') !== -1) return 65;
+          if (t.indexOf('highway') !== -1 || t.indexOf('touring') !== -1) return 90;
+          return 70;
+        }
+        case 'value': {
+          var prices = compareList.map(function (i) { return parseFloat(String(i.price).replace(/[^0-9.]/g, '')) || 0; });
+          var min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
+          var p = parseFloat(String(item.price).replace(/[^0-9.]/g, '')) || 0;
+          if (max === min) return 70;
+          return Math.round(100 - ((p - min) / (max - min)) * 80);
+        }
+      }
+      return 50;
+    }
+
+    function buildRadar() {
+      if (!radarWrap) return;
+      if (compareList.length === 0) { radarWrap.innerHTML = ''; return; }
+
+      var AXES = [
+        { key: 'performance', label: 'Performance' },
+        { key: 'load',        label: 'Load' },
+        { key: 'snow',        label: 'Snow grip' },
+        { key: 'durability',  label: 'Durability' },
+        { key: 'comfort',     label: 'Comfort' },
+        { key: 'value',       label: 'Value' }
+      ];
+      var COLORS = ['#dc2626', '#2563eb', '#16a34a'];
+
+      var size = 320, cx = size / 2, cy = size / 2, R = 110;
+      function point(angle, r) {
+        return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+      }
+
+      var svg = '<svg class="ptg__cmp-radar-svg" viewBox="0 0 ' + size + ' ' + size + '" xmlns="http://www.w3.org/2000/svg" aria-label="Tire comparison radar">';
+
+      [0.25, 0.5, 0.75, 1].forEach(function (frac) {
+        var pts = AXES.map(function (_, i) {
+          var ang = (Math.PI * 2 * i) / AXES.length - Math.PI / 2;
+          return point(ang, R * frac).join(',');
+        }).join(' ');
+        svg += '<polygon class="ptg__cmp-radar-grid" points="' + pts + '"></polygon>';
+      });
+
+      AXES.forEach(function (axis, i) {
+        var ang = (Math.PI * 2 * i) / AXES.length - Math.PI / 2;
+        var end = point(ang, R);
+        svg += '<line class="ptg__cmp-radar-axis" x1="' + cx + '" y1="' + cy + '" x2="' + end[0] + '" y2="' + end[1] + '"></line>';
+        var labelP = point(ang, R + 22);
+        var anchor = 'middle';
+        if (labelP[0] > cx + 8) anchor = 'start';
+        else if (labelP[0] < cx - 8) anchor = 'end';
+        svg += '<text class="ptg__cmp-radar-axis-label" x="' + labelP[0] + '" y="' + (labelP[1] + 4) + '" text-anchor="' + anchor + '">' + axis.label + '</text>';
+      });
+
+      compareList.forEach(function (item, idx) {
+        var color = COLORS[idx % COLORS.length];
+        var pts = AXES.map(function (axis, i) {
+          var ang = (Math.PI * 2 * i) / AXES.length - Math.PI / 2;
+          var s = Math.max(0, Math.min(100, scoreFor(item, axis.key)));
+          return point(ang, R * (s / 100)).join(',');
+        }).join(' ');
+        svg += '<polygon class="ptg__cmp-radar-poly" points="' + pts + '" stroke="' + color + '" fill="' + color + '"></polygon>';
+      });
+
+      svg += '</svg>';
+
+      var legend = '<div class="ptg__cmp-radar-legend">';
+      compareList.forEach(function (item, idx) {
+        var color = COLORS[idx % COLORS.length];
+        var name = (item.vendor + ' ' + item.title).slice(0, 40);
+        legend += '<span class="ptg__cmp-radar-legend-item"><span class="ptg__cmp-radar-legend-dot" style="background:' + color + '"></span>' + name + '</span>';
+      });
+      legend += '</div>';
+
+      radarWrap.innerHTML =
+        '<h4 class="ptg__cmp-radar-title">At-a-glance trade-offs</h4>' +
+        '<p class="ptg__cmp-radar-sub">Scores derived from speed rating, load index, season, type and warranty. Higher = better on that axis.</p>' +
+        '<div class="ptg__cmp-radar-chart-wrap">' + svg + '</div>' +
+        legend;
+    }
+
+    if (openBtn) openBtn.addEventListener('click', function() {
+      if (compareList.length < 2) return;
+      buildTable();
+      buildRadar();
+      modal.hidden = false;
+      document.body.style.overflow = 'hidden';
+    });
+
+    function closeModal() {
+      if (modal) { modal.hidden = true; document.body.style.overflow = ''; }
+    }
+
+    document.querySelectorAll('[data-compare-modal-close]').forEach(function(el) {
+      el.addEventListener('click', closeModal);
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && modal && !modal.hidden) closeModal();
+    });
+  })();
+{% endjavascript %}
