@@ -254,7 +254,7 @@
           {%- endfor -%}
         {%- endif -%}
         {%- if model_filter != blank or model_values_fallback != '' -%}
-          <details class="ptg__filter">
+          <details class="ptg__filter" open>
             <summary class="ptg__filter-label">
               Model
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
@@ -263,7 +263,7 @@
             <div class="ptg__filter-options ptg__filter-options--scroll" data-model-list>
               {%- if model_filter != blank -%}
                 {%- for v in model_filter.values -%}
-                  <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.tire_model" data-filter-value="{{ v.label | escape }}">
+                  <a href="{{ collection.url }}?filter.p.m.custom.tire_model={{ v.label | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.tire_model" data-filter-value="{{ v.label | escape }}">
                     <span class="ptg__filter-check"></span>
                     {{ v.label }}
                     <span class="ptg__filter-cnt">({{ v.count }})</span>
@@ -273,7 +273,7 @@
                 {%- assign mvals = model_values_fallback | split: '|' | uniq | sort -%}
                 {%- for mv in mvals -%}
                   {%- if mv != '' -%}
-                    <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.tire_model" data-filter-value="{{ mv | escape }}">
+                    <a href="{{ collection.url }}?filter.p.m.custom.tire_model={{ mv | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.tire_model" data-filter-value="{{ mv | escape }}">
                       <span class="ptg__filter-check"></span>
                       {{ mv }}
                     </a>
