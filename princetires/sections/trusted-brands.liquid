@@ -69,39 +69,14 @@
               {%- comment -%}
                 CTA URL priority:
                   1. block.settings.link — explicit theme-editor override
-                  2. /collections/tires filtered by every metafield value that
-                     contains the typed model name (handles 'Defender 2' →
-                     ['Defender 2', 'Defender 2 LTX', …] when inventory uses
-                     variant suffixes). Multiple tire_model params = OR filter.
-                  3. last resort: /search?q=<brand>+<model>&type=product
+                  2. /collections/tires filtered by vendor (much simpler than
+                     trying to fuzzy-match a free-text model name against
+                     metafield values that may have suffixes / casing drift)
               {%- endcomment -%}
               {%- assign auto_link = block.settings.brand | append: ' ' | append: block.settings.model -%}
               {%- assign card_link = block.settings.link | default: blank -%}
-              {%- if card_link == blank and block.settings.model != blank -%}
-                {%- assign target = block.settings.model | strip | downcase -%}
-                {%- assign matches = '' -%}
-                {%- for f in collections.tires.filters -%}
-                  {%- if f.param_name == 'filter.p.m.custom.tire_model' -%}
-                    {%- for v in f.values -%}
-                      {%- assign candidate = v.label | strip | downcase -%}
-                      {%- if candidate contains target -%}
-                        {%- assign matches = matches | append: v.label | append: '||' -%}
-                      {%- endif -%}
-                    {%- endfor -%}
-                  {%- endif -%}
-                {%- endfor -%}
-                {%- if matches != '' -%}
-                  {%- assign match_list = matches | split: '||' | uniq -%}
-                  {%- assign card_link = '/collections/tires?' -%}
-                  {%- for m in match_list -%}
-                    {%- if m != '' -%}
-                      {%- assign card_link = card_link | append: 'filter.p.m.custom.tire_model=' | append: m | url_encode | append: '&' -%}
-                    {%- endif -%}
-                  {%- endfor -%}
-                  {%- assign card_link = card_link | replace_last: '&', '' -%}
-                {%- else -%}
-                  {%- assign card_link = '/search?q=' | append: auto_link | url_encode | append: '&type=product' -%}
-                {%- endif -%}
+              {%- if card_link == blank and block.settings.brand != blank -%}
+                {%- assign card_link = '/collections/tires?filter.p.vendor=' | append: block.settings.brand | url_encode -%}
               {%- endif -%}
               <div class="trusted-brands__card" data-tire-brand="{{ block.settings.brand | handleize }}" {{ block.shopify_attributes }}>
                 <div class="trusted-brands__card-image">
