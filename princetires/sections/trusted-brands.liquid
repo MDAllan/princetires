@@ -69,14 +69,25 @@
               {%- comment -%}
                 CTA URL priority:
                   1. block.settings.link — explicit theme-editor override
-                  2. /collections/tires filtered by vendor (much simpler than
-                     trying to fuzzy-match a free-text model name against
-                     metafield values that may have suffixes / casing drift)
+                  2. /collections/<brand-handle> — every brand we feature has
+                     its own dedicated Shopify collection (e.g. /collections/
+                     michelin, /collections/bridgestone). Cleaner than a
+                     filtered tires URL, gives the customer a branded landing
+                     with all that brand's products.
+                  3. fallback: /collections/tires?filter.p.vendor=<brand>
+                     (vendor filter always renders) for brands without a
+                     dedicated collection.
               {%- endcomment -%}
               {%- assign auto_link = block.settings.brand | append: ' ' | append: block.settings.model -%}
               {%- assign card_link = block.settings.link | default: blank -%}
               {%- if card_link == blank and block.settings.brand != blank -%}
-                {%- assign card_link = '/collections/tires?filter.p.vendor=' | append: block.settings.brand | url_encode -%}
+                {%- assign brand_handle = block.settings.brand | handleize -%}
+                {%- assign brand_collection = collections[brand_handle] -%}
+                {%- if brand_collection != empty and brand_collection.handle != blank -%}
+                  {%- assign card_link = '/collections/' | append: brand_handle -%}
+                {%- else -%}
+                  {%- assign card_link = '/collections/tires?filter.p.vendor=' | append: block.settings.brand | url_encode -%}
+                {%- endif -%}
               {%- endif -%}
               <div class="trusted-brands__card" data-tire-brand="{{ block.settings.brand | handleize }}" {{ block.shopify_attributes }}>
                 <div class="trusted-brands__card-image">
