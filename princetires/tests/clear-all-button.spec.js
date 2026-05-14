@@ -21,20 +21,19 @@ test('1. Clear all button is visible when filters are active', async ({ page }) 
   await expect(clearBtn).toHaveText(/Clear all/i);
 });
 
-test('2. Clear all drops brand + season — preserves tire size when all 3 are present', async ({ page }) => {
+test('2. Clear all drops everything, including tire size', async ({ page }) => {
   await page.goto(COLLECTION + '?filter.p.m.custom.tire_width=225&filter.p.m.custom.tire_profile=45&filter.p.m.custom.rim_diameter=17&filter.p.vendor=Michelin&filter.p.m.custom.seasonality=Winter');
 
   await Promise.all([
-    page.waitForURL(/tire_width=225/, { timeout: 5000 }),
+    page.waitForURL(url => !url.search.includes('filter.'), { timeout: 5000 }),
     page.locator('[data-active-filters-sidebar] [data-clear-all]').click()
   ]);
 
   const url = page.url();
-  // Size is preserved
-  expect(url).toContain('filter.p.m.custom.tire_width=225');
-  expect(url).toContain('filter.p.m.custom.tire_profile=45');
-  expect(url).toContain('filter.p.m.custom.rim_diameter=17');
-  // Brand + season are dropped
+  // Every filter param gone — bare collection URL
+  expect(url).not.toContain('filter.p.m.custom.tire_width');
+  expect(url).not.toContain('filter.p.m.custom.tire_profile');
+  expect(url).not.toContain('filter.p.m.custom.rim_diameter');
   expect(url).not.toContain('filter.p.vendor');
   expect(url).not.toContain('seasonality');
 });
