@@ -525,7 +525,7 @@
                     <span class="ptg__card-badge-best">Best Seller</span>
                   {%- endif -%}
                   {%- if section.settings.enable_compare -%}
-                    <label class="ptg__card-compare" onclick="event.preventDefault();event.stopPropagation();">
+                    <label class="ptg__card-compare" onclick="event.stopPropagation();">
                       <input type="checkbox" class="ptg__compare-check" data-compare-id="{{ product.id }}" data-compare-title="{{ card_title | escape }}" data-compare-vendor="{{ product.vendor | escape }}" data-compare-price="{{ product.price | money_without_currency | strip_html | strip }}" data-compare-set="{{ set_price | money_without_currency | strip_html | strip }}" data-compare-img="{{ product.featured_image | image_url: width: 200 }}" data-compare-size="{{ tire_size_display }}" data-compare-url="{{ product.url }}" data-compare-season="{{ season_tag }}" data-compare-type="{{ product.type | escape }}" data-compare-speed="{{ card_speed }}" data-compare-load="{{ card_load }}" data-compare-warranty="{{ mileage_warranty }}">
                       <span class="ptg__compare-label">Compare</span>
                     </label>
@@ -660,7 +660,6 @@
                     <button type="button" class="ptg__card-cart"
                       data-variant="{{ product.selected_or_first_available_variant.id }}"
                       data-title="{{ product.title | escape }}"
-                      onclick="event.preventDefault();event.stopPropagation()"
                       aria-label="Add {{ product.title | escape }} to cart">
                       <svg class="ptg__cart-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
                       <svg class="ptg__cart-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="display:none"><path d="M20 6L9 17l-5-5"/></svg>
@@ -1873,148 +1872,173 @@
   /* ══ Compare ══ */
   .ptg__card-compare {
     position: absolute;
-    bottom: 0.6rem;
-    right: 0.6rem;
-    display: flex;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    background: rgba(255,255,255,0.9);
-    backdrop-filter: blur(4px);
-    padding: 0.2rem 0.5rem;
-    border-radius: 3px;
+    gap: 0.35rem;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 0.25rem 0.55rem;
+    border: 1px solid rgba(220,38,38,0.2);
+    border-radius: 999px;
     cursor: pointer;
     z-index: 2;
-    transition: opacity 0.15s;
     opacity: 0;
-    display: none;
+    transition: opacity 0.18s ease;
   }
   .ptg__card:hover .ptg__card-compare,
   .ptg__card-compare:has(.ptg__compare-check:checked) { opacity: 1; }
-  .ptg__compare-check { width: 14px; height: 14px; accent-color: #F5820B; cursor: pointer; margin: 0; }
+  .ptg__compare-check { width: 14px; height: 14px; accent-color: #dc2626; cursor: pointer; margin: 0; }
   .ptg__compare-label { font-family: 'Outfit', sans-serif; font-size: 0.8rem; font-weight: 500; color: #374151; cursor: pointer; }
 
   .ptg__compare-tray {
-    display: none !important;
+    /* Pinned, always in layout — slid off-screen via transform until JS adds .is-visible.
+       Lifted above the mobile tabbar (z 1000) on small screens. */
+    display: block;
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 400;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    left: 1rem;
+    right: 1rem;
+    z-index: 1001;
     background: #fff;
-    border-top: 2px solid #F5820B;
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.1);
-    padding: 0.8rem 2rem;
-    transform: translateY(100%);
-    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    border: 1px solid rgba(220,38,38,0.25);
+    border-radius: 14px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.18);
+    padding: 0.85rem 1rem;
+    transform: translateY(150%);
+    transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
   }
-  .ptg__compare-tray[hidden] { display: block; }
+  .ptg__compare-tray[hidden] { display: block; transform: translateY(150%); }
   .ptg__compare-tray.is-visible { transform: translateY(0); }
-  .ptg__compare-tray-inner { display: flex; align-items: center; gap: 1rem; max-width: 1400px; margin: 0 auto; }
-  .ptg__compare-items { display: flex; gap: 0.6rem; flex: 1; overflow-x: auto; }
-  .ptg__compare-item {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    background: #f7f7f7;
-    border-radius: 4px;
-    padding: 0.3rem 0.5rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.85rem;
-    white-space: nowrap;
+  @media (min-width: 769px) {
+    .ptg__compare-tray { bottom: 1.2rem; left: 50%; right: auto; transform: translate(-50%, 150%); max-width: 880px; width: calc(100% - 2.4rem); }
+    .ptg__compare-tray.is-visible { transform: translate(-50%, 0); }
   }
-  .ptg__compare-item img { width: 32px; height: 32px; object-fit: contain; border-radius: 2px; }
+  .ptg__compare-tray-inner { display: flex; align-items: center; gap: 0.8rem; }
+  .ptg__compare-items { display: flex; gap: 0.5rem; flex: 1; overflow-x: auto; padding: 2px 0; }
+  .ptg__compare-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(220,38,38,0.06);
+    border: 1px solid rgba(220,38,38,0.25);
+    border-radius: 999px;
+    padding: 0.3rem 0.5rem 0.3rem 0.35rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.82rem;
+    color: #111;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .ptg__compare-item img { width: 26px; height: 26px; object-fit: contain; background: #fff; border-radius: 50%; }
   .ptg__compare-item-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
     background: none;
     border: none;
     cursor: pointer;
     color: #9ca3af;
     padding: 0;
-    display: flex;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     line-height: 1;
+    border-radius: 50%;
   }
-  .ptg__compare-item-remove:hover { color: #dc2626; }
+  .ptg__compare-item-remove:hover { color: #dc2626; background: rgba(220,38,38,0.1); }
   .ptg__compare-btn {
-    background: #F5820B;
+    background: #dc2626;
     color: #fff;
     border: none;
-    padding: 0.5rem 1.2rem;
-    border-radius: 4px;
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
     font-family: 'Outfit', sans-serif;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.15s;
+    flex-shrink: 0;
   }
-  .ptg__compare-btn:hover { background: #e0740a; }
+  .ptg__compare-btn:hover { background: #b91c1c; }
   .ptg__compare-btn:disabled { background: #d1d5db; cursor: not-allowed; }
   .ptg__compare-clear {
     background: none;
-    border: 1px solid #e5e7eb;
-    padding: 0.5rem 0.8rem;
-    border-radius: 4px;
+    border: 0;
+    padding: 0.5rem 0.6rem;
+    border-radius: 999px;
     font-family: 'Outfit', sans-serif;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: #6b7280;
     cursor: pointer;
     white-space: nowrap;
+    flex-shrink: 0;
   }
-  .ptg__compare-clear:hover { border-color: #dc2626; color: #dc2626; }
+  .ptg__compare-clear:hover { color: #dc2626; background: rgba(220,38,38,0.06); }
 
   .ptg__compare-modal {
-    display: none !important;
     position: fixed;
     inset: 0;
-    z-index: 600;
+    z-index: 1200;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 1rem;
   }
   .ptg__compare-modal[hidden] { display: none; }
   .ptg__compare-modal-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(2px);
+    background: rgba(15, 15, 15, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
   }
   .ptg__compare-modal-content {
     position: relative;
     background: #fff;
-    border-radius: 10px;
-    width: min(95vw, 1000px);
-    max-height: 85vh;
+    border-radius: 16px;
+    width: min(96vw, 1040px);
+    max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.25);
   }
   .ptg__compare-modal-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.2rem 1.6rem;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 1rem 1.4rem;
+    border-bottom: 1px solid #f1f1f1;
     position: sticky;
     top: 0;
     background: #fff;
     z-index: 1;
-    border-radius: 10px 10px 0 0;
+    border-radius: 16px 16px 0 0;
   }
   .ptg__compare-modal-head h3 {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.6rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
     font-weight: 700;
     color: #111;
     margin: 0;
+    letter-spacing: -0.01em;
   }
   .ptg__compare-modal-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
     background: none;
     border: none;
     cursor: pointer;
-    color: #9ca3af;
-    padding: 0.3rem;
-    border-radius: 4px;
+    color: #6b7280;
+    padding: 0;
+    border-radius: 999px;
   }
-  .ptg__compare-modal-x:hover { color: #111; background: #f7f7f7; }
+  .ptg__compare-modal-x:hover { color: #dc2626; background: rgba(220,38,38,0.08); }
 
   .ptg__cmp-table {
     width: 100%;
@@ -2023,34 +2047,42 @@
   }
   .ptg__cmp-table th {
     text-align: left;
-    padding: 0.6rem 1rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #9ca3af;
+    padding: 0.7rem 1.2rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #6b7280;
     background: #fafafa;
     white-space: nowrap;
-    width: 120px;
-    vertical-align: top;
+    width: 130px;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #f5f5f5;
   }
   .ptg__cmp-table td {
-    padding: 0.6rem 1rem;
-    font-size: 0.95rem;
-    color: #374151;
+    padding: 0.7rem 1.2rem;
+    font-size: 0.92rem;
+    color: #1f2937;
     border-bottom: 1px solid #f5f5f5;
-    vertical-align: top;
+    vertical-align: middle;
     text-align: center;
   }
-  .ptg__cmp-table td img { width: 80px; height: 80px; object-fit: contain; }
-  .ptg__cmp-table .ptg__cmp-price { font-weight: 700; color: #111; font-size: 1.1rem; }
+  .ptg__cmp-table td img { width: 88px; height: 88px; object-fit: contain; }
+  .ptg__cmp-table .ptg__cmp-price { font-weight: 700; color: #dc2626; font-size: 1.15rem; }
   .ptg__cmp-table .ptg__cmp-link {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     margin-top: 0.4rem;
-    color: #F5820B;
+    padding: 0.4rem 0.85rem;
+    background: #dc2626;
+    color: #fff;
     font-weight: 600;
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
+    border-radius: 999px;
   }
-  .ptg__cmp-table .ptg__cmp-link:hover { text-decoration: underline; }
+  .ptg__cmp-table .ptg__cmp-link:hover { background: #b91c1c; }
 
   /* ══ Pagination ══ */
   .ptg__pages {
