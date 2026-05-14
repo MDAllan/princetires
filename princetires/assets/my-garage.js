@@ -1132,7 +1132,7 @@ class MyGarage extends HTMLElement {
 
         // Row 1: two equal primary CTAs
         + '<div class="garage__actions-primary">'
-          + '<a href="/collections/tires?filter.p.m.custom.tire_size=' + encodeURIComponent(vehicle.tireSize) + '" class="garage__action-btn garage__action-btn--red">'
+          + '<a href="' + this.buildShopTiresUrl(vehicle.tireSize) + '" class="garage__action-btn garage__action-btn--red">'
             + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>'
             + 'Shop tires'
           + '</a>'
@@ -1519,6 +1519,28 @@ class MyGarage extends HTMLElement {
 
   escapeAttr(text) {
     return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Build the collection URL from a vehicle's tire-size string. Splits the
+  // size into width/profile/rim so it matches Shopify's metafields (which
+  // store the numbers without the P/LT/ST service-type prefix). Falls back
+  // to the bare /collections/tires when the size is unparseable.
+  buildShopTiresUrl(tireSize) {
+    var base = '/collections/tires';
+    if (!tireSize) return base;
+    // Match standard sizes (P215/45R17, 215/45R17, LT245/75R16) AND
+    // floatation (35X12.50R20, 33X12.50R20LT). Width is the first numeric
+    // chunk; profile is the second; rim is after the R.
+    var std = String(tireSize).match(/(?:P|LT|ST|T)?\s*(\d{2,3})\s*\/\s*(\d{1,2}(?:\.\d{1,2})?)\s*(?:R|ZR|D|B)\s*(\d{2}(?:\.\d)?)/i);
+    if (std) {
+      return base
+        + '?filter.p.m.custom.tire_width=' + encodeURIComponent(std[1])
+        + '&filter.p.m.custom.tire_profile=' + encodeURIComponent(std[2])
+        + '&filter.p.m.custom.rim_diameter=' + encodeURIComponent(std[3]);
+    }
+    // Last resort — legacy single-field filter (still respects whatever's
+    // stored without prefix-stripping)
+    return base + '?filter.p.m.custom.tire_size=' + encodeURIComponent(tireSize);
   }
 }
 

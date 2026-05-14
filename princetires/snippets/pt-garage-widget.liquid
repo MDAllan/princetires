@@ -82,6 +82,19 @@
 
   if (!gw || !btn || !dropdown) return;
 
+  function buildShopTiresUrl(tireSize) {
+    var base = '/collections/tires';
+    if (!tireSize) return base;
+    var std = String(tireSize).match(/(?:P|LT|ST|T)?\s*(\d{2,3})\s*\/\s*(\d{1,2}(?:\.\d{1,2})?)\s*(?:R|ZR|D|B)\s*(\d{2}(?:\.\d)?)/i);
+    if (std) {
+      return base
+        + '?filter.p.m.custom.tire_width=' + encodeURIComponent(std[1])
+        + '&filter.p.m.custom.tire_profile=' + encodeURIComponent(std[2])
+        + '&filter.p.m.custom.rim_diameter=' + encodeURIComponent(std[3]);
+    }
+    return base + '?filter.p.m.custom.tire_size=' + encodeURIComponent(tireSize);
+  }
+
   function updateWidget(vehicle) {
     if (!vehicle) {
       if (labelEl) labelEl.textContent = 'My garage';
@@ -95,7 +108,7 @@
     if (vehicleSizeEl) vehicleSizeEl.textContent = vehicle.tireSize;
     if (vehicleLine) vehicleLine.hidden = false;
     if (emptyEl) emptyEl.hidden = true;
-    if (shopLink) shopLink.href = '/collections/tires?filter.p.m.custom.tire_size=' + encodeURIComponent(vehicle.tireSize);
+    if (shopLink) shopLink.href = buildShopTiresUrl(vehicle.tireSize);
   }
 
   // Read from window.__ptDefaultVehicle if already set
