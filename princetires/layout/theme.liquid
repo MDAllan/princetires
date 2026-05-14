@@ -21,16 +21,57 @@
       <link rel="preconnect" href="https://fonts.shopifycdn.com" crossorigin>
     {%- endunless -%}
 
+    {%- comment -%}
+      Title ladder:
+      1) /pages/brand-{handle} → "{Brand} Tires in Calgary | Prince Tires"
+      2) /pages/brands → "Tire & Wheel Brands in Calgary | Prince Tires"
+      3) Default Shopify behaviour (page_title + shop name)
+    {%- endcomment -%}
     <title>
-      {{ page_title }}
-      {%- if current_tags %} &ndash; tagged "{{ current_tags | join: ', ' }}"{% endif -%}
-      {%- if current_page != 1 %} &ndash; Page {{ current_page }}{% endif -%}
-      {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
+      {%- if page.handle contains 'brand-' -%}
+        {%- assign t_slug = page.handle | remove_first: 'brand-' -%}
+        {%- assign t_name = t_slug | replace: '-', ' ' | capitalize -%}
+        {%- if t_slug == 'bfgoodrich' -%}{%- assign t_name = 'BFGoodrich' -%}{%- endif -%}
+        {%- if t_slug == 'mickey-thompson' -%}{%- assign t_name = 'Mickey Thompson' -%}{%- endif -%}
+        {%- if t_slug == 'xf-off-road' -%}{%- assign t_name = 'XF Off-Road' -%}{%- endif -%}
+        {%- if t_slug == 'envy' -%}{%- assign t_name = 'ENVY' -%}{%- endif -%}
+        {%- if t_slug == 'rtx' -%}{%- assign t_name = 'RTX' -%}{%- endif -%}
+        {{ t_name }} Tires in Calgary | {{ shop.name }}
+      {%- elsif page.handle == 'brands' -%}
+        Tire &amp; Wheel Brands in Calgary | {{ shop.name }}
+      {%- elsif page.handle == 'about' -%}
+        About Prince Tires — Calgary's Trusted Tire Shop
+      {%- else -%}
+        {{ page_title }}
+        {%- if current_tags %} &ndash; tagged "{{ current_tags | join: ', ' }}"{% endif -%}
+        {%- if current_page != 1 %} &ndash; Page {{ current_page }}{% endif -%}
+        {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
+      {%- endif -%}
     </title>
 
-    {% if page_description %}
+    {%- comment -%}
+      Meta description with fallback ladder:
+      1) Page-level SEO description (admin-set) — authoritative
+      2) /pages/brands hub — hardcoded GEO/AEO snippet
+      3) /pages/brand-{handle} — auto-generated per brand
+      4) Otherwise omit (Shopify will fall back to shop description)
+    {%- endcomment -%}
+    {%- if page_description != blank -%}
       <meta name="description" content="{{ page_description | escape }}">
-    {% endif %}
+    {%- elsif page.handle == 'brands' -%}
+      <meta name="description" content="Shop 26 tire and wheel brands at Prince Tires Calgary — Michelin, Bridgestone, BFGoodrich, Toyo, plus value picks like Radar and Tesche. Same-day installation, price-match guarantee, 4.9 stars from 562+ Google reviews. 111 42 Ave SW Calgary.">
+    {%- elsif page.handle contains 'brand-' -%}
+      {%- assign brand_slug = page.handle | remove_first: 'brand-' -%}
+      {%- assign brand_name = brand_slug | replace: '-', ' ' | capitalize -%}
+      {%- if brand_slug == 'bfgoodrich' -%}{%- assign brand_name = 'BFGoodrich' -%}{%- endif -%}
+      {%- if brand_slug == 'mickey-thompson' -%}{%- assign brand_name = 'Mickey Thompson' -%}{%- endif -%}
+      {%- if brand_slug == 'xf-off-road' -%}{%- assign brand_name = 'XF Off-Road' -%}{%- endif -%}
+      {%- if brand_slug == 'envy' -%}{%- assign brand_name = 'ENVY' -%}{%- endif -%}
+      {%- if brand_slug == 'rtx' -%}{%- assign brand_name = 'RTX' -%}{%- endif -%}
+      <meta name="description" content="Shop {{ brand_name }} tires in Calgary at Prince Tires. In-stock all-season, winter, and all-terrain options. Same-day installation in most cases, price-match guarantee, 4.9 stars from 562+ Google reviews. 111 42 Ave SW Calgary.">
+    {%- elsif page.handle == 'about' -%}
+      <meta name="description" content="Family-owned Calgary tire shop at 111 42 Ave SW. Same-day installation, price-match guarantee, 4.9 stars from 562+ Google reviews. Serving NE/NW/SE/SW Calgary plus Airdrie, Cochrane, Okotoks, and Chestermere with 26 tire and wheel brands in stock.">
+    {%- endif -%}
 
     {% render 'meta-tags' %}
     {%- render 'seo-meta' -%}
@@ -103,7 +144,7 @@
     </script>
   </head>
 
-  <body>
+  <body class="template-{{ template.name | handle }}{% if template.suffix != blank %} template-{{ template.name | handle }}-{{ template.suffix | handle }}{% endif %}">
     {%- if settings.gtm_container_id != blank -%}
     <!-- Google Tag Manager (noscript) -->
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ settings.gtm_container_id | escape }}"

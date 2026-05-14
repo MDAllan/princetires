@@ -424,8 +424,9 @@
         {%- endif -%}
 
         {%- comment -%} CTAs — Book Installation is PRIMARY {%- endcomment -%}
+        {%- capture supplier_tier -%}{% render 'pt-supplier-tier', product: product %}{%- endcapture -%}
         <div class="ptp__cta-stack">
-          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-inventory-source="{{ inventory_source }}">
+          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-inventory-source="{{ inventory_source }}" data-supplier-tier="{{ supplier_tier | strip }}" data-product-handle="{{ product.handle }}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             Book installation
           </button>
@@ -856,16 +857,37 @@
         </div>
     </div>{%- comment -%} /ptp__tabs-section {%- endcomment -%}
 
-    {%- comment -%} Sticky Mobile CTA {%- endcomment -%}
-    <div class="ptp__sticky">
-      {%- if product.featured_image -%}
-        {{ product.featured_image | image_url: width: 80, height: 80, crop: 'center' | image_tag: class: 'ptp__sticky-thumb', loading: 'lazy', alt: product.title }}
-      {%- endif -%}
+    {%- comment -%} Sticky Mobile CTA — three-action commit bar (replaces site tabbar on PDP) {%- endcomment -%}
+    {%- assign sticky_phone = settings.smart_search_fallback_phone | default: '403 452 4283' -%}
+    {%- assign sticky_phone_dig = sticky_phone | replace: ' ', '' | replace: '-', '' | replace: '.', '' | replace: '(', '' | replace: ')', '' -%}
+    {%- assign sticky_savings = 0 -%}
+    {%- if product.compare_at_price > product.price -%}
+      {%- assign sticky_savings = product.compare_at_price | minus: product.price | times: 4 -%}
+    {%- endif -%}
+    <div class="ptp__sticky" data-ptp-sticky>
       <div class="ptp__sticky-price">
         <span class="ptp__sticky-set" data-ptp-sticky-total>${{ set_price | money_without_currency }}</span>
-        <span class="ptp__sticky-per">set of 4</span>
+        <span class="ptp__sticky-per">
+          ${{ product.price | money_without_currency }} / tire
+          {%- if sticky_savings > 0 -%}
+            <strong class="ptp__sticky-save">· Save ${{ sticky_savings | money_without_currency }}</strong>
+          {%- endif -%}
+        </span>
       </div>
-      <button type="button" class="ptp__sticky-btn" data-ptp-sticky-add aria-label="Book installation" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-inventory-source="{{ inventory_source }}">Book now</button>
+      <div class="ptp__sticky-actions">
+        <a class="ptp__sticky-call" href="tel:+1{{ sticky_phone_dig }}" aria-label="Call us">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 12 19.79 19.79 0 0 1 1.17 3.39 2 2 0 0 1 3.14 1.22h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16v.92z"/></svg>
+        </a>
+        {%- if product.available -%}
+          <button type="submit" form="{{ product_form_id }}" class="ptp__sticky-add" data-ptp-sticky-add>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+            Add to cart
+          </button>
+        {%- endif -%}
+        <button type="button" class="ptp__sticky-book" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-inventory-source="{{ inventory_source }}">
+          Book install →
+        </button>
+      </div>
     </div>
   </div>
 </product-info>
@@ -1152,16 +1174,70 @@
     .ptp__spec-item:nth-child(odd) { padding-right: 0; border-right: none; }
     .ptp__spec-item:nth-child(even) { padding-left: 0; }
     .ptp__sticky {
-      display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 99;
-      background: #fff; border-top: 1px solid var(--ptp-border);
-      padding: 0.7rem 1.4rem; align-items: center; gap: 0.8rem;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1002; /* above the site tabbar (z 1000) — but we hide that on PDP anyway */
+      background: #fff;
+      border-top: 1px solid var(--ptp-border);
+      padding: 0.55rem 0.85rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
+      gap: 0.4rem;
+      box-shadow: 0 -6px 24px rgba(0,0,0,0.1);
     }
-    .ptp__sticky-thumb { width: 2.8rem; height: 2.8rem; object-fit: contain; border-radius: 6px; background: var(--ptp-bg2); flex-shrink: 0; }
-    .ptp__sticky-price { display: flex; flex-direction: column; line-height: 1.2; flex: 1; min-width: 0; }
-    .ptp__sticky-set { font-size: 1.25rem; font-weight: 700; color: var(--ptp-text); }
-    .ptp__sticky-per { font-size: 0.8rem; color: var(--ptp-subtle); }
-    .ptp__sticky-btn { flex-shrink: 0; height: 3.2rem; padding: 0 1.4rem; background: var(--ptp-cta); color: #fff; border: none; border-radius: var(--ptp-r-sm); font-family: var(--ptp-font); font-size: 0.95rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(220,38,38,0.25); }
+    .ptp__sticky-price {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      line-height: 1.2;
+    }
+    .ptp__sticky-set { font-size: 1.05rem; font-weight: 700; color: var(--ptp-text); }
+    .ptp__sticky-per { font-size: 0.78rem; color: var(--ptp-subtle); }
+    .ptp__sticky-save { color: var(--ptp-cta); font-weight: 700; margin-left: 0.15rem; }
+    .ptp__sticky-actions {
+      display: flex;
+      align-items: stretch;
+      gap: 0.45rem;
+    }
+    .ptp__sticky-call {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      flex-shrink: 0;
+      background: #fff;
+      color: var(--ptp-text);
+      border: 1px solid var(--ptp-border-soft);
+      border-radius: var(--ptp-r-sm);
+      text-decoration: none;
+    }
+    .ptp__sticky-call:hover { color: var(--ptp-cta); border-color: var(--ptp-cta); }
+    .ptp__sticky-add,
+    .ptp__sticky-book {
+      flex: 1 1 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      height: 40px;
+      padding: 0 0.6rem;
+      border: 0;
+      border-radius: var(--ptp-r-sm);
+      font-family: var(--ptp-font);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .ptp__sticky-add { background: var(--ptp-cta); color: #fff; box-shadow: 0 2px 8px rgba(220,38,38,0.25); }
+    .ptp__sticky-add:hover { background: var(--ptp-cta-hover); }
+    .ptp__sticky-book { background: #fff; color: var(--ptp-cta); border: 1px solid var(--ptp-cta); }
+    .ptp__sticky-book:hover { background: rgba(220,38,38,0.05); }
+
+    /* Hide the site-wide tabbar on product pages — the sticky commit bar above is context-specific */
+    body.template-product .pt-tabbar { display: none !important; }
   }
 
   /* Key Stats Strip */
