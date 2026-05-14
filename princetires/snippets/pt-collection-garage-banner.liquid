@@ -1,0 +1,257 @@
+{% doc %}
+  Saved-car banner that appears at the top of the collection grid when:
+    1. The customer has at least one saved vehicle (pt-garage-* or
+       pt-tire-search-vehicle localStorage)
+    2. The current URL has no tire-size filter active (so they're on the
+       broad collection, not already filtered)
+    3. They haven't dismissed the banner this session
+
+  Single-car case → 'Yes' applies that car's OEM size as filter.
+  Multi-car case  → 'Yes' opens an inline picker, customer chooses, applies.
+  'Browse all ✕'  → sessionStorage marker keeps the banner hidden for the
+                    rest of the tab session.
+
+  Hidden for wholesale customers (business account, not personal car).
+
+  @example
+  {% render 'pt-collection-garage-banner' %}
+{% enddoc %}
+
+{%- if customer.tags contains 'wholesale' -%}{%- comment -%}wholesale: skip{%- endcomment -%}{%- else -%}
+<div class="pt-gb" data-pt-gb hidden role="region" aria-label="Saved car">
+  <div class="pt-gb__icon" aria-hidden="true">
+    <svg width="22" height="14" viewBox="0 0 80 30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 20 L12 13 L22 9 L58 9 L68 13 L76 17 L76 22 L4 22 Z"/>
+      <circle cx="18" cy="24" r="5"/>
+      <circle cx="62" cy="24" r="5"/>
+    </svg>
+  </div>
+
+  <div class="pt-gb__body">
+    {%- comment -%} Single-car prompt {%- endcomment -%}
+    <p class="pt-gb__text" data-pt-gb-single hidden>
+      Show tires for your <strong data-pt-gb-name></strong> <span data-pt-gb-size></span>?
+    </p>
+
+    {%- comment -%} Multi-car picker {%- endcomment -%}
+    <div class="pt-gb__multi" data-pt-gb-multi hidden>
+      <label class="pt-gb__multi-label">Show tires for which car?</label>
+      <select class="pt-gb__picker" data-pt-gb-picker aria-label="Pick a saved vehicle"></select>
+    </div>
+  </div>
+
+  <div class="pt-gb__actions">
+    <button type="button" class="pt-gb__yes" data-pt-gb-yes>Yes, filter →</button>
+    <button type="button" class="pt-gb__no" data-pt-gb-no aria-label="Browse all tires">
+      Browse all
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+</div>
+{%- endif -%}
+
+{% stylesheet %}
+  .pt-gb {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin: 0 0 1rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(90deg, rgba(220,38,38,0.07), rgba(220,38,38,0.02));
+    border: 1px solid rgba(220,38,38,0.25);
+    border-radius: 12px;
+    font-family: 'Outfit', sans-serif;
+  }
+  .pt-gb[hidden] { display: none; }
+
+  .pt-gb__icon { color: #dc2626; flex-shrink: 0; display: inline-flex; }
+
+  .pt-gb__body { flex: 1 1 auto; min-width: 0; }
+  .pt-gb__text { margin: 0; font-size: 0.95rem; color: #111; font-weight: 500; }
+  .pt-gb__text strong { font-weight: 700; }
+  .pt-gb__text [data-pt-gb-size] { color: #6b7280; font-weight: 500; }
+
+  .pt-gb__multi[hidden],
+  .pt-gb__text[hidden] { display: none; }
+  .pt-gb__multi { display: flex; flex-direction: column; gap: 0.25rem; }
+  .pt-gb__multi-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .pt-gb__picker {
+    height: 34px;
+    padding: 0 0.55rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: #111;
+    cursor: pointer;
+  }
+
+  .pt-gb__actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+  .pt-gb__yes {
+    height: 36px;
+    padding: 0 0.95rem;
+    background: #dc2626;
+    color: #fff;
+    border: 0;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .pt-gb__yes:hover { background: #b91c1c; }
+
+  .pt-gb__no {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    height: 36px;
+    padding: 0 0.65rem;
+    background: transparent;
+    color: #6b7280;
+    border: 0;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .pt-gb__no:hover { color: #111; }
+
+  @media (max-width: 600px) {
+    .pt-gb { flex-wrap: wrap; padding: 0.65rem 0.8rem; }
+    .pt-gb__body { flex-basis: calc(100% - 2.5rem); }
+    .pt-gb__actions { flex-basis: 100%; gap: 0.5rem; justify-content: flex-end; }
+    .pt-gb__text { font-size: 0.88rem; }
+    .pt-gb__yes { flex: 1 1 auto; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function () {
+    var root = document.querySelector('[data-pt-gb]');
+    if (!root) return;
+    var SESSION_KEY = 'ptg_garage_banner_dismissed';
+
+    // Hide forever this session if dismissed
+    try {
+      if (sessionStorage.getItem(SESSION_KEY)) return;
+    } catch (e) {}
+
+    // Only show on the broad collection (no size filter applied)
+    var params = new URLSearchParams(window.location.search);
+    if (params.has('filter.p.m.custom.tire_width')) return;
+
+    // ─── Collect saved vehicles ───────────────────────────────────────
+    var vehicles = [];
+    try {
+      Object.keys(localStorage).filter(function (k) {
+        return k.indexOf('pt-garage-') === 0;
+      }).forEach(function (k) {
+        var arr = JSON.parse(localStorage.getItem(k) || '[]');
+        if (Array.isArray(arr)) arr.forEach(function (v) {
+          if (v && v.year && v.make && v.model) {
+            vehicles.push({
+              isDefault: !!v.isDefault,
+              year: v.year, make: v.make, model: v.model,
+              trim: v.trim || '', nickname: v.nickname || '',
+              size: v.tireSize || (v.sizes && v.sizes[0]) || ''
+            });
+          }
+        });
+      });
+    } catch (e) {}
+    try {
+      var raw = localStorage.getItem('pt-tire-search-vehicle');
+      if (raw) {
+        var ts = JSON.parse(raw);
+        if (ts && ts.year && ts.make && ts.model) {
+          var firstSize = ts.sizes && ts.sizes.length ? ts.sizes[0] : '';
+          var dup = vehicles.some(function (v) {
+            return v.year == ts.year && v.make === ts.make && v.model === ts.model;
+          });
+          if (!dup) vehicles.push({
+            isDefault: false,
+            year: ts.year, make: ts.make, model: ts.model,
+            trim: ts.trim || '', nickname: '',
+            size: firstSize
+          });
+        }
+      }
+    } catch (e) {}
+
+    vehicles = vehicles.filter(function (v) { return v.size; });
+    if (vehicles.length === 0) return;
+
+    vehicles.sort(function (a, b) {
+      if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+      return 0;
+    });
+
+    // ─── Render single vs multi state ─────────────────────────────────
+    var elSingle = root.querySelector('[data-pt-gb-single]');
+    var elMulti = root.querySelector('[data-pt-gb-multi]');
+    var elName = root.querySelector('[data-pt-gb-name]');
+    var elSize = root.querySelector('[data-pt-gb-size]');
+    var elPicker = root.querySelector('[data-pt-gb-picker]');
+
+    function vehicleLabel(v) {
+      var name = v.nickname || (v.year + ' ' + v.make + ' ' + v.model + (v.trim ? ' ' + v.trim : ''));
+      return name + ' (' + v.size + ')';
+    }
+
+    if (vehicles.length === 1) {
+      var v = vehicles[0];
+      var name = v.nickname || (v.year + ' ' + v.make + ' ' + v.model);
+      if (elName) elName.textContent = name;
+      if (elSize) elSize.textContent = '(' + v.size + ')';
+      elSingle.hidden = false;
+    } else {
+      var html = '';
+      vehicles.forEach(function (vh, i) {
+        html += '<option value="' + i + '">' + vehicleLabel(vh).replace(/"/g, '&quot;') + '</option>';
+      });
+      elPicker.innerHTML = html;
+      elMulti.hidden = false;
+    }
+
+    root.hidden = false;
+
+    // ─── Apply on Yes ─────────────────────────────────────────────────
+    function parseSize(s) {
+      var m = String(s || '').match(/(\d{3})\s*\/\s*(\d{2,3})\s*R\s*(\d{2})/i);
+      return m ? { w: m[1], a: m[2], r: m[3] } : null;
+    }
+
+    root.querySelector('[data-pt-gb-yes]').addEventListener('click', function () {
+      var v = vehicles.length === 1
+        ? vehicles[0]
+        : vehicles[parseInt(elPicker.value, 10) || 0];
+      var parts = parseSize(v.size);
+      if (!parts) return;
+      var newParams = new URLSearchParams();
+      // Keep vendor + season + service_type filters that are already on the URL
+      params.forEach(function (val, k) {
+        if (k === 'filter.p.vendor' ||
+            k === 'filter.p.m.custom.seasonality' ||
+            k === 'filter.p.m.custom.service_type') newParams.append(k, val);
+      });
+      newParams.set('filter.p.m.custom.tire_width', parts.w);
+      newParams.set('filter.p.m.custom.tire_profile', parts.a);
+      newParams.set('filter.p.m.custom.rim_diameter', parts.r);
+      window.location.href = window.location.pathname + '?' + newParams.toString();
+    });
+
+    // ─── Dismiss on No ────────────────────────────────────────────────
+    root.querySelector('[data-pt-gb-no]').addEventListener('click', function () {
+      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (e) {}
+      root.hidden = true;
+    });
+  })();
+{% endjavascript %}
