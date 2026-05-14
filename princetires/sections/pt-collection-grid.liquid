@@ -764,11 +764,15 @@
     <div class="ptg__compare-modal-content">
       <div class="ptg__compare-modal-head">
         <h3>Compare tires</h3>
-        <button type="button" class="ptg__compare-modal-x" data-compare-modal-close>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        <button type="button" class="ptg__compare-modal-x" data-compare-modal-close aria-label="Close comparison">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
       </div>
       <div class="ptg__compare-table-wrap" data-compare-table></div>
+      <div class="ptg__compare-radar-wrap" data-compare-radar></div>
+      <div class="ptg__compare-modal-foot">
+        <button type="button" class="ptg__compare-modal-done" data-compare-modal-close>Close comparison</button>
+      </div>
     </div>
   </div>
 {%- endif -%}
@@ -2084,6 +2088,92 @@
   }
   .ptg__cmp-table .ptg__cmp-link:hover { background: #b91c1c; }
 
+  /* Hexagon radar comparison */
+  .ptg__compare-radar-wrap {
+    padding: 1.4rem 1.4rem 0.6rem;
+    border-top: 1px solid #f1f1f1;
+  }
+  .ptg__compare-radar-wrap:empty { display: none; }
+  .ptg__cmp-radar-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 0.2rem;
+  }
+  .ptg__cmp-radar-sub {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin: 0 0 1rem;
+  }
+  .ptg__cmp-radar-chart-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 0.5rem 0;
+  }
+  .ptg__cmp-radar-svg {
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    font-family: 'Outfit', sans-serif;
+  }
+  .ptg__cmp-radar-grid { fill: none; stroke: #e5e7eb; stroke-width: 1; }
+  .ptg__cmp-radar-axis { stroke: #e5e7eb; stroke-width: 1; }
+  .ptg__cmp-radar-axis-label {
+    font-size: 11px;
+    fill: #374151;
+    font-weight: 600;
+  }
+  .ptg__cmp-radar-poly { stroke-width: 2; fill-opacity: 0.18; }
+  .ptg__cmp-radar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.8rem;
+    margin-top: 0.6rem;
+  }
+  .ptg__cmp-radar-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    color: #374151;
+  }
+  .ptg__cmp-radar-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+  }
+
+  /* Modal footer with prominent close */
+  .ptg__compare-modal-foot {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.85), #fff 30%);
+    padding: 0.85rem 1.2rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+    border-top: 1px solid #f5f5f5;
+  }
+  .ptg__compare-modal-done {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 160px;
+    height: 40px;
+    padding: 0 1.4rem;
+    background: #111;
+    color: #fff;
+    border: 0;
+    border-radius: 999px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .ptg__compare-modal-done:hover { background: #000; }
+
   /* ══ Pagination ══ */
   .ptg__pages {
     display: flex;
@@ -3387,6 +3477,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var clearBtn = document.querySelector('[data-compare-clear]');
     var modal = document.querySelector('[data-compare-modal]');
     var tableWrap = document.querySelector('[data-compare-table]');
+    var radarWrap = document.querySelector('[data-compare-radar]');
     if (!tray) return;
 
     var compareList = [];
@@ -3492,9 +3583,131 @@ document.addEventListener('DOMContentLoaded', function() {
       tableWrap.innerHTML = html;
     }
 
+    // ─── Hexagon radar comparison ───────────────────────────────────────
+    // Six axes derived from existing compare data. Each tire gets a 0–100
+    // score per axis; the polygon visualises trade-offs at a glance.
+    function scoreFor(item, axis) {
+      function pickNum(s, def) {
+        var m = String(s || '').match(/(\d+)/);
+        return m ? parseInt(m[1], 10) : def;
+      }
+      var speedRank = { Y: 100, W: 90, V: 80, ZR: 95, H: 70, U: 65, T: 60, S: 50, R: 45, Q: 40 };
+      switch (axis) {
+        case 'performance': {
+          var c = String(item.speed || '').toUpperCase().match(/[A-Z]{1,2}/);
+          return c && speedRank[c[0]] != null ? speedRank[c[0]] : 50;
+        }
+        case 'load': {
+          var li = pickNum(item.load, 90); // typical load index ~70–130
+          return Math.max(20, Math.min(100, (li - 70) * 3));
+        }
+        case 'snow': {
+          var s = String(item.season || '').toLowerCase();
+          if (s.indexOf('winter') !== -1) return 95;
+          if (s.indexOf('all-weather') !== -1) return 80;
+          if (s.indexOf('all-season') !== -1) return 50;
+          if (s.indexOf('summer') !== -1 || s.indexOf('performance') !== -1) return 15;
+          return 45;
+        }
+        case 'durability': {
+          var w = pickNum(item.warranty, 0); // miles, e.g. 60000
+          if (!w) return 50;
+          return Math.max(30, Math.min(100, w / 1000));
+        }
+        case 'comfort': {
+          var t = String(item.type || '').toLowerCase();
+          if (t.indexOf('mud') !== -1) return 35;
+          if (t.indexOf('all-terrain') !== -1 || t.indexOf('a/t') !== -1) return 55;
+          if (t.indexOf('performance') !== -1) return 65;
+          if (t.indexOf('highway') !== -1 || t.indexOf('touring') !== -1) return 90;
+          return 70;
+        }
+        case 'value': {
+          // value = lower price = better. normalise across this set.
+          var prices = compareList.map(function (i) { return parseFloat(String(i.price).replace(/[^0-9.]/g, '')) || 0; });
+          var min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
+          var p = parseFloat(String(item.price).replace(/[^0-9.]/g, '')) || 0;
+          if (max === min) return 70;
+          return Math.round(100 - ((p - min) / (max - min)) * 80);
+        }
+      }
+      return 50;
+    }
+
+    function buildRadar() {
+      if (!radarWrap) return;
+      if (compareList.length === 0) { radarWrap.innerHTML = ''; return; }
+
+      var AXES = [
+        { key: 'performance', label: 'Performance' },
+        { key: 'load',        label: 'Load' },
+        { key: 'snow',        label: 'Snow grip' },
+        { key: 'durability',  label: 'Durability' },
+        { key: 'comfort',     label: 'Comfort' },
+        { key: 'value',       label: 'Value' }
+      ];
+      var COLORS = ['#dc2626', '#2563eb', '#16a34a'];
+
+      var size = 320, cx = size / 2, cy = size / 2, R = 110;
+      function point(angle, r) {
+        return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+      }
+
+      var svg = '<svg class="ptg__cmp-radar-svg" viewBox="0 0 ' + size + ' ' + size + '" xmlns="http://www.w3.org/2000/svg" aria-label="Tire comparison radar">';
+
+      // Concentric rings
+      [0.25, 0.5, 0.75, 1].forEach(function (frac) {
+        var pts = AXES.map(function (_, i) {
+          var ang = (Math.PI * 2 * i) / AXES.length - Math.PI / 2;
+          return point(ang, R * frac).join(',');
+        }).join(' ');
+        svg += '<polygon class="ptg__cmp-radar-grid" points="' + pts + '"></polygon>';
+      });
+
+      // Axes + labels
+      AXES.forEach(function (axis, i) {
+        var ang = (Math.PI * 2 * i) / AXES.length - Math.PI / 2;
+        var end = point(ang, R);
+        svg += '<line class="ptg__cmp-radar-axis" x1="' + cx + '" y1="' + cy + '" x2="' + end[0] + '" y2="' + end[1] + '"></line>';
+        var labelP = point(ang, R + 22);
+        var anchor = 'middle';
+        if (labelP[0] > cx + 8) anchor = 'start';
+        else if (labelP[0] < cx - 8) anchor = 'end';
+        svg += '<text class="ptg__cmp-radar-axis-label" x="' + labelP[0] + '" y="' + (labelP[1] + 4) + '" text-anchor="' + anchor + '">' + axis.label + '</text>';
+      });
+
+      // One polygon per tire
+      compareList.forEach(function (item, idx) {
+        var color = COLORS[idx % COLORS.length];
+        var pts = AXES.map(function (axis, i) {
+          var ang = (Math.PI * 2 * i) / AXES.length - Math.PI / 2;
+          var s = Math.max(0, Math.min(100, scoreFor(item, axis.key)));
+          return point(ang, R * (s / 100)).join(',');
+        }).join(' ');
+        svg += '<polygon class="ptg__cmp-radar-poly" points="' + pts + '" stroke="' + color + '" fill="' + color + '"></polygon>';
+      });
+
+      svg += '</svg>';
+
+      var legend = '<div class="ptg__cmp-radar-legend">';
+      compareList.forEach(function (item, idx) {
+        var color = COLORS[idx % COLORS.length];
+        var name = (item.vendor + ' ' + item.title).slice(0, 40);
+        legend += '<span class="ptg__cmp-radar-legend-item"><span class="ptg__cmp-radar-legend-dot" style="background:' + color + '"></span>' + name + '</span>';
+      });
+      legend += '</div>';
+
+      radarWrap.innerHTML =
+        '<h4 class="ptg__cmp-radar-title">At-a-glance trade-offs</h4>' +
+        '<p class="ptg__cmp-radar-sub">Scores derived from speed rating, load index, season, type and warranty. Higher = better on that axis.</p>' +
+        '<div class="ptg__cmp-radar-chart-wrap">' + svg + '</div>' +
+        legend;
+    }
+
     if (openBtn) openBtn.addEventListener('click', function() {
       if (compareList.length < 2) return;
       buildTable();
+      buildRadar();
       modal.hidden = false;
       document.body.style.overflow = 'hidden';
     });
