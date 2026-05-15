@@ -42,6 +42,7 @@ class MyGarage extends HTMLElement {
     // canonical server list.
     if (this.config.customerId) {
       this.startApiSync();
+      this.initBookingDefault();
     }
   }
 
@@ -729,6 +730,12 @@ class MyGarage extends HTMLElement {
       return;
     }
 
+    // Remember whether this customer has bookings, so the next garage visit
+    // can open straight on this tab (see initBookingDefault).
+    try {
+      localStorage.setItem('pt-garage-bookings:' + this.config.customerId, bookings.length ? '1' : '0');
+    } catch (e) {}
+
     if (!bookings.length) {
       if (subEl) subEl.textContent = 'No appointments yet';
       listEl.innerHTML = '<div class="gbk-empty">'
@@ -1365,6 +1372,26 @@ class MyGarage extends HTMLElement {
         if (vehiclesTab) vehiclesTab.click();
       });
     });
+  }
+
+  // "Remember & open on Bookings" — if an earlier visit recorded that this
+  // customer has bookings, open the garage straight on the Bookings tab.
+  // The flag is (re)written by loadBookings(). A first-ever visit has no
+  // flag, so it opens on My Vehicles and refreshes the flag in the
+  // background for next time. Runs synchronously inside connectedCallback,
+  // so the tab is correct before first paint — no flicker.
+  initBookingDefault() {
+    var remembered = false;
+    try {
+      remembered = localStorage.getItem('pt-garage-bookings:' + this.config.customerId) === '1';
+    } catch (e) {}
+
+    if (remembered) {
+      var bookingsTab = this.querySelector('[data-garage-tab="bookings"]');
+      if (bookingsTab) bookingsTab.click(); // tab handler also runs loadBookings()
+    } else {
+      this.loadBookings(); // background: refresh the flag, stay on My Vehicles
+    }
   }
 
   /* ---- Dashboard ---- */
