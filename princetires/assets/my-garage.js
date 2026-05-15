@@ -702,88 +702,108 @@ class MyGarage extends HTMLElement {
   }
 
   /* ---- Bookings tab ---- */
+  //
+  // Phase 2 — see docs/phase-2-bookings-surface.md.
+  // Lists the logged-in customer's bookings from GET /apps/api/bookings (Shopify
+  // App Proxy — HMAC-signed, so the server identifies the customer; the client
+  // sends no email or lookup token). The cancel link points at the app's
+  // token-based cancel page (booking_api_url theme setting supplies the host).
 
   async loadBookings() {
     var listEl = this.querySelector('[data-gbk-list]');
     var subEl  = this.querySelector('[data-gbk-sub]');
     if (!listEl) return;
 
-    var apiUrl = this.config.bookingApiUrl;
-    var email  = this.config.customerEmail;
-
-    if (!apiUrl || !email) {
-      listEl.innerHTML = '<div class="gbk-configure">'
-        + '<p class="gbk-configure-title">Not configured</p>'
-        + '<p class="gbk-configure-sub">Set the Booking API URL in the theme editor to show your appointments.</p>'
-        + '</div>';
-      return;
-    }
-
     // Show loading state
     listEl.innerHTML = '<div class="gbk-loading"><div class="gbk-spinner"></div><span>Loading your bookings…</span></div>';
 
+    var bookings;
     try {
-      // A01: include HMAC lookup token stored at booking time to prevent IDOR.
-      // Token is stored by the booking form after a successful POST /api/book.
-      var lookupToken = localStorage.getItem('pt-book-token-' + email.toLowerCase()) || '';
-      var bookingUrl  = apiUrl.replace(/\/$/, '') + '/api/book?email=' + encodeURIComponent(email);
-      if (lookupToken) bookingUrl += '&token=' + encodeURIComponent(lookupToken);
-      var res = await fetch(bookingUrl);
-      var data = await res.json();
-      // If token rejected, clear stale token from storage
-      if (res.status === 401) { localStorage.removeItem('pt-book-token-' + email.toLowerCase()); data = { bookings: [] }; }
-      var bookings = data.bookings || [];
-
-      if (!bookings.length) {
-        if (subEl) subEl.textContent = 'No upcoming appointments';
-        listEl.innerHTML = '<div class="gbk-empty">'
-          + '<p class="gbk-empty-title">No upcoming bookings</p>'
-          + '<p class="gbk-empty-sub">You don’t have any scheduled installations at the moment.</p>'
-          + '<a href="/pages/services" class="gbk-cta">Book an installation</a>'
-          + '</div>';
-        return;
-      }
-
-      if (subEl) subEl.textContent = bookings.length + ' upcoming ' + (bookings.length === 1 ? 'appointment' : 'appointments');
-
-      listEl.innerHTML = bookings.map(function(bk) {
-        var parts = bk.date.split(', ');
-        var dayPart  = parts.length >= 2 ? parts[1] : bk.date; // e.g. "Apr 19"
-        var dateParts = dayPart.trim().split(' ');
-        var month = dateParts[0] || '';
-        var day   = dateParts[1] || '';
-        var statusClass = 'gbk-status--' + (bk.status === 'tentative' ? 'tentative' : bk.status === 'cancelled' ? 'cancelled' : 'confirmed');
-        var statusLabel = bk.status === 'tentative' ? 'Pending' : bk.status === 'cancelled' ? 'Cancelled' : 'Confirmed';
-
-        return '<div class="gbk-card gbk-card--' + (bk.status === 'tentative' ? 'tentative' : bk.status === 'cancelled' ? 'cancelled' : 'confirmed') + '">'
-          + '<div class="gbk-date-col">'
-            + '<div class="gbk-date-day">' + this.escapeHtml(day) + '</div>'
-            + '<div class="gbk-date-month">' + this.escapeHtml(month) + '</div>'
-          + '</div>'
-          + '<div class="gbk-info">'
-            + '<p class="gbk-title-text">' + this.escapeHtml((bk.summary || 'Installation').replace(/^🛞\s*/, '')) + '</p>'
-            + '<div class="gbk-meta">'
-              + '<span class="gbk-meta-item">'
-                + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
-                + this.escapeHtml(bk.time)
-              + '</span>'
-              + '<span class="gbk-meta-item">'
-                + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'
-                + this.escapeHtml(bk.location)
-              + '</span>'
-            + '</div>'
-          + '</div>'
-          + '<span class="gbk-status ' + statusClass + '">' + statusLabel + '</span>'
-          + (bk.cancelUrl && bk.status !== 'cancelled'
-            ? '<a href="' + this.escapeHtml(bk.cancelUrl) + '" class="gbk-cancel-btn" target="_blank" rel="noopener">Cancel</a>'
-            : '')
-        + '</div>';
-      }.bind(this)).join('');
+      var data = await this.api('GET', '/apps/api/bookings');
+      bookings = (data && data.bookings) || [];
     } catch (e) {
       listEl.innerHTML = '<div class="gbk-empty">'
         + '<p class="gbk-empty-title">Couldn’t load bookings</p>'
         + '<p class="gbk-empty-sub">Please try again or contact us directly.</p>'
         + '</div>';
+      return;
+    }
+
+    if (!bookings.length) {
+      if (subEl) subEl.textContent = 'No appointments yet';
+      listEl.innerHTML = '<div class="gbk-empty">'
+        + '<p class="gbk-empty-title">No bookings yet</p>'
+        + '<p class="gbk-empty-sub">You don’t have any scheduled installations or services.</p>'
+        + '<a href="/pages/services" class="gbk-cta">Book an installation</a>'
+        + '</div>';
+      return;
+    }
+
+    if (subEl) subEl.textContent = bookings.length + ' ' + (bookings.length === 1 ? 'booking' : 'bookings');
+
+    // Cancel links target the app's token-based cancel page; that needs the app
+    // base URL (booking_api_url theme setting). Without it, Cancel is hidden.
+    var appBase = (this.config.bookingApiUrl || '').replace(/\/$/, '');
+
+    listEl.innerHTML = bookings.map(function(bk) {
+      var when = this.formatBookingDate(bk.scheduledDate);
+      var ui   = this.bookingStatusUi(bk.status);
+      var canCancel = bk.lookupToken && appBase
+        && bk.status !== 'cancelled' && bk.status !== 'completed' && bk.status !== 'no_show';
+      var cancelUrl = appBase + '/cancel/' + encodeURIComponent(bk.lookupToken || '');
+
+      return '<div class="gbk-card gbk-card--' + ui.cls + '">'
+        + '<div class="gbk-date-col">'
+          + '<div class="gbk-date-day">' + this.escapeHtml(when.day) + '</div>'
+          + '<div class="gbk-date-month">' + this.escapeHtml(when.month) + '</div>'
+        + '</div>'
+        + '<div class="gbk-info">'
+          + '<p class="gbk-title-text">' + this.escapeHtml(bk.serviceLabel || 'Installation') + '</p>'
+          + '<div class="gbk-meta">'
+            + '<span class="gbk-meta-item">'
+              + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+              + this.escapeHtml(bk.scheduledTime || '')
+            + '</span>'
+            + (bk.vehicleSummary
+              ? '<span class="gbk-meta-item">'
+                + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 17h14M5 17a2 2 0 0 1-2-2v-3l2-5h12l2 5v3a2 2 0 0 1-2 2M7 17v2M17 17v2"/></svg>'
+                + this.escapeHtml(bk.vehicleSummary)
+              + '</span>'
+              : '')
+          + '</div>'
+        + '</div>'
+        + '<span class="gbk-status gbk-status--' + ui.cls + '">' + ui.label + '</span>'
+        + (canCancel
+          ? '<a href="' + this.escapeHtml(cancelUrl) + '" class="gbk-cancel-btn" target="_blank" rel="noopener">Cancel</a>'
+          : '')
+      + '</div>';
+    }.bind(this)).join('');
+  }
+
+  // YYYY-MM-DD (or ISO datetime) -> { month: "May", day: "20" } for the date column.
+  formatBookingDate(value) {
+    if (!value || typeof value !== 'string') return { month: '', day: '' };
+    var parts = value.split('-');
+    if (parts.length < 3) return { month: '', day: value };
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var monthIdx = parseInt(parts[1], 10) - 1;
+    var day = parseInt(parts[2], 10);
+    return {
+      month: months[monthIdx] || '',
+      day: isNaN(day) ? parts[2] : String(day)
+    };
+  }
+
+  // Booking status -> { cls, label }. The gbk-* CSS styles three variants only
+  // (confirmed / tentative / cancelled); other statuses fold into the closest.
+  bookingStatusUi(status) {
+    switch (status) {
+      case 'pending':     return { cls: 'tentative', label: 'Pending' };
+      case 'cancelled':   return { cls: 'cancelled', label: 'Cancelled' };
+      case 'no_show':     return { cls: 'cancelled', label: 'Missed' };
+      case 'in_progress': return { cls: 'confirmed', label: 'In progress' };
+      case 'completed':   return { cls: 'confirmed', label: 'Completed' };
+      default:            return { cls: 'confirmed', label: 'Confirmed' };
     }
   }
 
