@@ -1,23 +1,819 @@
-<style type="text/css">
-  .template-404 .title + * {
-    margin-top: 1rem;
+<section class="pt404" data-pt404>
+
+  {%- comment -%} Page schema — Schema.org WebPage + BreadcrumbList — helps recovery in search results {%- endcomment -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "{{ shop.url }}{{ request.path }}#404",
+        "name": "Page not found",
+        "description": "The page you were looking for does not exist at Prince Tires Calgary. Use the navigation to find tires, brands, booking, or to contact the shop at 111 42 Ave SW.",
+        "isPartOf": { "@type": "WebSite", "@id": "{{ shop.url }}/#website", "url": "{{ shop.url }}", "name": "Prince Tires" }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "{{ shop.url }}" },
+          { "@type": "ListItem", "position": 2, "name": "Page not found" }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <div class="pt404__container">
+
+    {%- comment -%} Hero: eyebrow + cracked-pothole 404 + headline + subhead + CTAs {%- endcomment -%}
+    <header class="pt404__hero">
+      <span class="pt404__eyebrow">
+        <span class="pt404__eyebrow-dot" aria-hidden="true"></span>
+        404 · Page not found
+      </span>
+
+      {%- comment -%} The big 404 — the 0 is rendered as an SVG with a "pothole" crack {%- endcomment -%}
+      <div class="pt404__number" aria-hidden="true">
+        <span class="pt404__digit pt404__digit--four">4</span>
+        <span class="pt404__digit pt404__digit--zero">
+
+          {%- comment -%} Tire that rolls in from the right and falls into the pothole on loop {%- endcomment -%}
+          <span class="pt404__tire" aria-hidden="true">
+            <svg viewBox="0 0 80 80" class="pt404__tire-svg" focusable="false">
+              <defs>
+                <radialGradient id="pt404-tire" cx="50%" cy="50%" r="50%">
+                  <stop offset="55%" stop-color="#1a1a1a"/>
+                  <stop offset="100%" stop-color="#0a0a0a"/>
+                </radialGradient>
+              </defs>
+              <circle cx="40" cy="40" r="36" fill="url(#pt404-tire)"/>
+              <circle cx="40" cy="40" r="36" fill="none" stroke="#2a2a2a" stroke-width="1.5"/>
+              {%- comment -%} Tread blocks rotated around the circumference {%- endcomment -%}
+              <g fill="#2a2a2a">
+                {%- for i in (0..11) -%}
+                  <rect x="38" y="4" width="4" height="8" rx="1" transform="rotate({{ i | times: 30 }} 40 40)"/>
+                {%- endfor -%}
+              </g>
+              {%- comment -%} Rim — gives the tire visual depth {%- endcomment -%}
+              <circle cx="40" cy="40" r="16" fill="#4a4a4a"/>
+              <circle cx="40" cy="40" r="13" fill="#2a2a2a"/>
+              <circle cx="40" cy="40" r="3.5" fill="#5a5a5a"/>
+              {%- comment -%} 5-spoke star {%- endcomment -%}
+              <g stroke="#4a4a4a" stroke-width="2.4" stroke-linecap="round">
+                <line x1="40" y1="40" x2="40" y2="29"/>
+                <line x1="40" y1="40" x2="50.5" y2="33.7"/>
+                <line x1="40" y1="40" x2="46.5" y2="48.7"/>
+                <line x1="40" y1="40" x2="33.5" y2="48.7"/>
+                <line x1="40" y1="40" x2="29.5" y2="33.7"/>
+              </g>
+            </svg>
+          </span>
+
+          <svg viewBox="0 0 200 200" class="pt404__pothole-svg" preserveAspectRatio="xMidYMid meet" focusable="false">
+            <defs>
+              <radialGradient id="pt404-bowl" cx="55%" cy="45%" r="65%">
+                <stop offset="0%" stop-color="#1a1a1a"/>
+                <stop offset="100%" stop-color="#0a0a0a"/>
+              </radialGradient>
+              <linearGradient id="pt404-glow" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#F5820B" stop-opacity="0.85"/>
+                <stop offset="100%" stop-color="#DA291C" stop-opacity="0.65"/>
+              </linearGradient>
+            </defs>
+
+            {%- comment -%} The outer "ring" — the 0 shape with irregular jagged edge {%- endcomment -%}
+            <path
+              d="M100 14
+                 C 132 14 165 26 178 60
+                 C 192 92 188 130 168 158
+                 C 152 182 130 192 100 192
+                 C 76 192 50 184 32 162
+                 C 10 138 6 102 18 70
+                 C 30 38 60 22 88 16
+                 Z
+                 M100 48
+                 L 118 42
+                 L 134 56
+                 L 152 64
+                 L 158 86
+                 L 168 100
+                 L 158 122
+                 L 152 142
+                 L 132 148
+                 L 116 158
+                 L 96 154
+                 L 80 158
+                 L 64 146
+                 L 50 136
+                 L 42 116
+                 L 34 96
+                 L 44 78
+                 L 52 60
+                 L 70 54
+                 L 84 50
+                 Z"
+              fill="url(#pt404-glow)"
+              fill-rule="evenodd"
+              class="pt404__pothole-outer"
+            />
+
+            {%- comment -%} The pothole "bowl" — dark inner shape {%- endcomment -%}
+            <path
+              d="M100 48
+                 L 118 42 L 134 56 L 152 64 L 158 86 L 168 100
+                 L 158 122 L 152 142 L 132 148 L 116 158 L 96 154
+                 L 80 158 L 64 146 L 50 136 L 42 116 L 34 96
+                 L 44 78 L 52 60 L 70 54 L 84 50 Z"
+              fill="url(#pt404-bowl)"
+              class="pt404__pothole-bowl"
+            />
+
+            {%- comment -%} Cracks fanning out from the pothole {%- endcomment -%}
+            <g class="pt404__cracks" stroke="#F5820B" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.78">
+              <path d="M100 14 L 96 6 L 92 -2"/>
+              <path d="M178 60 L 188 56 L 194 48 M186 52 L 192 60"/>
+              <path d="M168 158 L 184 168 L 190 178"/>
+              <path d="M32 162 L 18 174 L 6 180"/>
+              <path d="M18 70 L 4 60 L -2 52 M 8 56 L -4 60"/>
+            </g>
+
+            {%- comment -%} Small chunks of broken pavement {%- endcomment -%}
+            <g class="pt404__chunks" fill="#1a1a1a" opacity="0.85">
+              <polygon points="172,176 184,170 188,180 178,184"/>
+              <polygon points="20,184 32,178 34,188 24,192"/>
+              <polygon points="190,30 198,26 196,40 188,38"/>
+            </g>
+          </svg>
+        </span>
+        <span class="pt404__digit pt404__digit--four">4</span>
+      </div>
+
+      <h1 class="pt404__headline">
+        Looks like you hit a <span class="pt404__highlight">Calgary&nbsp;pothole.</span>
+      </h1>
+
+      <p class="pt404__subhead">
+        The page you were looking for didn't survive the freeze-thaw.
+        Let's get you back on the road &mdash; pick a route below or use the search.
+      </p>
+
+      <form action="{{ routes.search_url }}" method="get" class="pt404__search" role="search">
+        <input type="hidden" name="type" value="product">
+        <label for="pt404-q" class="visually-hidden">Search</label>
+        <span class="pt404__search-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        </span>
+        <input
+          id="pt404-q"
+          type="search"
+          name="q"
+          placeholder="Search tires, brands, services&hellip;"
+          autocomplete="off"
+        >
+        <button type="submit" class="pt404__search-go">Search</button>
+      </form>
+
+      <div class="pt404__primary-ctas">
+        <a href="/collections/tires" class="pt404__btn pt404__btn--primary">
+          Find my tires
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="/pages/booking" class="pt404__btn pt404__btn--secondary">
+          Book an install
+        </a>
+        <a href="tel:+14034524283" class="pt404__btn pt404__btn--ghost">
+          Or call (403) 452-4283
+        </a>
+      </div>
+    </header>
+
+    {%- comment -%} Popular paths — bento mosaic of recovery destinations {%- endcomment -%}
+    <section class="pt404__paths" aria-labelledby="pt404-paths-heading">
+      <div class="pt404__paths-head">
+        <span class="pt404__paths-eyebrow">Popular routes back</span>
+        <h2 class="pt404__paths-heading" id="pt404-paths-heading">Where most Calgary drivers go next</h2>
+      </div>
+
+      <ul class="pt404__paths-grid" role="list">
+        <li>
+          <a href="/collections/winter-tires" class="pt404__path pt404__path--winter">
+            <span class="pt404__path-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg>
+            </span>
+            <span class="pt404__path-body">
+              <span class="pt404__path-title">Winter tires</span>
+              <span class="pt404__path-sub">3PMSF-rated · Alberta winter-tire law compliant</span>
+            </span>
+            <span class="pt404__path-arrow" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </span>
+          </a>
+        </li>
+        <li>
+          <a href="/pages/brands" class="pt404__path pt404__path--brands">
+            <span class="pt404__path-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            </span>
+            <span class="pt404__path-body">
+              <span class="pt404__path-title">All 26 brands</span>
+              <span class="pt404__path-sub">Michelin, Bridgestone, BFGoodrich, Toyo &amp; more</span>
+            </span>
+            <span class="pt404__path-arrow" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </span>
+          </a>
+        </li>
+        <li>
+          <a href="/pages/services" class="pt404__path pt404__path--services">
+            <span class="pt404__path-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+            </span>
+            <span class="pt404__path-body">
+              <span class="pt404__path-title">Services</span>
+              <span class="pt404__path-sub">Install · balance · TPMS · flat repair · alignment</span>
+            </span>
+            <span class="pt404__path-arrow" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </span>
+          </a>
+        </li>
+        <li>
+          <a href="/pages/booking" class="pt404__path pt404__path--booking">
+            <span class="pt404__path-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </span>
+            <span class="pt404__path-body">
+              <span class="pt404__path-title">Book installation</span>
+              <span class="pt404__path-sub">Same-day on most stocked sizes</span>
+            </span>
+            <span class="pt404__path-arrow" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </span>
+          </a>
+        </li>
+        <li>
+          <a href="/pages/about" class="pt404__path pt404__path--about">
+            <span class="pt404__path-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            </span>
+            <span class="pt404__path-body">
+              <span class="pt404__path-title">About Prince Tires</span>
+              <span class="pt404__path-sub">Family-owned · 111 42 Ave SW Calgary</span>
+            </span>
+            <span class="pt404__path-arrow" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </span>
+          </a>
+        </li>
+        <li>
+          <a href="/" class="pt404__path pt404__path--home">
+            <span class="pt404__path-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </span>
+            <span class="pt404__path-body">
+              <span class="pt404__path-title">Start fresh</span>
+              <span class="pt404__path-sub">Back to the homepage</span>
+            </span>
+            <span class="pt404__path-arrow" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </span>
+          </a>
+        </li>
+      </ul>
+    </section>
+
+    <footer class="pt404__foot">
+      <p>
+        <strong>Prince Tires</strong> &middot; 111 42 Ave SW, Calgary, AB T2G 0A4
+        &middot; Mon&ndash;Sat 9:30&ndash;5:30 &middot; Sun 10:00&ndash;3:30
+        &middot; <a href="tel:+14034524283">(403) 452-4283</a>
+      </p>
+      <p class="pt404__foot-fineprint">If you got here from a link on our site, please <a href="mailto:info@princetires.ca?subject=Broken%20link">let us know</a> so we can fix it.</p>
+    </footer>
+
+  </div>
+</section>
+
+{% stylesheet %}
+  /* ──────────────────────────────────────────────
+     Prince Tires — 404 (Calgary Pothole)
+     ────────────────────────────────────────────── */
+  .pt404 {
+    --pt404-accent: #F5820B;
+    --pt404-accent-2: #DA291C;
+    --pt404-ink: #0a0a0a;
+    --pt404-mute: rgba(10,10,10,0.6);
+    --pt404-soft: rgba(10,10,10,0.06);
+    --pt404-card: #ffffff;
+    --pt404-bg: #fafafa;
+
+    background: var(--pt404-bg);
+    color: var(--pt404-ink);
+    font-family: 'Outfit', system-ui, sans-serif;
+    padding: 5rem 0 6rem;
+    overflow: hidden;
+    position: relative;
+    isolation: isolate;
   }
 
-  @media screen and (min-width: 750px) {
-    .template-404 .title + * {
-      margin-top: 2rem;
+  /* Subtle road-line backdrop */
+  .pt404::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(60% 50% at 50% 0%, rgba(245,130,11,0.08), transparent 60%),
+      radial-gradient(40% 40% at 100% 100%, rgba(218,41,28,0.05), transparent 70%);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .pt404__container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  /* ── Hero ── */
+  .pt404__hero {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding-bottom: 4.5rem;
+  }
+
+  .pt404__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.95rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--pt404-accent) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--pt404-accent) 32%, transparent);
+    color: var(--pt404-accent);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .pt404__eyebrow-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--pt404-accent);
+    box-shadow: 0 0 10px var(--pt404-accent);
+    animation: pt404-pulse 2s ease-in-out infinite;
+  }
+
+  /* The 404 number block */
+  .pt404__number {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    line-height: 0.9;
+    margin: 0.5rem 0 1rem;
+  }
+  .pt404__digit {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: clamp(8rem, 22vw, 16rem);
+    letter-spacing: -0.04em;
+    color: var(--pt404-ink);
+    line-height: 1;
+    display: inline-block;
+  }
+  .pt404__digit--zero {
+    width: clamp(8rem, 22vw, 16rem);
+    height: clamp(8rem, 22vw, 16rem);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pt404__pothole-svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 14px 30px rgba(10,10,10,0.18));
+    animation: pt404-pothole-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Outer rim — continuous glow loop */
+  .pt404__pothole-outer {
+    animation: pt404-rim-glow 3.4s ease-in-out infinite;
+    transform-origin: 100px 100px;
+  }
+
+  /* Inner bowl — subtle "breathing" depth pulse */
+  .pt404__pothole-bowl {
+    animation: pt404-bowl-breath 5s ease-in-out infinite;
+    transform-origin: 100px 100px;
+  }
+
+  /* Cracks — draw on load, then color-shimmer forever */
+  .pt404__cracks path {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation:
+      pt404-crack-draw 1.6s cubic-bezier(0.16, 1, 0.3, 1) 400ms both,
+      pt404-crack-shimmer 2.8s ease-in-out 2s infinite;
+  }
+  .pt404__cracks path:nth-child(2) { animation-delay: 500ms, 2.2s; }
+  .pt404__cracks path:nth-child(3) { animation-delay: 600ms, 2.4s; }
+  .pt404__cracks path:nth-child(4) { animation-delay: 700ms, 2.6s; }
+  .pt404__cracks path:nth-child(5) { animation-delay: 800ms, 2.8s; }
+
+  /* Pavement chunks — gentle vibration */
+  .pt404__chunks polygon {
+    transform-origin: center;
+    animation: pt404-chunk-jitter 0.18s ease-in-out infinite;
+    animation-play-state: paused;
+  }
+  /* Trigger jitter only briefly when the tire lands */
+  .pt404__digit--zero .pt404__chunks polygon {
+    animation-name: pt404-chunk-shake;
+    animation-duration: 7s;
+    animation-iteration-count: infinite;
+    animation-play-state: running;
+  }
+  .pt404__chunks polygon:nth-child(1) { animation-delay: 0s; }
+  .pt404__chunks polygon:nth-child(2) { animation-delay: 0.12s; }
+  .pt404__chunks polygon:nth-child(3) { animation-delay: 0.06s; }
+
+  /* Rolling tire */
+  .pt404__tire {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 38%;
+    height: 38%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 2;
+    animation: pt404-tire-roll 7s cubic-bezier(0.55, 0.05, 0.85, 0.4) 1.4s infinite;
+  }
+  .pt404__tire-svg {
+    width: 100%;
+    height: 100%;
+    animation: pt404-tire-spin 0.7s linear infinite;
+    filter: drop-shadow(0 8px 16px rgba(10, 10, 10, 0.35));
+  }
+
+  @keyframes pt404-pothole-in {
+    0% { opacity: 0; transform: scale(0.85) rotate(-4deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+  @keyframes pt404-crack-draw {
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes pt404-crack-shimmer {
+    0%, 100% { opacity: 0.78; stroke-width: 1.6; }
+    50%      { opacity: 1;    stroke-width: 2.1; }
+  }
+  @keyframes pt404-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.3); }
+  }
+  @keyframes pt404-rim-glow {
+    0%, 100% { opacity: 0.92; filter: brightness(1) saturate(1); }
+    50%      { opacity: 1;    filter: brightness(1.18) saturate(1.25); }
+  }
+  @keyframes pt404-bowl-breath {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(0.985); }
+  }
+  @keyframes pt404-chunk-shake {
+    0%, 78%, 100% { transform: translate(0, 0) rotate(0); }
+    80% { transform: translate(0.6px, -0.4px) rotate(2deg); }
+    82% { transform: translate(-0.5px, 0.5px) rotate(-2deg); }
+    84% { transform: translate(0.3px, -0.2px) rotate(1deg); }
+    86% { transform: translate(0, 0) rotate(0); }
+  }
+  @keyframes pt404-chunk-jitter {
+    0%, 100% { transform: translate(0, 0); }
+    50%      { transform: translate(0.5px, 0.5px); }
+  }
+  /* The tire rolls in from off-screen right, slows, falls into the pothole, then resets */
+  @keyframes pt404-tire-roll {
+    0%   { transform: translate(420%,  -50%) scale(1)    rotate(0);    opacity: 0; }
+    8%   { transform: translate(420%,  -50%) scale(1)    rotate(0);    opacity: 1; }
+    62%  { transform: translate(-50%,  -50%) scale(1)    rotate(0);    opacity: 1; }
+    68%  { transform: translate(-50%,  -45%) scale(0.95) rotate(8deg); opacity: 1; }
+    78%  { transform: translate(-50%,   10%) scale(0.6)  rotate(28deg); opacity: 0.6; }
+    85%, 100% {
+                  transform: translate(-50%,   55%) scale(0.2)  rotate(48deg); opacity: 0;
     }
   }
-</style>
+  @keyframes pt404-tire-spin {
+    from { transform: rotate(0); }
+    to   { transform: rotate(360deg); }
+  }
 
-<div class="template-404 page-width page-margin center">
-  <p>
-    {{ 'templates.404.subtext' | t }}
-  </p>
-  <h1 class="title">
-    {{ 'templates.404.title' | t }}
-  </h1>
-  <a href="{{ routes.all_products_collection_url }}" class="button">
-    {{ 'general.continue_shopping' | t }}
-  </a>
-</div>
+  /* Headline + highlight */
+  .pt404__headline {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(2.4rem, 6.5vw, 5rem);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1;
+    margin: 0;
+    max-width: 22ch;
+    color: var(--pt404-ink);
+  }
+  .pt404__highlight {
+    position: relative;
+    color: var(--pt404-accent);
+    white-space: nowrap;
+  }
+  .pt404__highlight::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.08em;
+    height: 0.08em;
+    background: linear-gradient(90deg, transparent, var(--pt404-accent), var(--pt404-accent-2), transparent);
+    border-radius: 4px;
+  }
+
+  .pt404__subhead {
+    font-size: clamp(1.05rem, 1.5vw, 1.2rem);
+    line-height: 1.6;
+    color: var(--pt404-mute);
+    max-width: 58ch;
+    margin: 0;
+  }
+
+  /* Search bar */
+  .pt404__search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 560px;
+    padding: 0.45rem 0.5rem 0.45rem 1.05rem;
+    margin-top: 0.5rem;
+    background: #ffffff;
+    border: 1px solid rgba(10, 10, 10, 0.1);
+    border-radius: 999px;
+    box-shadow: 0 12px 32px -20px rgba(10, 10, 10, 0.25);
+    transition: border-color 0.18s, box-shadow 0.18s;
+  }
+  .pt404__search:focus-within {
+    border-color: var(--pt404-accent);
+    box-shadow: 0 12px 32px -16px color-mix(in oklab, var(--pt404-accent) 35%, rgba(10,10,10,0.2));
+  }
+  .pt404__search-icon {
+    color: var(--pt404-mute);
+    display: inline-flex;
+  }
+  .pt404__search input[type="search"] {
+    flex: 1;
+    border: 0;
+    outline: 0;
+    padding: 0.7rem 0.25rem;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--pt404-ink);
+    background: transparent;
+    min-width: 0;
+  }
+  .pt404__search-go {
+    border: 0;
+    background: var(--pt404-ink);
+    color: #ffffff;
+    padding: 0.7rem 1.2rem;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.18s, background 0.18s;
+  }
+  .pt404__search-go:hover { background: var(--pt404-accent); transform: translateY(-1px); }
+  .pt404__search-go:active { transform: translateY(0); }
+
+  /* Primary CTAs */
+  .pt404__primary-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+  .pt404__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.96rem;
+    text-decoration: none;
+    transition: transform 0.18s, box-shadow 0.18s, background 0.18s;
+  }
+  .pt404__btn--primary {
+    background: var(--pt404-accent);
+    color: #ffffff;
+    box-shadow: 0 12px 28px -12px color-mix(in oklab, var(--pt404-accent) 60%, transparent);
+  }
+  .pt404__btn--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px -12px color-mix(in oklab, var(--pt404-accent) 78%, transparent);
+  }
+  .pt404__btn--secondary {
+    background: var(--pt404-ink);
+    color: #ffffff;
+  }
+  .pt404__btn--secondary:hover {
+    transform: translateY(-2px);
+    background: #1a1a1a;
+    box-shadow: 0 12px 24px -12px rgba(10, 10, 10, 0.4);
+  }
+  .pt404__btn--ghost {
+    color: var(--pt404-ink);
+    background: transparent;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-color: rgba(10, 10, 10, 0.25);
+    padding: 0.85rem 0.5rem;
+  }
+  .pt404__btn--ghost:hover { text-decoration-color: var(--pt404-ink); }
+
+  /* ── Popular paths ── */
+  .pt404__paths {
+    padding-top: 3.5rem;
+    border-top: 1px solid rgba(10, 10, 10, 0.07);
+  }
+  .pt404__paths-head {
+    text-align: center;
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .pt404__paths-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--pt404-accent);
+  }
+  .pt404__paths-heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--pt404-ink);
+  }
+
+  .pt404__paths-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.85rem;
+  }
+  .pt404__path {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+    padding: 1.05rem 1.15rem;
+    background: var(--pt404-card);
+    border: 1px solid rgba(10, 10, 10, 0.08);
+    border-radius: 16px;
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s, box-shadow 0.22s, background 0.22s;
+    position: relative;
+    overflow: hidden;
+  }
+  .pt404__path::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, color-mix(in oklab, var(--pt404-accent) 8%, transparent), transparent 50%);
+    opacity: 0;
+    transition: opacity 0.22s;
+  }
+  .pt404__path:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in oklab, var(--pt404-accent) 30%, rgba(10,10,10,0.08));
+    box-shadow: 0 18px 36px -22px rgba(10, 10, 10, 0.18);
+  }
+  .pt404__path:hover::before { opacity: 1; }
+
+  .pt404__path-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in oklab, var(--pt404-accent) 12%, #ffffff);
+    color: var(--pt404-accent);
+    border-radius: 12px;
+    transition: background 0.22s, transform 0.22s;
+  }
+  .pt404__path:hover .pt404__path-icon {
+    background: var(--pt404-accent);
+    color: #ffffff;
+    transform: rotate(-4deg);
+  }
+
+  .pt404__path-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    position: relative;
+  }
+  .pt404__path-title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--pt404-ink);
+  }
+  .pt404__path-sub {
+    font-size: 0.84rem;
+    color: var(--pt404-mute);
+    line-height: 1.4;
+  }
+  .pt404__path-arrow {
+    flex-shrink: 0;
+    color: rgba(10, 10, 10, 0.35);
+    display: inline-flex;
+    transition: transform 0.22s, color 0.22s;
+    position: relative;
+  }
+  .pt404__path:hover .pt404__path-arrow {
+    transform: translateX(4px);
+    color: var(--pt404-ink);
+  }
+
+  /* ── Footer ── */
+  .pt404__foot {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(10, 10, 10, 0.07);
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--pt404-mute);
+  }
+  .pt404__foot p { margin: 0 0 0.5rem; }
+  .pt404__foot strong { color: var(--pt404-ink); font-weight: 700; }
+  .pt404__foot a {
+    color: var(--pt404-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: rgba(10, 10, 10, 0.25);
+  }
+  .pt404__foot a:hover { color: var(--pt404-accent); text-decoration-color: var(--pt404-accent); }
+  .pt404__foot-fineprint { font-size: 0.82rem; opacity: 0.78; }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .pt404 { padding: 3rem 0 4rem; }
+    .pt404__hero { gap: 1.1rem; padding-bottom: 3rem; }
+    .pt404__number { gap: 0.3rem; }
+    .pt404__primary-ctas { gap: 0.5rem; }
+    .pt404__btn { padding: 0.75rem 1.1rem; font-size: 0.92rem; }
+    .pt404__btn--ghost { width: 100%; justify-content: center; }
+    .pt404__paths-grid { gap: 0.65rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pt404__pothole-svg,
+    .pt404__pothole-outer,
+    .pt404__pothole-bowl,
+    .pt404__cracks path,
+    .pt404__chunks polygon,
+    .pt404__tire,
+    .pt404__tire-svg,
+    .pt404__eyebrow-dot,
+    .pt404__path,
+    .pt404__btn {
+      animation: none !important;
+      transition: none !important;
+    }
+    .pt404__tire { display: none; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "404 page",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "This is the 404 (page-not-found) layout. Headline, CTAs, and recovery paths are designed to keep visitors on the site instead of bouncing. Visual: the '0' in 404 is rendered as a Calgary pothole — local-humor anchor."
+    }
+  ]
+}
+{% endschema %}

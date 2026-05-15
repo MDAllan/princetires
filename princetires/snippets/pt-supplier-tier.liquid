@@ -1,0 +1,45 @@
+{% doc %}
+  Outputs 'A' or 'B' based on the product's supplier source. Used by Book Install
+  triggers to set data-supplier-tier so the install modal can pick the correct
+  lead-time floor.
+
+  Tier A = in stock at our shop (2 hr lead time)
+    - Tag "Prince Tires"
+    - OR collection handle "imported-tires"
+    - OR vendor matches one of our imported brands
+
+  Tier B = Trail Tire Calgary warehouse (next-business-day after 12:30 PM)
+    - Default for everything else (most products tagged "Trail Tire Supply")
+
+  Canonical brand list lives here. Add new imported brands by editing tierA_brands below.
+  Mirrored server-side in princetires-app/src/app/api/book/route.ts — keep in sync.
+
+  @param {object} product - The Shopify product object
+
+  @example
+    {%- capture supplier_tier -%}{% render 'pt-supplier-tier', product: product %}{%- endcapture -%}
+    <button data-supplier-tier="{{ supplier_tier | strip }}">Book installation</button>
+{% enddoc %}
+{%- liquid
+  assign tier = 'B'
+  assign tierA_brands = 'haida,tesche,composal,suretrac,sierra,bearway' | split: ','
+
+  if product.tags contains 'Prince Tires'
+    assign tier = 'A'
+  endif
+
+  for c in product.collections
+    if c.handle == 'imported-tires'
+      assign tier = 'A'
+    endif
+  endfor
+
+  if tier == 'B'
+    assign vendor_lower = product.vendor | default: '' | downcase
+    for b in tierA_brands
+      if vendor_lower contains b
+        assign tier = 'A'
+      endif
+    endfor
+  endif
+-%}{{- tier -}}

@@ -242,8 +242,31 @@
             </div>
           </div>
 
-          <!-- Marketing opt-in -->
-          <label class="auth-page__checkbox-label">
+          <!-- Required: Terms + Privacy consent (Alberta CPA / PIPEDA) -->
+          <label class="auth-page__checkbox-label" for="RegisterForm-terms">
+            <input
+              class="auth-page__checkbox"
+              type="checkbox"
+              id="RegisterForm-terms"
+              name="terms_accepted"
+              value="true"
+              required
+              aria-required="true"
+              data-required-consent
+            >
+            <span class="auth-page__checkbox-box" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="auth-page__checkbox-text">
+              I have read and agree to Prince Tires'
+              <a href="/pages/terms-of-use" target="_blank" rel="noopener">Terms of Use</a> and
+              <a href="/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.
+              <span class="auth-page__checkbox-required" aria-hidden="true">*</span>
+            </span>
+          </label>
+
+          <!-- Optional: CASL marketing consent (express opt-in for email + SMS) -->
+          <label class="auth-page__checkbox-label" for="RegisterForm-marketing">
             <input
               class="auth-page__checkbox"
               type="checkbox"
@@ -254,7 +277,11 @@
             <span class="auth-page__checkbox-box" aria-hidden="true">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </span>
-            <span class="auth-page__checkbox-text">{{ 'customer.auth.marketing_label' | t }}</span>
+            <span class="auth-page__checkbox-text">
+              Yes, I'd like to receive seasonal tire reminders, sales, and service tips by email and SMS from Prince Tires.
+              You can unsubscribe at any time using the link in any email or by replying STOP to any text message. See our
+              <a href="/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.
+            </span>
           </label>
 
           <button type="submit" class="auth-page__btn auth-page__btn--primary" data-submit-btn>
@@ -268,10 +295,6 @@
             </span>
           </button>
         {%- endform -%}
-
-        <p class="auth-page__terms">
-          {{ 'customer.auth.terms_notice' | t }}
-        </p>
 
         <div class="auth-page__switch">
           <span>{{ 'customer.auth.has_account' | t }}</span>
@@ -819,6 +842,24 @@
     line-height: 1.5;
   }
 
+  .auth-page__checkbox-text a {
+    color: #dc2626;
+    text-decoration: underline;
+    font-weight: 500;
+  }
+  .auth-page__checkbox-text a:hover {
+    color: #b91c1c;
+  }
+  .auth-page__checkbox-required {
+    color: #dc2626;
+    font-weight: 600;
+    margin-left: 0.2rem;
+  }
+  .auth-page__checkbox-label--invalid .auth-page__checkbox-box {
+    border-color: #dc2626;
+    background: #fef2f2;
+  }
+
   /* ── Buttons ── */
   .auth-page__btn {
     display: flex;
@@ -1143,9 +1184,19 @@
       setRegMode('shop');
     }
 
-    // Submit button loading state
+    // Submit button loading state + required consent gate
     section.querySelectorAll('form').forEach(function(form) {
-      form.addEventListener('submit', function() {
+      form.addEventListener('submit', function(e) {
+        // Gate on required consent checkbox (Terms + Privacy)
+        var consent = form.querySelector('[data-required-consent]');
+        if (consent && !consent.checked) {
+          e.preventDefault();
+          var label = consent.closest('.auth-page__checkbox-label');
+          if (label) label.classList.add('auth-page__checkbox-label--invalid');
+          consent.focus();
+          return;
+        }
+
         var btn = form.querySelector('[data-submit-btn]');
         if (!btn) return;
         var inner = btn.querySelector('.auth-page__btn-inner');
@@ -1154,6 +1205,14 @@
         btn.classList.add('auth-page__btn--loading');
         if (inner) inner.style.display = 'none';
         if (spinner) spinner.style.display = 'flex';
+      });
+    });
+
+    // Clear invalid state on consent check
+    section.querySelectorAll('[data-required-consent]').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        var label = this.closest('.auth-page__checkbox-label');
+        if (label && this.checked) label.classList.remove('auth-page__checkbox-label--invalid');
       });
     });
   })();

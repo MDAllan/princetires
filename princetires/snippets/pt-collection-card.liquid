@@ -77,8 +77,27 @@
                       {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'ptg__img', loading: 'lazy', widths: '200,300,400,600', sizes: '(max-width: 768px) 50vw, (max-width: 989px) 30vw, 25vw', alt: product.title }}
                     {%- endif -%}
                   {%- else -%}
-                    <div class="ptg__card-ph">
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                    {%- comment -%} Branded placeholder when product has no photo {%- endcomment -%}
+                    <div class="ptg__card-ph" aria-hidden="true">
+                      <svg class="ptg__card-ph-tire" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="50" cy="50" r="45"/>
+                        <circle cx="50" cy="50" r="39" stroke-width="5" stroke-dasharray="3.5 5"/>
+                        <circle cx="50" cy="50" r="22"/>
+                        <circle cx="50" cy="50" r="4.5" fill="currentColor" stroke="none"/>
+                        <g stroke-width="2.4" stroke-linecap="round">
+                          <line x1="50" y1="50" x2="50" y2="31"/>
+                          <line x1="50" y1="50" x2="68" y2="43.5"/>
+                          <line x1="50" y1="50" x2="61" y2="65"/>
+                          <line x1="50" y1="50" x2="39" y2="65"/>
+                          <line x1="50" y1="50" x2="32" y2="43.5"/>
+                        </g>
+                      </svg>
+                      {%- if product.vendor != blank -%}
+                        <span class="ptg__card-ph-brand">{{ product.vendor | escape }}</span>
+                      {%- endif -%}
+                      {%- if tire_size_display != blank -%}
+                        <span class="ptg__card-ph-size">{{ tire_size_display }}</span>
+                      {%- endif -%}
                     </div>
                   {%- endif -%}
                   {%- unless product.available -%}

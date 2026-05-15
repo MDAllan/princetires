@@ -1488,3 +1488,17 @@ Schema locale files, saved with a .schema.json extension, store translation stri
 {% endschema %}
 ```
 
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues at `MDAllan/princetires` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary — `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the theme root (`princetires/`). See `docs/agents/domain.md`.
+

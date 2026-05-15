@@ -90,6 +90,7 @@ Staff
 - **Cancellation page**: customer enters email + booking id to view/cancel
 - **My Garage upcoming bookings endpoint** — wire UI in theme once route exists
 - **AI agent route** — replace removed product-page chat with `/api/agent` + new theme tab
+- **Server-side CASL/Terms consent capture** — `customers/create` Shopify webhook handler that logs `{shopify_customer_id, email, terms_accepted, accepts_marketing, consent_ts, ip, user_agent}` to a new `consent_log` table in Neon. Currently the Terms checkbox in `sections/main-register.liquid` is gated client-side only; with JS disabled or a direct form POST a customer can register without consenting. Server capture creates the audit trail needed if a CASL/PIPEDA dispute ever arises. Re-use existing webhook HMAC verification pattern from the orders/create handler.
 
 ---
 
@@ -104,6 +105,7 @@ Staff
 - Filter by season (all-season, winter, summer, all-weather)
 - Filter by vehicle type (SUV, sedan, truck, minivan)
 - "Fits my vehicle" filter (year/make/model)
+- **Staggered-fitment grouped search** — when a customer searches by vehicle on the booking page and the trim has staggered tire sizes (e.g. 225/40R19 front + 255/35R19 rear), show ONE results page that fetches both sizes' products and groups by brand+model so the customer can buy a matching set in one go. Today the booking page surfaces both sizes but redirects to the front-only filter; deeper integration needs a custom collection template that hits Shopify's product search twice and merges results by `brand + model_family`.
 
 ### SEO / GEO
 - Wire in `snippets/schema-local-business.liquid` on homepage
