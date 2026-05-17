@@ -1087,6 +1087,7 @@
   // empty/bad data leaves the hardcoded fallback in place.
   function bpApplyCatalog(services) {
     if (!Array.isArray(services) || !services.length) return;
+    var others = [];
     services.forEach(function (svc) {
       if (!svc || !svc.slug) return;
       var pr = svc.prices || {};
@@ -1099,11 +1100,17 @@
         flatOverride: pr.flatOverride || null
       };
       if (svc.kind === 'service') {
-        if (SERVICES[svc.slug]) SERVICES[svc.slug].name = svc.name;
-        var other = OTHER_SERVICES.find(function (o) { return o.id === svc.slug; });
-        if (other) { other.name = svc.name; other.priceLabel = bpPriceLabel(svc); }
+        SERVICES[svc.slug] = { name: svc.name };
+        // installation_on/off are the "own tires" pathway; everything else
+        // (including newly-added services) is an "other service" tile.
+        if (svc.slug !== 'installation_off' && svc.slug !== 'installation_on') {
+          others.push({ id: svc.slug, name: svc.name, priceLabel: bpPriceLabel(svc) });
+        }
       }
     });
+    // Rebuild the other-service list from the catalog so services added or
+    // removed in the admin flow through to this page.
+    if (others.length) OTHER_SERVICES = others;
     // Refresh the static mount-price labels (installation_on / installation_off).
     var mountLabel = function (slug) {
       var el = document.querySelector('.bp-mount-card[data-bp-svc="' + slug + '"] .bp-mount-price');
