@@ -346,6 +346,7 @@
 (function () {
   var BOOKING_API = 'https://app.princetires.ca/api/book';
   var AVAILABILITY_API = 'https://app.princetires.ca/api/availability';
+  var SERVICES_API = 'https://app.princetires.ca/api/services';
 
   var st = { tireName: '', tireSize: '', tirePrice: 0, vehicle: 'passenger', qty: 4, tpms: false, disposal: true, lowProfile: false, date: null, time: null, savedVehicle: null, inventorySource: 'store', supplierTier: 'B', productHandle: '' };
   var wk = 0;
@@ -363,8 +364,12 @@
     { id: 'trailer', name: 'Trailer', price: 30 }
   ];
 
+  // Pricing fallbacks — bkApplyCatalog() overlays these from GET /api/services
+  // (installation_off + addon_tpms + addon_disposal in the admin catalog).
   var BK_LOW_PROFILE_FLOOR = 40;
   var BK_TRAILER_FLAT = 120;
+  var bkTpmsPrice = 75;
+  var bkDisposalPrice = 5;
 
   var vIcons = {
     passenger: '<svg width="40" height="26" viewBox="0 0 40 26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17h26"/><path d="M9 17l2.5-6h17l2.5 6"/><path d="M13.5 11l1.5-5h10l1.5 5"/><circle cx="12" cy="19.5" r="2.5"/><circle cx="28" cy="19.5" r="2.5"/></svg>',
@@ -390,11 +395,46 @@
     var tp = st.tirePrice > 0 ? st.tirePrice * st.qty : 0;
     // Trailer is a flat-rate install regardless of qty.
     var i = (st.vehicle === 'trailer') ? BK_TRAILER_FLAT : (vehPrice() * st.qty);
-    var t = st.tpms ? 75 * st.qty : 0;
-    var d = st.disposal ? 5 * st.qty : 0;
+    var t = st.tpms ? bkTpmsPrice * st.qty : 0;
+    var d = st.disposal ? bkDisposalPrice * st.qty : 0;
     var s = tp + i + t + d;
     var g = s * 0.05;
     return { tires: tp, install: i, tpms: t, disposal: d, subtotal: s, gst: g, total: s + g };
+  }
+
+  // ── Stage 2: overlay install pricing from GET /api/services ───────────────
+  // Mutates vehs[].price, the low-profile floor / trailer flat, and the TPMS /
+  // disposal add-on rates from the admin-managed catalog. Defensive: missing or
+  // malformed data leaves the hardcoded fallback in place, so booking can never
+  // break on an API hiccup. See docs/phase-3.5-service-catalog.md.
+  function bkApplyCatalog(services) {
+    if (!Array.isArray(services)) return;
+    services.forEach(function (svc) {
+      if (!svc || !svc.prices) return;
+      if (svc.slug === 'installation_off') {
+        var bv = svc.prices.byVehicle || {};
+        vehs.forEach(function (v) { if (typeof bv[v.id] === 'number') v.price = bv[v.id]; });
+        if (typeof svc.prices.lowProfileFloor === 'number') BK_LOW_PROFILE_FLOOR = svc.prices.lowProfileFloor;
+        if (svc.prices.flatOverride && typeof svc.prices.flatOverride.trailer === 'number') {
+          BK_TRAILER_FLAT = svc.prices.flatOverride.trailer;
+        }
+      } else if (svc.slug === 'addon_tpms' && typeof svc.prices.amount === 'number') {
+        bkTpmsPrice = svc.prices.amount;
+      } else if (svc.slug === 'addon_disposal' && typeof svc.prices.amount === 'number') {
+        bkDisposalPrice = svc.prices.amount;
+      }
+    });
+    // Refresh the static add-on price labels.
+    var setLabel = function (id, text) {
+      var el = document.querySelector('#' + id + ' .bk-addon-price');
+      if (el) el.textContent = text;
+    };
+    setLabel('bk-addon-tpms', '+$' + bkTpmsPrice + '/tire');
+    setLabel('bk-addon-disposal', '+$' + bkDisposalPrice + '/tire');
+    setLabel('bk-addon-lowprofile', '$' + BK_LOW_PROFILE_FLOOR + '/tire min');
+    // Repaint if the modal is already open when the catalog lands.
+    var ov = document.getElementById('bk-overlay');
+    if (ov && !ov.hidden) renderVehicles();
   }
 
   function autoDetectVehicle(tireSize, garage) {
@@ -1038,5 +1078,12 @@
     var btn = e.target.closest('[data-book-install]');
     if (btn) openBookingModal(btn);
   });
+
+  // ── Stage 2: pull the live service catalog on page load. bkApplyCatalog
+  //    overlays the fallback pricing above; silent fallback on any failure.
+  fetch(SERVICES_API)
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) { if (data && data.services) bkApplyCatalog(data.services); })
+    .catch(function () {});
 })();
 </script>
