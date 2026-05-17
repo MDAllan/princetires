@@ -71,7 +71,6 @@
 {%- endfor -%}
 <script data-smart-search-config type="application/json">
 {
-  "geminiKey": {{ settings.gemini_api_key | json }},
   "minYear": {{ settings.smart_search_min_year | default: 2001 }},
   "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
   "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
@@ -1732,11 +1731,24 @@ document.addEventListener('DOMContentLoaded', function() {
            k === 'filter.p.m.custom.rim_diameter' ||
            k === 'filter.p.m.custom.tire_size';
   }
+  function ptgNormSection(t) {
+    // Flotation section width to canonical NN.NN: "12.50", "12.5", "1250" → "12.50".
+    t = String(t).replace(',', '.');
+    var n;
+    if (t.indexOf('.') !== -1) n = parseFloat(t);
+    else if (t.length >= 3) n = parseInt(t, 10) / 100;
+    else n = parseInt(t, 10);
+    return isNaN(n) ? '' : n.toFixed(2);
+  }
   function getSizeFromParams(p) {
     var w  = p.get('filter.p.m.custom.tire_width');
     var pr = p.get('filter.p.m.custom.tire_profile');
     var r  = p.get('filter.p.m.custom.rim_diameter');
-    if (w && pr && r) return w + '/' + pr + 'R' + r;
+    if (w && pr && r) {
+      // Flotation (35X12.50R20) is written with "X"; metric (225/65R17) with "/".
+      var sep = (pr.indexOf('.') !== -1 || w.length <= 2) ? 'X' : '/';
+      return w + sep + pr + 'R' + r;
+    }
     return p.get('filter.p.m.custom.tire_size'); // legacy fallback
   }
 
@@ -1857,8 +1869,8 @@ document.addEventListener('DOMContentLoaded', function() {
   function chipLabel(key, value) {
     var serviceMap = { 'P': 'Passenger', 'LT': 'Light Truck', 'ST': 'Trailer' };
     switch (key) {
-      case 'filter.p.m.custom.tire_width':   return 'Width: ' + value;
-      case 'filter.p.m.custom.tire_profile': return 'Aspect: ' + value;
+      case 'filter.p.m.custom.tire_width':   return (value.length <= 2 ? 'Diameter: ' : 'Width: ') + value;
+      case 'filter.p.m.custom.tire_profile': return (value.indexOf('.') !== -1 ? 'Width: ' : 'Aspect: ') + value;
       case 'filter.p.m.custom.rim_diameter': return 'Rim: ' + value + '"';
       case 'filter.p.m.custom.service_type': return serviceMap[value] || value;
       case 'filter.p.m.custom.tire_model':   return 'Model: ' + value;
@@ -1923,15 +1935,19 @@ document.addEventListener('DOMContentLoaded', function() {
           if (sizeClearLink) window.location.href = sizeClearLink.href;
           return;
         }
-        var m = val.match(/[Pp]?[LlTtSs]?[Tt]?(\d{2,3})\/?(\d{2,3})[Rr](\d{2})/);
-        if (!m) return;
+        var fl = val.match(/(\d{2})\s*[xX×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*[rR]?\s*(\d{2})/);
+        var m  = val.match(/[Pp]?[LlTtSs]?[Tt]?(\d{2,3})\/?(\d{2,3})[Rr](\d{2})/);
+        var sw, sp, sr;
+        if (fl) { sw = fl[1]; sp = ptgNormSection(fl[2]); sr = fl[3]; }
+        else if (m) { sw = m[1]; sp = m[2]; sr = m[3]; }
+        else { return; }
         var newParams = new URLSearchParams();
         params.forEach(function(v, k) {
           if (!isSizeParam(k)) newParams.append(k, v);
         });
-        newParams.set('filter.p.m.custom.tire_width', m[1]);
-        newParams.set('filter.p.m.custom.tire_profile', m[2]);
-        newParams.set('filter.p.m.custom.rim_diameter', m[3]);
+        newParams.set('filter.p.m.custom.tire_width', sw);
+        newParams.set('filter.p.m.custom.tire_profile', sp);
+        newParams.set('filter.p.m.custom.rim_diameter', sr);
         window.location.href = baseUrl + '?' + newParams.toString();
       }
     });
@@ -2091,10 +2107,31 @@ document.addEventListener('DOMContentLoaded', function() {
       return best ? (makeAliases[best] || best) : null;
     }
 
+    function normSection(t) {
+      // Flotation section width to canonical NN.NN: "12.50", "12.5", "1250" → "12.50".
+      t = String(t).replace(',', '.');
+      var n;
+      if (t.indexOf('.') !== -1) n = parseFloat(t);
+      else if (t.length >= 3) n = parseInt(t, 10) / 100;
+      else n = parseInt(t, 10);
+      return isNaN(n) ? '' : n.toFixed(2);
+    }
     function normalizeTireSize(query) {
       var m = query.match(/[Pp]?[LlTtSs]?[Tt]?(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/);
       if (m) return { width: m[1], aspect: m[2], rim: m[3], size: m[1] + '/' + m[2] + 'R' + m[3] };
-      var compact = query.replace(/[\s\/\-rR]/g, '');
+      // Flotation / off-road: 35X12.50R20, 35x1250r20, 33×12.50R20 — diameter × section × rim.
+      var fl = query.match(/(\d{2})\s*[xX×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*[rR]?\s*(\d{2})/);
+      if (fl) {
+        var sec = normSection(fl[2]);
+        return { width: fl[1], aspect: sec, rim: fl[3], size: fl[1] + 'X' + sec + 'R' + fl[3], flotation: true };
+      }
+      var compact = query.replace(/[\s\/\-xX×rR.]/g, '');
+      // 8-digit compressed flotation: 35125020 → 35 X 12.50 R 20.
+      var fdm = compact.match(/^(\d{2})(\d{2})(\d{2})(\d{2})$/);
+      if (fdm) {
+        var fsec = fdm[2] + '.' + fdm[3];
+        return { width: fdm[1], aspect: fsec, rim: fdm[4], size: fdm[1] + 'X' + fsec + 'R' + fdm[4], flotation: true };
+      }
       var dm = compact.match(/[Pp]?[LlTtSs]?[Tt]?(\d{3})(\d{2})(\d{2})$/);
       if (dm) return { width: dm[1], aspect: dm[2], rim: dm[3], size: dm[1] + '/' + dm[2] + 'R' + dm[3] };
       var spaced = query.match(/(\d{3})\s+(\d{2})\s+(\d{2})/);
@@ -2146,10 +2183,15 @@ document.addEventListener('DOMContentLoaded', function() {
       var urlP = new URLSearchParams();
       if (p.tireSize) {
         var sm = p.tireSize.match(/^(\d+)\/(\d+)R(\d+(?:\.\d+)?)$/);
+        var fm = p.tireSize.match(/^(\d+)X(\d+(?:\.\d+)?)R(\d+)$/);
         if (sm) {
           urlP.set('filter.p.m.custom.tire_width', sm[1]);
           urlP.set('filter.p.m.custom.tire_profile', sm[2]);
           urlP.set('filter.p.m.custom.rim_diameter', sm[3]);
+        } else if (fm) {
+          urlP.set('filter.p.m.custom.tire_width', fm[1]);
+          urlP.set('filter.p.m.custom.tire_profile', fm[2]);
+          urlP.set('filter.p.m.custom.rim_diameter', fm[3]);
         }
       }
       if (p.brand) urlP.set('filter.p.vendor', p.brand);
@@ -2446,11 +2488,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.key === 'Escape') closeFilters();
   });
 
-  // Reopen filter drawer after a filter is selected on mobile
+  // Reopen filter drawer after a filter is selected — mobile only.
+  // On desktop the sidebar is always visible (no drawer); openFilters() would
+  // lock body scroll with no backdrop/close button on screen to release it.
   try {
     if (sessionStorage.getItem('ptg_filter_open') === '1') {
       sessionStorage.removeItem('ptg_filter_open');
-      openFilters();
+      if (openBtn && getComputedStyle(openBtn).display !== 'none') openFilters();
     }
   } catch(e) {}
 
