@@ -387,6 +387,7 @@
 (function () {
   var BOOKING_API = 'https://app.princetires.ca/api/book';
   var AVAILABILITY_API = 'https://app.princetires.ca/api/availability';
+  var SERVICES_API = 'https://app.princetires.ca/api/services';
 
   var sbSt = {
     service: '',
@@ -400,62 +401,44 @@
     time: null
   };
 
-  // Standard add-ons (installation_off + tpms only)
-  var sbAddonsList = [
-    { id: 'tpms',     name: 'TPMS sensors',  price: 75, unit: '/sensor' },
-    { id: 'disposal', name: 'Tire disposal',  price: 5,  unit: '/tire'   }
-  ];
+  // ── Service icons (presentation only — not part of the catalog API) ───────
+  var sbIcons = {
+    installation_off: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>',
+    installation_on: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>',
+    balancing: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+    rotation: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1 .25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>',
+    flat_repair: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>',
+    tpms: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="7"/><path d="M12 8V6M8 13H6M18 13h-1M9.5 10.5l-1-1M15.5 10.5l1-1"/><circle cx="12" cy="13" r="2" fill="currentColor" stroke="none"/></svg>',
+    _default: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>'
+  };
 
   function sbFmtMoney(n) {
     return '$' + (n % 1 === 0 ? n.toFixed(0) : n.toFixed(2));
   }
   var sbWk = 0;
 
-  // ── Services ──────────────────────────────────────────────────────────────
-  // Canonical service list + IDs. Shared with sections/pt-booking-page.liquid.
+  // ── Services (fallback) ───────────────────────────────────────────────────
+  // Used until GET /api/services lands; sbApplyCatalog() overlays the live,
+  // admin-managed catalog. Shape shared with sections/pt-booking-page.liquid.
   var sbServices = [
-    {
-      id: 'installation_off',
-      name: 'Tire Installation',
-      priceLabel: 'from $25 / tire',
+    { id: 'installation_off', name: 'Tire Installation', priceLabel: 'from $25 / tire',
       desc: 'Mount your new (or loose) tires onto your rims, balance all wheels, reset TPMS sensors, torque to spec, and get you road-ready. For tires that are NOT yet on rims.',
-      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>'
-    },
-    {
-      id: 'installation_on',
-      name: 'Seasonal Swap',
-      priceLabel: 'from $60 / car',
+      icon: sbIcons.installation_off },
+    { id: 'installation_on', name: 'Seasonal Swap', priceLabel: 'from $60 / car',
       desc: 'Swap your stored seasonal tires — already mounted on their own rims — onto your vehicle, torque to spec. Tires must be pre-mounted on rims.',
-      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>'
-    },
-    {
-      id: 'balancing',
-      name: 'Wheel Balancing',
-      priceLabel: 'from $20 / wheel',
+      icon: sbIcons.installation_on },
+    { id: 'balancing', name: 'Wheel Balancing', priceLabel: 'from $20 / wheel',
       desc: 'We spin each wheel on a balancer, detect heavy spots, and add weights so there\'s no vibration at highway speed.',
-      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>'
-    },
-    {
-      id: 'rotation',
-      name: 'Tire Rotation',
-      priceLabel: 'from $60 / car',
-      desc: 'We move your tires to different positions so they wear evenly, extending their life and keeping handling balanced. $60 sedan/SUV/truck, $100 dually + large/cube.',
-      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1 .25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>'
-    },
-    {
-      id: 'flat_repair',
-      name: 'Flat Repair',
-      priceLabel: '$50 / tire',
+      icon: sbIcons.balancing },
+    { id: 'rotation', name: 'Tire Rotation', priceLabel: 'from $60 / car',
+      desc: 'We move your tires to different positions so they wear evenly, extending their life and keeping handling balanced.',
+      icon: sbIcons.rotation },
+    { id: 'flat_repair', name: 'Flat Repair', priceLabel: '$50 / tire',
       desc: 'Patch repair: we dismount the tire and apply a permanent internal patch. (We don\'t do exterior plug repairs — they\'re not safe long-term.)',
-      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'
-    },
-    {
-      id: 'tpms',
-      name: 'TPMS Service',
-      priceLabel: '$75 / sensor',
+      icon: sbIcons.flat_repair },
+    { id: 'tpms', name: 'TPMS Service', priceLabel: '$75 / sensor',
       desc: 'We replace or reprogram your tire pressure monitoring sensors so your dashboard warning light stays off.',
-      icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="7"/><path d="M12 8V6M8 13H6M18 13h-1M9.5 10.5l-1-1M15.5 10.5l1-1"/><circle cx="12" cy="13" r="2" fill="currentColor" stroke="none"/></svg>'
-    }
+      icon: sbIcons.tpms }
   ];
 
   // ── Vehicle types ─────────────────────────────────────────────────────────
@@ -470,65 +453,72 @@
     { id: 'trailer',    name: 'Trailer' }
   ];
 
-  // ── Pricing ───────────────────────────────────────────────────────────────
-  // Canonical pricing. Mirrored in sections/pt-booking-page.liquid + snippets/pt-booking-modal.liquid — keep in sync.
-  // Per-tire rate for installation_off (loose tires, customer brings them in).
-  // Trailer is a SPECIAL CASE: flat $120 regardless of qty — handled in sbCalcPrice.
-  var sbInstallPrices = { passenger: 25, suv: 30, van: 30, electric: 30, truck: 35, largetruck: 40, dually: 45, trailer: 30 };
-  // Flat per-car rate for installation_on (seasonal swap — tires already on rims).
-  // Dually + cube trucks have 6 tires → higher flat. Trailer is flat $120 for any install.
-  var sbOnRimsPrices  = { passenger: 60, suv: 60, van: 60, electric: 60, truck: 80, largetruck: 80, dually: 90, trailer: 120 };
-  var SB_TRAILER_FLAT = 120;
+  // ── Pricing (fallback) ────────────────────────────────────────────────────
+  // sbApplyCatalog() overlays these with live values from GET /api/services
+  // (editable in the admin app). Modes:
+  //   per_unit_by_vehicle — per-unit rate by vehicle × qty, with a low-profile
+  //                         floor and per-vehicle flat overrides (e.g. trailer)
+  //   flat_by_vehicle     — a flat price per vehicle type
+  //   per_unit_flat       — a single rate × qty
+  var sbPricing = {
+    installation_off: { mode: 'per_unit_by_vehicle', unit: 'tire',
+      byVehicle: { passenger: 25, suv: 30, van: 30, electric: 30, truck: 35, largetruck: 40, dually: 45, trailer: 30 },
+      lowProfileFloor: 40, flatOverride: { trailer: 120 } },
+    installation_on: { mode: 'flat_by_vehicle', unit: 'car',
+      byVehicle: { passenger: 60, suv: 60, van: 60, electric: 60, truck: 80, largetruck: 80, dually: 90, trailer: 120 } },
+    balancing: { mode: 'per_unit_flat', unit: 'wheel', amount: 20 },
+    rotation: { mode: 'flat_by_vehicle', unit: 'car',
+      byVehicle: { passenger: 60, suv: 60, van: 60, electric: 60, truck: 60, largetruck: 100, dually: 100, trailer: 60 } },
+    flat_repair: { mode: 'per_unit_flat', unit: 'tire', amount: 50 },
+    tpms: { mode: 'per_unit_flat', unit: 'sensor', amount: 75 },
+    addon_tpms: { mode: 'per_unit_flat', unit: 'sensor', amount: 75 },
+    addon_disposal: { mode: 'per_unit_flat', unit: 'tire', amount: 5 }
+  };
 
-  // Low-profile / run-flat surcharge (installation_off only): per-tire effective rate becomes max(base, 40).
-  var SB_LOW_PROFILE_FLOOR = 40;
-
+  // Generic, catalog-driven price calc. Reads sbPricing (overlaid by
+  // sbApplyCatalog from GET /api/services). Verified to produce the same
+  // numbers as the prior hardcoded per-service logic. Add-ons (TPMS / disposal)
+  // apply to installation_off / installation_on only.
   function sbCalcPrice() {
     var s = sbSt.service, v = sbSt.vehicle, q = sbSt.qty;
+    var p = sbPricing[s];
+    if (!p) return null;
     var subtotal = 0, parts = [];
+    var unit = p.unit || 'unit';
 
-    if (s === 'installation_off') {
-      if (v === 'trailer') {
-        subtotal = SB_TRAILER_FLAT;
-        parts.push('flat $' + SB_TRAILER_FLAT + ' (trailer)');
+    if (p.mode === 'per_unit_by_vehicle') {
+      if (p.flatOverride && p.flatOverride[v] != null) {
+        subtotal = p.flatOverride[v];
+        parts.push('flat $' + subtotal + ' (' + v + ')');
       } else {
-        var base = sbInstallPrices[v] || 30;
-        var per = sbSt.addons.lowProfile ? Math.max(base, SB_LOW_PROFILE_FLOOR) : base;
+        var base = (p.byVehicle && p.byVehicle[v] != null) ? p.byVehicle[v] : 30;
+        var per = (sbSt.addons.lowProfile && p.lowProfileFloor)
+          ? Math.max(base, p.lowProfileFloor) : base;
         subtotal = per * q;
-        parts.push('$' + per + '/tire × ' + q);
+        parts.push('$' + per + '/' + unit + ' × ' + q);
         if (sbSt.addons.lowProfile && per > base) parts.push('low-profile');
       }
-      if (sbSt.addons.disposal) { subtotal += 5 * q; parts.push('disposal'); }
-      if (sbSt.addons.tpms)     { subtotal += 75 * q; parts.push('TPMS ×' + q); }
-
-    } else if (s === 'installation_on') {
-      subtotal = sbOnRimsPrices[v] || 60;
-      if (v === 'trailer') {
-        parts.push('flat $' + subtotal + ' (trailer)');
-      } else {
-        var nTires = (v === 'dually' || v === 'largetruck') ? 6 : 4;
-        parts.push('flat $' + subtotal + ' (' + nTires + ' tires on rims)');
-      }
-      if (sbSt.addons.tpms) { subtotal += 75 * q; parts.push('TPMS ×' + q); }
-
-    } else if (s === 'balancing') {
-      subtotal = 20 * q;
-      parts.push('$20/wheel × ' + q);
-
-    } else if (s === 'rotation') {
-      subtotal = (v === 'dually' || v === 'largetruck') ? 100 : 60;
-      parts.push('$' + subtotal + ' flat per car');
-
-    } else if (s === 'flat_repair') {
-      subtotal = 50 * q;
-      parts.push('$50 patch × ' + q + ' tire' + (q > 1 ? 's' : ''));
-
-    } else if (s === 'tpms') {
-      subtotal = 75 * q;
-      parts.push('$75/sensor × ' + q + ' sensor' + (q > 1 ? 's' : ''));
-
+    } else if (p.mode === 'flat_by_vehicle') {
+      subtotal = (p.byVehicle && p.byVehicle[v] != null) ? p.byVehicle[v] : 0;
+      parts.push('flat $' + subtotal + ' per ' + unit);
+    } else if (p.mode === 'per_unit_flat') {
+      subtotal = (p.amount || 0) * q;
+      parts.push('$' + (p.amount || 0) + '/' + unit + ' × ' + q);
     } else {
       return null;
+    }
+
+    if (s === 'installation_off' || s === 'installation_on') {
+      if (sbSt.addons.tpms && sbPricing.addon_tpms) {
+        subtotal += (sbPricing.addon_tpms.amount || 0) * q;
+        parts.push('TPMS ×' + q);
+      }
+    }
+    if (s === 'installation_off') {
+      if (sbSt.addons.disposal && sbPricing.addon_disposal) {
+        subtotal += (sbPricing.addon_disposal.amount || 0) * q;
+        parts.push('disposal');
+      }
     }
 
     var gst   = subtotal * 0.05;
@@ -539,6 +529,61 @@
       amount:   sbFmtMoney(total),
       note:     parts.join(' + ') + ' · est. before confirming'
     };
+  }
+
+  // ── Stage 2: derive a chip price label from a catalog service ─────────────
+  function sbPriceLabel(svc) {
+    var pr = svc.prices || {};
+    var u = svc.unit || 'unit';
+    if (svc.pricingMode === 'per_unit_flat') {
+      return '$' + (pr.amount != null ? pr.amount : '?') + ' / ' + u;
+    }
+    var vals = [];
+    if (pr.byVehicle) {
+      Object.keys(pr.byVehicle).forEach(function (k) {
+        var n = pr.byVehicle[k];
+        if (typeof n === 'number') vals.push(n);
+      });
+    }
+    if (!vals.length) return '';
+    return 'from $' + Math.min.apply(null, vals) + ' / ' + u;
+  }
+
+  // ── Stage 2: overlay the live catalog from GET /api/services ──────────────
+  // Replaces the fallback service list + pricing with admin-managed values.
+  // Defensive: empty/bad data leaves the hardcoded fallback untouched, so the
+  // booking flow can never break on an API hiccup.
+  function sbApplyCatalog(services) {
+    if (!Array.isArray(services) || !services.length) return;
+    var list = [];
+    services.forEach(function (svc) {
+      if (!svc || !svc.slug) return;
+      var pr = svc.prices || {};
+      sbPricing[svc.slug] = {
+        mode: svc.pricingMode,
+        unit: svc.unit,
+        byVehicle: pr.byVehicle || null,
+        amount: pr.amount,
+        lowProfileFloor: pr.lowProfileFloor,
+        flatOverride: pr.flatOverride || null
+      };
+      if (svc.kind === 'service') {
+        list.push({
+          id: svc.slug,
+          name: svc.name,
+          desc: svc.description || '',
+          priceLabel: sbPriceLabel(svc),
+          icon: sbIcons[svc.slug] || sbIcons._default
+        });
+      }
+    });
+    if (list.length) sbServices = list;
+    // Repaint if the modal is already open when the catalog lands.
+    var ov = document.getElementById('sb-overlay');
+    if (ov && !ov.hidden) {
+      sbRenderServices();
+      if (sbSt.service) { sbShowDetails(); sbUpdatePrice(); }
+    }
   }
 
   // ── Render: service chips ─────────────────────────────────────────────────
@@ -663,11 +708,11 @@
     var isOn  = sbSt.service === 'installation_on';
 
     if (isOff || isOn) {
-      rows.push({ id: 'tpms', name: 'New TPMS sensors', price: 75, unit: '/sensor' });
+      rows.push({ id: 'tpms', name: 'New TPMS sensors', price: (sbPricing.addon_tpms.amount || 75), unit: '/sensor' });
     }
     if (isOff) {
-      rows.push({ id: 'disposal', name: 'Tire disposal', price: 5, unit: '/tire' });
-      rows.push({ id: 'lowProfile', name: 'Low-profile or run-flat tires', priceLabel: '$40/tire min' });
+      rows.push({ id: 'disposal', name: 'Tire disposal', price: (sbPricing.addon_disposal.amount || 5), unit: '/tire' });
+      rows.push({ id: 'lowProfile', name: 'Low-profile or run-flat tires', priceLabel: '$' + (sbPricing.installation_off.lowProfileFloor || 40) + '/tire min' });
     }
 
     container.innerHTML = rows.map(function (a) {
@@ -1135,5 +1180,14 @@
   document.getElementById('sb-overlay').addEventListener('click', function (e) { if (e.target === this) closeServiceModal(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !document.getElementById('sb-overlay').hidden) closeServiceModal(); });
   document.addEventListener('click', function (e) { var b = e.target.closest('[data-book-service]'); if (b) openServiceModal(b); });
+
+  // ── Stage 2: pull the live service catalog (prices/durations are editable
+  //    in the admin app). Fires on page load; sbApplyCatalog overlays the
+  //    fallback values above. On any failure it silently keeps the fallback,
+  //    so booking always works. See docs/phase-3.5-service-catalog.md.
+  fetch(SERVICES_API)
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) { if (data && data.services) sbApplyCatalog(data.services); })
+    .catch(function () {});
 })();
 </script>
