@@ -1,7 +1,7 @@
 # Phase 3.5 — Service Catalog
 
 **Date:** 2026-05-15
-**Status:** Stage 1 in progress
+**Status:** Complete — Stage 1 + Stage 2 live (2026-05-17)
 **Phase:** 3.5 of 6
 
 ## Goal
@@ -68,19 +68,27 @@ it never clobbers admin edits.
 After Stage 1: the merchant can edit the catalog and the API serves it — but the
 **storefront still uses its hardcoded values** (Stage 2 connects them).
 
-## Stage 2 — theme rewire (separate, customer-facing)
+## Stage 2 — theme rewire ✅ done (2026-05-17)
 
-Point `pt-service-booking-modal.liquid`, `pt-booking-page.liquid`, and
-`pt-booking-modal.liquid` at `GET /api/services`: fetch the catalog, render the
-service chips + price calc from it instead of the hardcoded arrays. This is the
-step that makes admin edits reach customers, and it removes the 3-file
-duplication for good. Done on its own with its own testing.
+All three booking surfaces now fetch `GET /api/services` and drive their service
+list + price calc from the catalog — admin edits reach customers:
+
+- `snippets/pt-service-booking-modal.liquid` — service modal (`sbApplyCatalog`)
+- `snippets/pt-booking-modal.liquid` — tire-install modal (`bkApplyCatalog`)
+- `sections/pt-booking-page.liquid` — `/pages/booking` page (`bpApplyCatalog`)
+
+**Catalog-with-fallback:** each file keeps its hardcoded values as a fallback —
+if `/api/services` fails, booking still works on the old prices. The price calc
+was rewritten generic (per-vehicle / flat / per-unit) and verified live via
+Playwright to produce identical numbers. The 3-file price duplication is gone;
+the DB is the single source of truth.
 
 ## Per-service duration
 
-`duration_minutes` is stored and editable from Stage 1, but **not yet wired into
-the booking calendar** — `/api/book` still derives length from vehicle size.
-Connecting service duration → calendar slot blocking is part of Stage 2.
+`duration_minutes` is stored and editable in `/admin/services`, but **not yet
+wired into the booking calendar** — `/api/book` still derives appointment length
+from vehicle size (`booking/duration.ts`). Connecting service duration →
+calendar slot blocking is a separate follow-up.
 
 ## Out of scope (Phase 3.5)
 
