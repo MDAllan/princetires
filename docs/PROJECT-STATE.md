@@ -31,7 +31,7 @@ Every planning doc (`PROJECT_PLAN.md`, `PLAN.md`, the design-decisions doc) desc
 | **1 — `custom_image`** | design doc Q9 said "skip" | ✅ **BUILT anyway** | `db/012-vehicles-image.sql` + `api/proxy/vehicles/[id]/image/route.ts` exist. The Q9 "defer" decision was reversed. |
 | **2 — Customer bookings surface** | "to build" | ✅ **BUILT 2026-05-15** | `api/proxy/bookings` GET route + booking serializer + theme garage panel rewired (`loadBookings()`). Cancel page already existed. ⏳ Needs migration 014 applied + app deploy. Booking caps still deferred. See `docs/phase-2-bookings-surface.md`. |
 | **3 — Staff customer management** | "to build" | ❌ NOT built | `/admin/customers` still thin email-aggregated list |
-| **3.5 — Service catalog** | "to build" | ✅ **BUILT 2026-05-17** | DB `services` table + `/admin/services` editor + `GET /api/services` (Stage 1); all 3 booking surfaces rewired to read the catalog (Stage 2). Admin price edits now reach customers. Remaining: add/delete services in the admin, and wiring per-service duration into the calendar. See `docs/phase-3.5-service-catalog.md`. |
+| **3.5 — Service catalog** | "to build" | ✅ **BUILT 2026-05-17** | DB `services` table + `/admin/services` editor — edit, **add, delete** services/add-ons — + `GET /api/services` (Stage 1); all 3 booking surfaces read the catalog (Stage 2). Admin edits reach customers. Remaining: wire per-service duration into the booking calendar. See `docs/phase-3.5-service-catalog.md`. |
 | **4 — Wholesale portal data** | "to build" | ❌ NOT built | |
 | **5 — Staff B2B cockpit** | "to build" | ❌ NOT built | `orders-create` webhook is an HMAC-only stub |
 | **6 — Inventory & containers** | "to build" | ❌ NOT built | |

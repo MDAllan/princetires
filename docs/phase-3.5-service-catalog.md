@@ -90,8 +90,16 @@ wired into the booking calendar** — `/api/book` still derives appointment leng
 from vehicle size (`booking/duration.ts`). Connecting service duration →
 calendar slot blocking is a separate follow-up.
 
+## Add / delete ✅ done (2026-05-17)
+
+`/admin/services` can now **create and delete** services + add-ons, not just
+edit the seeded set — `createService` / `deleteService` server actions + a
+collapsible "Add" form. New services flow to the storefront automatically: the
+service modal and the booking page both rebuild their service list from
+`GET /api/services`.
+
 ## Out of scope (Phase 3.5)
 
-- Creating brand-new services from the admin (Stage 1 edits the seeded set).
 - Server-authoritative pricing — `/api/book` still trusts client-sent totals;
   making the server recompute price from the catalog is a later hardening pass.
+- Wiring per-service `duration_minutes` into the booking calendar.
