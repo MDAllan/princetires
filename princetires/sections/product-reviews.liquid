@@ -120,54 +120,12 @@
   </div>
 
   {%- comment -%}
-    Review structured data — automatically generated from section blocks.
+    No Product JSON-LD here. geo-meta.liquid emits the single Product node for
+    the page (code-review C3) — a second Product node here, with its own
+    aggregateRating, conflicted with it. Theme-editor review blocks are not
+    verified per-product reviews, so they no longer emit rating schema; the
+    reviews still render visually above.
   {%- endcomment -%}
-  {%- if product -%}
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Product",
-      "name": {{ product.title | json }},
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": {{ avg_rating | json }},
-        "reviewCount": {{ review_count | json }},
-        "bestRating": "5",
-        "worstRating": "1"
-      },
-      "review": [
-        {%- assign first_review = true -%}
-        {%- for block in section.blocks -%}
-          {%- if block.settings.rating < 4 -%}{%- continue -%}{%- endif -%}
-          {%- if first_review == false -%},{%- endif -%}
-          {%- assign first_review = false -%}
-          {
-            "@type": "Review",
-            "author": {
-              "@type": "Person",
-              "name": {{ block.settings.author | default: 'Anonymous' | json }}
-            },
-            "reviewRating": {
-              "@type": "Rating",
-              "ratingValue": {{ block.settings.rating | json }},
-              "bestRating": "5",
-              "worstRating": "1"
-            }
-            {%- if block.settings.title != blank -%}
-              ,"name": {{ block.settings.title | json }}
-            {%- endif -%}
-            {%- if block.settings.content != blank -%}
-              ,"reviewBody": {{ block.settings.content | strip_html | json }}
-            {%- endif -%}
-            {%- if block.settings.date != blank -%}
-              ,"datePublished": {{ block.settings.date | json }}
-            {%- endif -%}
-          }
-        {%- endfor -%}
-      ]
-    }
-    </script>
-  {%- endif -%}
 {%- endif -%}
 
 {% stylesheet %}
