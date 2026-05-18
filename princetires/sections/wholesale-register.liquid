@@ -780,11 +780,24 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               <div>Your account already has wholesale access active. <a href="/pages/wholesale" style="color:#92400e;font-weight:600">Go to your wholesale portal →</a></div>
             </div>
-          {%- elsif customer.note contains 'WHOLESALE:' -%}
-            <div class="whr-already-applied">
+          {%- else -%}
+            {%- comment -%} Pending status comes from the app (Phase 4 — docs/phase-4-wholesale-portal.md). Liquid can't see it reliably; reveal via the API. {%- endcomment -%}
+            <div class="whr-already-applied" id="whr-pending-notice" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <div>You've already submitted an application — it's under review. <a href="/pages/wholesale" style="color:#92400e;font-weight:600">Check your status →</a></div>
             </div>
+            <script>
+              (function () {
+                var n = document.getElementById('whr-pending-notice');
+                if (!n) return;
+                fetch('/apps/api/wholesale/me', { credentials: 'same-origin' })
+                  .then(function (r) { return r.ok ? r.json() : null; })
+                  .then(function (d) {
+                    if (d && d.wholesale && d.wholesale.status === 'pending') n.hidden = false;
+                  })
+                  .catch(function () {});
+              })();
+            </script>
           {%- endif -%}
         {%- endif -%}
 

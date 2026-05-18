@@ -32,7 +32,7 @@ Every planning doc (`PROJECT_PLAN.md`, `PLAN.md`, the design-decisions doc) desc
 | **2 — Customer bookings surface** | "to build" | ✅ **BUILT 2026-05-15** | `api/proxy/bookings` GET route + booking serializer + theme garage panel rewired (`loadBookings()`). Cancel page already existed. ⏳ Needs migration 014 applied + app deploy. Booking caps still deferred. See `docs/phase-2-bookings-surface.md`. |
 | **3 — Staff customer management** | "to build" | ✅ **BUILT 2026-05-17** | `/admin/customers` rebuilt as a real CRM off the `customers` table — every customer + real garage + bookings + B2B + editable staff notes; detail rekeyed `[email]`→`[id]`. ⏳ Needs migration 016. See `docs/phase-3-customer-management.md`. |
 | **3.5 — Service catalog** | "to build" | ✅ **BUILT 2026-05-17** | DB `services` table + `/admin/services` editor — edit, **add, delete** services/add-ons — + `GET /api/services` (Stage 1); all 3 booking surfaces read the catalog (Stage 2); per-service durations drive booking-calendar slot blocking. Admin edits reach customers. See `docs/phase-3.5-service-catalog.md`. |
-| **4 — Wholesale portal data** | "to build" | ❌ NOT built | |
+| **4 — Wholesale portal** | "to build" | ✅ **BUILT 2026-05-17** | App Proxy `wholesale/me` + `wholesale/profile` routes; theme portal reads the API instead of the `customer.note` regex; self-service B2B profile edit. ⏳ Needs migration 017 + app deploy. See `docs/phase-4-wholesale-portal.md`. |
 | **5 — Staff B2B cockpit** | "to build" | ❌ NOT built | `orders-create` webhook is an HMAC-only stub |
 | **6 — Inventory & containers** | "to build" | ❌ NOT built | |
 | **Tire-search (Projects A/B/C/D)** | separate roadmap | ✅ **SHIPPED** | Committed Playwright specs `tests/project-{a,b,c,d1}-*.spec.js`; collection-page rebuild done |
@@ -42,7 +42,7 @@ Every planning doc (`PROJECT_PLAN.md`, `PLAN.md`, the design-decisions doc) desc
 1. ~~**Phase 2 remainder** — `api/proxy/bookings` customer bookings surface~~ — ✅ built 2026-05-15 (`docs/phase-2-bookings-surface.md`); needs migration 014 + deploy. Remaining: booking caps + "next available" hint.
 2. **Phase 3** — staff customer management (CRM-lite in `/admin/customers`).
 3. **Phase 3.5** — service catalog (DB-driven service prices/durations).
-4. **Phase 4** — wholesale portal data wiring.
+4. ~~**Phase 4** — wholesale portal data wiring~~ — ✅ built 2026-05-17 (`docs/phase-4-wholesale-portal.md`); needs migration 017 + deploy.
 5. **Phase 5** — staff B2B cockpit (`orders-create` webhook still a stub).
 6. **Phase 6** — inventory & container procurement.
 

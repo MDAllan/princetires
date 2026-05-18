@@ -1528,46 +1528,14 @@
 
 {%- if is_portal_page and is_wholesale -%}
 {%- comment -%} ══════════ DASHBOARD ══════════ {%- endcomment -%}
+{%- comment -%}
+  Phase 4 — see docs/phase-4-wholesale-portal.md. The B2B profile + the real
+  assigned tier are loaded client-side from GET /apps/api/wholesale/me; the
+  order stats below stay computed from Liquid customer.orders (live Shopify
+  data). The old order-count "Bronze→Elite" tier ladder was a fiction — retired.
+{%- endcomment -%}
 {%- liquid
   assign wh_orders = customer.orders_count
-  assign wh_tier_name = 'Bronze'
-  assign wh_tier_pct  = 5
-  assign wh_tier_cls  = 'bronze'
-  assign wh_next_tier_name = 'Silver'
-  if wh_orders >= 81
-    assign wh_tier_name = 'Elite'
-    assign wh_tier_pct  = 25
-    assign wh_tier_cls  = 'elite'
-    assign wh_next_tier_name = ''
-  elsif wh_orders >= 41
-    assign wh_tier_name = 'Platinum'
-    assign wh_tier_pct  = 20
-    assign wh_tier_cls  = 'platinum'
-    assign wh_next_tier_name = 'Elite'
-  elsif wh_orders >= 21
-    assign wh_tier_name = 'Gold'
-    assign wh_tier_pct  = 15
-    assign wh_tier_cls  = 'gold'
-    assign wh_next_tier_name = 'Platinum'
-  elsif wh_orders >= 11
-    assign wh_tier_name = 'Silver'
-    assign wh_tier_pct  = 10
-    assign wh_tier_cls  = 'silver'
-    assign wh_next_tier_name = 'Gold'
-  endif
-  assign wh_bar_pct = 100
-  if wh_tier_cls == 'bronze'
-    assign wh_bar_pct = wh_orders | times: 100 | divided_by: 11
-  elsif wh_tier_cls == 'silver'
-    assign wh_bar_pct = wh_orders | minus: 11 | times: 100 | divided_by: 10
-  elsif wh_tier_cls == 'gold'
-    assign wh_bar_pct = wh_orders | minus: 21 | times: 100 | divided_by: 20
-  elsif wh_tier_cls == 'platinum'
-    assign wh_bar_pct = wh_orders | minus: 41 | times: 100 | divided_by: 40
-  endif
-  if wh_bar_pct > 99
-    assign wh_bar_pct = 99
-  endif
 -%}
 
 {%- paginate customer.orders by 50 -%}
@@ -1575,21 +1543,18 @@
   {"orders":[{%- for order in customer.orders -%}{"id":{{ order.id | json }},"number":{{ order.order_number | json }},"date":{{ order.created_at | date: "%Y-%m-%dT%H:%M:%S" | json }},"total":{{ order.total_price | json }},"items":{{ order.line_items.size | json }}}{%- unless forloop.last -%},{%- endunless -%}{%- endfor -%}],"page":{{ paginate.current_page }},"pages":{{ paginate.pages }},"next":{% if paginate.next.url %}"{{ paginate.next.url | escape }}"{% else %}null{% endif %},"prev":{% if paginate.previous.url %}"{{ paginate.previous.url | escape }}"{% else %}null{% endif %},"total":{{ customer.orders_count }}}
 </script>
 
-<div class="wh-dash-portal"
-     data-wh-note="{{ customer.note | escape }}"
-     data-wh-tier-pct="{{ wh_tier_pct }}"
-     data-wh-orders="{{ wh_orders }}">
+<div class="wh-dash-portal">
 
   <!-- HERO -->
   <div class="wh-dash-hero">
     <div class="wh-dash-hero__inner">
       <div class="wh-dash-hero__left">
-        <div class="wh-dash-hero__badge wh-dash-hero__badge--{{ wh_tier_cls }}">
+        <div class="wh-dash-hero__badge wh-dash-hero__badge--gold">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          {{ wh_tier_name }} Partner
+          <span data-wh-tier-label>Wholesale Partner</span>
         </div>
         <h1 class="wh-dash-hero__title">Welcome back, <span data-wh-biz-name>{{ customer.first_name | escape }}</span></h1>
-        <p class="wh-dash-hero__sub">{{ wh_tier_pct }}% trade discount active &middot; {{ customer.email }}</p>
+        <p class="wh-dash-hero__sub"><span data-wh-discount-line>Trade pricing active</span> &middot; {{ customer.email }}</p>
       </div>
       <div class="wh-dash-hero__stats">
         <div class="wh-dash-stat">
@@ -1628,28 +1593,18 @@
     <div class="wh-dash-panel" data-wh-panel="dashboard">
       <div class="wh-dash-content__grid">
 
-        <!-- Tier progress card -->
+        <!-- Tier card — real assigned tier, loaded from /apps/api/wholesale/me -->
         <div class="wh-dash-card">
           <div class="wh-dash-card__head">
             <h3>Your partner tier</h3>
-            <span class="wh-dash-tier-badge wh-dash-tier-badge--{{ wh_tier_cls }}">{{ wh_tier_name }}</span>
+            <span class="wh-dash-tier-badge wh-dash-tier-badge--gold" data-wh-tier-pill>Wholesale</span>
           </div>
           <div class="wh-dash-card__body">
             <div class="wh-dash-tier-info">
-              <span class="wh-dash-tier-pct">{{ wh_tier_pct }}%</span>
-              <span class="wh-dash-tier-all">trade pricing</span>
+              <span class="wh-dash-tier-pct" data-wh-tier-pct-display>&mdash;</span>
+              <span class="wh-dash-tier-all" data-wh-tier-all>trade pricing</span>
             </div>
-            {%- if wh_tier_cls == 'enterprise' -%}
-              <div class="wh-dash-tier-progress">
-                <div class="wh-dash-tier-progress__bar" data-wh-bar-target="100" style="width:0%"></div>
-              </div>
-              <p class="wh-dash-tier-msg">Maximum tier reached — you enjoy the best pricing we offer.</p>
-            {%- else -%}
-              <div class="wh-dash-tier-progress">
-                <div class="wh-dash-tier-progress__bar" data-wh-bar-target="{{ wh_bar_pct }}" style="width:0%"></div>
-              </div>
-              <p class="wh-dash-tier-msg">Next tier: <strong>{{ wh_next_tier_name }}</strong></p>
-            {%- endif -%}
+            <p class="wh-dash-tier-msg" data-wh-tier-msg>Your account manager sets your trade tier &mdash; <a href="/pages/contact" style="color:#DC2626;font-weight:600">contact us</a> to talk volume pricing.</p>
           </div>
         </div>
 
@@ -1736,47 +1691,57 @@
     <div class="wh-dash-panel wh-dash-panel--hidden" data-wh-panel="account">
       <div class="wh-dash-account-grid">
 
-        <!-- Business details -->
+        <!-- Business details — loaded + edited via /apps/api/wholesale/* -->
         <div class="wh-dash-card">
           <div class="wh-dash-card__head"><h3>Business details</h3></div>
           <div class="wh-dash-card__body">
             <dl class="wh-dash-biz-list">
-              <dt>Business name</dt><dd data-wh-biz="business">—</dd>
-              <dt>Business type</dt><dd data-wh-biz="type">—</dd>
-              <dt>GST number</dt><dd data-wh-biz="gst">—</dd>
-              <dt>Phone</dt><dd data-wh-biz="phone">—</dd>
-              <dt>Monthly volume</dt><dd data-wh-biz="volume">—</dd>
+              <dt>Business name</dt><dd data-wh-biz="businessName">&mdash;</dd>
+              <dt>Contact name</dt><dd data-wh-biz="contactName">&mdash;</dd>
+              <dt>Business type</dt><dd data-wh-biz="businessType">&mdash;</dd>
+              <dt>GST / tax number</dt><dd data-wh-biz="taxNumber">&mdash;</dd>
+              <dt>Phone</dt><dd data-wh-biz="phone">&mdash;</dd>
+              <dt>Business address</dt><dd data-wh-biz="businessAddress">&mdash;</dd>
+              <dt>Monthly volume</dt><dd data-wh-biz="monthlyVolume">&mdash;</dd>
             </dl>
-            <button class="wh-dash-update-toggle" id="wh-biz-update-toggle">
+            <button type="button" class="wh-dash-update-toggle" id="wh-biz-update-toggle">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Update business info
             </button>
             <div class="wh-dash-update-form" id="wh-biz-update-form">
-              {%- form 'contact', id: 'WholesaleUpdateForm' -%}
-                {%- if form.posted_successfully? -%}
-                  <p style="font-size:13px;color:#16a34a;font-weight:600;">✓ Update request received. We'll update your account within 1 business day.</p>
-                {%- else -%}
-                  <div class="wh-delivery-field">
-                    <label class="wh-delivery-label" for="wh-upd-biz">Business name</label>
-                    <input class="wh-delivery-input" type="text" id="wh-upd-biz" name="contact[business_name]" placeholder="Your business name">
-                  </div>
-                  <div class="wh-delivery-field">
-                    <label class="wh-delivery-label" for="wh-upd-phone">Phone</label>
-                    <input class="wh-delivery-input" type="tel" id="wh-upd-phone" name="contact[phone]" placeholder="(403) 555-0100">
-                  </div>
-                  <div class="wh-delivery-field">
-                    <label class="wh-delivery-label" for="wh-upd-gst">GST number</label>
-                    <input class="wh-delivery-input" type="text" id="wh-upd-gst" name="contact[gst]" placeholder="e.g. 123456789 RT0001">
-                  </div>
-                  <input type="hidden" name="contact[name]" value="{{ customer.name | escape }}">
-                  <input type="hidden" name="contact[email]" value="{{ customer.email | escape }}">
-                  <input type="hidden" name="contact[body]" value="Business info update request for {{ customer.email }}">
-                  <div style="display:flex;gap:8px;margin-top:4px">
-                    <button type="submit" class="wh-dash-update-submit">Save changes</button>
-                    <button type="button" class="wh-dash-update-cancel" id="wh-biz-update-cancel">Cancel</button>
-                  </div>
-                {%- endif -%}
-              {%- endform -%}
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-upd-businessName">Business name</label>
+                <input class="wh-delivery-input" type="text" id="wh-upd-businessName" data-wh-field="businessName" placeholder="Your business name">
+              </div>
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-upd-contactName">Contact name</label>
+                <input class="wh-delivery-input" type="text" id="wh-upd-contactName" data-wh-field="contactName" placeholder="Primary contact">
+              </div>
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-upd-businessType">Business type</label>
+                <input class="wh-delivery-input" type="text" id="wh-upd-businessType" data-wh-field="businessType" placeholder="e.g. Repair shop, dealer, fleet">
+              </div>
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-upd-taxNumber">GST / tax number</label>
+                <input class="wh-delivery-input" type="text" id="wh-upd-taxNumber" data-wh-field="taxNumber" placeholder="e.g. 123456789 RT0001">
+              </div>
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-upd-phone">Phone</label>
+                <input class="wh-delivery-input" type="tel" id="wh-upd-phone" data-wh-field="phone" placeholder="(403) 555-0100">
+              </div>
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-upd-businessAddress">Business address</label>
+                <input class="wh-delivery-input" type="text" id="wh-upd-businessAddress" data-wh-field="businessAddress" placeholder="Shop address">
+              </div>
+              <div class="wh-delivery-field">
+                <label class="wh-delivery-label" for="wh-upd-monthlyVolume">Monthly tire volume</label>
+                <input class="wh-delivery-input" type="text" id="wh-upd-monthlyVolume" data-wh-field="monthlyVolume" placeholder="e.g. 50–100 tires / month">
+              </div>
+              <p id="wh-biz-update-msg" hidden style="font-size:12px;font-weight:600;margin:4px 0 10px"></p>
+              <div style="display:flex;gap:8px;margin-top:4px">
+                <button type="button" class="wh-dash-update-submit" id="wh-biz-update-save">Save changes</button>
+                <button type="button" class="wh-dash-update-cancel" id="wh-biz-update-cancel">Cancel</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1786,26 +1751,23 @@
           <div class="wh-dash-card__head"><h3>Discount tiers</h3></div>
           <div class="wh-dash-card__body">
             <table class="wh-dash-tier-table">
-              <thead><tr><th>Tier</th><th>Orders</th><th>Discount</th></tr></thead>
+              <thead><tr><th>Tier</th><th>Trade discount</th></tr></thead>
               <tbody>
-                <tr class="{% if wh_tier_cls == 'bronze' %}is-current{% endif %}">
-                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--bronze"></span>Bronze</td><td>1 – 10</td><td class="wh-dash-tier-table__disc">5%</td>
+                <tr data-wh-tier-row="tier_1">
+                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--bronze"></span>Tier 1</td><td class="wh-dash-tier-table__disc">5%</td>
                 </tr>
-                <tr class="{% if wh_tier_cls == 'silver' %}is-current{% endif %}">
-                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--silver"></span>Silver</td><td>11 – 20</td><td class="wh-dash-tier-table__disc">10%</td>
+                <tr data-wh-tier-row="tier_2">
+                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--silver"></span>Tier 2</td><td class="wh-dash-tier-table__disc">10%</td>
                 </tr>
-                <tr class="{% if wh_tier_cls == 'gold' %}is-current{% endif %}">
-                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--gold"></span>Gold</td><td>21 – 40</td><td class="wh-dash-tier-table__disc">15%</td>
+                <tr data-wh-tier-row="tier_3">
+                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--gold"></span>Tier 3</td><td class="wh-dash-tier-table__disc">15%</td>
                 </tr>
-                <tr class="{% if wh_tier_cls == 'platinum' %}is-current{% endif %}">
-                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--platinum"></span>Platinum</td><td>41 – 80</td><td class="wh-dash-tier-table__disc">20%</td>
-                </tr>
-                <tr class="{% if wh_tier_cls == 'elite' %}is-current{% endif %}">
-                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--elite"></span>Elite</td><td>81+</td><td class="wh-dash-tier-table__disc">25%</td>
+                <tr data-wh-tier-row="tier_pro">
+                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--elite"></span>Pro</td><td class="wh-dash-tier-table__disc">20%</td>
                 </tr>
               </tbody>
             </table>
-            <p class="wh-dash-payment-terms">Payment terms: {{ section.settings.payment_terms | default: 'Contact your account manager for terms' | escape }}</p>
+            <p class="wh-dash-payment-terms">Your tier is set by your account manager. Payment terms: {{ section.settings.payment_terms | default: 'Contact your account manager for terms' | escape }}</p>
           </div>
         </div>
 
@@ -2418,28 +2380,11 @@
   var portal = document.querySelector('.wh-dash-portal');
   if (!portal) return;
 
-  /* 1. Note parsing */
-  var rawNote = portal.dataset.whNote || '';
-  var bizData = {};
-  rawNote.replace(/^WHOLESALE:\s*/i, '').split('|').forEach(function(seg) {
-    var idx = seg.indexOf('=');
-    if (idx < 0) return;
-    var key = seg.slice(0, idx).trim().toLowerCase();
-    var val = seg.slice(idx + 1).trim();
-    if (key && val) bizData[key] = val;
-  });
+  /* The B2B business profile + the real assigned tier load client-side from
+     GET /apps/api/wholesale/me \u2014 see section 7 below. (The old WHOLESALE:
+     customer.note regex parse was retired in Phase 4.) */
 
-  /* Populate business name in hero */
-  var bizNameEl = portal.querySelector('[data-wh-biz-name]');
-  if (bizNameEl && bizData['business']) bizNameEl.textContent = bizData['business'];
-
-  /* Populate business detail fields */
-  portal.querySelectorAll('[data-wh-biz]').forEach(function(el) {
-    var field = el.dataset.whBiz;
-    el.textContent = bizData[field] || '\u2014';
-  });
-
-  /* 2. Order data + stat cards */
+  /* 1. Order data + stat cards \u2014 from Liquid customer.orders (live Shopify data) */
   var orderDataEl = document.getElementById('wh-order-data');
   var orders = [];
   var orderMeta = { page: 1, pages: 1, next: null, prev: null, total: 0 };
@@ -2454,27 +2399,34 @@
       }
     } catch(e) {}
   }
-  var tierPct = parseInt(portal.dataset.whTierPct, 10) || 5;
   var now = new Date();
   var thisMonth = now.getMonth();
   var thisYear  = now.getFullYear();
-  var ordersThisMonth = 0, tiresThisMonth = 0, savingsCents = 0;
+  var ordersThisMonth = 0, tiresThisMonth = 0, retailCentsThisMonth = 0;
   orders.forEach(function(o) {
     var d = new Date(o.date);
     if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
       ordersThisMonth++;
       tiresThisMonth += (o.items || 0);
-      savingsCents += Math.round((o.total || 0) * tierPct / 100);
+      retailCentsThisMonth += (o.total || 0);
     }
   });
   function fmtMoney(cents) {
     return '$' + (cents / 100).toLocaleString('en-CA', { maximumFractionDigits: 0 });
   }
-  var statMap = { 'orders-month': ordersThisMonth.toString(), 'tires-month': tiresThisMonth.toString(), 'savings-month': fmtMoney(savingsCents) };
-  Object.keys(statMap).forEach(function(key) {
+  function setStat(key, val) {
     var el = portal.querySelector('[data-wh-stats="' + key + '"]');
-    if (el) el.textContent = statMap[key];
-  });
+    if (el) el.textContent = val;
+  }
+  setStat('orders-month', ordersThisMonth.toString());
+  setStat('tires-month', tiresThisMonth.toString());
+  /* "Est. savings this month" needs the real trade discount — filled once
+     /apps/api/wholesale/me resolves (section 7). Until then the stat keeps its
+     "—" placeholder rather than showing a misleading $0. */
+  function renderSavings(pct) {
+    if (typeof pct !== 'number' || pct <= 0) return;
+    setStat('savings-month', fmtMoney(Math.round(retailCentsThisMonth * pct / 100)));
+  }
 
   /* 3. Recent orders mini list (last 5) */
   var recentEl = document.getElementById('wh-recent-orders');
@@ -2551,18 +2503,7 @@
     btn.addEventListener('click', function() { switchTab(btn.dataset.whTabSwitch); });
   });
 
-  /* 6. Progress bar animation */
-  var bar = portal.querySelector('[data-wh-bar-target]');
-  if (bar) {
-    var target = parseInt(bar.dataset.whBarTarget, 10) || 0;
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        bar.style.width = target + '%';
-      });
-    });
-  }
-
-  /* 7. Delivery request modal */
+  /* 6. Delivery request modal */
   var modal   = document.getElementById('wh-delivery-modal');
   var overlay = document.getElementById('wh-delivery-overlay');
   var openBtn = document.getElementById('wh-delivery-open');
@@ -2601,19 +2542,129 @@
     });
   }
 
-  /* 8. Update business info toggle */
+  /* 7. Wholesale profile — real B2B status / tier / business profile from the app */
+  var TIER_NAMES = { tier_1: 'Tier 1', tier_2: 'Tier 2', tier_3: 'Tier 3', tier_pro: 'Pro' };
+  var currentProfile = null;
+
+  function setText(sel, val) {
+    var el = portal.querySelector(sel);
+    if (el) el.textContent = val;
+  }
+
+  function renderProfile(w) {
+    currentProfile = w;
+
+    /* Business detail list — each [data-wh-biz] value is an API field name. */
+    portal.querySelectorAll('[data-wh-biz]').forEach(function(el) {
+      var v = w[el.dataset.whBiz];
+      el.textContent = (v === null || v === undefined || v === '') ? '—' : v;
+    });
+
+    /* Hero business name (otherwise the Liquid-rendered first name stands). */
+    if (w.businessName) setText('[data-wh-biz-name]', w.businessName);
+
+    /* Tier — hero badge, hero discount line, tier card. */
+    var tierName = w.tier ? (TIER_NAMES[w.tier] || 'Wholesale') : null;
+    setText('[data-wh-tier-label]', (tierName || 'Wholesale') + ' Partner');
+    setText('[data-wh-tier-pill]', tierName || 'Wholesale');
+
+    if (typeof w.discountPct === 'number') {
+      setText('[data-wh-discount-line]', w.discountPct + '% trade discount active');
+      setText('[data-wh-tier-pct-display]', w.discountPct + '%');
+      setText('[data-wh-tier-all]', 'trade pricing');
+      setText('[data-wh-tier-msg]', 'Trade pricing is applied automatically at checkout.');
+    } else {
+      setText('[data-wh-discount-line]', 'Trade pricing active');
+      setText('[data-wh-tier-pct-display]', 'Active');
+      setText('[data-wh-tier-all]', 'wholesale account');
+    }
+
+    /* Highlight the customer's row in the discount-tiers table. */
+    portal.querySelectorAll('[data-wh-tier-row]').forEach(function(row) {
+      row.classList.toggle('is-current', row.dataset.whTierRow === w.tier);
+    });
+
+    /* Refine the savings stat now that the real discount is known. */
+    renderSavings(w.discountPct);
+  }
+
+  fetch('/apps/api/wholesale/me', { credentials: 'same-origin' })
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (data && data.wholesale) renderProfile(data.wholesale);
+    })
+    .catch(function() {});
+
+  /* 8. Update business info — toggle + save to the app */
   var updateToggle = document.getElementById('wh-biz-update-toggle');
   var updateForm   = document.getElementById('wh-biz-update-form');
   var updateCancel = document.getElementById('wh-biz-update-cancel');
+  var updateSave   = document.getElementById('wh-biz-update-save');
+  var updateMsg    = document.getElementById('wh-biz-update-msg');
+
+  function fillForm() {
+    if (!updateForm) return;
+    updateForm.querySelectorAll('[data-wh-field]').forEach(function(inp) {
+      var v = currentProfile ? currentProfile[inp.dataset.whField] : '';
+      inp.value = (v === null || v === undefined) ? '' : v;
+    });
+  }
+  function showMsg(text, ok) {
+    if (!updateMsg) return;
+    updateMsg.hidden = false;
+    updateMsg.textContent = text;
+    updateMsg.style.color = ok ? '#16a34a' : '#DC2626';
+  }
 
   if (updateToggle && updateForm) {
     updateToggle.addEventListener('click', function() {
+      var opening = !updateForm.classList.contains('is-open');
       updateForm.classList.toggle('is-open');
+      if (opening) {
+        fillForm();
+        if (updateMsg) updateMsg.hidden = true;
+      }
     });
   }
   if (updateCancel && updateForm) {
     updateCancel.addEventListener('click', function() {
       updateForm.classList.remove('is-open');
+    });
+  }
+  if (updateSave && updateForm) {
+    updateSave.addEventListener('click', function() {
+      var body = {};
+      updateForm.querySelectorAll('[data-wh-field]').forEach(function(inp) {
+        body[inp.dataset.whField] = inp.value.trim();
+      });
+      updateSave.disabled = true;
+      updateSave.textContent = 'Saving…';
+      if (updateMsg) updateMsg.hidden = true;
+      fetch('/apps/api/wholesale/profile', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+        .then(function(r) {
+          return r.json().then(function(j) { return { ok: r.ok, j: j }; });
+        })
+        .then(function(res) {
+          updateSave.disabled = false;
+          updateSave.textContent = 'Save changes';
+          if (res.ok && res.j && res.j.wholesale) {
+            renderProfile(res.j.wholesale);
+            showMsg('Saved. Your business details are updated.', true);
+          } else {
+            var err = res.j && res.j.error ? res.j.error : 'Please try again.';
+            showMsg('Could not save — ' + err, false);
+          }
+        })
+        .catch(function() {
+          updateSave.disabled = false;
+          updateSave.textContent = 'Save changes';
+          showMsg('Network error — please try again.', false);
+        });
     });
   }
 
