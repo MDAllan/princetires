@@ -118,6 +118,8 @@ script. New docs: `docs/PROJECT-STATE.md` (status dashboard), per-repo
 - Rebuilt 3 more old thin pages on the rich `pt-calgary-service` template, repointed in place (URLs + backlinks kept): `tire-balancing` ($20/wheel), `tire-rotation` ($60), and `tpms-service` (repointed at `page.tpms-calgary.json`; price left quote-before-work — the catalog splits TPMS ambiguously, $75 service + $75 sensor add-on). Broken duplicate `tpms-sensor-services` 301'd → `tpms-service`. Via `princetires-app/db/upgrade-service-pages.mjs`.
 - `tire-sales` + `wheels-and-rims` aren't bookable services → 301'd to `/collections/tires` + `/collections/wheels`, old pages unpublished. The services-hub cards link to `/pages/tire-sales` / `/pages/wheels-and-rims`, which now 301 to those collections.
 
+**Booking flow fix.** Every `pt-calgary-service` service page's "Book" CTA linked to plain `/pages/booking` → the customer landed on the generic installation-centric pathway chooser ("I'm buying tires / I have my own tires") instead of their service. Fixed: each page's `booking_url` now deep-links `/pages/booking?service=<slug>` (the booking page already supported `?service=` — it just wasn't used). 6 service pages. New skill `~/.claude/skills/prince-tires-booking/` documents the booking system + the deep-link rule to stop this class of bug recurring.
+
 ## 2026-05-17
 
 **Deep code review — both repos**
