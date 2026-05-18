@@ -20,15 +20,21 @@
 - **Cache:** storefront edge cache flips in 1–15 min. Poll a URL for a marker before testing live.
 - **Inventory scale:** ~3,878 tire products, ~62 vendors, ~849 models.
 - **Reference file:** `princetires/docs/tire-catalog.json` — inventory snapshot (vendors / models / sizes / specs). Regenerate with `princetires-app/db/build-tire-catalog.mjs`.
+- **Status + code maps:** `docs/PROJECT-STATE.md` (build-status dashboard — what's done, what's left), `princetires-app/ARCHITECTURE.md` + `princetires/ARCHITECTURE.md` (per-repo code maps, kept in sync with code). Read these first to orient.
+- **App deploy:** `princetires-app` auto-deploys to Vercel on push to `main`. Requires `GEMINI_API_KEY` env var (server-side Gemini proxy). DB = Neon; migrations in `db/NNN-*.sql` are applied manually (no runner).
+- **GitHub auth:** `princetires111-oss` has Write on both `MDAllan/princetires` (theme) + `malla762/princetires-app` (app).
 - **Tests:** Playwright specs in `princetires/tests/`. Run: `npx playwright test tests/<spec> --project=chromium`.
 - **Ubersuggest MCP:** connected at user scope (`~/.claude.json`) — `https://ubersuggest-mcp.neilpatelapi.com/mcp`, OAuth. 37 SEO tools (`ubersuggest__*`: domain / keyword / backlink / site-audit / rank-tracking). Tools load into a session only after a window reload following the connect. The OAuth token expires between sessions — when a session reports "token expired", re-authorize in the browser, then **reload the window**: an already-running session won't pick up the refreshed token in place, even after a successful browser auth.
 
 ## Open loose ends (update every session)
 
-- **Code-review backlog (2026-05-15)** — deep review found 2 leaked credentials + 7 critical + 16 high issues across both repos. Full checklist: `docs/code-review-2026-05-15.md`. Still top priority — the 2 leaked credentials are live exposure.
-- **Ubersuggest SEO program — W4–W6 pending** — W1–W3 done (`docs/seo-baseline-2026-05-17.md`). Remaining: W4 content/AEO calendar, W5 backlink-gap → directory submissions, W6 rank-tracking project. Also pending: W2 local-independent competitor profiling; Tier-2 (optimize winter/all-season collections) + Tier-3 (programmatic size pages) from the W3 build list.
+- **Code-review backlog (2026-05-15)** — `docs/code-review-2026-05-15.md`. SEC-2 (Gemini key in the browser) **RESOLVED** this session. **SEC-1 still live** — Shopify Admin API token printed into a public HTML page by `princetires-app/src/app/api/auth/shopify/callback/route.ts`; delete that route (`PROJECT_PLAN.md:60` says it can go). Plus the 7 critical / 16 high issues (collection sidebar Stud filter never renders, AJAX cart badge wrong target, 3 conflicting Product JSON-LD blocks, competing LocalBusiness schemas, contradictory hours, review-count mismatch).
+- **Roadmap Phases 4–6 not started** — Phase 4 wholesale portal data, Phase 5 staff B2B cockpit (`orders-create` webhook is still an HMAC-only stub), Phase 6 inventory & containers. Phases 0–3 + 3.5 all built + live. See `docs/PROJECT-STATE.md`.
+- **Untested (need staff login)** — `/admin/services` add/delete and the rebuilt `/admin/customers` CRM compile + deploy clean but weren't click-tested.
+- **Old Gemini key** — confirm the pre-rotation key is deleted in Google AI Studio (the new key is live in Vercel as `GEMINI_API_KEY`).
+- **Deferred** — booking caps + "next available" hint (Phase 2 follow-up); housekeeping (archive stale plan docs to `docs/archive/`, triage ~15 loose `princetires-app/db/*.mjs` scripts).
+- **Ubersuggest SEO program — W4–W6 pending** — W1–W3 done (`docs/seo-baseline-2026-05-17.md`). Remaining: W4 content/AEO calendar, W5 backlink-gap → directory submissions, W6 rank-tracking project. Also pending: W2 local-independent competitor profiling; Tier-2/Tier-3 from the W3 build list.
 - **`page.fleet-tires-calgary.json`** renders "Starting from Contact us for fleet pricing" — blank its `price_range` (badge then hides) or reword.
-- **`princetires-app` work direction undecided** — 3 options were offered (app security fixes from the review / finish Phase 2 customer-bookings / start Phase 3 staff CRM); user pivoted to the Ubersuggest setup before choosing. Still open.
 - 2 stale failing tests — `collection-phase1.spec.js` #4 (rim-pill) + #5 (results count). Test UI removed in earlier sessions. Fix or delete.
 - 84 tires still missing `custom.tire_model` — re-run `princetires-app/db/fill-tire-models.mjs`.
 - Garage-banner "Yes filter" button reported unclickable by the user — tested headless, worked; never confirmed the user's browser/context.
@@ -44,6 +50,45 @@
 ---
 
 # Session Log
+
+## 2026-05-17 — princetires-app: Phases 2 / 3 / 3.5 + Gemini fix + booking emails
+
+Marathon backend session. Everything below is built, deployed (Vercel + live theme),
+and pushed to both repos. Migrations 014/015 applied by the user, 016 applied via
+script. New docs: `docs/PROJECT-STATE.md` (status dashboard), per-repo
+`ARCHITECTURE.md` maps, `docs/phase-{2,3,3.5}-*.md` design docs.
+
+**Phase 2 — customer bookings surface** — done.
+- NEW `GET /api/proxy/bookings` (App-Proxy) + `src/lib/booking/serialize.ts` + `bookings_read` rate limiter.
+- migration `014-booking-customer-link.sql` — backfills `bookings.customer_id` by email; `/api/book` patched to set `customer_id` on insert.
+- Theme: `my-garage.js` `loadBookings()` was wired to a phantom `GET /api/book?email=` endpoint that never existed — rewired to `/apps/api/bookings` via the App-Proxy `api()` helper.
+
+**Phase 3 — customer CRM** — done.
+- `/admin/customers` was 100% derived from the `bookings` table — rebuilt off the `customers` table (every synced customer, not just bookers). Detail page rekeyed `[email]` → `[id]`; shows real garage (`vehicles` table), B2B status, bookings, editable staff notes.
+- migration `016-customer-notes.sql` — `customers.staff_notes` (preserved across Shopify syncs — `upsertCustomerFromShopify`'s `on conflict` doesn't list it).
+- NEW `customers/actions.ts` (`updateCustomerNotes`) + `[id]/notes-editor.tsx`.
+
+**Phase 3.5 — service catalog** — done, all stages.
+- migration `015-services.sql` — `services` table + seed (6 services + 2 add-ons).
+- NEW `src/lib/services/catalog.ts`, `GET /api/services` (public), `/admin/services` — edit + add + delete services/add-ons (`page.tsx`, `actions.ts`, `service-editor.tsx`, `new-service-form.tsx`).
+- Stage 2: 3 booking surfaces read the catalog, catalog-with-fallback — `pt-service-booking-modal.liquid` (`sbApplyCatalog`), `pt-booking-modal.liquid` (`bkApplyCatalog`), `pt-booking-page.liquid` (`bpApplyCatalog`). Price calc rewritten generic; verified live via Playwright.
+- Per-service durations → calendar: `effectiveDuration()` in `booking/duration.ts`; `/api/book` sets `duration_minutes = max(service catalog duration, vehicle floor)`.
+
+**Gemini security fix (code-review SEC-2)** — RESOLVED.
+- The Gemini API key was shipped to every browser. NEW server-side proxy `POST /api/vehicle-parse` (key in `GEMINI_API_KEY` Vercel env) + `vehicle_parse` rate limiter.
+- Theme: `hero-smart-search.liquid` `recognizeVehicle()` calls the proxy; `geminiKey` dropped from both smart-search config blocks; `gemini_api_key` setting removed from `settings_schema.json` + value scrubbed from `settings_data.json`.
+- User rotated the key (new key live in Vercel); verified via curl. Old key should be deleted in Google AI Studio.
+
+**Booking notification emails** — `src/lib/email/booking-emails.ts`.
+- NEW `sendCustomerAppointmentConfirmed` — customer emailed when staff confirm (pending→confirmed only). Fired from `bookings/[id]/actions.ts` `updateBookingStatus`.
+- NEW `sendCustomerCancellation` — customer emailed when staff cancel.
+- Owner new-booking email got an "Open booking" button → `/admin/bookings/<id>`.
+- `email/track.ts` — new `booking_confirmed` / `booking_cancelled` failure types.
+
+**Garage polish (theme)** — `my-garage.liquid` / `my-garage.js`.
+- Booking-card mobile layout fix (`.gbk-info` flex-basis — title was crushed).
+- Tab order: My Vehicles · Bookings · Service history · Order history · Account.
+- "Remember the Bookings tab" — `initBookingDefault()` + per-customer localStorage flag.
 
 ## 2026-05-17 — Ubersuggest SEO Workstreams 1–3 + service-page build
 
