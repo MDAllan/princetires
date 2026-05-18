@@ -85,10 +85,12 @@ the DB is the single source of truth.
 
 ## Per-service duration
 
-`duration_minutes` is stored and editable in `/admin/services`, but **not yet
-wired into the booking calendar** — `/api/book` still derives appointment length
-from vehicle size (`booking/duration.ts`). Connecting service duration →
-calendar slot blocking is a separate follow-up.
+✅ Wired (2026-05-17). `/api/book` sets a booking's length to
+`max(service catalog duration, vehicle-size minimum)` — editing a service's
+duration in `/admin/services` changes how much calendar time it blocks.
+`/api/availability` already expands each booking to the 30-min slots it covers,
+and the Google Calendar event length follows the same `duration_minutes`. See
+`effectiveDuration()` in `booking/duration.ts`.
 
 ## Add / delete ✅ done (2026-05-17)
 
