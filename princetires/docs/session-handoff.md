@@ -34,6 +34,7 @@
 - **Old Gemini key** — confirm the pre-rotation key is deleted in Google AI Studio (the new key is live in Vercel as `GEMINI_API_KEY`).
 - **Deferred** — booking caps + "next available" hint (Phase 2 follow-up); housekeeping (archive stale plan docs to `docs/archive/`, triage ~15 loose `princetires-app/db/*.mjs` scripts).
 - **Ubersuggest SEO program — W4–W6 pending** — W1–W3 done (`docs/seo-baseline-2026-05-17.md`). Remaining: W4 content/AEO calendar, W5 backlink-gap → directory submissions, W6 rank-tracking project. Also pending: W2 local-independent competitor profiling; Tier-2/Tier-3 from the W3 build list.
+- **Service-page cleanup leftovers** (after the 2026-05-17 consolidation) — (a) **TPMS tangle**: `/pages/tpms-sensor-services` points at a non-existent `page.tpms-service.json` template → renders blank; `tpms-service` is the old thin page; `page.tpms-calgary.json` is a good orphan template. Repoint one page at `tpms-calgary` + redirect the rest — low priority (~0 search volume). (b) **3 competing hubs** — `services` / `all-services` / `services-overview` — collapse to `/pages/services`. (c) Old thin `service`-template pages not yet upgraded: `tire-rotation`, `tire-sales`, `wheels-and-rims` (wheels-and-rims ≈ 720/mo — worth a real page). (d) Update the Shopify nav menu to point at canonical service pages directly (the 301s catch old links, but direct is cleaner).
 - **`page.fleet-tires-calgary.json`** renders "Starting from Contact us for fleet pricing" — blank its `price_range` (badge then hides) or reword.
 - 2 stale failing tests — `collection-phase1.spec.js` #4 (rim-pill) + #5 (results count). Test UI removed in earlier sessions. Fix or delete.
 - 84 tires still missing `custom.tire_model` — re-run `princetires-app/db/fill-tire-models.mjs`.
@@ -110,6 +111,10 @@ script. New docs: `docs/PROJECT-STATE.md` (status dashboard), per-repo
 **Brand skill corrected** (`~/.claude/skills/prince-tires-content/SKILL.md`).
 - Pirelli/Hankook/Goodyear moved out of "Brands NOT carried" → new "Carried in-store — not yet in the Shopify catalog" section (owner-confirmed).
 - Flat repair price corrected `$50–60` → `$50` (7 spots).
+
+**Service-page consolidation.** The store had two generations of service pages — old thin ones (`service` template / `pt-service-detail`) duplicating new rich ones (`pt-calgary-service`).
+- 301-redirected + unpublished the 3 old duplicates → canonical: `seasonal-tire-changeover` → `seasonal-tire-change-calgary`, `flat-tire-repair` → `tire-repair-calgary`, `tire-installation` → `tire-installation-calgary`. Done via `princetires-app/db/consolidate-service-pages.mjs`; old URLs verified returning 301.
+- Wired the `/pages/services` hub — all 8 `pt-all-services` cards now link to their service page (`templates/page.all-services.json`); previously every card was a booking-modal trigger with no link, so the service pages were orphaned.
 
 ## 2026-05-17
 
