@@ -364,15 +364,12 @@
   }
 
   function updateCartBadge(count) {
-    var link = document.getElementById('cart-icon-bubble');
-    if (!link) return;
-    var badge = link.querySelector('.nb-badge');
-    if (count > 0) {
-      if (!badge) { badge = document.createElement('span'); badge.className = 'nb-badge'; link.appendChild(badge); }
-      badge.textContent = count;
-    } else if (badge) {
-      badge.remove();
-    }
+    // Live header is pt-header (sections/header-group.json); its cart count
+    // lives in .pt-header__cart-count (desktop + mobile). The old
+    // #cart-icon-bubble target only existed in the orphaned pt-navbar.
+    document.querySelectorAll('.pt-header__cart-count').forEach(function(el) {
+      el.textContent = count;
+    });
   }
 
   /* ── Apply cart state to DOM (without full re-render) ─────────────── */

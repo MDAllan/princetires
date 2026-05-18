@@ -1362,16 +1362,12 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(function(r) { return r.json(); })
       .then(function(cart) {
         var count = cart.item_count;
-        var cartLink = document.getElementById('cart-icon-bubble');
-        if (cartLink) {
-          var badge = cartLink.querySelector('.nb-badge');
-          if (count > 0) {
-            if (badge) { badge.textContent = count; }
-            else { badge = document.createElement('span'); badge.className = 'nb-badge'; badge.textContent = count; cartLink.appendChild(badge); }
-          } else if (badge) { badge.remove(); }
-        }
-        var bubble = document.querySelector('.cart-count-bubble span[aria-hidden]');
-        if (bubble) bubble.textContent = count;
+        // Live header is pt-header (sections/header-group.json); its cart count
+        // lives in .pt-header__cart-count (desktop + mobile). The old
+        // #cart-icon-bubble / .cart-count-bubble targets were pt-navbar / Dawn.
+        document.querySelectorAll('.pt-header__cart-count').forEach(function(el) {
+          el.textContent = count;
+        });
       })
       .catch(function() {});
   }

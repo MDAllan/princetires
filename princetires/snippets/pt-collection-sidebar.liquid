@@ -11,14 +11,50 @@
   handler, brand/model search, chip rendering) lives in the parent
   section's {% javascript %} block — this snippet is markup-only.
 
-  Note: the price slider needs `price_max_rounded`, `active_price_min`
-  and `active_price_max` from the section's Liquid scope. Same for
-  `active_vendor`, `active_season`, `active_type`, `model_filter`,
-  `model_values_fallback` — all computed in the parent section.
+  Note: the price slider needs `price_max_rounded` from the parent
+  section. The active-filter values (`active_vendor`, `active_season`,
+  `active_type`, `active_price_min/max`) and the model list are computed
+  in this snippet from `collection.filters`.
 
   @example
-  {% render 'pt-collection-sidebar' %}
+  {% render 'pt-collection-sidebar', price_max_rounded: 600 %}
 {% enddoc %}
+
+{%- comment -%}
+  Active filter values, read from collection.filters: drives the Stud-option
+  toggle (shown only for Winter or LT), pre-fills the price slider, and lets
+  the Stud / Run-flat links carry the customer's other active filters.
+{%- endcomment -%}
+{%- liquid
+  assign active_vendor = ''
+  assign active_season = ''
+  assign active_type = ''
+  assign active_price_min = ''
+  assign active_price_max = ''
+  for f in collection.filters
+    case f.param_name
+      when 'filter.p.vendor'
+        if f.active_values.size > 0
+          assign active_vendor = f.active_values.first.value
+        endif
+      when 'filter.p.m.custom.seasonality'
+        if f.active_values.size > 0
+          assign active_season = f.active_values.first.value
+        endif
+      when 'filter.p.m.custom.service_type'
+        if f.active_values.size > 0
+          assign active_type = f.active_values.first.value
+        endif
+      when 'filter.v.price'
+        if f.min_value.value != blank
+          assign active_price_min = f.min_value.value
+        endif
+        if f.max_value.value != blank
+          assign active_price_max = f.max_value.value
+        endif
+    endcase
+  endfor
+-%}
 
       <div class="ptg__sidebar-backdrop" data-filter-backdrop></div>
       <aside class="ptg__sidebar" data-sidebar>

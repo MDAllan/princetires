@@ -1732,13 +1732,7 @@ document.addEventListener('DOMContentLoaded', function() {
            k === 'filter.p.m.custom.tire_size';
   }
   function ptgNormSection(t) {
-    // Flotation section width to canonical NN.NN: "12.50", "12.5", "1250" → "12.50".
-    t = String(t).replace(',', '.');
-    var n;
-    if (t.indexOf('.') !== -1) n = parseFloat(t);
-    else if (t.length >= 3) n = parseInt(t, 10) / 100;
-    else n = parseInt(t, 10);
-    return isNaN(n) ? '' : n.toFixed(2);
+    return window.PTTireParse.normalizeSection(t);
   }
   function getSizeFromParams(p) {
     var w  = p.get('filter.p.m.custom.tire_width');
@@ -2107,36 +2101,10 @@ document.addEventListener('DOMContentLoaded', function() {
       return best ? (makeAliases[best] || best) : null;
     }
 
-    function normSection(t) {
-      // Flotation section width to canonical NN.NN: "12.50", "12.5", "1250" → "12.50".
-      t = String(t).replace(',', '.');
-      var n;
-      if (t.indexOf('.') !== -1) n = parseFloat(t);
-      else if (t.length >= 3) n = parseInt(t, 10) / 100;
-      else n = parseInt(t, 10);
-      return isNaN(n) ? '' : n.toFixed(2);
-    }
     function normalizeTireSize(query) {
-      var m = query.match(/[Pp]?[LlTtSs]?[Tt]?(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/);
-      if (m) return { width: m[1], aspect: m[2], rim: m[3], size: m[1] + '/' + m[2] + 'R' + m[3] };
-      // Flotation / off-road: 35X12.50R20, 35x1250r20, 33×12.50R20 — diameter × section × rim.
-      var fl = query.match(/(\d{2})\s*[xX×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*[rR]?\s*(\d{2})/);
-      if (fl) {
-        var sec = normSection(fl[2]);
-        return { width: fl[1], aspect: sec, rim: fl[3], size: fl[1] + 'X' + sec + 'R' + fl[3], flotation: true };
-      }
-      var compact = query.replace(/[\s\/\-xX×rR.]/g, '');
-      // 8-digit compressed flotation: 35125020 → 35 X 12.50 R 20.
-      var fdm = compact.match(/^(\d{2})(\d{2})(\d{2})(\d{2})$/);
-      if (fdm) {
-        var fsec = fdm[2] + '.' + fdm[3];
-        return { width: fdm[1], aspect: fsec, rim: fdm[4], size: fdm[1] + 'X' + fsec + 'R' + fdm[4], flotation: true };
-      }
-      var dm = compact.match(/[Pp]?[LlTtSs]?[Tt]?(\d{3})(\d{2})(\d{2})$/);
-      if (dm) return { width: dm[1], aspect: dm[2], rim: dm[3], size: dm[1] + '/' + dm[2] + 'R' + dm[3] };
-      var spaced = query.match(/(\d{3})\s+(\d{2})\s+(\d{2})/);
-      if (spaced) return { width: spaced[1], aspect: spaced[2], rim: spaced[3], size: spaced[1] + '/' + spaced[2] + 'R' + spaced[3] };
-      return null;
+      var p = window.PTTireParse && window.PTTireParse.parseSize(query);
+      if (!p) return null;
+      return { width: p.width, aspect: p.profile, rim: p.rim, size: p.canonical, flotation: p.flotation };
     }
 
     function parseIntent(query) {
@@ -2222,8 +2190,10 @@ document.addEventListener('DOMContentLoaded', function() {
         var size = extractSize(q);
         var intent = parseIntent(q);
         if (size || intent.brand || intent.season) {
+          window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: q, search_type: size ? 'size' : 'vehicle', search_outcome: 'match' });
           window.location.href = buildUrl({ tireSize: size, brand: intent.brand, season: intent.season });
         } else {
+          window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: q, search_type: 'none', search_outcome: 'no_match' });
           window.location.href = '/search?q=' + encodeURIComponent(q) + '&type=product';
         }
       } else if (e.key === 'Escape') {
@@ -2242,6 +2212,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var label = normalized.size + (intent.brand ? ' by ' + intent.brand : '');
         var meta = 'Filter collection' + (intent.season ? ' · ' + intent.season : '');
         renderResults([{ type: 'size', title: label, meta: meta, url: buildUrl({ tireSize: normalized.size, brand: intent.brand, season: intent.season }) }]);
+        window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'size', search_outcome: 'match' });
         return;
       }
       searchVehicle(query);
@@ -2263,6 +2234,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderResults([{ type: 'search', title: filterTitle, meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
           } else {
             renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
+            window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'none', search_outcome: 'no_match' });
           }
           return;
         }
@@ -2279,11 +2251,13 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
           renderResults([{ type: 'vehicle', title: vLabel, meta: 'Browse all tires', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
         }
+        window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'vehicle', search_outcome: 'match' });
       } catch(e) {
         if (intent.brand || intent.season) {
           renderResults([{ type: 'search', title: [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires', meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
         } else {
           renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
+          window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'none', search_outcome: 'no_match' });
         }
       }
     }
@@ -2511,15 +2485,12 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ── AJAX add-to-cart for collection card cart buttons ─────────────────── */
   (function() {
     function updateBadge(count) {
-      var link = document.getElementById('cart-icon-bubble');
-      if (!link) return;
-      var badge = link.querySelector('.nb-badge');
-      if (count > 0) {
-        if (!badge) { badge = document.createElement('span'); badge.className = 'nb-badge'; link.appendChild(badge); }
-        badge.textContent = count;
-      } else if (badge) {
-        badge.remove();
-      }
+      // Live header is pt-header (sections/header-group.json); its cart count
+      // lives in .pt-header__cart-count (desktop + mobile). The old
+      // #cart-icon-bubble target only existed in the orphaned pt-navbar.
+      document.querySelectorAll('.pt-header__cart-count').forEach(function(el) {
+        el.textContent = count;
+      });
     }
 
     document.addEventListener('click', function(e) {
