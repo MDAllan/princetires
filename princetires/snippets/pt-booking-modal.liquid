@@ -83,11 +83,6 @@
           <span class="bk-addon-name">Tire disposal</span>
           <span class="bk-addon-price">+$5/tire</span>
         </label>
-        <label class="bk-addon" id="bk-addon-lowprofile">
-          <input type="checkbox" id="bk-lowprofile">
-          <span class="bk-addon-name">Low-profile or run-flat tires</span>
-          <span class="bk-addon-price">$40/tire min</span>
-        </label>
       </div>
 
       <div id="bk-price-box" hidden></div>
@@ -348,26 +343,25 @@
   var AVAILABILITY_API = 'https://app.princetires.ca/api/availability';
   var SERVICES_API = 'https://app.princetires.ca/api/services';
 
-  var st = { tireName: '', tireSize: '', tirePrice: 0, vehicle: 'passenger', qty: 4, tpms: false, disposal: true, lowProfile: false, date: null, time: null, savedVehicle: null, inventorySource: 'store', supplierTier: 'B', productHandle: '' };
+  var st = { tireName: '', tireSize: '', tirePrice: 0, installPrice: 30, vehicle: 'passenger', qty: 4, tpms: false, disposal: true, date: null, time: null, savedVehicle: null, inventorySource: 'store', supplierTier: 'B', productHandle: '' };
   var wk = 0;
 
-  // Canonical pricing — keep in sync with snippets/pt-service-booking-modal.liquid (sbInstallPrices).
-  // Trailer install is a SPECIAL CASE: flat $120 regardless of qty (handled in vehPrice + calcPrice).
+  // Vehicle type drives appointment DURATION + the calendar event only — not price.
+  // Install price is per tire, set on each product via the custom.install_price
+  // metafield and passed in as data-install-price (see st.installPrice).
   var vehs = [
-    { id: 'passenger', name: 'Sedan', price: 25 },
-    { id: 'suv', name: 'SUV / CUV', price: 30 },
-    { id: 'van', name: 'Van', price: 30 },
-    { id: 'electric', name: 'Electric', price: 30 },
-    { id: 'truck', name: 'Truck', price: 35 },
-    { id: 'dually', name: 'Dually', price: 45 },
-    { id: 'largetruck', name: 'Large / Cube / 21"+', price: 40 },
-    { id: 'trailer', name: 'Trailer', price: 30 }
+    { id: 'passenger', name: 'Sedan' },
+    { id: 'suv', name: 'SUV / CUV' },
+    { id: 'van', name: 'Van' },
+    { id: 'electric', name: 'Electric' },
+    { id: 'truck', name: 'Truck' },
+    { id: 'dually', name: 'Dually' },
+    { id: 'largetruck', name: 'Large / Cube / 21"+' },
+    { id: 'trailer', name: 'Trailer' }
   ];
 
-  // Pricing fallbacks — bkApplyCatalog() overlays these from GET /api/services
-  // (installation_off + addon_tpms + addon_disposal in the admin catalog).
-  var BK_LOW_PROFILE_FLOOR = 40;
-  var BK_TRAILER_FLAT = 120;
+  // Add-on pricing fallbacks — bkApplyCatalog() overlays these from GET /api/services
+  // (addon_tpms + addon_disposal in the admin catalog).
   var bkTpmsPrice = 75;
   var bkDisposalPrice = 5;
 
@@ -385,16 +379,19 @@
   };
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  function vehPrice() {
-    var v = vehs.find(function (x) { return x.id === st.vehicle; });
-    var base = v ? v.price : 30;
-    return st.lowProfile ? Math.max(base, BK_LOW_PROFILE_FLOOR) : base;
+  // Format a Date as a local YYYY-MM-DD. Never use toISOString() for this —
+  // it converts to UTC and rolls the day back for any device at/ahead of UTC.
+  // Mirrors the local-date handling in pt-booking-page.liquid + pt-service-booking-modal.liquid.
+  function bkLocalISO(d) {
+    return d.getFullYear() + '-' +
+      (d.getMonth() + 1 < 10 ? '0' : '') + (d.getMonth() + 1) + '-' +
+      (d.getDate() < 10 ? '0' : '') + d.getDate();
   }
 
   function calcPrice() {
     var tp = st.tirePrice > 0 ? st.tirePrice * st.qty : 0;
-    // Trailer is a flat-rate install regardless of qty.
-    var i = (st.vehicle === 'trailer') ? BK_TRAILER_FLAT : (vehPrice() * st.qty);
+    // Install is per tire (st.installPrice) — set per product via the install_price metafield.
+    var i = st.installPrice * st.qty;
     var t = st.tpms ? bkTpmsPrice * st.qty : 0;
     var d = st.disposal ? bkDisposalPrice * st.qty : 0;
     var s = tp + i + t + d;
@@ -402,23 +399,16 @@
     return { tires: tp, install: i, tpms: t, disposal: d, subtotal: s, gst: g, total: s + g };
   }
 
-  // ── Stage 2: overlay install pricing from GET /api/services ───────────────
-  // Mutates vehs[].price, the low-profile floor / trailer flat, and the TPMS /
-  // disposal add-on rates from the admin-managed catalog. Defensive: missing or
-  // malformed data leaves the hardcoded fallback in place, so booking can never
-  // break on an API hiccup. See docs/phase-3.5-service-catalog.md.
+  // ── Stage 2: overlay add-on pricing from GET /api/services ────────────────
+  // Mutates the TPMS / disposal add-on rates from the admin-managed catalog.
+  // Install price is per product (the custom.install_price metafield), so it is
+  // not overlaid here. Defensive: missing or malformed data leaves the hardcoded
+  // fallback in place, so booking can never break on an API hiccup.
   function bkApplyCatalog(services) {
     if (!Array.isArray(services)) return;
     services.forEach(function (svc) {
       if (!svc || !svc.prices) return;
-      if (svc.slug === 'installation_off') {
-        var bv = svc.prices.byVehicle || {};
-        vehs.forEach(function (v) { if (typeof bv[v.id] === 'number') v.price = bv[v.id]; });
-        if (typeof svc.prices.lowProfileFloor === 'number') BK_LOW_PROFILE_FLOOR = svc.prices.lowProfileFloor;
-        if (svc.prices.flatOverride && typeof svc.prices.flatOverride.trailer === 'number') {
-          BK_TRAILER_FLAT = svc.prices.flatOverride.trailer;
-        }
-      } else if (svc.slug === 'addon_tpms' && typeof svc.prices.amount === 'number') {
+      if (svc.slug === 'addon_tpms' && typeof svc.prices.amount === 'number') {
         bkTpmsPrice = svc.prices.amount;
       } else if (svc.slug === 'addon_disposal' && typeof svc.prices.amount === 'number') {
         bkDisposalPrice = svc.prices.amount;
@@ -431,7 +421,6 @@
     };
     setLabel('bk-addon-tpms', '+$' + bkTpmsPrice + '/tire');
     setLabel('bk-addon-disposal', '+$' + bkDisposalPrice + '/tire');
-    setLabel('bk-addon-lowprofile', '$' + BK_LOW_PROFILE_FLOOR + '/tire min');
     // Repaint if the modal is already open when the catalog lands.
     var ov = document.getElementById('bk-overlay');
     if (ov && !ov.hidden) renderVehicles();
@@ -475,7 +464,7 @@
     if (st.tirePrice > 0) {
       h += '<div class="bk-order-row"><span>' + st.qty + ' tire' + (st.qty !== 1 ? 's' : '') + ' × $' + st.tirePrice.toFixed(2) + '</span><span>$' + c.tires.toFixed(2) + '</span></div>';
     }
-    var installLabel = (st.vehicle === 'trailer') ? 'Installation (trailer flat)' : 'Installation × ' + st.qty + ' ($' + vehPrice() + '/tire)';
+    var installLabel = 'Installation × ' + st.qty + ' ($' + st.installPrice + '/tire)';
     h += '<div class="bk-order-row"><span>' + installLabel + '</span><span>$' + c.install.toFixed(2) + '</span></div>';
     if (st.tpms) h += '<div class="bk-order-row"><span>TPMS sensors × ' + st.qty + '</span><span>+$' + c.tpms.toFixed(2) + '</span></div>';
     if (st.disposal) h += '<div class="bk-order-row"><span>Tire disposal × ' + st.qty + '</span><span>+$' + c.disposal.toFixed(2) + '</span></div>';
@@ -490,7 +479,7 @@
     var nameEl = document.getElementById('bk-vehicle-display-name');
     var priceEl = document.getElementById('bk-vehicle-display-price');
     if (nameEl) nameEl.textContent = v ? v.name : 'Vehicle';
-    if (priceEl) priceEl.textContent = v && v.price ? '$' + v.price + '/tire' : 'Ask us';
+    if (priceEl) priceEl.textContent = '$' + st.installPrice + '/tire';
     renderPrice();
   }
 
@@ -531,13 +520,13 @@
       if (isPast) cls += ' bk-day-card--past';
       if (isToday) cls += ' bk-day-card--today';
       if (isActive) cls += ' bk-day-card--active';
-      h += '<div class="' + cls + '" data-date="' + d.toISOString() + '"><div class="bk-day-name">' + dn[i] + '</div><div class="bk-day-num">' + d.getDate() + '</div></div>';
+      h += '<div class="' + cls + '" data-date="' + bkLocalISO(d) + '"><div class="bk-day-name">' + dn[i] + '</div><div class="bk-day-num">' + d.getDate() + '</div></div>';
     }
     document.getElementById('bk-day-strip').innerHTML = h;
 
     document.querySelectorAll('.bk-day-card:not(.bk-day-card--past)').forEach(function (el) {
       el.addEventListener('click', function () {
-        st.date = new Date(this.dataset.date);
+        st.date = new Date(this.dataset.date + 'T12:00:00');
         st.time = null;
         document.getElementById('bk-next-2').disabled = true;
         renderWeek();
@@ -578,7 +567,7 @@
     var booked = [];
     var allDayBlocked = false;
     try {
-      var ds = st.date.toISOString().split('T')[0];
+      var ds = bkLocalISO(st.date);
       var r = await fetch(AVAILABILITY_API + '?date=' + ds);
       var data = await r.json();
       booked = data.booked || [];
@@ -721,6 +710,7 @@
     st.tireName = btn.dataset.tireName || 'Tire';
     st.tireSize = btn.dataset.tireSize || '';
     st.tirePrice = parseInt(btn.dataset.tirePrice || '0') / 100;
+    st.installPrice = parseFloat(btn.dataset.installPrice) || 30;
     st.inventorySource = btn.dataset.inventorySource === 'trial' ? 'trial' : 'store';
     // Tier 'A' = in stock at our shop (Prince Tires / imported brands) → 2 hr lead.
     // Tier 'B' = Trail Tire warehouse → next business day after 12:30 PM. Default to B (slowest, safest).
@@ -728,7 +718,6 @@
     st.productHandle = btn.dataset.productHandle || '';
     st.tpms = false;
     st.disposal = true;
-    st.lowProfile = false;
     st.date = null;
     st.time = null;
     wk = 0;
@@ -785,10 +774,8 @@
     // Reset add-on state
     document.getElementById('bk-tpms').checked = false;
     document.getElementById('bk-disposal').checked = true;
-    document.getElementById('bk-lowprofile').checked = false;
     document.getElementById('bk-addon-tpms').classList.remove('bk-addon--active');
     document.getElementById('bk-addon-disposal').classList.add('bk-addon--active');
-    document.getElementById('bk-addon-lowprofile').classList.remove('bk-addon--active');
 
     renderVehicles();
     renderQty();
@@ -945,13 +932,12 @@
         qty: st.qty,
         tpms: st.tpms,
         disposal: st.disposal,
-        lowProfile: st.lowProfile,
         serviceId: 'installation_off',
         mountState: 'off',
         supplierTier: st.supplierTier,
         productHandle: st.productHandle,
         inventorySource: st.inventorySource,
-        date: st.date.toISOString().split('T')[0],
+        date: bkLocalISO(st.date),
         time: st.time,
         subtotal: parseFloat(c.subtotal.toFixed(2)),
         gst: parseFloat(c.gst.toFixed(2)),
@@ -1041,7 +1027,7 @@
     var h = parseInt(tm[1]), m = parseInt(tm[2]);
     if (tm[3].toUpperCase() === 'PM' && h < 12) h += 12;
     if (tm[3].toUpperCase() === 'AM' && h === 12) h = 0;
-    var ds = st.date.toISOString().split('T')[0].replace(/-/g, '');
+    var ds = bkLocalISO(st.date).replace(/-/g, '');
     var st2 = (h < 10 ? '0' : '') + h + (m < 10 ? '0' : '') + m + '00';
     var eh = h + Math.ceil(st.qty * 0.5);
     var et = (eh < 10 ? '0' : '') + eh + (m < 10 ? '0' : '') + m + '00';
@@ -1061,11 +1047,6 @@
   document.getElementById('bk-disposal').addEventListener('change', function () {
     st.disposal = this.checked;
     document.getElementById('bk-addon-disposal').classList.toggle('bk-addon--active', this.checked);
-    renderPrice();
-  });
-  document.getElementById('bk-lowprofile').addEventListener('change', function () {
-    st.lowProfile = this.checked;
-    document.getElementById('bk-addon-lowprofile').classList.toggle('bk-addon--active', this.checked);
     renderPrice();
   });
   document.getElementById('bk-prev-week').addEventListener('click', function () { if (wk > 0) { wk--; renderWeek(); } });
