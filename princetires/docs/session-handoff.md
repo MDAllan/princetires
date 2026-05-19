@@ -25,6 +25,8 @@
 - **GitHub auth:** `princetires111-oss` has Write on both `MDAllan/princetires` (theme) + `malla762/princetires-app` (app).
 - **Tests:** Playwright specs in `princetires/tests/`. Run: `npx playwright test tests/<spec> --project=chromium`.
 - **Ubersuggest MCP:** connected at user scope (`~/.claude.json`) — `https://ubersuggest-mcp.neilpatelapi.com/mcp`, OAuth. 37 SEO tools (`ubersuggest__*`: domain / keyword / backlink / site-audit / rank-tracking). Tools load into a session only after a window reload following the connect. The OAuth token expires between sessions — when a session reports "token expired", re-authorize in the browser, then **reload the window**: an already-running session won't pick up the refreshed token in place, even after a successful browser auth.
+- **Product metafield `custom.install_price`** (`number_decimal`, dollars; added 2026-05-19) — drives the install total in `pt-booking-modal.liquid` (`data-install-price` attribute). Set on all 3,883 tire products. Backfill / repair via `princetires-app/db/backfill-install-price.mjs` (idempotent; dry-run by default, `--apply` to write).
+- **Next.js 16 dynamic rendering** — route segment config `export const dynamic` / `revalidate` / `fetchCache` were removed in v16 (when Cache Components is enabled). Use `await connection()` from `next/server` to opt a page out of prerendering. Reference: `princetires-app/node_modules/next/dist/docs/01-app/03-api-reference/04-functions/connection.md`.
 
 ## Open loose ends (update every session)
 
@@ -41,16 +43,46 @@
 - Garage-banner "Yes filter" button reported unclickable by the user — tested headless, worked; never confirmed the user's browser/context.
 - `greenmax` vendor casing + `Durun`/`Durutun` possible duplicate — left as-is deliberately (judgment calls).
 - Compare is hidden on mobile — deferred to a future PDP-based compare flow.
+- **Sentry source-map upload failing (2026-05-19)** — `princetires-app/next.config.ts` has `org: "tire-sync", project: "princetires-app"` which Sentry's API rejects ("Project not found"). Need the real org/project slugs from `sentry.io/organizations/<ORG>/projects/<PROJECT>/...`, plus `SENTRY_AUTH_TOKEN` set in Vercel env vars (only `NEXT_PUBLIC_SENTRY_DSN` is set). Non-fatal — builds succeed; error stack traces stay minified.
+- **Verify Neon autosuspend is on (2026-05-19)** — newly on Launch (usage-based, ~$15/mo typical). Confirm the production compute's autosuspend is ~5 min (Neon dashboard → Branches → click compute → "Suspend after"). Disabled autosuspend = compute runs 24/7 and the Launch bill balloons.
 
 ## Don't rebuild (tried + reverted)
 
 - "Popular models" pill row on the collection page — user found it visually busy.
 - `tire-knowledge.md` full spec scaffold — maintenance trap (specs belong on manufacturer sites / Shopify metafields).
 - `active-promos.md` — user decided a hand-maintained promo file isn't needed.
+- **Vehicle-based install pricing in `pt-booking-modal.liquid`** (removed 2026-05-19) — install price is now per-product via the `custom.install_price` metafield; vehicle only drives appointment duration. The `vehs[].price` table, the `$120` trailer flat, the `$40` low-profile floor, and the low-profile add-on row are all gone. The OTHER two booking surfaces (`pt-booking-page.liquid`, `pt-service-booking-modal.liquid`) still use by-vehicle because they have no product to read from. See the `booking-install-pricing` memory + the Exception note in the `prince-tires-booking` skill.
+- **Cherry-picking booking fix `2a8a170` to master** (2026-05-19) — `master` is 11 commits behind `phase-4-wholesale-portal`; would conflict on 3 of 5 files. Let phase-4 merge naturally.
 
 ---
 
 # Session Log
+
+## 2026-05-19 — Booking modal: date + price fixes · Neon outage handled · Next 16 build resilience
+
+Two user-reported bugs in the product booking modal — fixed, deployed live, Playwright-verified. Theme commit `2a8a170` on `phase-4-wholesale-portal`; deployed via per-file `shopify theme push --only` to live theme `186307215635`. Separate Neon outage hit mid-session and was handled.
+
+**Booking date off-by-one** — `snippets/pt-booking-modal.liquid` formatted dates with `toISOString()` (UTC), rolling the calendar back for devices at/ahead of UTC. Replaced all 4 date-output sites with new `bkLocalISO()` helper; parse switched to `new Date(d + 'T12:00:00')` (local noon). The other two booking surfaces were already correct. Verified live: picked `2026-05-22` → summary "Friday, May 22 at 10:30 AM"; `data-date` attrs are plain local `YYYY-MM-DD`. Fix is TZ-independent by construction (no `toISOString` left in the date path) — couldn't reproduce ahead-of-UTC in Playwright (no TZ override), proof is structural.
+
+**Per-device install price → per-product metafield** — old code: install = `vehs[].price * qty`, vehicle remembered per-device in `localStorage['pt-booking-vehicle']` → different total per device for the same product (the reported "$120 vs $140"). New: install = `st.installPrice * qty` from a new product metafield. Removed `vehPrice()`, the `vehs[].price` table, the `$120` trailer flat, the `$40` low-profile floor, the low-profile add-on row. Vehicle picker stays — drives appointment duration only. Backend `/api/book` doesn't recompute price → no server change. Verified live across 5 simulated `pt-booking-vehicle` localStorage values (passenger / suv / truck / dually / cleared) → all $35/tire / $140 (deterministic).
+
+**Metafield `custom.install_price`** — NEW definition (`number_decimal`, PRODUCT, dollars) created via Admin GraphQL `metafieldDefinitionCreate`. Backfilled on 3,883 tire products via NEW `princetires-app/db/backfill-install-price.mjs` (idempotent; dry-run by default, `--apply` writes). Tiers from product TITLE: passenger / car $25 (3,015), trailer ST ≤15" $25 (42), ST ≥16" $30 (28), light-truck LT $35 (684), big flotation ≥35" $40 (114). Modal falls back to $30 if metafield empty.
+
+**Files touched (theme, 5)** — `snippets/pt-booking-modal.liquid` (rewrite + `bkLocalISO`), `sections/pt-product.liquid` (both CTAs emit `data-install-price`; "Installed total" reads the metafield), `sections/pt-cart.liquid`, `snippets/pt-collection-card.liquid`, `snippets/pt-booking-modal-trigger.liquid`.
+
+**Neon outage (mid-session)** — Neon hit its free-tier compute-time quota (HTTP 402). Live booking APIs (`/api/availability`, `/api/services`, `/api/book`) all 500ing; Vercel build also failed (`/admin/setup` prerender threw on its DB query). Not caused by this session's work — pre-existing usage. User upgraded Neon Free → **Launch** (usage-based, ~$15/mo typical) — APIs back to 200, builds back to green.
+
+**Next.js 16 build resilience** — `/admin/setup` was statically prerendered + queried the DB at build time. Added `await connection()` (from `next/server`, stable since v15) so it renders on-demand. Local build confirmed `/admin/setup` now `ƒ` (Dynamic), not `○` (Static). `princetires-app` commit `a3f7df7`, Vercel green. **Next 16 gotcha**: `export const dynamic` / `revalidate` / `fetchCache` are removed when Cache Components is enabled — `connection()` is the documented replacement, works either way. Rest of `/admin/*` is already dynamic via `(shell)/layout.tsx`'s `headers()` call.
+
+**Shopify API version bump** — `src/lib/shopify/{admin,storefront}.ts` + `src/app/api/inventory-stats/route.ts` had `?? "2025-01"` as fallback. `SHOPIFY_API_VERSION` is unset on Vercel → production ran on a deprecated API version (build warned). Bumped fallback to `"2026-04"` (matches `.env.local`, currently supported). `princetires-app` commit `6dcd8c1`, Vercel green.
+
+**Browser test gotcha worth remembering** — Playwright Chrome initially rendered OLD theme code despite cache-busters + `no-store` fetches; curl returned NEW. Root cause: the persistent MCP profile had a stale `_shopify_pt` preview cookie pinning it to unpublished theme `186817446163` ("Services Hub Preview"). `Shopify.theme.id` confirmed the wrong-theme render. Reset by navigating to `?preview_theme_id=186307215635`. **Rule of thumb**: when a Playwright test against the live storefront disagrees with `curl`, check `Shopify.theme.id` for a stale preview cookie.
+
+**Skill doc + memory** — `~/.claude/skills/prince-tires-booking/SKILL.md`: `installation_off` row updated for the dual pricing model + Exception note under Booking surfaces clarifying the product modal uses the metafield, not catalog `byVehicle`. NEW memory `booking-install-pricing` so future sessions don't reintroduce vehicle pricing in the product modal.
+
+**Decisions noted** — (a) theme → master cherry-pick **declined**: `master` is 11 commits behind `phase-4-wholesale-portal`, conflicts on 3 of 5 files; let phase-4 merge naturally — the fix is already live on the theme. (b) Sentry source-map upload fix **deferred** — needs correct org/project slug + `SENTRY_AUTH_TOKEN` from user (see Open loose ends).
+
+**Tests** — Playwright via MCP against the live storefront (after preview-theme reset). Both bugs verified end-to-end. No specs added; existing booking spec not re-run.
 
 ## 2026-05-17 — princetires-app: Phases 2 / 3 / 3.5 + Gemini fix + booking emails
 
