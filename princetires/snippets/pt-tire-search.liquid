@@ -67,9 +67,13 @@
 
   {%- comment -%} Tab A — by size {%- endcomment -%}
   <div class="pt-ts__panel" data-pt-ts-panel="size" role="tabpanel">
+    <div class="pt-ts__sizemode" role="group" aria-label="Size system">
+      <button type="button" class="pt-ts__sizemode-btn pt-ts__sizemode-btn--active" data-pt-ts-sizemode="metric" aria-pressed="true">Metric</button>
+      <button type="button" class="pt-ts__sizemode-btn" data-pt-ts-sizemode="flotation" aria-pressed="false">Off-road</button>
+    </div>
     <div class="pt-ts__row pt-ts__row--size">
       <label class="pt-ts__field">
-        <span class="pt-ts__label">Width</span>
+        <span class="pt-ts__label" data-pt-ts-lbl="width">Width</span>
         <select data-pt-ts-width>
           <option value="">—</option>
           {%- assign widths = '155,165,175,185,195,205,215,225,235,245,255,265,275,285,295,305,315,325' | split: ',' -%}
@@ -77,7 +81,7 @@
         </select>
       </label>
       <label class="pt-ts__field">
-        <span class="pt-ts__label">Aspect</span>
+        <span class="pt-ts__label" data-pt-ts-lbl="aspect">Aspect</span>
         <select data-pt-ts-aspect>
           <option value="">—</option>
           {%- assign aspects = '30,35,40,45,50,55,60,65,70,75,80,85' | split: ',' -%}
@@ -85,7 +89,7 @@
         </select>
       </label>
       <label class="pt-ts__field">
-        <span class="pt-ts__label">Rim</span>
+        <span class="pt-ts__label" data-pt-ts-lbl="rim">Rim</span>
         <select data-pt-ts-rim>
           <option value="">—</option>
           {%- assign rims = '13,14,15,16,17,18,19,20,21,22,24,26' | split: ',' -%}
@@ -281,6 +285,33 @@
 
 .pt-ts__panel { animation: pt-ts-fade 0.2s ease; }
 @keyframes pt-ts-fade { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
+.pt-ts__sizemode {
+  display: inline-flex;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 3px;
+  gap: 3px;
+  margin-bottom: 0.8rem;
+}
+.pt-ts__sizemode-btn {
+  padding: 0.35rem 0.9rem;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.pt-ts__sizemode-btn:hover { color: #374151; }
+.pt-ts__sizemode-btn--active {
+  background: #fff;
+  color: #dc2626;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
 
 .pt-ts__row {
   display: grid;
@@ -564,7 +595,8 @@
       size: {
         width:  p.get(URL_PREFIX + 'w') || '',
         aspect: p.get(URL_PREFIX + 'a') || '',
-        rim:    p.get(URL_PREFIX + 'r') || ''
+        rim:    p.get(URL_PREFIX + 'r') || '',
+        mode:   p.get(URL_PREFIX + 'sm') === 'flotation' ? 'flotation' : 'metric'
       },
       veh: {
         year:  p.get(URL_PREFIX + 'y')   || '',
@@ -578,11 +610,12 @@
 
   function writeUrlState(state) {
     var p = new URLSearchParams(window.location.search);
-    ['tab','w','a','r','y','mk','mo','tr','oem'].forEach(function (k) {
+    ['tab','w','a','r','sm','y','mk','mo','tr','oem'].forEach(function (k) {
       p.delete(URL_PREFIX + k);
     });
     if (state.tab) p.set(URL_PREFIX + 'tab', state.tab);
     if (state.tab === 'size') {
+      if (state.size.mode === 'flotation') p.set(URL_PREFIX + 'sm', 'flotation');
       if (state.size.width)  p.set(URL_PREFIX + 'w', state.size.width);
       if (state.size.aspect) p.set(URL_PREFIX + 'a', state.size.aspect);
       if (state.size.rim)    p.set(URL_PREFIX + 'r', state.size.rim);
@@ -612,7 +645,7 @@
 
     var state = {
       tab: 'size',
-      size: { width: '', aspect: '', rim: '' },
+      size: { width: '', aspect: '', rim: '', mode: 'metric' },
       veh:  { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false, staggeredFront: '', staggeredRear: '', staggeredPick: 'front' },
       filters: readFilterPrefs(),
       yearData: null
@@ -697,8 +730,9 @@
       state.size.rim = ($('[data-pt-ts-rim]') || {}).value || '';
       var ok = !!(state.size.width && state.size.aspect && state.size.rim);
       $('[data-pt-ts-submit-size]').disabled = !ok;
+      var sep = state.size.mode === 'flotation' ? 'X' : '/';
       $('[data-pt-ts-size-match]').textContent = ok
-        ? state.size.width + '/' + state.size.aspect + 'R' + state.size.rim
+        ? state.size.width + sep + state.size.aspect + 'R' + state.size.rim
         : '';
       if (state.tab === 'size') writeUrlState(state);
     }
@@ -712,6 +746,57 @@
         track('tire_search_size_step', { field: k, value: el.value || '', completed_count: completed });
       });
     });
+
+    // ── Size-system toggle (metric ↔ flotation / off-road) ──
+    // Off-road sizes (35X12.50R20) are diameter × section-width × rim. The three
+    // values map onto the same metafields as metric — tire_width / tire_profile /
+    // rim_diameter — so buildCollectionUrl needs no special-casing.
+    var FLOT_OPTS = {
+      width:  ['27','30','31','33','35','37','38','39','40'],
+      aspect: ['8.50','9.50','10.00','10.50','12.50','13.50','15.50'],
+      rim:    ['14','15','17','18','20','22','24']
+    };
+    var SIZE_LABELS = {
+      metric:    { width: 'Width', aspect: 'Aspect', rim: 'Rim' },
+      flotation: { width: 'Diameter', aspect: 'Width', rim: 'Rim' }
+    };
+    // Snapshot the server-rendered metric options so the toggle can restore them.
+    var METRIC_OPTS = {};
+    ['width','aspect','rim'].forEach(function (k) {
+      var el = $('[data-pt-ts-' + k + ']');
+      METRIC_OPTS[k] = el
+        ? Array.prototype.slice.call(el.options).map(function (o) { return o.value; }).filter(Boolean)
+        : [];
+    });
+    function applySizeMode(mode) {
+      mode = mode === 'flotation' ? 'flotation' : 'metric';
+      state.size.mode = mode;
+      var opts = mode === 'flotation' ? FLOT_OPTS : METRIC_OPTS;
+      ['width','aspect','rim'].forEach(function (k) {
+        var sel = $('[data-pt-ts-' + k + ']');
+        if (sel) {
+          sel.innerHTML = '<option value="">—</option>' +
+            opts[k].map(function (v) { return '<option value="' + v + '">' + v + '</option>'; }).join('');
+        }
+        var lbl = $('[data-pt-ts-lbl="' + k + '"]');
+        if (lbl) lbl.textContent = SIZE_LABELS[mode][k];
+      });
+      $$('[data-pt-ts-sizemode]').forEach(function (b) {
+        var on = b.dataset.ptTsSizemode === mode;
+        b.classList.toggle('pt-ts__sizemode-btn--active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      state.size.width = state.size.aspect = state.size.rim = '';
+      readSizeForm();
+    }
+    $$('[data-pt-ts-sizemode]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (state.size.mode === this.dataset.ptTsSizemode) return;
+        applySizeMode(this.dataset.ptTsSizemode);
+        track('tire_search_sizemode', { mode: state.size.mode });
+      });
+    });
+
     $('[data-pt-ts-submit-size]').addEventListener('click', function () {
       if (this.disabled) return;
       track('tire_search_submit', {
@@ -1180,40 +1265,8 @@
       return null;
     }
     function parseSize(s) {
-      if (!s) return null;
-      var up = String(s).toUpperCase();
-
-      // Flotation pattern: e.g. "33X12.50R17"
-      // The first number is overall diameter (inches), middle is section width (inches, decimal),
-      // last is rim diameter. For Shopify metafield compatibility, we coerce section
-      // width to an integer-like string by stripping the dot (12.50 → 1250). This lets the URL
-      // build without rejecting the input — even if no products match, the customer at least
-      // gets a search-result page they can act on (and we capture the demand via OUT OF STOCK).
-      var flot = up.match(/(\d{2})X(\d{1,2}(?:\.\d{1,2})?)R(\d{2})/);
-      if (flot) {
-        return {
-          width:     flot[2].replace('.', ''),
-          aspect:    '',
-          rim:       flot[3],
-          raw:       s,
-          flotation: true
-        };
-      }
-
-      // Standard pattern: "225/45R17", "P215/45R17", "245/35ZR19", "LT245/75R16", "205/55ZRF16"
-      // [A-Z]{0,2} before R allows speed-rating letters; [A-Z]? after R allows run-flat F.
-      var std = up.match(/(\d{3})\/(\d{2,3})\s*[A-Z]{0,2}R[A-Z]?(\d{2})/);
-      if (std) {
-        return { width: std[1], aspect: std[2], rim: std[3], raw: s };
-      }
-
-      // Euro-metric no-aspect: "145R12", "185R14", "185R14C"
-      var euro = up.match(/(\d{3})[A-Z]?R(\d{2})/);
-      if (euro) {
-        return { width: euro[1], aspect: '', rim: euro[2], raw: s };
-      }
-
-      return null;
+      var p = window.PTTireParse && window.PTTireParse.parseSize(s);
+      return p && { width: p.width, aspect: p.profile, rim: p.rim, raw: s, flotation: p.flotation };
     }
     function buildCollectionUrl(w, a, r) {
       var qs = new URLSearchParams();
@@ -1279,6 +1332,7 @@
     // Initial state — hydrate from URL, switch tab if URL says so, then read
     var urlState = readUrlState();
     if (urlState.tab === 'vehicle') switchTab('vehicle');
+    if (urlState.size.mode === 'flotation') applySizeMode('flotation');
     hydrateSizeFromUrl(urlState);
     readSizeForm();
     if (urlState.tab === 'vehicle') hydrateVehicleFromUrl(urlState); // fire-and-forget async

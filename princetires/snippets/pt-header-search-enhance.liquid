@@ -1,0 +1,537 @@
+{% doc %}
+  Enhances the site-header search form with two layers:
+
+  1. PREDICTIVE DROPDOWN — as the customer types, fetch Shopify's
+     /search/suggest.json for products + collections + pages + articles
+     and render a grouped dropdown under the input. Empty sections hide.
+
+  2. SMART ROUTING on Enter / submit — priority chain (first match wins):
+       a. Quick action: tire size  → /collections/tires?<size-filter-params>
+       b. Quick action: service kw → service landing page
+       c. Quick action: season kw  → /collections/tires?<seasonality>
+       d. Quick action: rims/wheel → /collections/wheels (HEAD-checked)
+       e. Fallthrough              → /search?q=<query>  (Shopify's native results)
+
+  Fail-safe: if anything breaks, the form submits normally to /search.
+  Rendered once in layout/theme.liquid before </body>.
+
+  @example
+  {% render 'pt-header-search-enhance' %}
+{% enddoc %}
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── 1. Wheels-collection availability check (HEAD request, once at init) ── */
+  var wheelsAvailable = null; /* null = unknown / pending */
+  (function checkWheels() {
+    fetch('/collections/wheels', { method: 'HEAD' })
+      .then(function(r) { wheelsAvailable = r.ok; })
+      .catch(function()  { wheelsAvailable = false; });
+  })();
+
+  /* ── 2. Service routing map ── */
+  var SERVICE_MAP = [
+    { patterns: ['tire rotation', 'rotation'],                                    url: '/pages/tire-rotation' },
+    { patterns: ['tire balancing', 'wheel balance', 'wheel balancing', 'balancing'], url: '/pages/tire-balancing' },
+    { patterns: ['flat repair', 'tire repair', 'tyre repair', 'patch'],           url: '/pages/tire-repair-calgary' },
+    { patterns: ['tpms', 'tire pressure sensor', 'tyre pressure sensor'],         url: '/pages/tpms-calgary' },
+    { patterns: ['tire installation', 'tyre installation', 'install tires', 'install tyres', 'mount tires', 'mount tyres'], url: '/pages/tire-installation-calgary' },
+    { patterns: ['seasonal swap', 'tire changeover', 'tyre changeover', 'swap tires', 'swap tyres', 'seasonal change'], url: '/pages/seasonal-tire-change-calgary' },
+    { patterns: ['wheel alignment', 'alignment'],                                 url: '/pages/booking?service=installation_off' }
+  ];
+
+  /* ── 3. Season routing map ── */
+  var SEASON_MAP = [
+    { patterns: ['winter', 'snow'],                    value: 'Winter' },
+    { patterns: ['summer'],                            value: 'Summer' },
+    { patterns: ['all season', 'all-season'],          value: 'All-Season' },
+    { patterns: ['all weather', 'all-weather'],        value: 'All-Weather' }
+  ];
+
+  var SEASON_FILTER_KEY = 'filter.p.m.custom.seasonality';
+
+  /* ── helpers ── */
+  function matchesAny(q, patterns) {
+    for (var i = 0; i < patterns.length; i++) {
+      var escaped = patterns[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp('(?:^|\\s|\\b)' + escaped + '(?:\\s|\\b|$)', 'i').test(q)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function detectService(q) {
+    for (var i = 0; i < SERVICE_MAP.length; i++) {
+      if (matchesAny(q, SERVICE_MAP[i].patterns)) {
+        return { url: SERVICE_MAP[i].url, label: SERVICE_MAP[i].patterns[0] };
+      }
+    }
+    return null;
+  }
+
+  function detectSeason(q) {
+    for (var i = 0; i < SEASON_MAP.length; i++) {
+      if (matchesAny(q, SEASON_MAP[i].patterns)) {
+        return SEASON_MAP[i].value;
+      }
+    }
+    return null;
+  }
+
+  function safeTrack(props) {
+    try {
+      if (window.PTTireParse && typeof window.PTTireParse.track === 'function') {
+        window.PTTireParse.track(props);
+      }
+    } catch(e) { /* never throw */ }
+  }
+
+  /* Build the "quick action" suggestion from a query — same priority order
+     as the submit-time router, returned as a shape the dropdown can render. */
+  function quickActionFor(q) {
+    if (!q || !window.PTTireParse) return null;
+
+    var expanded = (typeof window.PTTireParse.expandSynonyms === 'function')
+      ? window.PTTireParse.expandSynonyms(q)
+      : q;
+
+    var parsed = window.PTTireParse.parseSize(expanded);
+    if (parsed && typeof window.PTTireParse.sizeFilterParams === 'function') {
+      return {
+        type: 'size',
+        label: 'Show ' + parsed.canonical + ' tires',
+        url:   '/collections/tires?' + window.PTTireParse.sizeFilterParams(parsed).toString()
+      };
+    }
+    var service = detectService(expanded);
+    if (service) {
+      return {
+        type: 'service',
+        label: 'Go to ' + service.label.replace(/(^|\s)\S/g, function(c){ return c.toUpperCase(); }) + ' service page',
+        url:   service.url
+      };
+    }
+    var season = detectSeason(expanded);
+    if (season) {
+      return {
+        type: 'season',
+        label: 'Browse ' + season + ' tires',
+        url:   '/collections/tires?' + SEASON_FILTER_KEY + '=' + encodeURIComponent(season)
+      };
+    }
+    var qLower = expanded.toLowerCase();
+    if ((qLower.indexOf('rims') !== -1 || qLower.indexOf('wheels') !== -1) && wheelsAvailable === true) {
+      return { type: 'wheels', label: 'Browse wheels', url: '/collections/wheels' };
+    }
+    return null;
+  }
+
+  /* ── submit-time smart routing (Enter / arrow click) ── */
+  function route(q, e) {
+    if (!q) return;
+    if (!window.PTTireParse || typeof window.PTTireParse.parseSize !== 'function') return;
+
+    var qa = quickActionFor(q);
+    if (qa) {
+      e.preventDefault();
+      safeTrack({ surface: 'header', search_query: q, search_type: qa.type, search_outcome: 'match' });
+      window.location.href = qa.url;
+      return;
+    }
+
+    /* Fallthrough → Shopify's native /search results page (covers products +
+       collections + pages + articles via Shopify search). */
+    e.preventDefault();
+    safeTrack({ surface: 'header', search_query: q, search_type: 'fulltext', search_outcome: 'match' });
+    window.location.href = '/search?q=' + encodeURIComponent(q) + '&type=product,article,page';
+  }
+
+  /* ────────────────────────────────────────────────────────────────────────
+     Predictive dropdown — Shopify /search/suggest.json
+     ──────────────────────────────────────────────────────────────────────── */
+
+  var SUGGEST_DEBOUNCE_MS = 280;
+  var SUGGEST_LIMIT       = 4;
+
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, function(c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  function money(cents) {
+    if (typeof cents !== 'number') return '';
+    var dollars = (cents / 100).toFixed(2);
+    return '$' + dollars.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function suggestUrl(q) {
+    return '/search/suggest.json' +
+      '?q=' + encodeURIComponent(q) +
+      '&resources[type]=product,collection,page,article' +
+      '&resources[limit]=' + SUGGEST_LIMIT +
+      '&resources[options][unavailable_products]=last' +
+      '&resources[options][fields]=title,product_type,variants.title,vendor';
+  }
+
+  /* ── Recent + popular searches (empty-state for the dropdown) ──
+     Shares the localStorage key with the homepage hero smart-search so the
+     customer has ONE search history across both surfaces. */
+  var RECENT_KEY = 'pt-recent-searches';
+  var RECENT_MAX = 5;
+  var POPULAR_SEARCHES = [
+    { label: '225/65R17',        query: '225/65R17' },
+    { label: '2020 Honda Civic', query: '2020 Honda Civic' },
+    { label: 'Tire rotation',    query: 'tire rotation' },
+    { label: 'Michelin',         query: 'Michelin' }
+  ];
+
+  function getRecentSearches() {
+    try {
+      var raw = localStorage.getItem(RECENT_KEY);
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(function(x){ return x && typeof x === 'string' && x.trim().length; }) : [];
+    } catch (e) { return []; }
+  }
+  function addRecentSearch(q) {
+    q = (q || '').trim();
+    if (!q || q.length < 2) return;
+    try {
+      var current = getRecentSearches();
+      var lower = q.toLowerCase();
+      current = current.filter(function(x){ return x.toLowerCase() !== lower; });
+      current.unshift(q);
+      if (current.length > RECENT_MAX) current = current.slice(0, RECENT_MAX);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(current));
+    } catch (e) { /* silent */ }
+  }
+  function clearRecentSearches() {
+    try { localStorage.removeItem(RECENT_KEY); } catch (e) {}
+  }
+
+  function renderEmptyState(container) {
+    var recent = getRecentSearches();
+    var html = '<div class="pt-search-suggest__empty-state">';
+
+    if (recent.length) {
+      html += '<div class="pt-search-suggest__empty-section">' +
+        '<div class="pt-search-suggest__empty-head">' +
+          '<span class="pt-search-suggest__empty-label">Recent searches</span>' +
+          '<button type="button" class="pt-search-suggest__empty-clear" data-clear-recent="true">Clear</button>' +
+        '</div>' +
+        '<div class="pt-search-suggest__empty-chips">' +
+          recent.map(function(q){
+            return '<button type="button" class="pt-search-suggest__empty-chip pt-search-suggest__empty-chip--recent" data-empty-query="' + esc(q) + '" data-suggest-type="recent_chip">' +
+              '<span class="pt-search-suggest__empty-chip-icon" aria-hidden="true">↻</span>' +
+              '<span class="pt-search-suggest__empty-chip-text">' + esc(q) + '</span>' +
+            '</button>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    }
+
+    html += '<div class="pt-search-suggest__empty-section">' +
+      '<div class="pt-search-suggest__empty-head">' +
+        '<span class="pt-search-suggest__empty-label">Popular</span>' +
+      '</div>' +
+      '<div class="pt-search-suggest__empty-chips">' +
+        POPULAR_SEARCHES.map(function(p){
+          return '<button type="button" class="pt-search-suggest__empty-chip" data-empty-query="' + esc(p.query) + '" data-suggest-type="popular_chip">' +
+            '<span class="pt-search-suggest__empty-chip-text">' + esc(p.label) + '</span>' +
+          '</button>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+
+    html += '</div>';
+    container.innerHTML = html;
+    container.hidden = false;
+  }
+
+  /* Create the dropdown container once; reuse on subsequent renders. */
+  function ensureSuggestContainer(overlay) {
+    var container = overlay.querySelector('.pt-search-suggest');
+    if (container) return container;
+    container = document.createElement('div');
+    container.className = 'pt-search-suggest';
+    container.setAttribute('role', 'listbox');
+    container.hidden = true;
+    overlay.appendChild(container);
+    return container;
+  }
+
+  /* Render the predictive dropdown for a given query + suggest API result. */
+  function renderSuggest(container, query, data) {
+    var products    = (data && data.resources && data.resources.results && data.resources.results.products)    || [];
+    var collections = (data && data.resources && data.resources.results && data.resources.results.collections) || [];
+    var pages       = (data && data.resources && data.resources.results && data.resources.results.pages)       || [];
+    var articles    = (data && data.resources && data.resources.results && data.resources.results.articles)    || [];
+
+    var qa = quickActionFor(query);
+    var allItems = []; /* flat list for keyboard nav */
+    var html = '';
+
+    if (qa) {
+      html += '<div class="pt-search-suggest__quick">' +
+        '<a class="pt-search-suggest__item pt-search-suggest__item--quick" href="' + esc(qa.url) + '" data-suggest-type="quick" data-suggest-subtype="' + esc(qa.type) + '">' +
+          '<span class="pt-search-suggest__quick-bolt" aria-hidden="true">⚡</span>' +
+          '<span class="pt-search-suggest__item-title">' + esc(qa.label) + '</span>' +
+          '<span class="pt-search-suggest__item-arrow" aria-hidden="true">→</span>' +
+        '</a>' +
+      '</div>';
+      allItems.push({ url: qa.url, type: 'quick' });
+    }
+
+    if (products.length) {
+      html += '<div class="pt-search-suggest__section">' +
+        '<div class="pt-search-suggest__section-label">Tires &amp; wheels</div>';
+      for (var i = 0; i < products.length; i++) {
+        var p = products[i];
+        var img = (p.image && (typeof p.image === 'string' ? p.image : p.image.src)) || (p.featured_image && p.featured_image.url) || '';
+        var price = (typeof p.price === 'number') ? money(p.price) : (p.price || '');
+        var vendor = p.vendor ? esc(p.vendor) : '';
+        html += '<a class="pt-search-suggest__item pt-search-suggest__item--product" href="' + esc(p.url) + '" data-suggest-type="product">' +
+          (img ? '<img class="pt-search-suggest__item-thumb" src="' + esc(img) + '" alt="" loading="lazy" width="44" height="44">' : '<span class="pt-search-suggest__item-thumb pt-search-suggest__item-thumb--placeholder" aria-hidden="true"></span>') +
+          '<span class="pt-search-suggest__item-body">' +
+            '<span class="pt-search-suggest__item-title">' + esc(p.title) + '</span>' +
+            (vendor ? '<span class="pt-search-suggest__item-meta">' + vendor + '</span>' : '') +
+          '</span>' +
+          (price ? '<span class="pt-search-suggest__item-price">' + esc(price) + '</span>' : '') +
+        '</a>';
+        allItems.push({ url: p.url, type: 'product' });
+      }
+      html += '</div>';
+    }
+
+    if (collections.length) {
+      html += '<div class="pt-search-suggest__section">' +
+        '<div class="pt-search-suggest__section-label">Collections</div>';
+      for (var j = 0; j < collections.length; j++) {
+        var c = collections[j];
+        html += '<a class="pt-search-suggest__item pt-search-suggest__item--collection" href="' + esc(c.url) + '" data-suggest-type="collection">' +
+          '<span class="pt-search-suggest__item-icon" aria-hidden="true">▦</span>' +
+          '<span class="pt-search-suggest__item-title">' + esc(c.title) + '</span>' +
+        '</a>';
+        allItems.push({ url: c.url, type: 'collection' });
+      }
+      html += '</div>';
+    }
+
+    if (pages.length) {
+      html += '<div class="pt-search-suggest__section">' +
+        '<div class="pt-search-suggest__section-label">Pages</div>';
+      for (var k = 0; k < pages.length; k++) {
+        var pg = pages[k];
+        html += '<a class="pt-search-suggest__item pt-search-suggest__item--page" href="' + esc(pg.url) + '" data-suggest-type="page">' +
+          '<span class="pt-search-suggest__item-icon" aria-hidden="true">📄</span>' +
+          '<span class="pt-search-suggest__item-title">' + esc(pg.title) + '</span>' +
+        '</a>';
+        allItems.push({ url: pg.url, type: 'page' });
+      }
+      html += '</div>';
+    }
+
+    if (articles.length) {
+      html += '<div class="pt-search-suggest__section">' +
+        '<div class="pt-search-suggest__section-label">Articles</div>';
+      for (var l = 0; l < articles.length; l++) {
+        var a = articles[l];
+        html += '<a class="pt-search-suggest__item pt-search-suggest__item--article" href="' + esc(a.url) + '" data-suggest-type="article">' +
+          '<span class="pt-search-suggest__item-icon" aria-hidden="true">✎</span>' +
+          '<span class="pt-search-suggest__item-title">' + esc(a.title) + '</span>' +
+        '</a>';
+        allItems.push({ url: a.url, type: 'article' });
+      }
+      html += '</div>';
+    }
+
+    /* Empty-state: nothing matched at all (no quick action and no results) */
+    if (allItems.length === 0) {
+      html += '<div class="pt-search-suggest__empty">' +
+        'No matches for <em>' + esc(query) + '</em>. ' +
+        '<a class="pt-search-suggest__view-all" href="/search?q=' + encodeURIComponent(query) + '&amp;type=product,article,page">Try the full search →</a>' +
+      '</div>';
+    } else {
+      /* Footer "view all" — Shopify's native results page */
+      html += '<a class="pt-search-suggest__view-all" href="/search?q=' + encodeURIComponent(query) + '&amp;type=product,article,page" data-suggest-type="view-all">' +
+        'See all results for <strong>' + esc(query) + '</strong> →' +
+      '</a>';
+    }
+
+    container.innerHTML = html;
+    container.hidden = false;
+    return allItems;
+  }
+
+  /* Keyboard navigation across the flat item list. */
+  function bindKeyNav(container, input, getItems) {
+    var index = -1;
+    function clear() {
+      var sel = container.querySelectorAll('.pt-search-suggest__item--selected');
+      sel.forEach(function(n) { n.classList.remove('pt-search-suggest__item--selected'); });
+    }
+    function highlight(idx) {
+      clear();
+      var nodes = container.querySelectorAll('.pt-search-suggest__item');
+      if (idx < 0 || idx >= nodes.length) return;
+      nodes[idx].classList.add('pt-search-suggest__item--selected');
+      try { nodes[idx].scrollIntoView({ block: 'nearest' }); } catch(e) {}
+    }
+    input.addEventListener('keydown', function(e) {
+      if (container.hidden) return;
+      var items = getItems();
+      if (!items || !items.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        index = Math.min(index + 1, items.length - 1);
+        highlight(index);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        index = Math.max(index - 1, 0);
+        highlight(index);
+      } else if (e.key === 'Enter') {
+        if (index >= 0 && items[index]) {
+          e.preventDefault();
+          safeTrack({ surface: 'header', search_query: (input.value || '').trim(), search_type: items[index].type, search_outcome: 'click' });
+          window.location.href = items[index].url;
+        }
+      } else if (e.key === 'Escape') {
+        container.hidden = true;
+        clear();
+        index = -1;
+      } else {
+        /* Any other key resets the selection so the next ArrowDown starts at top */
+        index = -1;
+        clear();
+      }
+    });
+
+    /* Track clicks for analytics AND persist the query as a recent search. */
+    container.addEventListener('click', function(e) {
+      var link = e.target.closest && e.target.closest('.pt-search-suggest__item, .pt-search-suggest__view-all');
+      if (!link) return;
+      var type = link.getAttribute('data-suggest-type') || 'unknown';
+      var q = (input.value || '').trim();
+      safeTrack({ surface: 'header', search_query: q, search_type: type, search_outcome: 'click' });
+      if (q) addRecentSearch(q);
+    });
+  }
+
+  /* ── bind to the header search form ── */
+  function init() {
+    var form = null;
+
+    var headerEl = document.querySelector('header');
+    if (headerEl) {
+      form = headerEl.querySelector('form[action*="/search"]');
+    }
+    if (!form) {
+      form = document.getElementById('header-search-form');
+    }
+    if (!form) return;
+
+    var input = form.querySelector('input[name="q"]') || form.querySelector('input[type="search"]');
+    if (!input) return;
+
+    /* The dropdown lives in the search-overlay (or, if none, alongside the form). */
+    var overlay = document.getElementById('pt-header-search-overlay') || form.parentElement || document.body;
+    var container = ensureSuggestContainer(overlay);
+    var currentItems = [];
+    bindKeyNav(container, input, function() { return currentItems; });
+
+    var debounce = null;
+    var inflight = null;
+
+    function getQuery() { return (input.value || '').trim(); }
+
+    function fetchSuggest(q) {
+      if (inflight && typeof inflight.abort === 'function') inflight.abort();
+      if (q.length === 0) {
+        // Empty → show recent + popular chips
+        renderEmptyState(container);
+        currentItems = [];
+        return;
+      }
+      if (q.length < 2) {
+        container.hidden = true;
+        container.innerHTML = '';
+        currentItems = [];
+        return;
+      }
+      inflight = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      fetch(suggestUrl(q), inflight ? { signal: inflight.signal } : undefined)
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          if ((input.value || '').trim() !== q) return; /* stale */
+          currentItems = renderSuggest(container, q, data || {});
+        })
+        .catch(function() { /* network / abort — silent */ });
+    }
+
+    input.addEventListener('input', function() {
+      clearTimeout(debounce);
+      var q = getQuery();
+      debounce = setTimeout(function() { fetchSuggest(q); }, SUGGEST_DEBOUNCE_MS);
+    });
+
+    // On focus, show recent + popular chips when the input is empty.
+    input.addEventListener('focus', function() {
+      if (getQuery().length === 0) renderEmptyState(container);
+    });
+
+    // Empty-state chip clicks: fill the input and run the search.
+    // (Lives on the container; survives re-renders.)
+    container.addEventListener('click', function(e) {
+      var chip = e.target.closest && e.target.closest('[data-empty-query]');
+      if (chip) {
+        e.preventDefault();
+        var q = chip.getAttribute('data-empty-query');
+        input.value = q;
+        input.focus();
+        safeTrack({ surface: 'header', search_query: q, search_type: chip.getAttribute('data-suggest-type') || 'recent_chip', search_outcome: 'click' });
+        fetchSuggest(q);
+        return;
+      }
+      var clearBtn = e.target.closest && e.target.closest('[data-clear-recent]');
+      if (clearBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        clearRecentSearches();
+        renderEmptyState(container);
+      }
+    });
+
+    /* When the overlay closes, hide the dropdown so it doesn't flash on next open */
+    var closeBtn = overlay.querySelector('[data-pt-search-close]');
+    if (closeBtn) closeBtn.addEventListener('click', function() { container.hidden = true; });
+
+    function handleSubmit(e) {
+      var q = getQuery();
+      if (q) addRecentSearch(q); /* persist before navigation */
+      route(q, e);
+    }
+
+    form.addEventListener('submit', handleSubmit);
+
+    /* Also intercept Enter on the input (some predictive-search wrappers eat submit) */
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        /* If a dropdown item is highlighted, the keyNav handler already
+           navigated; otherwise we fall through to smart routing. */
+        var hasSelection = container.querySelector('.pt-search-suggest__item--selected');
+        if (!hasSelection) handleSubmit(e);
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>

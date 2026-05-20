@@ -45,6 +45,8 @@
 - Compare is hidden on mobile — deferred to a future PDP-based compare flow.
 - **Sentry source-map upload failing (2026-05-19)** — `princetires-app/next.config.ts` has `org: "tire-sync", project: "princetires-app"` which Sentry's API rejects ("Project not found"). Need the real org/project slugs from `sentry.io/organizations/<ORG>/projects/<PROJECT>/...`, plus `SENTRY_AUTH_TOKEN` set in Vercel env vars (only `NEXT_PUBLIC_SENTRY_DSN` is set). Non-fatal — builds succeed; error stack traces stay minified.
 - **Verify Neon autosuspend is on (2026-05-19)** — newly on Launch (usage-based, ~$15/mo typical). Confirm the production compute's autosuspend is ~5 min (Neon dashboard → Branches → click compute → "Suspend after"). Disabled autosuspend = compute runs 24/7 and the Launch bill balloons.
+- **Shopify CLI auth dropped (2026-05-20)** — I ran `shopify auth logout` mid-session in response to a transient 401 (which was actually a Shopify API blip, not an auth problem). CLI now needs `shopify login --store=prince-tires-5560.myshopify.com` to be re-established. **Workaround already in place** — new `princetires-app/db/push-theme-assets.mjs` pushes any theme file via the Admin API token (no CLI required); use this until the CLI is back.
+- **`/search` page redirects to homepage instead of showing results** — flagged in earlier sessions, still not fixed. The universal header search now falls through to `/search?q=…` for non-shortcut queries (per user's choice), so this needs to be addressed — likely a `templates/search.json` issue. Verify the search template renders results, not redirects.
 
 ## Don't rebuild (tried + reverted)
 
@@ -53,10 +55,83 @@
 - `active-promos.md` — user decided a hand-maintained promo file isn't needed.
 - **Vehicle-based install pricing in `pt-booking-modal.liquid`** (removed 2026-05-19) — install price is now per-product via the `custom.install_price` metafield; vehicle only drives appointment duration. The `vehs[].price` table, the `$120` trailer flat, the `$40` low-profile floor, and the low-profile add-on row are all gone. The OTHER two booking surfaces (`pt-booking-page.liquid`, `pt-service-booking-modal.liquid`) still use by-vehicle because they have no product to read from. See the `booking-install-pricing` memory + the Exception note in the `prince-tires-booking` skill.
 - **Cherry-picking booking fix `2a8a170` to master** (2026-05-19) — `master` is 11 commits behind `phase-4-wholesale-portal`; would conflict on 3 of 5 files. Let phase-4 merge naturally.
+- **Aggressive mobile auto-scroll on input focus** (2026-05-20) — first attempt fired `scrollIntoView` on focus + on every keystroke, anchoring the input flush with viewport top (12px). User found it too aggressive ("scrolls up too much"). Reverted to **visualViewport.resize-only**, with a 30%-comfort-band skip and a softer 50px landing target. Don't re-add focus-based scroll or onInput re-anchor — `visualViewport.resize` is the only correct trigger.
+- **Aggressive header overlay mobile `margin-top: 14px`** (2026-05-20) — same complaint family. Reverted to `24px`. Don't push it lower.
 
 ---
 
 # Session Log
+
+## 2026-05-20 — Search overhaul: partial-query chips · trim pulse · arrow-CTA fixes · universal header search · mobile keyboard · recent + popular
+
+Long search-focused session. All work shipped to live theme `186307215635`, verified via Playwright against princetires.ca. **30 specs total green** across 6 new + extended files. Mid-session, the Shopify CLI auth dropped (own-goal: `shopify auth logout` in response to a transient 401) — wrote a new Admin-API push helper as a workaround.
+
+**Homepage smart-search — partial-query guidance + reframed fallback** — when a customer types something that can't fully resolve to a vehicle/size, we used to dead-end at "We couldn't find a match." Now:
+- `detectPartialQuery(query)` returns `{type:'year-only'|'year-make'|'make-only', …}`. Detection fires in 3 places: top of `handleVehicleQuery`, the `!vehicle` branch, and in `onSubmit`.
+- `renderGuidance(partial)` shows: year-only → "Got 2012 — what car?" + **8 popular-make chips** (Honda · Toyota · Ford · Chevrolet · GMC · RAM · Hyundai · Jeep) that fill `<year> <make>` on click and re-run search · year-make → "Almost — what model?" · make-only → "Looking for Honda tires?" + `/collections/brand-honda` link.
+- `showFallback` rewritten: title "Tell us what you're looking for", 4 clickable example chips (`225/65R17` · `2020 Honda Civic` · `tire rotation` · `Michelin`), phone CTA demoted.
+- `popularMakes` list lives on the `SmartSearch` class instance (`sections/hero-smart-search.liquid:1187`).
+- Chip clicks emit `pt_search` with `search_type: 'guidance_chip'`.
+
+**Trim picker attention cue** — fixed the "I clicked the arrow but nothing happened" UX. When `awaitingTrim` is true and the customer clicks the red CTA, the old `showPrompt` appended an orange "↑ Please select trim above" line at the BOTTOM of an internally-scrollable trim list — invisible below the fold on a 6-row list. Rewrote `showPrompt`:
+- Inserts the inline cue ("Pick one to continue ↓") **inside the `.hero-smart-search__trim-header`** — top of the dropdown where the customer is looking.
+- Pulses the whole header with orange glow (`--attention` class, `hero-trim-header-pulse` keyframes, 1.4s, 2 pulses).
+- Scrolls `this.results.scrollTop = 0` so the header is visible.
+- Smooth-scrolls the dropdown into the page viewport if it's off-screen.
+- Auto-highlights the first trim row so Enter immediately picks it.
+
+**Arrow-CTA navigation bug — single resolved vehicle** — customer types "2012 Honda Civic DX", dropdown resolves to one `result-item` row with `P195/65R15` and a `data-url`. Clicking the red arrow used to fall through to the "couldn't find a match" fallback (the user suspected the leading "P" — wrong; `parseSize` handles it). Real cause: `onSubmit` checked `awaitingTrim` but ignored `awaitingSelection`, then re-parsed the raw "2012 honda civc dx" query as a tire size and failed. Fix: `onSubmit` now checks `awaitingSelection` + `items.length > 0` + a `dataset.url` on `items[0]`, and calls `selectResult(items[0])` to navigate. Lives in `sections/hero-smart-search.liquid:2519-2525`.
+
+**Don't navigate to "Browse all tires" before trim is known** — per user rule. Path 3 (vehicle resolved, no trim data) used to render a clickable "Browse all tires" row with a brand-only filter URL. Replaced with new `showNeedsTrimGuidance(vehicleLabel, originalQuery)`:
+- Renders an orange-tinted guidance card "Got [year make model] — what trim?" with examples (LX, EX, Touring) — NO `data-url`, so the arrow CTA does nothing useful and the customer is forced to refine.
+- Also fires the missing-vehicle webhook (`source: 'homepage_smart_search_needs_trim'`) so we don't lose the lead.
+- New `.hero-smart-search__guidance--needs-trim` CSS variant.
+
+**No-space typo normalize** — "2012honda civic" → "2012 honda civic" reflected back into the input before parsing. Lives at the top of `search()` (`sections/hero-smart-search.liquid:1581-1591`). Handles both `(year)(letter)` and `(letter)(year)` orderings.
+
+**Universal header search** — the magnifying-glass overlay was previously inert except for hard-coded service/size routing. Built a real predictive dropdown via Shopify's `/search/suggest.json`:
+- Pinned **⚡ Quick action** row at top when the query matches a tire-size / service-keyword / season / rims pattern (links to the appropriate filtered collection / service page).
+- 4 grouped sections — **Products** (4) · **Collections** (3) · **Pages** (3) · **Articles** (3) — populated from Shopify's predictive search. Empty sections collapse.
+- 280ms debounce + `AbortController` for stale requests.
+- Footer "See all results for <query> →" links to `/search?q=…&type=product,article,page`.
+- Keyboard nav: ↑/↓ · Enter · Esc.
+- `pt_search` analytics fire on every chip / result click + on submit.
+- Fail-safe: if PTTireParse missing or suggest API errors, the form submits to `/search` natively.
+- Lives in the rewritten `snippets/pt-header-search-enhance.liquid` (186 → 460 lines after the recent-search work) + ~165 lines of CSS in `sections/pt-header.liquid`'s `{% stylesheet %}`.
+
+**Mobile keyboard scroll handling** — the soft keyboard was hiding the dropdown. Initial attempt scrolled on focus + on every keystroke to flush-top; user said "too aggressive." Final design:
+- Homepage: new `keepInputVisible()` method on `SmartSearch`. ONLY fires on `visualViewport.resize` (the keyboard-state change). Skips if `(window.innerHeight - vv.height) <= 150` (no keyboard). Skips if the input is already in the upper 30% of visible area. When it does scroll, target = 50px from visual viewport top (comfortable, not flush). Lives at `sections/hero-smart-search.liquid:1593-1611`.
+- Header overlay: uses CSS var `--pt-visual-vh` set by JS on `visualViewport.resize` / `scroll`. `.pt-header__search-overlay` `height` resolves to this var (falls back to `100vh`). Overlay is `overflow-y: auto` so panel+dropdown scroll as a unit inside the visible area. Mobile `margin-top` softened to `24px`.
+
+**Recent + popular searches on empty focus** — new "autocomplete" pattern matching Amazon / Tire Rack style. When the input is empty and focused, the dropdown shows:
+- **Popular** section: 4 curated chips (`225/65R17` · `2020 Honda Civic` · `tire rotation` · `Michelin`).
+- **Recent searches** section (orange-tinted, ↻ icon): up to 5 most-recent queries from `localStorage` under key `pt-recent-searches` (deduplicated case-insensitively, capped at 5). Includes a `Clear` link to wipe.
+- Save fires on: successful tire-size match in `onSubmit`, brand/season match, service match, `selectResult` (any clicked row), and header overlay submit + result clicks.
+- Same `localStorage` key on BOTH surfaces → one customer, one shared search history across homepage hero + header overlay.
+- Chip clicks fill the input and re-run search; analytics: `search_type: 'recent_chip'` or `'popular_chip'`.
+
+**New: Admin-API theme push helper** — `princetires-app/db/push-theme-assets.mjs`. Usage:
+```
+node --env-file=.env.local db/push-theme-assets.mjs \
+  ../princetires/sections/hero-smart-search.liquid \
+  ../princetires/sections/pt-header.liquid \
+  ../princetires/snippets/pt-header-search-enhance.liquid
+```
+Uses the `SHOPIFY_ADMIN_ACCESS_TOKEN` already in `.env.local`. Hits `PUT /admin/api/<version>/themes/<id>/assets.json` per file. Pure REST, no OAuth. Use this whenever the Shopify CLI is being weird about auth.
+
+**Files touched (theme, 4)** — `sections/hero-smart-search.liquid` (the most), `sections/pt-header.liquid` (overlay CSS + visualViewport + empty-state chip styles), `snippets/pt-header-search-enhance.liquid` (full rewrite for predictive + recent/popular). One new helper: `princetires-app/db/push-theme-assets.mjs`.
+
+**Tests** — 6 new spec files in `princetires/tests/`:
+- `year-only-make-chips.spec.js` — 5 specs
+- `trim-attention-cue.spec.js` — 5 specs
+- `arrow-cta-and-needs-trim.spec.js` — 4 specs
+- `header-predictive-search.spec.js` — 5 specs
+- `mobile-keyboard-scroll.spec.js` — 5 specs (chromium with mobile viewport; uses `visible=true` filter to handle dual mobile/desktop search triggers)
+- `recent-popular-searches.spec.js` — 6 specs
+
+All 30 green (one flaky on retry — the network-race `/search?q=` fallthrough). Note: **don't use `addInitScript` to clear localStorage in `beforeEach`** — it fires on every navigation, including the submit-triggered nav, which wipes anything the page just saved. Use `page.evaluate` after `goto` instead.
+
+**Decisions noted** — (a) **Inline ghost-text autocomplete declined** — duplicates mobile OS keyboards, low ROI vs the dropdown. (b) **Brand fuzzy matching deferred** — recommended (`michellin → Michelin`) but not built; user prioritized recent+popular instead. (c) Highlight matched terms in dropdown also deferred. (d) User-facing CSS keeps the existing color tokens (orange `#F5820B` for homepage chips, red `#dc2626` for header chips) to match each surface's existing palette.
 
 ## 2026-05-19 — Booking modal: date + price fixes · Neon outage handled · Next 16 build resilience
 

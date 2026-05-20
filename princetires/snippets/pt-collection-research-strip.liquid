@@ -41,9 +41,13 @@
 
     {%- comment -%} Tab A — by size {%- endcomment -%}
     <div class="pt-rs__panel pt-rs__panel--active" data-pt-rs-panel="size" role="tabpanel">
+      <div class="pt-rs__sizemode" role="group" aria-label="Size system">
+        <button type="button" class="pt-rs__sizemode-btn pt-rs__sizemode-btn--active" data-pt-rs-sizemode="metric" aria-pressed="true">Metric</button>
+        <button type="button" class="pt-rs__sizemode-btn" data-pt-rs-sizemode="flotation" aria-pressed="false">Off-road</button>
+      </div>
       <div class="pt-rs__size-row">
         <label class="pt-rs__field">
-          <span class="pt-rs__label">Width</span>
+          <span class="pt-rs__label" data-pt-rs-lbl="width">Width</span>
           <select data-pt-rs-width>
             <option value="">—</option>
             {%- assign widths = '155,165,175,185,195,205,215,225,235,245,255,265,275,285,295,305,315,325' | split: ',' -%}
@@ -51,7 +55,7 @@
           </select>
         </label>
         <label class="pt-rs__field">
-          <span class="pt-rs__label">Aspect</span>
+          <span class="pt-rs__label" data-pt-rs-lbl="aspect">Aspect</span>
           <select data-pt-rs-aspect>
             <option value="">—</option>
             {%- assign aspects = '30,35,40,45,50,55,60,65,70,75,80,85' | split: ',' -%}
@@ -59,7 +63,7 @@
           </select>
         </label>
         <label class="pt-rs__field">
-          <span class="pt-rs__label">Rim</span>
+          <span class="pt-rs__label" data-pt-rs-lbl="rim">Rim</span>
           <select data-pt-rs-rim>
             <option value="">—</option>
             {%- assign rims = '13,14,15,16,17,18,19,20,21,22,24,26' | split: ',' -%}
@@ -182,6 +186,32 @@
 
   .pt-rs__panel { display: none; flex-direction: column; gap: 0.75rem; }
   .pt-rs__panel--active { display: flex; }
+
+  .pt-rs__sizemode {
+    display: inline-flex;
+    align-self: flex-start;
+    gap: 3px;
+    padding: 3px;
+    background: #f3f4f6;
+    border-radius: 999px;
+  }
+  .pt-rs__sizemode-btn {
+    padding: 0.3rem 0.85rem;
+    border: 0;
+    background: transparent;
+    border-radius: 999px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+  }
+  .pt-rs__sizemode-btn:hover { color: #374151; }
+  .pt-rs__sizemode-btn--active {
+    background: #fff;
+    color: #dc2626;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
 
   .pt-rs__size-row,
   .pt-rs__vehicle-row {
@@ -378,10 +408,61 @@
       });
     }
 
+    // ─── Size-system toggle (metric ↔ flotation / off-road) ──────────
+    // Off-road sizes (35X12.50R20) feed the same metafields as metric, so the
+    // submit handler needs no change — only the dropdown values + labels swap.
+    var RS_FLOT_OPTS = {
+      width:  ['27','30','31','33','35','37','38','39','40'],
+      aspect: ['8.50','9.50','10.00','10.50','12.50','13.50','15.50'],
+      rim:    ['14','15','17','18','20','22','24']
+    };
+    var RS_SIZE_LABELS = {
+      metric:    { width: 'Width', aspect: 'Aspect', rim: 'Rim' },
+      flotation: { width: 'Diameter', aspect: 'Width', rim: 'Rim' }
+    };
+    var RS_SIZE_EL = { width: elWidth, aspect: elAspect, rim: elRim };
+    var RS_METRIC_OPTS = {};
+    Object.keys(RS_SIZE_EL).forEach(function (k) {
+      var el = RS_SIZE_EL[k];
+      RS_METRIC_OPTS[k] = el
+        ? Array.prototype.slice.call(el.options).map(function (o) { return o.value; }).filter(Boolean)
+        : [];
+    });
+    var sizeMode = 'metric';
+    function applySizeMode(mode) {
+      sizeMode = mode === 'flotation' ? 'flotation' : 'metric';
+      var opts = sizeMode === 'flotation' ? RS_FLOT_OPTS : RS_METRIC_OPTS;
+      Object.keys(RS_SIZE_EL).forEach(function (k) {
+        var sel = RS_SIZE_EL[k];
+        if (sel) {
+          sel.innerHTML = '<option value="">—</option>' +
+            opts[k].map(function (v) { return '<option value="' + v + '">' + v + '</option>'; }).join('');
+        }
+        var lbl = root.querySelector('[data-pt-rs-lbl="' + k + '"]');
+        if (lbl) lbl.textContent = RS_SIZE_LABELS[sizeMode][k];
+      });
+      root.querySelectorAll('[data-pt-rs-sizemode]').forEach(function (b) {
+        var on = b.dataset.ptRsSizemode === sizeMode;
+        b.classList.toggle('pt-rs__sizemode-btn--active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+    root.querySelectorAll('[data-pt-rs-sizemode]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (sizeMode === btn.dataset.ptRsSizemode) return;
+        applySizeMode(btn.dataset.ptRsSizemode);
+        updateSizeClear();
+      });
+    });
+
     // ─── Pre-fill the Size tab from URL ──────────────────────────────
     var urlW = params.get('filter.p.m.custom.tire_width');
     var urlA = params.get('filter.p.m.custom.tire_profile');
     var urlR = params.get('filter.p.m.custom.rim_diameter');
+    // Flotation sizes carry a 2-digit width (30-40) and a decimal profile.
+    if ((urlW && urlW.length <= 2) || (urlA && urlA.indexOf('.') !== -1)) {
+      applySizeMode('flotation');
+    }
     if (urlW) elWidth.value = urlW;
     if (urlA) elAspect.value = urlA;
     if (urlR) elRim.value = urlR;
@@ -623,10 +704,8 @@
 
     // ─── Helpers ─────────────────────────────────────────────────────
     function parseSize(s) {
-      if (!s) return null;
-      var m = String(s).match(/(\d{3})\s*\/\s*(\d{2,3})\s*R\s*(\d{2})/i);
-      if (!m) return null;
-      return { w: m[1], a: m[2], r: m[3] };
+      var p = window.PTTireParse && window.PTTireParse.parseSize(s);
+      return p && { w: p.width, a: p.profile, r: p.rim };
     }
 
     // Pre-seed the vehicle cascade from savedVeh

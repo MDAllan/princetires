@@ -4,6 +4,8 @@
 
 The old `prince-tires-ai` and `prince-tires-booking` Vercel projects were folded into `princetires-app` and deleted (commit `eed70c6`). All theme code now points at `https://app.princetires.ca`.
 
+> **⚠️ Open code-review backlog:** a deep review on 2026-05-15 found 2 leaked credentials, 7 critical and 16 high-severity issues across both repos. Tracked as a checklist in [docs/code-review-2026-05-15.md](docs/code-review-2026-05-15.md). Work those before / alongside new feature work.
+
 ---
 
 ## How the repos connect

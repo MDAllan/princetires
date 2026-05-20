@@ -2108,6 +2108,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function parseIntent(query) {
+      /* Expand brand abbreviations and synonym aliases before any detection. */
+      if (window.PTTireParse && window.PTTireParse.expandSynonyms) query = window.PTTireParse.expandSynonyms(query);
       var q = query.toLowerCase();
       var intent = { season: null, brand: null };
       if (q.includes('winter') || q.includes('snow') || q.includes('ice')) intent.season = 'Winter';
