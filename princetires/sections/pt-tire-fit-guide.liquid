@@ -1,0 +1,91 @@
+<div class="ptfg">
+  <div class="ptfg__container">
+    {%- if section.settings.heading != blank -%}
+      <h2 class="ptfg__heading">{{ section.settings.heading }}</h2>
+    {%- endif -%}
+
+    <div class="ptfg__columns">
+      <div class="ptfg__col ptfg__col--good">
+        <h3 class="ptfg__col-title">{{ section.settings.left_title | default: 'Choose these tires if you:' }}</h3>
+        {%- assign good_blocks = section.blocks | where: 'type', 'good_fit' -%}
+        {%- if good_blocks.size > 0 -%}
+          <ul class="ptfg__list">
+            {%- for block in good_blocks -%}
+              <li {{ block.shopify_attributes }}>{{ block.settings.text }}</li>
+            {%- endfor -%}
+          </ul>
+        {%- endif -%}
+      </div>
+
+      <div class="ptfg__col ptfg__col--not">
+        <h3 class="ptfg__col-title">{{ section.settings.right_title | default: 'Stick with another option if you:' }}</h3>
+        {%- assign not_blocks = section.blocks | where: 'type', 'not_fit' -%}
+        {%- if not_blocks.size > 0 -%}
+          <ul class="ptfg__list">
+            {%- for block in not_blocks -%}
+              <li {{ block.shopify_attributes }}>{{ block.settings.text }}</li>
+            {%- endfor -%}
+          </ul>
+        {%- endif -%}
+      </div>
+    </div>
+
+    {%- if section.settings.summary != blank -%}
+      <div class="ptfg__summary rte">{{ section.settings.summary }}</div>
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+.ptfg { padding: 64px 0; background: #f8f8f8; font-family: 'Outfit', sans-serif; }
+.ptfg__container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+.ptfg__heading { font-family: 'Barlow Condensed', sans-serif; font-size: 2.8rem; font-weight: 700; text-transform: uppercase; margin: 0 0 32px; color: #111; }
+.ptfg__columns { display: grid; grid-template-columns: 1fr; gap: 24px; }
+@media (min-width: 750px) {
+  .ptfg__columns { grid-template-columns: 1fr 1fr; gap: 32px; }
+}
+.ptfg__col { background: #fff; border-radius: 6px; padding: 24px; border-top: 4px solid #E8251D; }
+.ptfg__col--not { border-top-color: #111; }
+.ptfg__col-title { font-family: 'Barlow Condensed', sans-serif; font-size: 1.9rem; font-weight: 700; text-transform: uppercase; margin: 0 0 16px; color: #111; letter-spacing: 0.02em; }
+.ptfg__list { font-size: 1.5rem; color: #333; line-height: 1.7; padding-left: 22px; margin: 0; }
+.ptfg__list li { margin-bottom: 8px; }
+.ptfg__col--good .ptfg__list li::marker { color: #E8251D; }
+.ptfg__col--not .ptfg__list li::marker { color: #111; }
+.ptfg__summary { font-size: 1.6rem; color: #333; line-height: 1.7; margin: 32px 0 0; }
+.ptfg__summary p { margin: 0 0 16px; }
+.ptfg__summary p:last-child { margin-bottom: 0; }
+.ptfg__summary a { color: #E8251D; text-decoration: underline; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Tire fit guide",
+  "tag": "section",
+  "class": "section",
+  "blocks": [
+    {
+      "type": "good_fit",
+      "name": "Left column bullet",
+      "settings": [
+        { "type": "textarea", "id": "text", "label": "Bullet text" }
+      ]
+    },
+    {
+      "type": "not_fit",
+      "name": "Right column bullet",
+      "settings": [
+        { "type": "textarea", "id": "text", "label": "Bullet text" }
+      ]
+    }
+  ],
+  "settings": [
+    { "type": "text",     "id": "heading",     "label": "H2 heading" },
+    { "type": "text",     "id": "left_title",  "label": "Left column title", "default": "Choose these tires if you:" },
+    { "type": "text",     "id": "right_title", "label": "Right column title", "default": "Stick with another option if you:" },
+    { "type": "richtext", "id": "summary",     "label": "Closing summary (optional)" }
+  ],
+  "presets": [
+    { "name": "Tire fit guide" }
+  ]
+}
+{% endschema %}

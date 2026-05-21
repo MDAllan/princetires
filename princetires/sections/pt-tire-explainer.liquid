@@ -1,0 +1,87 @@
+<div class="pte pte--{{ section.settings.background }}">
+  <div class="pte__container">
+    {%- if section.settings.heading != blank -%}
+      <h2 class="pte__heading">{{ section.settings.heading }}</h2>
+    {%- endif -%}
+
+    {%- if section.settings.intro != blank -%}
+      <div class="pte__intro rte">{{ section.settings.intro }}</div>
+    {%- endif -%}
+
+    {%- assign bullet_blocks = section.blocks | where: 'type', 'bullet' -%}
+    {%- if bullet_blocks.size > 0 -%}
+      <ul class="pte__bullets">
+        {%- for block in bullet_blocks -%}
+          <li {{ block.shopify_attributes }}>
+            {%- if block.settings.lead != blank -%}
+              <strong>{{ block.settings.lead }}</strong>
+              {% if block.settings.text != blank %} {{ block.settings.text }}{% endif %}
+            {%- else -%}
+              {{ block.settings.text }}
+            {%- endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+
+    {%- if section.settings.outro != blank -%}
+      <div class="pte__outro rte">{{ section.settings.outro }}</div>
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+.pte { padding: 64px 0; font-family: 'Outfit', sans-serif; }
+.pte--white { background: #fff; }
+.pte--light { background: #f8f8f8; }
+.pte__container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+.pte__heading { font-family: 'Barlow Condensed', sans-serif; font-size: 2.8rem; font-weight: 700; text-transform: uppercase; margin: 0 0 24px; color: #111; }
+.pte__intro { font-size: 1.6rem; color: #333; line-height: 1.7; margin: 0 0 24px; }
+.pte__intro p { margin: 0 0 16px; }
+.pte__intro p:last-child { margin-bottom: 0; }
+.pte__intro a { color: #E8251D; text-decoration: underline; }
+.pte__bullets { font-size: 1.6rem; color: #333; line-height: 1.7; padding-left: 24px; margin: 0 0 24px; }
+.pte__bullets li { margin-bottom: 8px; }
+.pte__bullets li::marker { color: #E8251D; }
+.pte__bullets strong { color: #111; }
+.pte__outro { font-size: 1.6rem; color: #333; line-height: 1.7; margin-top: 24px; }
+.pte__outro p { margin: 0 0 16px; }
+.pte__outro p:last-child { margin-bottom: 0; }
+.pte__outro a { color: #E8251D; text-decoration: underline; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Tire explainer",
+  "tag": "section",
+  "class": "section",
+  "blocks": [
+    {
+      "type": "bullet",
+      "name": "Bullet",
+      "settings": [
+        { "type": "text",     "id": "lead", "label": "Lead (bold, optional)" },
+        { "type": "textarea", "id": "text", "label": "Bullet text" }
+      ]
+    }
+  ],
+  "settings": [
+    { "type": "text",     "id": "heading",    "label": "H2 heading" },
+    { "type": "richtext", "id": "intro",      "label": "Intro paragraph(s)" },
+    { "type": "richtext", "id": "outro",      "label": "Closing paragraph(s)" },
+    {
+      "type": "select",
+      "id": "background",
+      "label": "Background",
+      "options": [
+        { "value": "white", "label": "White" },
+        { "value": "light", "label": "Light gray" }
+      ],
+      "default": "white"
+    }
+  ],
+  "presets": [
+    { "name": "Tire explainer" }
+  ]
+}
+{% endschema %}
