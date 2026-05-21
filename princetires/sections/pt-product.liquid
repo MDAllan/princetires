@@ -369,7 +369,7 @@
         <div class="ptp__pricing-card">
           <div class="ptp__price-hero">
             <div class="ptp__price-hero-left">
-              <span class="ptp__price-hero-amount">${{ set_price | money_without_currency }}</span>
+              <span class="ptp__price-hero-amount" data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="4">${{ set_price | money_without_currency }}</span>
               <span class="ptp__price-hero-label">for a set of 4</span>
             </div>
             {%- if product.available -%}
@@ -385,15 +385,23 @@
           </div>
           <div class="ptp__price-per-tire">
             {%- if on_sale -%}
-              <span class="ptp__price-current ptp__price-current--sale">${{ product.price | money_without_currency }}</span>
+              <span class="ptp__price-current ptp__price-current--sale" data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span>
               <span class="ptp__price-was">${{ product.compare_at_price | money_without_currency }}</span>
               <span class="ptp__price-per">/tire</span>
               <span class="ptp__save-tag">Save ${{ save_amount | money_without_currency }}</span>
             {%- else -%}
-              <span class="ptp__price-current">${{ product.price | money_without_currency }}</span>
+              <span class="ptp__price-current" data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span>
               <span class="ptp__price-per">/tire</span>
             {%- endif -%}
           </div>
+          {%- if customer.tags contains 'wholesale' -%}
+            {%- comment -%} Phase 5A · trade-price toggle — see docs/phase-5-wholesale-platform.md. Visible only when the header toggle is ON. {%- endcomment -%}
+            <div class="pt-trade-info" data-pt-trade-info data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}">
+              Your cost: <span class="pt-trade-info__amount" data-pt-trade-amount>—</span>/tire
+              <span data-pt-trade-tier-wrap>· <span data-pt-trade-tier>—</span></span>
+              · <strong><span data-pt-trade-pct>—</span>%</strong> off retail
+            </div>
+          {%- endif -%}
           {%- if section.settings.show_installed_price -%}
             {%- comment -%} Per-tire install price: product metafield first, then the section default. {%- endcomment -%}
             {%- assign install_per_tire = product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 | times: 100 -%}

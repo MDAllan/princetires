@@ -78,6 +78,14 @@
 
         {%- if customer -%}
           {%- if customer.tags contains 'wholesale' -%}
+            {%- comment -%} Phase 5A · trade-price toggle. Default OFF = retail only (safe to show walk-in customers). {%- endcomment -%}
+            <button type="button" class="pt-header__icon pt-header__icon--stack pt-header__trade-toggle" data-trade-toggle aria-pressed="false" aria-label="Toggle trade price visibility">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <span class="pt-header__icon-label" data-trade-toggle-label>Show cost</span>
+            </button>
             <a href="/pages/wholesale-portal" class="pt-header__icon pt-header__garage-link" aria-label="My portal">
               <span class="pt-header__garage-label">My portal</span>
             </a>
@@ -1212,6 +1220,43 @@
     .pt-search-suggest__item { padding: 0.65rem 0.9rem; }
     .pt-search-suggest__item-title { font-size: 0.95rem; }
   }
+
+  /* ── Phase 5A · trade-price toggle ───────────────────────────────────── */
+  .pt-header__trade-toggle {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+  }
+  .pt-header__trade-toggle[aria-pressed="true"],
+  .pt-header__trade-toggle[aria-pressed="true"] svg {
+    color: #DC2626;
+  }
+  .pt-header__trade-toggle[aria-pressed="true"]::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    background: #DC2626;
+    border-radius: 50%;
+  }
+  .pt-trade-info {
+    display: none;
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: #fef3c7;
+    border-left: 3px solid #DC2626;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #374151;
+  }
+  body.pt-trade-visible .pt-trade-info { display: block; }
+  .pt-trade-info__amount { color: #DC2626; font-weight: 700; font-size: 14px; }
 {% endstylesheet %}
 
 {% javascript %}
@@ -1257,6 +1302,121 @@
         updateBadge(data.vehicles ? data.vehicles.length : 0);
       });
     }
+  })();
+
+  /* ── Phase 5A · trade-price toggle ───────────────────────────────────── */
+  /*
+   * Default OFF: theme displays RETAIL on every [data-pt-price] element so a
+   * B2B shop owner can show their walk-in customer the screen safely.
+   * Toggle ON: reveals a "Your cost: $X · Tier 2 · 15% off retail" badge
+   * next to the main price.
+   *
+   * The cart / checkout price doesn't change — Shopify's B2B catalog still
+   * enforces wholesale at checkout regardless of what the theme shows here.
+   */
+  (function () {
+    if (!document.querySelector('[data-trade-toggle]')) return; // not a B2B page
+
+    var STORAGE_KEY = 'pt-show-trade-price';
+    var cache = {};
+
+    function isVisible() {
+      try { return localStorage.getItem(STORAGE_KEY) === '1'; }
+      catch (e) { return false; }
+    }
+    function setVisible(v) {
+      try { localStorage.setItem(STORAGE_KEY, v ? '1' : '0'); }
+      catch (e) {}
+    }
+    function fmtMoney(amount) {
+      if (typeof amount !== 'number' || !isFinite(amount)) return '$—';
+      return '$' + amount.toLocaleString('en-CA', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+
+    function applyButtons() {
+      var v = isVisible();
+      document.body.classList.toggle('pt-trade-visible', v);
+      document.querySelectorAll('[data-trade-toggle]').forEach(function (b) {
+        b.setAttribute('aria-pressed', v ? 'true' : 'false');
+        var lab = b.querySelector('[data-trade-toggle-label]');
+        if (lab) lab.textContent = v ? 'Hide cost' : 'Show cost';
+      });
+    }
+
+    function applyBadges() {
+      document.querySelectorAll('[data-pt-trade-info]').forEach(function (badge) {
+        var id = badge.dataset.ptVariantId;
+        var p = cache[id];
+        if (!p || p.wholesale == null) {
+          badge.style.display = 'none';
+          return;
+        }
+        badge.style.display = '';
+        var amt = badge.querySelector('[data-pt-trade-amount]');
+        var tier = badge.querySelector('[data-pt-trade-tier]');
+        var pct = badge.querySelector('[data-pt-trade-pct]');
+        if (amt) amt.textContent = fmtMoney(p.wholesale);
+        if (tier) tier.textContent = p.tierLabel || '';
+        if (pct) pct.textContent = String(p.discountPct);
+      });
+    }
+
+    function applyPrices() {
+      document.querySelectorAll('[data-pt-price][data-pt-variant-id]').forEach(function (el) {
+        var id = el.dataset.ptVariantId;
+        var mult = parseFloat(el.dataset.ptMultiplier || '1');
+        var p = cache[id];
+        if (!p || p.retail == null) return;
+        el.textContent = fmtMoney(p.retail * mult);
+      });
+    }
+
+    function fetchPrices() {
+      var els = document.querySelectorAll('[data-pt-price][data-pt-variant-id]');
+      if (els.length === 0) return;
+      var idSet = {};
+      els.forEach(function (el) { idSet[el.dataset.ptVariantId] = true; });
+      var ids = Object.keys(idSet);
+      if (!ids.length) return;
+      var idsParam = ids.map(function (id) {
+        return /^\d+$/.test(id) ? 'gid://shopify/ProductVariant/' + id : id;
+      }).join(',');
+      fetch('/apps/api/wholesale/pricing?variant_ids=' + encodeURIComponent(idsParam), {
+        credentials: 'same-origin'
+      })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data || !data.isWholesale || !Array.isArray(data.prices)) return;
+          for (var i = 0; i < data.prices.length; i++) {
+            var p = data.prices[i];
+            var num = String(p.variantId).split('/').pop();
+            var entry = {
+              retail: typeof p.retail === 'number' ? p.retail : null,
+              wholesale: typeof p.wholesale === 'number' ? p.wholesale : null,
+              discountPct: p.discountPct,
+              tierLabel: p.tierLabel,
+            };
+            cache[num] = entry;
+            cache[p.variantId] = entry;
+          }
+          applyPrices();
+          applyBadges();
+        })
+        .catch(function () { /* swallow — Liquid-rendered wholesale stays as fallback */ });
+    }
+
+    document.querySelectorAll('[data-trade-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setVisible(!isVisible());
+        applyButtons();
+      });
+    });
+
+    applyButtons();
+    fetchPrices();
   })();
 {% endjavascript %}
 
