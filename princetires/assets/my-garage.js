@@ -1341,6 +1341,120 @@ class MyGarage extends HTMLElement {
     this.trimSelect.addEventListener('change', this.onTrimChange.bind(this));
     this.saveBtn.addEventListener('click', this.onSaveVehicle.bind(this));
     this.cancelBtn.addEventListener('click', this.toggleAddForm.bind(this, false));
+
+    // VIN decode — paste a 17-char VIN and click Decode (or press Enter)
+    // to pre-fill the year/make/model/trim cascade via the NHTSA proxy.
+    this.vinInput  = this.querySelector('[data-garage-vin]');
+    this.vinBtn    = this.querySelector('[data-garage-vin-decode]');
+    this.vinStatus = this.querySelector('[data-garage-vin-status]');
+    this.vinSpinner= this.querySelector('[data-garage-vin-spinner]');
+    if (this.vinBtn) this.vinBtn.addEventListener('click', this.onDecodeVin.bind(this));
+    if (this.vinInput) {
+      this.vinInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); self.onDecodeVin(); }
+      });
+      // Strip whitespace + hyphens as the customer types; upper-case for clarity
+      this.vinInput.addEventListener('input', function() {
+        var cleaned = self.vinInput.value.replace(/[\s\-]+/g, '').toUpperCase();
+        if (cleaned !== self.vinInput.value) self.vinInput.value = cleaned;
+      });
+    }
+  }
+
+  // VIN-decode flow — calls /api/decode-vin, then pre-fills the cascade.
+  async onDecodeVin() {
+    if (!this.vinInput) return;
+    var raw = (this.vinInput.value || '').trim().replace(/[\s\-]+/g, '').toUpperCase();
+    var VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
+    if (!VIN_RE.test(raw)) {
+      this.setVinStatus('err', 'VIN must be exactly 17 characters and exclude I, O and Q.');
+      return;
+    }
+    this.setVinBusy(true);
+    this.setVinStatus(null);
+
+    try {
+      var res = await fetch('https://app.princetires.ca/api/decode-vin?vin=' + encodeURIComponent(raw));
+      if (!res.ok) {
+        this.setVinStatus('err', 'Couldn\'t reach the decoder — try again, or fill the form manually.');
+        return;
+      }
+      var data = await res.json();
+      if (!data || !data.vehicle) {
+        this.setVinStatus('err', 'NHTSA didn\'t recognize that VIN. Double-check the characters or fill the form manually.');
+        return;
+      }
+      var v = data.vehicle;
+
+      // Year — must exist in our dropdown range
+      this.yearSelect.value = String(v.year || '');
+      if (!this.yearSelect.value) {
+        this.setVinStatus('err', (v.year ? v.year + ' is' : 'That year is') + ' outside our supported range.');
+        return;
+      }
+      await this.onYearChange();
+
+      // Make — case-insensitive option match
+      if (!this.selectByText(this.makeSelect, v.make)) {
+        this.setVinStatus('err', 'We don\'t have ' + (v.make || 'that make') + ' in our list yet — fill it manually.');
+        return;
+      }
+      await this.onMakeChange();
+
+      // Model — same
+      if (!this.selectByText(this.modelSelect, v.model)) {
+        this.setVinStatus('err', 'We don\'t have ' + (v.model || 'that model') + ' for ' + v.year + ' ' + v.make + '. Pick a similar trim below.');
+        return;
+      }
+      await this.onModelChange();
+
+      // Trim — best-effort. If NHTSA's trim doesn't exactly match our list,
+      // leave the dropdown open for the customer to pick the closest one.
+      var trimMatched = v.trim ? this.selectByText(this.trimSelect, v.trim) : false;
+      if (trimMatched) this.onTrimChange();
+
+      var summary = v.year + ' ' + v.make + ' ' + v.model + (v.trim ? ' ' + v.trim : '');
+      this.setVinStatus('ok',
+        trimMatched
+          ? 'Decoded: ' + summary + '. Tap Save to add this vehicle.'
+          : 'Decoded: ' + summary + (v.trim ? ' (trim "' + v.trim + '" not in our list — pick the closest below).' : '. Pick your trim below.')
+      );
+    } catch (err) {
+      this.setVinStatus('err', 'VIN decode failed — fill the form manually, or call us.');
+    } finally {
+      this.setVinBusy(false);
+    }
+  }
+
+  setVinBusy(busy) {
+    if (!this.vinBtn) return;
+    this.vinBtn.disabled = !!busy;
+    if (this.vinSpinner) this.vinSpinner.hidden = !busy;
+    var label = this.vinBtn.querySelector('.garage__vin-decode-label');
+    if (label) label.textContent = busy ? 'Decoding…' : 'Decode';
+  }
+
+  setVinStatus(kind, message) {
+    if (!this.vinStatus) return;
+    this.vinStatus.classList.remove('garage__vin-status--ok', 'garage__vin-status--err');
+    if (!kind) { this.vinStatus.hidden = true; this.vinStatus.textContent = ''; return; }
+    this.vinStatus.classList.add('garage__vin-status--' + kind);
+    this.vinStatus.textContent = message || '';
+    this.vinStatus.hidden = false;
+  }
+
+  // Case-insensitive select-by-text helper. Returns true if a match was set.
+  selectByText(select, text) {
+    if (!select || !text) return false;
+    var lower = String(text).toLowerCase().trim();
+    for (var i = 0; i < select.options.length; i++) {
+      var opt = select.options[i];
+      if (opt.value && opt.value.toLowerCase() === lower) {
+        select.value = opt.value;
+        return true;
+      }
+    }
+    return false;
   }
 
   initTabs() {

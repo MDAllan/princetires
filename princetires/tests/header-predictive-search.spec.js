@@ -29,10 +29,11 @@ async function openSearchOverlay(page) {
 test('typing a brand name renders products + collections in the dropdown', async ({ page }) => {
   const input = await openSearchOverlay(page);
   await input.fill('Michelin');
-  // Wait for the suggest API to resolve + dropdown to render
-  await page.locator('.pt-search-suggest').waitFor({ state: 'visible', timeout: 8000 });
+  // The empty-state (recent/popular) renders immediately on focus; wait
+  // specifically for the predictive section labels that only appear AFTER
+  // the suggest API resolves.
+  await page.locator('.pt-search-suggest__section-label').first().waitFor({ state: 'visible', timeout: 10000 });
 
-  // At least one section header should be visible
   const labels = await page.locator('.pt-search-suggest__section-label').allTextContents();
   expect(labels.length).toBeGreaterThan(0);
   // Michelin should surface products (the brand has many)

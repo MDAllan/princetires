@@ -72,9 +72,21 @@
       {%- endif -%}
 
       <div class="hero-smart-search__search-wrapper">
-        <div class="hero-smart-search__badge">
-          <span class="hero-smart-search__badge-dot"></span>
-          Search by <strong>tire size</strong> or <strong>vehicle</strong>
+        <div class="hero-smart-search__tabs" role="tablist" aria-label="Search category">
+          <button
+            type="button"
+            class="hero-smart-search__tab hero-smart-search__tab--active"
+            role="tab"
+            aria-selected="true"
+            data-search-mode="tires"
+          >Tires</button>
+          <button
+            type="button"
+            class="hero-smart-search__tab"
+            role="tab"
+            aria-selected="false"
+            data-search-mode="wheels"
+          >Wheels</button>
         </div>
 
         <div class="hero-smart-search__search" data-smart-search>
@@ -431,26 +443,46 @@
     max-width: 48rem;
   }
 
-  .hero-smart-search__badge {
+  /* ── Tires / Wheels mode tabs (replaces the old "Search by …" badge) ── */
+  .hero-smart-search__tabs {
     display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1.1rem;
-    padding: 0.4rem 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 2rem;
+    gap: 0.6rem;
     margin-bottom: 1.2rem;
-    color: rgba(255, 255, 255, 0.6);
-    font-weight: 500;
   }
 
-  .hero-smart-search__badge-dot {
-    width: 7px;
-    height: 7px;
-    background: #F5820B;
-    border-radius: 50%;
-    display: inline-block;
-    box-shadow: 0 0 6px rgba(245, 130, 11, 0.5);
+  .hero-smart-search__tab {
+    appearance: none;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.5rem 1.4rem;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s;
+  }
+  .hero-smart-search__tab:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.35);
+  }
+  .hero-smart-search__tab--active {
+    color: #fff;
+    background: #dc2626;
+    border-color: #dc2626;
+    box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35);
+  }
+  .hero-smart-search__tab--active:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+    color: #fff;
+  }
+  .hero-smart-search__tab:focus-visible {
+    outline: 2px solid #F5820B;
+    outline-offset: 2px;
   }
 
   .hero-smart-search__search {
@@ -857,6 +889,147 @@
     text-decoration: underline;
   }
 
+  /* ── Wheel fitment card (Wheels tab + resolved vehicle) ── */
+  .hsf-wf {
+    list-style: none;
+    padding: 1.2rem 1.4rem;
+    border-left: 3px solid #dc2626;
+    background: rgba(220, 38, 38, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  .hsf-wf__header {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  .hsf-wf__icon {
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+  .hsf-wf__heading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+  }
+  .hsf-wf__title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .hsf-wf__subtitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+  }
+  .hsf-wf__specs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.2rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .hsf-wf__spec {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+  }
+  .hsf-wf__spec-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+  }
+  .hsf-wf__spec-value {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #e5e7eb;
+  }
+  .hsf-wf__row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .hsf-wf__row-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+  }
+  .hsf-wf__row-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .hsf-wf__chip {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #e5e7eb;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 4px;
+    padding: 0.2rem 0.6rem;
+  }
+  .hsf-wf__chip--tire {
+    color: #cbd5e0;
+  }
+  .hsf-wf__ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .hsf-wf__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0.45rem 0.95rem;
+    border-radius: 4px;
+    background: #dc2626;
+    color: #fff;
+    transition: background 0.15s;
+  }
+  .hsf-wf__cta:hover {
+    background: #b91c1c;
+    color: #fff;
+  }
+  .hsf-wf__cta--secondary {
+    background: transparent;
+    color: #cbd5e0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  .hsf-wf__cta--secondary:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  /* Primary "Wheels that fit your car" CTA — full-width, eye-catching */
+  .hsf-wf__cta--primary {
+    flex-basis: 100%;
+    justify-content: center;
+    font-size: 1.1rem;
+    padding: 0.7rem 1.1rem;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+  }
+  .hsf-wf__cta--primary:hover {
+    background: linear-gradient(135deg, #b91c1c, #991b1b);
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
+  }
+
   /* ── Empty state: Recent + Popular searches ── */
   .hero-smart-search__empty-state {
     list-style: none;
@@ -1226,9 +1399,9 @@
       left: 1.4rem;
       font-size: 1.4rem;
     }
-    .hero-smart-search__badge {
-      font-size: 1rem;
-      padding: 0.3rem 0.8rem;
+    .hero-smart-search__tab {
+      font-size: 0.9rem;
+      padding: 0.4rem 1.1rem;
     }
     .hero-smart-search__actions {
       flex-direction: row;
@@ -1371,7 +1544,50 @@ document.addEventListener('DOMContentLoaded', function() {
       };
       this.noiseWords = ['tires','tire','for','my','the','a','an','need','needs','looking','want','i','on','new','set','of','best','good','cheap','get','find','buy','shop','what','fit','fits','size','sizes'];
 
+      // Tires / Wheels mode — persisted in localStorage so the tab the
+      // customer last picked sticks across page loads.
+      this.tabs = Array.from(this.container.querySelectorAll('[data-search-mode][role="tab"]'));
+      this.mode = this.loadSearchMode();
+      this.applyMode();
+
       this.bindEvents();
+    }
+
+    // --------------- search-mode (Tires / Wheels) ---------------
+
+    loadSearchMode() {
+      try {
+        var m = localStorage.getItem('pt-search-mode');
+        return (m === 'wheels') ? 'wheels' : 'tires';
+      } catch (e) { return 'tires'; }
+    }
+    saveSearchMode(mode) {
+      try { localStorage.setItem('pt-search-mode', mode); } catch (e) {}
+    }
+    applyMode() {
+      if (!this.tabs.length) return;
+      this.container.setAttribute('data-search-mode', this.mode);
+      this.tabs.forEach((tab) => {
+        var active = tab.getAttribute('data-search-mode') === this.mode;
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+        tab.classList.toggle('hero-smart-search__tab--active', active);
+      });
+      // Tell the typewriter helper to swap its phrase pool.
+      try {
+        document.dispatchEvent(new CustomEvent('pt-search-mode-change', { detail: { mode: this.mode } }));
+      } catch (e) { /* no-op */ }
+    }
+    setMode(newMode) {
+      if (newMode !== 'tires' && newMode !== 'wheels') return;
+      if (newMode === this.mode) return;
+      this.mode = newMode;
+      this.saveSearchMode(newMode);
+      this.applyMode();
+      window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_mode: newMode, search_type: 'mode_toggle', search_outcome: 'click' });
+      // If there's a query, re-run it so the results reflect the new mode.
+      var q = this.input.value.trim();
+      if (q.length >= 2) this.search(q);
+      else this.renderEmptyState();
     }
 
     // --------------- service detection ---------------
@@ -1612,7 +1828,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     buildCollectionUrl(params) {
-      const base = '/collections/tires';
+      // Mode-aware: Wheels tab targets /collections/wheels and only honors
+      // filters that apply to wheel products (rim diameter + brand). Tire-
+      // only filters (tire_width / tire_profile / seasonality / service_type)
+      // are silently skipped — they'd return zero matches on wheels.
+      const isWheels = this.mode === 'wheels';
+      const base = isWheels ? '/collections/wheels' : '/collections/tires';
       const urlParams = new URLSearchParams();
 
       /* If a full tire size string is passed (e.g. from vehicle lookup "195/65R15"),
@@ -1622,20 +1843,24 @@ document.addEventListener('DOMContentLoaded', function() {
         var sizeStr = String(params.tireSize).replace(/^[Pp]?(?:[Ll][Tt]|[Ss][Tt])?/, '');
         var pm = sizeStr.match(/(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/);
         if (pm) {
-          urlParams.set('filter.p.m.custom.tire_width', pm[1]);
-          urlParams.set('filter.p.m.custom.tire_profile', pm[2]);
+          if (!isWheels) {
+            urlParams.set('filter.p.m.custom.tire_width', pm[1]);
+            urlParams.set('filter.p.m.custom.tire_profile', pm[2]);
+          }
           urlParams.set('filter.p.m.custom.rim_diameter', pm[3]);
         }
       }
 
       /* Individual components take precedence (passed directly from normalizeTireSize) */
-      if (params.width)  urlParams.set('filter.p.m.custom.tire_width',   params.width);
-      if (params.aspect) urlParams.set('filter.p.m.custom.tire_profile',  params.aspect);
-      if (params.rim)    urlParams.set('filter.p.m.custom.rim_diameter',  params.rim);
+      if (!isWheels && params.width)  urlParams.set('filter.p.m.custom.tire_width',  params.width);
+      if (!isWheels && params.aspect) urlParams.set('filter.p.m.custom.tire_profile', params.aspect);
+      if (params.rim)                 urlParams.set('filter.p.m.custom.rim_diameter', params.rim);
 
-      if (params.brand)        urlParams.set('filter.p.vendor',                params.brand);
-      if (params.season)       urlParams.set('filter.p.m.custom.seasonality',  params.season);
-      if (params.serviceType)  urlParams.set('filter.p.m.custom.service_type', params.serviceType);
+      if (params.brand) urlParams.set('filter.p.vendor', params.brand);
+
+      // Seasonality + service_type only apply to tires
+      if (!isWheels && params.season)      urlParams.set('filter.p.m.custom.seasonality',  params.season);
+      if (!isWheels && params.serviceType) urlParams.set('filter.p.m.custom.service_type', params.serviceType);
 
       const qs = urlParams.toString();
       return qs ? base + '?' + qs : base;
@@ -1645,6 +1870,9 @@ document.addEventListener('DOMContentLoaded', function() {
       this.input.addEventListener('input', () => this.onInput());
       this.input.addEventListener('keydown', (e) => this.onKeydown(e));
       this.submit.addEventListener('click', () => this.onSubmit());
+      this.tabs.forEach((tab) => {
+        tab.addEventListener('click', () => this.setMode(tab.getAttribute('data-search-mode')));
+      });
       this.input.addEventListener('focus', () => {
         const v = this.input.value.trim();
         if (v.length >= 2) {
@@ -1860,9 +2088,24 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        const trims = await this.lookupVehicleTrims(vehicle);
         const vLabel = vehicle.year + ' ' + (vehicle.make || '') + ' ' + (vehicle.model || '');
         const vLabelClean = vLabel.replace(/\s+/g, ' ').trim();
+
+        // Wheels mode → render the fitment card (OEM bolt pattern, wheel
+        // sizes, tire sizes) instead of going through the tire trim picker.
+        // The card's CTAs link to /collections/wheels filtered by diameter.
+        if (this.mode === 'wheels') {
+          const fitment = await this.fetchWheelFitment(vehicle);
+          if (fitment && fitment.vehicle) {
+            this.renderWheelFitment(fitment, vLabelClean);
+          } else {
+            this.showNoWheelFitment(vLabelClean, query);
+          }
+          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'wheel_fitment', search_outcome: fitment && fitment.vehicle ? 'match' : 'no_match' });
+          return;
+        }
+
+        const trims = await this.lookupVehicleTrims(vehicle);
 
         if (trims && trims.length === 1 && vehicle.trim) {
           /* User specified a trim and we found it — go straight to collection */
@@ -1907,6 +2150,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async recognizeVehicle(query) {
       if (this.geminiCache[query]) return this.geminiCache[query];
+
+      // VIN fast-path: if the customer pasted a 17-char VIN, skip Gemini and
+      // ask NHTSA directly — deterministic, manufacturer-truthed, includes
+      // trim + engine. 100% accurate when the VIN is real.
+      // Allow spaces / hyphens in pasted VINs (sometimes copied from a label)
+      const vinCandidate = query.trim().replace(/[\s\-]+/g, '').toUpperCase();
+      const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
+      if (VIN_RE.test(vinCandidate)) {
+        try {
+          const res = await fetch(
+            'https://app.princetires.ca/api/decode-vin?vin=' + encodeURIComponent(vinCandidate),
+            { signal: this.abortController ? this.abortController.signal : undefined }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.vehicle && data.vehicle.year && data.vehicle.make && data.vehicle.model) {
+              const v = {
+                year:  data.vehicle.year,
+                make:  data.vehicle.make,
+                model: data.vehicle.model,
+                trim:  data.vehicle.trim || null,
+              };
+              this.geminiCache[query] = v;
+              window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'vin', search_outcome: 'match' });
+              return v;
+            }
+          }
+        } catch (err) {
+          if (err.name === 'AbortError') throw err;
+          // Fall through to Gemini on network failure
+        }
+      }
 
       const directParse = this.tryDirectParse(query);
       if (directParse) {
@@ -2252,6 +2527,149 @@ document.addEventListener('DOMContentLoaded', function() {
     // can't pin down the exact tire size. Render a non-clickable guidance card
     // that prompts the customer for the trim AND triggers the missing-vehicle
     // capture pipeline so we can follow up by email if they bounce.
+    // Wheels-mode fitment lookup via the server-side wheel-size.com proxy
+    // (app.princetires.ca/api/wheel-fitment). Cached server-side for 30 days
+    // by year+make+model so most calls don't burn the upstream API quota.
+    async fetchWheelFitment(vehicle) {
+      if (this._wfCache && this._wfCache[vehicle.year + ':' + vehicle.make + ':' + vehicle.model]) {
+        return this._wfCache[vehicle.year + ':' + vehicle.make + ':' + vehicle.model];
+      }
+      this._wfCache = this._wfCache || {};
+      var url = 'https://app.princetires.ca/api/wheel-fitment'
+        + '?year=' + encodeURIComponent(vehicle.year)
+        + '&make=' + encodeURIComponent(vehicle.make)
+        + '&model=' + encodeURIComponent(vehicle.model);
+      try {
+        const res = await fetch(url, { signal: this.abortController ? this.abortController.signal : undefined });
+        if (!res.ok) return null;
+        const data = await res.json();
+        this._wfCache[vehicle.year + ':' + vehicle.make + ':' + vehicle.model] = data;
+        return data;
+      } catch (err) {
+        if (err.name === 'AbortError') throw err;
+        return null;
+      }
+    }
+
+    renderWheelFitment(fitment, vLabel) {
+      this.loading.hidden = true;
+      this.awaitingTrim = false;
+      this.awaitingSelection = false;
+
+      var self = this;
+      var sizes  = fitment.wheel_sizes || [];
+      var tires  = fitment.tire_sizes || [];
+
+      var specsRow = [];
+      if (fitment.bolt_pattern)  specsRow.push('<span class="hsf-wf__spec"><span class="hsf-wf__spec-label">Bolt pattern</span><span class="hsf-wf__spec-value">' + this.escapeHtml(fitment.bolt_pattern) + '</span></span>');
+      if (fitment.center_bore)   specsRow.push('<span class="hsf-wf__spec"><span class="hsf-wf__spec-label">Center bore</span><span class="hsf-wf__spec-value">' + this.escapeHtml(fitment.center_bore) + ' mm</span></span>');
+      if (fitment.stud_holes)    specsRow.push('<span class="hsf-wf__spec"><span class="hsf-wf__spec-label">Lugs</span><span class="hsf-wf__spec-value">' + fitment.stud_holes + '</span></span>');
+
+      var diameters = Array.from(new Set(sizes.map(function(s){ return s.diameter; })));
+
+      // PRIMARY CTA — "Wheels that fit your car" combines the OEM bolt
+      // pattern + all OEM diameters in one URL. Requires the wheel catalog
+      // to be enriched with custom.bolt_pattern (done 2026-05-20 — 38/41
+      // wheels have it; the rest gracefully fall back to diameter-only).
+      var fitsButton = '';
+      if (fitment.bolt_pattern && diameters.length) {
+        var fitsUrl = '/collections/wheels'
+          + '?filter.p.m.custom.bolt_pattern=' + encodeURIComponent(fitment.bolt_pattern);
+        diameters.forEach(function(d){
+          fitsUrl += '&filter.p.m.custom.rim_diameter=' + encodeURIComponent(d);
+        });
+        fitsButton = '<a class="hsf-wf__cta hsf-wf__cta--primary" href="' + fitsUrl + '" data-wf-fits="true">' +
+          '⚙️ Wheels that fit your ' + self.escapeHtml(vLabel.split(' ').slice(1).join(' ')) +
+          ' →</a>';
+      }
+
+      // Secondary diameter-only buttons (kept for browsing)
+      var diameterButtons = diameters.map(function(d){
+        var url = '/collections/wheels?filter.p.m.custom.rim_diameter=' + encodeURIComponent(d);
+        return '<a class="hsf-wf__cta hsf-wf__cta--secondary" href="' + url + '" data-wf-diameter="' + d + '">' + d + '" wheels →</a>';
+      }).join('');
+
+      var tireLinks = tires.slice(0, 3).map(function(t){
+        var parsed = window.PTTireParse && window.PTTireParse.parseSize(t);
+        if (!parsed) return '';
+        var url = '/collections/tires'
+          + '?filter.p.m.custom.tire_width=' + encodeURIComponent(parsed.width)
+          + '&filter.p.m.custom.tire_profile=' + encodeURIComponent(parsed.profile)
+          + '&filter.p.m.custom.rim_diameter=' + encodeURIComponent(parsed.rim);
+        return '<a class="hsf-wf__cta hsf-wf__cta--secondary" href="' + url + '" data-wf-tire="' + self.escapeAttr(parsed.canonical) + '">Buy OEM tires (' + self.escapeHtml(parsed.canonical) + ') →</a>';
+      }).filter(Boolean).join('');
+
+      var sizesLine = sizes.length
+        ? sizes.map(function(s){ return '<span class="hsf-wf__chip">' + self.escapeHtml(s.label) + '</span>'; }).join(' ')
+        : '';
+      var tiresLine = tires.length
+        ? tires.map(function(t){ return '<span class="hsf-wf__chip hsf-wf__chip--tire">' + self.escapeHtml(t) + '</span>'; }).join(' ')
+        : '';
+
+      var html =
+        '<li class="hsf-wf" role="option">' +
+          '<div class="hsf-wf__header">' +
+            '<span class="hsf-wf__icon" aria-hidden="true">🚗</span>' +
+            '<div class="hsf-wf__heading">' +
+              '<span class="hsf-wf__title">' + this.escapeHtml(vLabel) + '</span>' +
+              '<span class="hsf-wf__subtitle">Wheel fitment specs</span>' +
+            '</div>' +
+          '</div>' +
+          (specsRow.length ? '<div class="hsf-wf__specs">' + specsRow.join('') + '</div>' : '') +
+          (sizesLine ? '<div class="hsf-wf__row"><span class="hsf-wf__row-label">OEM wheel sizes</span><span class="hsf-wf__row-chips">' + sizesLine + '</span></div>' : '') +
+          (tiresLine ? '<div class="hsf-wf__row"><span class="hsf-wf__row-label">OEM tire sizes</span><span class="hsf-wf__row-chips">' + tiresLine + '</span></div>' : '') +
+          '<div class="hsf-wf__ctas">' + fitsButton + diameterButtons + tireLinks + '</div>' +
+        '</li>';
+
+      this.list.innerHTML = html;
+      this.items = [];
+      this.selectedIndex = -1;
+      this.results.hidden = false;
+      this.input.setAttribute('aria-expanded', 'true');
+
+      // Track "Wheels that fit your car" primary CTA — the headline action
+      this.list.querySelectorAll('[data-wf-fits]').forEach(function(a) {
+        a.addEventListener('click', function() {
+          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: vLabel, search_type: 'wheel_fitment_match', search_outcome: 'click', bolt_pattern: fitment.bolt_pattern });
+          self.addRecentSearch(vLabel);
+        });
+      });
+      // Track diameter CTA clicks for analytics
+      this.list.querySelectorAll('[data-wf-diameter]').forEach(function(a) {
+        a.addEventListener('click', function() {
+          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: vLabel, search_type: 'wheel_fitment_diameter', search_outcome: 'click', diameter: a.getAttribute('data-wf-diameter') });
+          self.addRecentSearch(vLabel);
+        });
+      });
+      this.list.querySelectorAll('[data-wf-tire]').forEach(function(a) {
+        a.addEventListener('click', function() {
+          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: vLabel, search_type: 'wheel_fitment_oem_tire', search_outcome: 'click' });
+          self.addRecentSearch(vLabel);
+        });
+      });
+    }
+
+    showNoWheelFitment(vehicleLabel, originalQuery) {
+      this.loading.hidden = true;
+      this.awaitingTrim = false;
+      this.awaitingSelection = false;
+
+      const li =
+        '<li class="hero-smart-search__guidance hero-smart-search__guidance--needs-trim" role="option" data-needs-trim="true" aria-live="polite">' +
+          '<span class="hero-smart-search__guidance-icon">' + this.hintIcon() + '</span>' +
+          '<span class="hero-smart-search__guidance-text">' +
+            '<span class="hero-smart-search__guidance-title">No wheel fitment data for ' + this.escapeHtml(vehicleLabel) + '</span>' +
+            '<span class="hero-smart-search__guidance-sub">We couldn\'t pull OEM wheel specs for that vehicle. Browse all wheels, or call us — we\'ll look it up.</span>' +
+          '</span>' +
+          '<a href="/collections/wheels" class="hero-smart-search__result-tag" style="text-decoration: none;">Browse wheels</a>' +
+        '</li>';
+      this.list.innerHTML = li;
+      this.items = [];
+      this.selectedIndex = -1;
+      this.results.hidden = false;
+      this.input.setAttribute('aria-expanded', 'true');
+    }
+
     showNeedsTrimGuidance(vehicleLabel, originalQuery) {
       this.loading.hidden = true;
       this.awaitingTrim = false;
@@ -2899,16 +3317,33 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!el || !input) return;
 
     var intro = 'What are you looking for?';
-    var phrases = [
-      'tires for Honda Civic SI 2025',
-      'Michelin 225/65R17',
-      'winter tires for my RAV4',
-      'Ford F-150 2024',
-      'all season tires 2055516',
-      'Bridgestone Subaru Outback',
-      'crv 2025 winter',
-      'Toyota Camry LE 2024',
-    ];
+    var PHRASES_BY_MODE = {
+      tires: [
+        'tires for Honda Civic SI 2025',
+        'Michelin 225/65R17',
+        'winter tires for my RAV4',
+        'Ford F-150 2024',
+        'all season tires 2055516',
+        'Bridgestone Subaru Outback',
+        'crv 2025 winter',
+        'Toyota Camry LE 2024',
+      ],
+      wheels: [
+        '17 inch wheels for Honda Civic',
+        '20 inch black rims',
+        'wheels for Ford F-150 2024',
+        '18" matte black wheels',
+        'rims for RAV4 2023',
+        '22 inch chrome wheels',
+        'wheels for Toyota Tacoma',
+        '19 inch alloy wheels',
+      ],
+    };
+    function currentMode() {
+      try { return (localStorage.getItem('pt-search-mode') === 'wheels') ? 'wheels' : 'tires'; }
+      catch (e) { return 'tires'; }
+    }
+    var phrases = PHRASES_BY_MODE[currentMode()];
     var phase = 'intro';       /* intro → examples */
     var phraseIndex = 0;
     var charIndex = 0;
@@ -2991,6 +3426,16 @@ document.addEventListener('DOMContentLoaded', function() {
           tick();
         }
       }
+    });
+
+    /* React to mode changes — swap the phrase pool + restart the typewriter */
+    document.addEventListener('pt-search-mode-change', function(e) {
+      var newMode = (e && e.detail && e.detail.mode) || currentMode();
+      phrases = PHRASES_BY_MODE[newMode] || PHRASES_BY_MODE.tires;
+      phraseIndex = 0;
+      charIndex = 0;
+      isDeleting = false;
+      el.textContent = '';
     });
 
     /* Start after heading animation completes */
