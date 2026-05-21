@@ -54,6 +54,14 @@
         endif
     endcase
   endfor
+  # Detect whether this is the wheels collection — drives the sidebar to
+  # hide tire-only filter groups (season, tire-type, aspect ratio, etc.)
+  # and surface wheel-specific groups (bolt pattern, rim width, offset,
+  # center bore) instead. Single source of truth: collection.handle.
+  assign is_wheels = false
+  if collection.handle == 'wheels'
+    assign is_wheels = true
+  endif
 -%}
 
       <div class="ptg__sidebar-backdrop" data-filter-backdrop></div>
@@ -64,7 +72,8 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        {%- comment -%} Tire Size Display — populated by JS from URL params {%- endcomment -%}
+        {%- comment -%} Tire Size editor — tire-only (parses tire-size syntax) {%- endcomment -%}
+        {%- unless is_wheels -%}
         <div class="ptg__size-display" data-size-display>
           <span class="ptg__size-display-label">Tire size</span>
           <div class="ptg__size-display-row">
@@ -74,6 +83,7 @@
             </a>
           </div>
         </div>
+        {%- endunless -%}
 
         <div class="ptg__sidebar-head">
           <span class="ptg__sidebar-title">Filters</span>
@@ -95,6 +105,9 @@
             </div>
           </div>
         </div>
+
+        {%- comment -%} Tire-only filter groups — hidden on /collections/wheels {%- endcomment -%}
+        {%- unless is_wheels -%}
 
         {%- comment -%} Season Icons {%- endcomment -%}
         <details class="ptg__filter" open>
@@ -152,7 +165,9 @@
           </div>
         </details>
 
-        {%- comment -%} Brand — scrollable {%- endcomment -%}
+        {%- endunless -%}{%- comment -%} end tire-only: Season + Tire type {%- endcomment -%}
+
+        {%- comment -%} Brand — scrollable (shared: tires + wheels) {%- endcomment -%}
         <details class="ptg__filter" open>
           <summary class="ptg__filter-label">
             Brand
@@ -193,6 +208,9 @@
             {%- endif -%}
           </div>
         </details>
+
+        {%- comment -%} Tire-only filter groups: Model + Product Type + Width + Aspect {%- endcomment -%}
+        {%- unless is_wheels -%}
 
         {%- comment -%}
           Tire Model — sourced from collection.filters when the
@@ -298,7 +316,206 @@
           </div>
         </details>
 
-        {%- comment -%} Rim Diameter {%- endcomment -%}
+        {%- endunless -%}{%- comment -%} end tire-only: Model + Type + Width + Aspect {%- endcomment -%}
+
+        {%- comment -%} ════════════════════════════════════════════
+             WHEEL-ONLY FILTERS — only render on /collections/wheels.
+             Pull facet values from collection.filters (storefront
+             filter, configured in Search & Discovery) when available;
+             fall back to scanning collection.products[].metafields.custom
+             so the filter still works before the admin step is done.
+             ════════════════════════════════════════════ {%- endcomment -%}
+        {%- if is_wheels -%}
+
+        {%- comment -%} Bolt pattern (5x114.3, 6x139.7, etc.) {%- endcomment -%}
+        {%- assign bolt_filter = blank -%}
+        {%- for f in collection.filters -%}
+          {%- if f.param_name == 'filter.p.m.custom.bolt_pattern' -%}
+            {%- assign bolt_filter = f -%}
+            {%- break -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- assign bolt_fallback = '' -%}
+        {%- if bolt_filter == blank -%}
+          {%- for p in collection.products -%}
+            {%- assign bp = p.metafields.custom.bolt_pattern -%}
+            {%- if bp != blank -%}
+              {%- assign bpv = bp | strip -%}
+              {%- unless bolt_fallback contains bpv -%}
+                {%- assign bolt_fallback = bolt_fallback | append: bpv | append: '|' -%}
+              {%- endunless -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {%- if bolt_filter != blank or bolt_fallback != '' -%}
+          <details class="ptg__filter" open>
+            <summary class="ptg__filter-label">
+              Bolt pattern
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <div class="ptg__filter-options">
+              {%- if bolt_filter != blank -%}
+                {%- for v in bolt_filter.values -%}
+                  <a href="{{ collection.url }}?filter.p.m.custom.bolt_pattern={{ v.label | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.bolt_pattern" data-filter-value="{{ v.label | escape }}">
+                    <span class="ptg__filter-check"></span>
+                    {{ v.label }}
+                    <span class="ptg__filter-cnt">({{ v.count }})</span>
+                  </a>
+                {%- endfor -%}
+              {%- else -%}
+                {%- assign bvals = bolt_fallback | split: '|' | uniq | sort -%}
+                {%- for bv in bvals -%}
+                  {%- if bv != '' -%}
+                    <a href="{{ collection.url }}?filter.p.m.custom.bolt_pattern={{ bv | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.bolt_pattern" data-filter-value="{{ bv | escape }}">
+                      <span class="ptg__filter-check"></span>
+                      {{ bv }}
+                    </a>
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- endif -%}
+            </div>
+          </details>
+        {%- endif -%}
+
+        {%- comment -%} Rim width (the second number in 17x7.5) {%- endcomment -%}
+        {%- assign width_filter = blank -%}
+        {%- for f in collection.filters -%}
+          {%- if f.param_name == 'filter.p.m.custom.rim_width' -%}
+            {%- assign width_filter = f -%}
+            {%- break -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- assign width_fallback = '' -%}
+        {%- if width_filter == blank -%}
+          {%- for p in collection.products -%}
+            {%- assign rw = p.metafields.custom.rim_width -%}
+            {%- if rw != blank -%}
+              {%- assign rwv = rw | strip -%}
+              {%- unless width_fallback contains rwv -%}
+                {%- assign width_fallback = width_fallback | append: rwv | append: '|' -%}
+              {%- endunless -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {%- if width_filter != blank or width_fallback != '' -%}
+          <details class="ptg__filter">
+            <summary class="ptg__filter-label">
+              Rim width
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <div class="ptg__filter-options ptg__filter-options--wrap">
+              {%- if width_filter != blank -%}
+                {%- for v in width_filter.values -%}
+                  <a href="{{ collection.url }}?filter.p.m.custom.rim_width={{ v.label | url_encode }}" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.rim_width" data-filter-set-value="{{ v.label | escape }}">{{ v.label }}"</a>
+                {%- endfor -%}
+              {%- else -%}
+                {%- assign wvals = width_fallback | split: '|' | uniq | sort -%}
+                {%- for wv in wvals -%}
+                  {%- if wv != '' -%}
+                    <a href="{{ collection.url }}?filter.p.m.custom.rim_width={{ wv | url_encode }}" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.rim_width" data-filter-set-value="{{ wv | escape }}">{{ wv }}"</a>
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- endif -%}
+            </div>
+          </details>
+        {%- endif -%}
+
+        {%- comment -%} Rim offset / ET — can be negative {%- endcomment -%}
+        {%- assign offset_filter = blank -%}
+        {%- for f in collection.filters -%}
+          {%- if f.param_name == 'filter.p.m.custom.rim_offset' -%}
+            {%- assign offset_filter = f -%}
+            {%- break -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- assign offset_fallback = '' -%}
+        {%- if offset_filter == blank -%}
+          {%- for p in collection.products -%}
+            {%- assign ro = p.metafields.custom.rim_offset -%}
+            {%- if ro != blank -%}
+              {%- assign rov = ro | strip -%}
+              {%- unless offset_fallback contains rov -%}
+                {%- assign offset_fallback = offset_fallback | append: rov | append: '|' -%}
+              {%- endunless -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {%- if offset_filter != blank or offset_fallback != '' -%}
+          <details class="ptg__filter">
+            <summary class="ptg__filter-label">
+              Offset (ET)
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <div class="ptg__filter-options ptg__filter-options--wrap">
+              {%- if offset_filter != blank -%}
+                {%- for v in offset_filter.values -%}
+                  <a href="{{ collection.url }}?filter.p.m.custom.rim_offset={{ v.label | url_encode }}" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.rim_offset" data-filter-set-value="{{ v.label | escape }}">ET{{ v.label }}</a>
+                {%- endfor -%}
+              {%- else -%}
+                {%- assign ovals = offset_fallback | split: '|' | uniq | sort -%}
+                {%- for ov in ovals -%}
+                  {%- if ov != '' -%}
+                    <a href="{{ collection.url }}?filter.p.m.custom.rim_offset={{ ov | url_encode }}" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.rim_offset" data-filter-set-value="{{ ov | escape }}">ET{{ ov }}</a>
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- endif -%}
+            </div>
+          </details>
+        {%- endif -%}
+
+        {%- comment -%} Center bore (hub bore, mm — matters for hub-centric fitment) {%- endcomment -%}
+        {%- assign cb_filter = blank -%}
+        {%- for f in collection.filters -%}
+          {%- if f.param_name == 'filter.p.m.custom.center_bore' -%}
+            {%- assign cb_filter = f -%}
+            {%- break -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- assign cb_fallback = '' -%}
+        {%- if cb_filter == blank -%}
+          {%- for p in collection.products -%}
+            {%- assign cb = p.metafields.custom.center_bore -%}
+            {%- if cb != blank -%}
+              {%- assign cbv = cb | strip -%}
+              {%- unless cb_fallback contains cbv -%}
+                {%- assign cb_fallback = cb_fallback | append: cbv | append: '|' -%}
+              {%- endunless -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {%- if cb_filter != blank or cb_fallback != '' -%}
+          <details class="ptg__filter">
+            <summary class="ptg__filter-label">
+              Center bore (mm)
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <div class="ptg__filter-options">
+              {%- if cb_filter != blank -%}
+                {%- for v in cb_filter.values -%}
+                  <a href="{{ collection.url }}?filter.p.m.custom.center_bore={{ v.label | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.center_bore" data-filter-value="{{ v.label | escape }}">
+                    <span class="ptg__filter-check"></span>
+                    {{ v.label }} mm
+                    <span class="ptg__filter-cnt">({{ v.count }})</span>
+                  </a>
+                {%- endfor -%}
+              {%- else -%}
+                {%- assign cbvals = cb_fallback | split: '|' | uniq | sort -%}
+                {%- for cv in cbvals -%}
+                  {%- if cv != '' -%}
+                    <a href="{{ collection.url }}?filter.p.m.custom.center_bore={{ cv | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.center_bore" data-filter-value="{{ cv | escape }}">
+                      <span class="ptg__filter-check"></span>
+                      {{ cv }} mm
+                    </a>
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- endif -%}
+            </div>
+          </details>
+        {%- endif -%}
+
+        {%- endif -%}{%- comment -%} end wheel-only filters {%- endcomment -%}
+
+        {%- comment -%} Rim Diameter — shared (tires + wheels both use rim_diameter) {%- endcomment -%}
         <details class="ptg__filter">
           <summary class="ptg__filter-label">
             Rim diameter
@@ -324,15 +541,17 @@
           </div>
         </details>
 
-        {%- comment -%} Stud Option — only shows for Winter or LT All-Terrain {%- endcomment -%}
+        {%- comment -%} Stud Option — tire-only (Winter or LT) {%- endcomment -%}
         {%- liquid
           assign show_stud = false
-          if active_season == 'Winter'
-            assign show_stud = true
-          endif
-          if active_type == 'LT'
-            assign show_stud = true
-          endif
+          unless is_wheels
+            if active_season == 'Winter'
+              assign show_stud = true
+            endif
+            if active_type == 'LT'
+              assign show_stud = true
+            endif
+          endunless
         -%}
         {%- if show_stud -%}
           <details class="ptg__filter" open>
@@ -347,7 +566,8 @@
           </details>
         {%- endif -%}
 
-        {%- comment -%} Run Flat {%- endcomment -%}
+        {%- comment -%} Run Flat — tire-only {%- endcomment -%}
+        {%- unless is_wheels -%}
         <details class="ptg__filter">
           <summary class="ptg__filter-label">
             Run flat
@@ -357,5 +577,6 @@
             <a href="{{ collection.url }}?filter.p.m.custom.run_flat=Yes{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}" class="ptg__filter-link">Run flat only</a>
           </div>
         </details>
+        {%- endunless -%}
 
       </aside>

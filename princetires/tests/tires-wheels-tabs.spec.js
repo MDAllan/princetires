@@ -76,6 +76,68 @@ test('mode persists across page reload', async ({ page }) => {
   await expect(page.locator('[data-search-mode="wheels"][role="tab"]')).toHaveAttribute('aria-selected', 'true');
 });
 
+test('Wheels mode: empty focus shows WHEEL-specific Popular chips (not tire-centric)', async ({ page }) => {
+  await page.locator('[data-search-mode="wheels"][role="tab"]').click();
+  await page.locator('[data-smart-search-input]').first().click();
+  // Wait for empty state
+  await page.locator('.hero-smart-search__empty-state').waitFor({ state: 'visible', timeout: 5000 });
+
+  // Popular chips (non-recent variant)
+  const popular = page.locator('.hero-smart-search__empty-chip').locator(':not(.hero-smart-search__empty-chip--recent)');
+  const texts = (await popular.allTextContents()).join(' | ');
+
+  // Must contain wheel chips
+  expect(texts).toMatch(/wheels/i);
+  // Must NOT contain tire-centric items
+  expect(texts).not.toMatch(/225\/65R17/i);
+  expect(texts).not.toMatch(/tire rotation/i);
+  expect(texts).not.toMatch(/Michelin/i);
+});
+
+test('Tires mode: empty focus still shows TIRE-centric Popular chips', async ({ page }) => {
+  // (Default mode is Tires — no toggle needed)
+  await page.locator('[data-smart-search-input]').first().click();
+  await page.locator('.hero-smart-search__empty-state').waitFor({ state: 'visible', timeout: 5000 });
+
+  const popular = page.locator('.hero-smart-search__empty-chip').locator(':not(.hero-smart-search__empty-chip--recent)');
+  const texts = (await popular.allTextContents()).join(' | ');
+
+  expect(texts).toMatch(/225\/65R17/);
+  expect(texts).toMatch(/tire rotation/i);
+  expect(texts).toMatch(/Michelin/);
+});
+
+test('Wheels mode: typing "tire rotation" does NOT route to the service page', async ({ page }) => {
+  await page.locator('[data-search-mode="wheels"][role="tab"]').click();
+  await page.locator('[data-smart-search-input]').first().fill('tire rotation');
+  // Wait a beat for the debounced search to fire
+  await page.waitForTimeout(900);
+
+  // The service-result item (which would link to /pages/tire-rotation) must NOT render
+  const serviceRows = page.locator('.hero-smart-search__result-item', { hasText: /tire rotation/i });
+  expect(await serviceRows.count()).toBe(0);
+});
+
+test('Wheels mode: typing "winter" does NOT add seasonality filter to the wheels URL', async ({ page }) => {
+  await page.locator('[data-search-mode="wheels"][role="tab"]').click();
+  await page.locator('[data-smart-search-input]').first().fill('winter');
+  await page.waitForTimeout(900);
+
+  // Look for any result-item href with seasonality in it — should be none
+  const seasonResults = page.locator('a[href*="seasonality"]');
+  expect(await seasonResults.count()).toBe(0);
+});
+
+test('Wheels mode: clicking a Popular chip with a direct URL navigates straight there', async ({ page }) => {
+  await page.locator('[data-search-mode="wheels"][role="tab"]').click();
+  await page.locator('[data-smart-search-input]').first().click();
+  await page.locator('.hero-smart-search__empty-state').waitFor({ state: 'visible', timeout: 5000 });
+
+  // Click the 17" wheels chip
+  await page.locator('.hero-smart-search__empty-chip', { hasText: /17[″"]?\s*wheels/i }).first().click();
+  await page.waitForURL(/\/collections\/wheels\?.*rim_diameter=17/);
+});
+
 test('mode toggle emits pt_search analytics event', async ({ page }) => {
   await page.addInitScript(() => {
     window.__ptEvents = [];

@@ -1976,15 +1976,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Service-keyword routing: check before tire-size parsing so that queries
       // like "tire rotation" don't accidentally match a size pattern.
-      var service = this.detectService(query);
-      if (service) {
-        this.renderResults([{
-          type: 'service',
-          title: service.label,
-          meta: 'View service details',
-          url: service.url,
-        }]);
-        return;
+      // SUPPRESSED on the Wheels tab — services are tire-only; "tire rotation"
+      // on the Wheels tab should fall through to the regular search flow.
+      if (this.mode !== 'wheels') {
+        var service = this.detectService(query);
+        if (service) {
+          this.renderResults([{
+            type: 'service',
+            title: service.label,
+            meta: 'View service details',
+            url: service.url,
+          }]);
+          return;
+        }
       }
 
       var normalized = this.normalizeTireSize(query);
@@ -2062,19 +2066,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
       this.showLoading();
       const intent = this.parseSearchIntent(query);
+      // On the Wheels tab, drop tire-only intent signals so they don't drive
+      // results or get appended to the wheels-collection URL.
+      if (this.mode === 'wheels') {
+        intent.season = null;
+        intent.serviceType = null;
+      }
       const cleanedQuery = this.cleanQueryForVehicle(query, intent);
 
       try {
         const vehicle = cleanedQuery.length >= 2 ? await this.recognizeVehicle(cleanedQuery) : null;
 
         if (!vehicle || (!vehicle.year && !vehicle.model && !vehicle.make)) {
-          if (intent.brand || intent.season) {
-            var filterTitle = [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires';
+          // In wheels mode, only brand survives (and only as a wheels vendor
+          // filter — Michelin won't have wheel products, but it'll just
+          // render as an empty results page, which is acceptable feedback).
+          if (intent.brand || (this.mode !== 'wheels' && intent.season)) {
+            var filterTitle = [intent.brand, this.mode === 'wheels' ? null : intent.season].filter(Boolean).join(' ') + (this.mode === 'wheels' ? ' wheels' : ' tires');
             this.renderResults([{
               type: 'search',
               title: filterTitle,
               meta: 'Filter collection',
-              url: this.buildCollectionUrl({ brand: intent.brand, season: intent.season }),
+              url: this.buildCollectionUrl({ brand: intent.brand, season: this.mode === 'wheels' ? null : intent.season }),
             }]);
           } else {
             // Check for partial query before showing the "no match" fallback
@@ -2827,12 +2840,25 @@ document.addEventListener('DOMContentLoaded', function() {
       this.awaitingSelection = false;
 
       var recent = this.getRecentSearches();
-      var popular = [
-        { label: '225/65R17',         query: '225/65R17' },
-        { label: '2020 Honda Civic',  query: '2020 Honda Civic' },
-        { label: 'Tire rotation',     query: 'tire rotation' },
-        { label: 'Michelin',          query: 'Michelin' }
-      ];
+      // Mode-aware popular chips. Tire chips (sizes, services, brand) make
+      // no sense on the Wheels tab; wheel chips (diameters, bolt patterns,
+      // vehicle fitment) are tire-irrelevant. Each chip can carry a direct
+      // `url` — if set, the click navigates straight there instead of
+      // running search() (used for chips whose canonical destination is
+      // a known filtered-collection URL).
+      var popular = this.mode === 'wheels'
+        ? [
+            { label: '17" wheels',      query: '17" wheels',    url: '/collections/wheels?filter.p.m.custom.rim_diameter=17' },
+            { label: '18" wheels',      query: '18" wheels',    url: '/collections/wheels?filter.p.m.custom.rim_diameter=18' },
+            { label: '2020 Honda Civic', query: '2020 Honda Civic' },
+            { label: 'Browse all wheels', query: 'all wheels',  url: '/collections/wheels' }
+          ]
+        : [
+            { label: '225/65R17',        query: '225/65R17' },
+            { label: '2020 Honda Civic', query: '2020 Honda Civic' },
+            { label: 'Tire rotation',    query: 'tire rotation' },
+            { label: 'Michelin',         query: 'Michelin' }
+          ];
 
       var html = '<li class="hero-smart-search__empty-state" role="presentation">';
 
@@ -2859,7 +2885,8 @@ document.addEventListener('DOMContentLoaded', function() {
         '</div>' +
         '<div class="hero-smart-search__empty-chips">' +
           popular.map(function(p){
-            return '<button type="button" class="hero-smart-search__empty-chip" data-empty-query="' + this.escapeAttr(p.query) + '">' +
+            var urlAttr = p.url ? ' data-empty-url="' + this.escapeAttr(p.url) + '"' : '';
+            return '<button type="button" class="hero-smart-search__empty-chip" data-empty-query="' + this.escapeAttr(p.query) + '"' + urlAttr + '>' +
               '<span class="hero-smart-search__empty-chip-text">' + this.escapeHtml(p.label) + '</span>' +
             '</button>';
           }.bind(this)).join('') +
@@ -2874,15 +2901,24 @@ document.addEventListener('DOMContentLoaded', function() {
       this.results.hidden = false;
       this.input.setAttribute('aria-expanded', 'true');
 
-      // Wire chip clicks — fill the input and run the search
+      // Wire chip clicks — if the chip has a direct `data-empty-url` (used
+      // for known-canonical destinations like /collections/wheels?diameter=17),
+      // navigate straight there. Otherwise fill the input and run search.
       var self = this;
       this.list.querySelectorAll('[data-empty-query]').forEach(function(btn) {
         btn.addEventListener('click', function() {
-          var q = btn.getAttribute('data-empty-query');
-          self.input.value = q;
-          self.input.focus();
-          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: q, search_type: btn.classList.contains('hero-smart-search__empty-chip--recent') ? 'recent_chip' : 'popular_chip', search_outcome: 'click' });
-          self.search(q);
+          var q   = btn.getAttribute('data-empty-query');
+          var url = btn.getAttribute('data-empty-url');
+          var kind = btn.classList.contains('hero-smart-search__empty-chip--recent') ? 'recent_chip' : 'popular_chip';
+          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: q, search_type: kind, search_outcome: 'click' });
+          self.addRecentSearch(q);
+          if (url) {
+            window.location.href = url;
+          } else {
+            self.input.value = q;
+            self.input.focus();
+            self.search(q);
+          }
         });
       });
 
@@ -3032,16 +3068,27 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!query) return;
 
       // Service routing — must be checked before tire-size parsing.
-      const service = this.detectService(query);
-      if (service) {
-        window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'service', search_outcome: 'match' });
-        this.addRecentSearch(query);
-        window.location.href = service.url;
-        return;
+      // SUPPRESSED on the Wheels tab — services are tire-only and shouldn't
+      // intercept queries that the customer typed while shopping for wheels.
+      if (this.mode !== 'wheels') {
+        const service = this.detectService(query);
+        if (service) {
+          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'service', search_outcome: 'match' });
+          this.addRecentSearch(query);
+          window.location.href = service.url;
+          return;
+        }
       }
 
       const parsed = this.normalizeTireSize(query);
       const intent = this.parseSearchIntent(query);
+      // On the Wheels tab, season + serviceType signals are tire-only
+      // noise — strip them so the resulting URL never carries
+      // `filter.p.m.custom.seasonality` etc. to /collections/wheels.
+      if (this.mode === 'wheels') {
+        intent.season = null;
+        intent.serviceType = null;
+      }
 
       if (parsed) {
         this.addRecentSearch(query);
