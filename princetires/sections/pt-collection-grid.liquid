@@ -152,10 +152,22 @@
 
         {%- if collection.products.size > 0 -%}
           <div class="ptg__grid">
+            {%- comment -%}
+              Render ALL products on the page — including sold-out ones.
+              `pt-collection-card` applies a `--unavailable` greyscale class
+              + "Out of stock" badge + ARIA label, so sold-out cards are
+              visually distinct without being hidden. Customers can toggle
+              them off with the Availability sidebar filter.
+
+              Previously this loop was wrapped in `{% unless product.available
+              == false %}` which silently dropped out-of-stock products from
+              the grid; combined with Shopify's `collection.products_count`
+              reporting the full total (41 wheels), the page showed
+              "41 products" but rendered as few as 1 card on a page where
+              the first-page sort happened to land on sold-out items.
+            {%- endcomment -%}
             {%- for product in collection.products -%}
-              {%- unless product.available == false -%}
               {% render 'pt-collection-card', product: product %}
-              {%- endunless -%}
             {%- endfor -%}
           </div>
 
@@ -1268,6 +1280,28 @@
   .ptg__price-was { font-size: 1.05rem; font-weight: 300; color: #9ca3af; text-decoration: line-through; }
   .ptg__price-per { font-size: 1rem; font-weight: 300; color: #9ca3af; }
   .ptg__price-set { font-size: 0.9rem; font-weight: 400; color: #6b7280; margin-left: auto; }
+
+  /* Phase 5A · trade-price badge on collection cards. Hidden by default; shown
+     when body.pt-trade-visible (header "Show cost" toggle is on). Compact so
+     it doesn't disrupt the grid rhythm. */
+  .ptg__card-trade {
+    display: none;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    padding: 0.35rem 0.55rem;
+    background: #fef3c7;
+    border-left: 3px solid #DC2626;
+    border-radius: 4px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    color: #374151;
+  }
+  body.pt-trade-visible .ptg__card-trade { display: flex; }
+  .ptg__card-trade-label { font-weight: 500; }
+  .ptg__card-trade-amount { color: #DC2626; font-weight: 700; font-size: 0.9rem; }
+  .ptg__card-trade-pct { color: #6b7280; margin-left: auto; }
 
   .ptg__card-actions {
     display: flex;

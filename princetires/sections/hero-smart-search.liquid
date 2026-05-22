@@ -1143,6 +1143,66 @@
     border-color: rgba(99, 179, 237, 0.6);
   }
 
+  /* ── Partial tire-size autocomplete suggestions ── */
+  .hero-smart-search__suggest-header {
+    list-style: none;
+    padding: 0.9rem 1.4rem 0.6rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .hero-smart-search__suggest-header-label {
+    display: block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #F5820B;
+  }
+  .hero-smart-search__suggest-header-label strong { color: #fff; }
+  .hero-smart-search__suggest-header-sub {
+    display: block;
+    margin-top: 0.15rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    color: #9ca3af;
+  }
+  .hero-smart-search__suggest-row {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.85rem 1.4rem;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.12s;
+  }
+  .hero-smart-search__suggest-row:last-child { border-bottom: none; }
+  .hero-smart-search__suggest-row:hover,
+  .hero-smart-search__suggest-row[aria-selected="true"] {
+    background: rgba(245, 130, 11, 0.06);
+  }
+  .hero-smart-search__suggest-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+  .hero-smart-search__suggest-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .hero-smart-search__suggest-size {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.02em;
+  }
+  .hero-smart-search__suggest-hint {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.88rem;
+    color: #71717a;
+  }
+
   .hero-smart-search__trim-prompt {
     padding: 0.8rem 1.4rem;
     font-size: 1.2rem;
@@ -1997,7 +2057,244 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
+      // PARTIAL tire-size autocomplete — intercept BEFORE vehicle parse.
+      // "28540", "285/40", "33x" etc. are obviously incomplete tire sizes;
+      // sending them to Gemini causes hallucinations like "2026 RAM 2500".
+      var partialSize = this.detectPartialTireSize(query);
+      if (partialSize) {
+        await this.renderTireSizeSuggestions(partialSize, query);
+        return;
+      }
+
       await this.handleVehicleQuery(query);
+    }
+
+    // ── Partial tire-size detection + autocomplete suggestions ─────────
+    // Returns a normalized shape describing what fragment of a tire size
+    // the customer has typed so far, or null if the query doesn't look
+    // like a tire size in progress.
+    detectPartialTireSize(query) {
+      if (!query) return null;
+      // Strip non-tire characters but preserve digits, /, x, X, ., R, P, LT, ST
+      var q = String(query).trim().toUpperCase().replace(/\s+/g, '');
+      if (!q) return null;
+      // Reject if it contains alpha chars that aren't valid tire-size tokens
+      // (vehicle queries always have alpha like "Honda" or "Civic").
+      // Allowed: P/LT/ST prefix, X for flotation, R for radial, Z for ZR.
+      if (!/^[PLST]?(?:LT|ST)?[0-9XR./Z]+$/i.test(q)) return null;
+      // Strip optional service prefix (P / LT / ST) — most customers don't type it
+      q = q.replace(/^P(?=\d)|^(?:LT|ST)(?=\d)/, '');
+
+      // 4-digit input in the year range → defer to year-only guidance (handled elsewhere)
+      if (/^\d{4}$/.test(q)) {
+        var y = parseInt(q, 10);
+        if (y >= (this.config.minYear || 2001) && y <= (this.config.maxYear || 2030)) {
+          return null;
+        }
+      }
+
+      // Flotation in progress: "33X", "33X12", "33X1250" (no rim yet)
+      var fl = q.match(/^(\d{2})X(\d{1,4})?$/);
+      if (fl) {
+        return {
+          kind: 'flotation',
+          diameter: fl[1],
+          section: fl[2] || null,
+        };
+      }
+      var flR = q.match(/^(\d{2})X(\d{1,4})R?$/);
+      if (flR && !q.match(/R\d{2}$/)) {
+        return { kind: 'flotation', diameter: flR[1], section: flR[2] || null };
+      }
+
+      // Slash form: "285/", "285/4", "285/40", "285/40R", "285/40ZR"
+      var sl = q.match(/^(\d{3})\/(\d{0,3})$/);
+      if (sl) return { kind: 'metric', width: sl[1], aspect: sl[2] || null };
+      var slR = q.match(/^(\d{3})\/(\d{2,3})Z?R?$/);
+      if (slR && !q.match(/R\d{2}$/)) {
+        return { kind: 'metric', width: slR[1], aspect: slR[2] };
+      }
+
+      // Compact digits — "28540" (5 digits = width+aspect), "285", "2854" etc.
+      // Up to 6 digits = partial metric. 7 digits would be a full metric size
+      // and gets matched by normalizeTireSize before this runs.
+      var d = q.match(/^(\d{3,6})$/);
+      if (d) {
+        var s = d[1];
+        if (s.length === 3) return { kind: 'metric', width: s };
+        if (s.length === 4) return { kind: 'metric', width: s.slice(0, 3), aspectPartial: s.slice(3) };
+        if (s.length === 5) return { kind: 'metric', width: s.slice(0, 3), aspect: s.slice(3, 5) };
+        if (s.length === 6) return { kind: 'metric', width: s.slice(0, 3), aspect: s.slice(3, 5), rimPartial: s.slice(5) };
+      }
+
+      return null;
+    }
+
+    // Lazy-loaded inventory index — fetched on first need, cached forever.
+    // Source: assets/pt-tire-sizes.json (~6 KB, regenerated from
+    // docs/tire-catalog.json via db/build-tire-size-index.mjs).
+    //
+    // Keys are normalized on load — flotation sizes in the catalog use a
+    // slash (`33/12.50R20`), but PTTireParse canonicalizes them with an
+    // X (`33X12.50R20`). Without this normalization, autocomplete would
+    // generate `33X…` suggestions that fail to match `33/…` index entries.
+    async loadTireSizeIndex() {
+      if (this._sizeIndex) return this._sizeIndex;
+      if (this._sizeIndexLoading) return this._sizeIndexLoading;
+      this._sizeIndexLoading = (async () => {
+        try {
+          var url = (this.config.assetUrlBase || '/') + 'pt-tire-sizes.json';
+          var res = await fetch(url);
+          if (!res.ok) return null;
+          var data = await res.json();
+          var raw = (data && data.sizes) || {};
+          var normalized = {};
+          Object.keys(raw).forEach(function(k) {
+            // Flotation: 33/12.50R20 → 33X12.50R20
+            var canonical = /^\d{2}\/\d{1,2}\.\d{1,2}R\d{2}/.test(k) ? k.replace('/', 'X') : k;
+            normalized[canonical] = (normalized[canonical] || 0) + raw[k];
+          });
+          this._sizeIndex = normalized;
+          return this._sizeIndex;
+        } catch (e) {
+          return null;
+        }
+      })();
+      return this._sizeIndexLoading;
+    }
+
+    // Filter a candidate list of full sizes against the in-stock inventory
+    // index. Drops sizes we don't stock; sorts the rest by stock count desc.
+    filterByStock(candidates, index) {
+      if (!index) return candidates;  // index unavailable — fall back
+      return candidates
+        .filter(function(c) { return index[c.size] && index[c.size] > 0; })
+        .map(function(c) { c.stock = index[c.size]; return c; })
+        .sort(function(a, b) { return b.stock - a.stock; });
+    }
+
+    // Render a clickable list of in-stock-only completions for the detected
+    // partial. Each suggestion shows the canonical size + the live stock
+    // count. Click → navigate straight to the filtered tires collection.
+    async renderTireSizeSuggestions(partial, query) {
+      this.loading.hidden = true;
+      this.awaitingTrim = false;
+      this.awaitingSelection = false;
+
+      var index = await this.loadTireSizeIndex();
+
+      // Build the candidate set — ALL plausible completions, then we filter
+      // against the inventory index. Without the filter, customers would be
+      // suggested sizes that lead to empty collections.
+      var ALL_RIMS    = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24];
+      var ALL_ASPECTS = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85];
+      var candidates = [];
+
+      if (partial.kind === 'metric') {
+        if (partial.width && partial.aspect) {
+          ALL_RIMS.forEach(function(r) {
+            if (partial.rimPartial && String(r).indexOf(partial.rimPartial) !== 0) return;
+            candidates.push({ size: partial.width + '/' + partial.aspect + 'R' + r });
+          });
+        } else if (partial.width && partial.aspectPartial) {
+          ALL_ASPECTS.forEach(function(a) {
+            if (String(a).indexOf(partial.aspectPartial) !== 0) return;
+            ALL_RIMS.forEach(function(r) {
+              candidates.push({ size: partial.width + '/' + a + 'R' + r });
+            });
+          });
+        } else if (partial.width) {
+          ALL_ASPECTS.forEach(function(a) {
+            ALL_RIMS.forEach(function(r) {
+              candidates.push({ size: partial.width + '/' + a + 'R' + r });
+            });
+          });
+        }
+      } else if (partial.kind === 'flotation') {
+        var section = '12.50';
+        if (partial.section) {
+          if (partial.section.length === 4) section = partial.section.slice(0, 2) + '.' + partial.section.slice(2);
+          else if (partial.section.indexOf('.') !== -1) section = partial.section;
+          else section = partial.section;
+        }
+        ALL_RIMS.forEach(function(r) {
+          candidates.push({ size: partial.diameter + 'X' + section + 'R' + r });
+        });
+      }
+
+      var suggestions = this.filterByStock(candidates, index).slice(0, 8);
+
+      if (!suggestions.length) {
+        // Inventory has no exact match for the typed prefix — render
+        // a graceful "no matches" guidance instead of falling through to
+        // vehicle parse (which would hallucinate).
+        var hint = partial.width
+          ? 'We don\'t stock that size yet. Try a different width or aspect — or call us, we may be able to order it.'
+          : 'No matches yet — keep typing the full size (e.g. 225/65R17).';
+        this.list.innerHTML =
+          '<li class="hero-smart-search__suggest-header" role="presentation">' +
+            '<span class="hero-smart-search__suggest-header-label">No in-stock matches for <strong>' + this.escapeHtml(query) + '</strong></span>' +
+            '<span class="hero-smart-search__suggest-header-sub">' + hint + '</span>' +
+          '</li>';
+        this.items = [];
+        this.selectedIndex = -1;
+        this.results.hidden = false;
+        this.input.setAttribute('aria-expanded', 'true');
+        return true;
+      }
+
+      var self = this;
+      var inner = suggestions.map(function(s, i) {
+        var stockLabel = typeof s.stock === 'number' ? (s.stock + ' in stock') : 'Tap to search';
+        return '<li class="hero-smart-search__suggest-row" role="option" data-index="' + i + '" data-suggest-size="' + self.escapeAttr(s.size) + '">' +
+          '<span class="hero-smart-search__suggest-icon" aria-hidden="true">📐</span>' +
+          '<span class="hero-smart-search__suggest-text">' +
+            '<span class="hero-smart-search__suggest-size">' + self.escapeHtml(s.size) + '</span>' +
+            '<span class="hero-smart-search__suggest-hint">' + self.escapeHtml(stockLabel) + '</span>' +
+          '</span>' +
+          '<span class="hero-smart-search__result-tag">In stock</span>' +
+        '</li>';
+      }).join('');
+
+      var header = '<li class="hero-smart-search__suggest-header" role="presentation">' +
+        '<span class="hero-smart-search__suggest-header-label">Tire-size suggestions for <strong>' + this.escapeHtml(query) + '</strong></span>' +
+        '<span class="hero-smart-search__suggest-header-sub">Pick a complete size below, or keep typing.</span>' +
+      '</li>';
+
+      this.list.innerHTML = header + inner;
+
+      // Wire up clickable rows like other result lists
+      this.items = Array.from(this.list.querySelectorAll('.hero-smart-search__suggest-row'));
+      this.items.forEach(function(item) {
+        item.addEventListener('click', function() {
+          var size = item.getAttribute('data-suggest-size');
+          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'size_suggestion', search_outcome: 'click', completion: size });
+          self.input.value = size;
+          self.addRecentSearch(size);
+          // Navigate straight to the filtered collection — re-running
+          // search() would just render another single-row dropdown that
+          // the customer would have to click again.
+          var parsed = self.normalizeTireSize(size);
+          if (parsed) {
+            var intent = self.parseSearchIntent(size);
+            window.location.href = self.buildCollectionUrl({
+              width:  parsed.width,
+              aspect: parsed.aspect,
+              rim:    parsed.rim,
+              brand:  intent.brand,
+              season: self.mode === 'wheels' ? null : intent.season,
+              serviceType: self.mode === 'wheels' ? null : intent.serviceType,
+            });
+          }
+        });
+      });
+
+      this.selectedIndex = -1;
+      this.results.hidden = false;
+      this.input.setAttribute('aria-expanded', 'true');
+
+      window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'size_suggestion', search_outcome: 'shown', count: suggestions.length });
+      return true;
     }
 
     handleTireSizeMatch(parsed, query) {
@@ -3124,6 +3421,17 @@ document.addEventListener('DOMContentLoaded', function() {
       if (this.mode === 'wheels') {
         intent.season = null;
         intent.serviceType = null;
+      }
+
+      // If the customer pressed Enter on a partial tire size (e.g. "28540"),
+      // surface the autocomplete suggestions instead of running it through
+      // vehicle parse (which would hallucinate "2026 RAM 2500" or worse).
+      if (!parsed) {
+        const partialSize = this.detectPartialTireSize(query);
+        if (partialSize) {
+          this.renderTireSizeSuggestions(partialSize, query);
+          return;
+        }
       }
 
       if (parsed) {
