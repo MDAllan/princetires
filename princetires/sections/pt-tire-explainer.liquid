@@ -1,32 +1,56 @@
-<div class="pte pte--{{ section.settings.background }}">
+<div class="pte pte--{{ section.settings.background }} pte--image-{{ section.settings.image_position | default: 'bottom' }}">
   <div class="pte__container">
-    {%- if section.settings.heading != blank -%}
-      <h2 class="pte__heading">{{ section.settings.heading }}</h2>
+
+    {%- assign img_pos = section.settings.image_position | default: 'bottom' -%}
+
+    {%- if section.settings.image and img_pos == 'top' -%}
+      <div class="pte__image pte__image--top">
+        {{ section.settings.image | image_url: width: 1600 | image_tag: loading: 'lazy', alt: section.settings.heading | default: 'Prince Tires Calgary' }}
+      </div>
     {%- endif -%}
 
-    {%- if section.settings.intro != blank -%}
-      <div class="pte__intro rte">{{ section.settings.intro }}</div>
+    <div class="pte__content">
+      {%- if section.settings.heading != blank -%}
+        <h2 class="pte__heading">{{ section.settings.heading }}</h2>
+      {%- endif -%}
+
+      {%- if section.settings.intro != blank -%}
+        <div class="pte__intro rte">{{ section.settings.intro }}</div>
+      {%- endif -%}
+
+      {%- assign bullet_blocks = section.blocks | where: 'type', 'bullet' -%}
+      {%- if bullet_blocks.size > 0 -%}
+        <ul class="pte__bullets">
+          {%- for block in bullet_blocks -%}
+            <li {{ block.shopify_attributes }}>
+              {%- if block.settings.lead != blank -%}
+                <strong>{{ block.settings.lead }}</strong>
+                {% if block.settings.text != blank %} {{ block.settings.text }}{% endif %}
+              {%- else -%}
+                {{ block.settings.text }}
+              {%- endif -%}
+            </li>
+          {%- endfor -%}
+        </ul>
+      {%- endif -%}
+
+      {%- if section.settings.outro != blank -%}
+        <div class="pte__outro rte">{{ section.settings.outro }}</div>
+      {%- endif -%}
+    </div>
+
+    {%- if section.settings.image and img_pos == 'right' -%}
+      <div class="pte__image pte__image--right">
+        {{ section.settings.image | image_url: width: 900 | image_tag: loading: 'lazy', alt: section.settings.heading | default: 'Prince Tires Calgary' }}
+      </div>
     {%- endif -%}
 
-    {%- assign bullet_blocks = section.blocks | where: 'type', 'bullet' -%}
-    {%- if bullet_blocks.size > 0 -%}
-      <ul class="pte__bullets">
-        {%- for block in bullet_blocks -%}
-          <li {{ block.shopify_attributes }}>
-            {%- if block.settings.lead != blank -%}
-              <strong>{{ block.settings.lead }}</strong>
-              {% if block.settings.text != blank %} {{ block.settings.text }}{% endif %}
-            {%- else -%}
-              {{ block.settings.text }}
-            {%- endif -%}
-          </li>
-        {%- endfor -%}
-      </ul>
+    {%- if section.settings.image and img_pos == 'bottom' -%}
+      <div class="pte__image pte__image--bottom">
+        {{ section.settings.image | image_url: width: 1600 | image_tag: loading: 'lazy', alt: section.settings.heading | default: 'Prince Tires Calgary' }}
+      </div>
     {%- endif -%}
 
-    {%- if section.settings.outro != blank -%}
-      <div class="pte__outro rte">{{ section.settings.outro }}</div>
-    {%- endif -%}
   </div>
 </div>
 
@@ -48,6 +72,32 @@
 .pte__outro p { margin: 0 0 16px; }
 .pte__outro p:last-child { margin-bottom: 0; }
 .pte__outro a { color: #E8251D; text-decoration: underline; }
+
+/* Image rendering */
+.pte__image { width: 100%; }
+.pte__image img { width: 100%; height: auto; display: block; border-radius: 8px; }
+.pte__image--top { margin-bottom: 32px; }
+.pte__image--bottom { margin-top: 32px; }
+
+/* Right-aligned image: stack on mobile, side-by-side on desktop */
+.pte--image-right .pte__container {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1100px;
+}
+.pte--image-right .pte__content { order: 1; min-width: 0; }
+.pte--image-right .pte__image--right { order: 2; }
+
+@media (min-width: 820px) {
+  .pte--image-right .pte__container {
+    flex-direction: row;
+    align-items: center;
+    gap: 48px;
+  }
+  .pte--image-right .pte__content { flex: 1 1 60%; }
+  .pte--image-right .pte__image--right { flex: 0 0 35%; order: 2; }
+}
 {% endstylesheet %}
 
 {% schema %}
@@ -69,6 +119,18 @@
     { "type": "text",     "id": "heading",    "label": "H2 heading" },
     { "type": "richtext", "id": "intro",      "label": "Intro paragraph(s)" },
     { "type": "richtext", "id": "outro",      "label": "Closing paragraph(s)" },
+    { "type": "image_picker", "id": "image",  "label": "Image (optional)" },
+    {
+      "type": "select",
+      "id": "image_position",
+      "label": "Image position",
+      "options": [
+        { "value": "top",    "label": "Above heading" },
+        { "value": "right",  "label": "Right of content (desktop)" },
+        { "value": "bottom", "label": "Below content" }
+      ],
+      "default": "bottom"
+    },
     {
       "type": "select",
       "id": "background",
