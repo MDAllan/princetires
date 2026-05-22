@@ -73,31 +73,18 @@
 .pte__outro p:last-child { margin-bottom: 0; }
 .pte__outro a { color: #E8251D; text-decoration: underline; }
 
-/* Image rendering */
-.pte__image { width: 100%; }
+/* Image rendering — always full container width, regardless of position */
+.pte__image { width: 100%; margin-left: auto; margin-right: auto; }
 .pte__image img { width: 100%; height: auto; display: block; border-radius: 8px; }
-.pte__image--top { margin-bottom: 32px; }
+.pte__image--top    { margin-bottom: 32px; }
 .pte__image--bottom { margin-top: 32px; }
+.pte__image--right  { margin-top: 32px; } /* "right" legacy value renders the same as "bottom" — image full width below content */
 
-/* Right-aligned image: stack on mobile, side-by-side on desktop */
-.pte--image-right .pte__container {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  max-width: 1100px;
-}
-.pte--image-right .pte__content { order: 1; min-width: 0; }
-.pte--image-right .pte__image--right { order: 2; }
-
-@media (min-width: 820px) {
-  .pte--image-right .pte__container {
-    flex-direction: row;
-    align-items: center;
-    gap: 48px;
-  }
-  .pte--image-right .pte__content { flex: 1 1 60%; }
-  .pte--image-right .pte__image--right { flex: 0 0 35%; order: 2; }
-}
+/* Full-width edge-to-edge image: breaks out of the container for an immersive shot */
+.pte--image-full .pte__container { max-width: none; padding: 0; }
+.pte--image-full .pte__content { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+.pte--image-full .pte__image { max-width: none; border-radius: 0; }
+.pte--image-full .pte__image img { border-radius: 0; max-height: 600px; object-fit: cover; }
 {% endstylesheet %}
 
 {% schema %}
@@ -125,9 +112,10 @@
       "id": "image_position",
       "label": "Image position",
       "options": [
-        { "value": "top",    "label": "Above heading" },
-        { "value": "right",  "label": "Right of content (desktop)" },
-        { "value": "bottom", "label": "Below content" }
+        { "value": "top",    "label": "Above content (full width)" },
+        { "value": "bottom", "label": "Below content (full width)" },
+        { "value": "right",  "label": "(Legacy — renders below content, full width)" },
+        { "value": "full",   "label": "Edge-to-edge, large hero (max 600px tall)" }
       ],
       "default": "bottom"
     },
