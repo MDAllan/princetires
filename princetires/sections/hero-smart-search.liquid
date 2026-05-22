@@ -1556,10 +1556,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // --------------- search-mode (Tires / Wheels) ---------------
 
     loadSearchMode() {
-      try {
-        var m = localStorage.getItem('pt-search-mode');
-        return (m === 'wheels') ? 'wheels' : 'tires';
-      } catch (e) { return 'tires'; }
+      // Always default to Tires on page load. Mid-session clicks switch to Wheels but
+      // the next visit/reload starts on Tires (the higher-inventory default).
+      return 'tires';
     }
     saveSearchMode(mode) {
       try { localStorage.setItem('pt-search-mode', mode); } catch (e) {}
@@ -2035,6 +2034,28 @@ document.addEventListener('DOMContentLoaded', function() {
       this.renderResults(results.slice(0, 6));
     }
 
+    /* Parse a bolt-pattern query like "5x114.3", "5×114.3", "5x4.5" (inch).
+       Returns canonical "5x114.3" (mm format) or null. Used to route direct
+       bolt-pattern searches straight to the wheels collection. */
+    parseBoltPattern(query) {
+      if (!query) return null;
+      var q = String(query).trim().toLowerCase();
+      /* Normalize separators: × → x, strip spaces, strip mm suffix, strip quotes */
+      q = q.replace(/[××]/g, 'x').replace(/\s+/g, '').replace(/mm$|"|''/g, '');
+      /* Match {3-8 lugs}x{value} where value can be int or 1-decimal float */
+      var m = q.match(/^([3-8])x(\d+(?:\.\d+)?)$/);
+      if (!m) return null;
+      var lugs = parseInt(m[1], 10);
+      var value = parseFloat(m[2]);
+      if (!isFinite(value) || value <= 0) return null;
+      /* If value < 20, assume inches → convert to mm */
+      if (value < 20) value = value * 25.4;
+      /* Round to 1 decimal, strip trailing ".0" */
+      value = Math.round(value * 10) / 10;
+      var valStr = (value % 1 === 0) ? String(Math.round(value)) : value.toFixed(1);
+      return lugs + 'x' + valStr;
+    }
+
     cleanQueryForVehicle(query, intent) {
       var q = query.toLowerCase();
       /* Strip season words */
@@ -2055,6 +2076,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async handleVehicleQuery(query) {
+      // Bolt-pattern direct search — routes straight to wheels collection,
+      // ignores tire/wheels mode toggle (a bolt-pattern query is always a wheel query).
+      var bp = this.parseBoltPattern(query);
+      if (bp) {
+        var bpUrl = '/collections/wheels?filter.p.m.custom.bolt_pattern=' + encodeURIComponent(bp);
+        this.renderResults([{
+          type: 'wheels',
+          title: bp + ' bolt pattern',
+          meta: 'Browse wheels that fit',
+          url: bpUrl,
+        }]);
+        window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'bolt_pattern', search_outcome: 'match', bolt_pattern: bp });
+        return;
+      }
+
       // Detect partial queries (year-only, year-make, make-only) early,
       // before any async vehicle lookup, so we never show "couldn't find a match"
       // for incomplete inputs.
@@ -3377,8 +3413,10 @@ document.addEventListener('DOMContentLoaded', function() {
       ],
       wheels: [
         '17 inch wheels for Honda Civic',
+        '5x114.3 bolt pattern',
         '20 inch black rims',
         'wheels for Ford F-150 2024',
+        '6x139.7 bolt pattern',
         '18" matte black wheels',
         'rims for RAV4 2023',
         '22 inch chrome wheels',

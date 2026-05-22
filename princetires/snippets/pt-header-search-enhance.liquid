@@ -89,10 +89,37 @@
     } catch(e) { /* never throw */ }
   }
 
+  /* Parse a bolt-pattern query like "5x114.3" / "5×114.3" / "5x4.5" (inch).
+     Returns canonical "5x114.3" (mm format) or null. */
+  function parseBoltPattern(query) {
+    if (!query) return null;
+    var s = String(query).trim().toLowerCase();
+    s = s.replace(/[××]/g, 'x').replace(/\s+/g, '').replace(/mm$|"|''/g, '');
+    var m = s.match(/^([3-8])x(\d+(?:\.\d+)?)$/);
+    if (!m) return null;
+    var lugs = parseInt(m[1], 10);
+    var value = parseFloat(m[2]);
+    if (!isFinite(value) || value <= 0) return null;
+    if (value < 20) value = value * 25.4;
+    value = Math.round(value * 10) / 10;
+    var valStr = (value % 1 === 0) ? String(Math.round(value)) : value.toFixed(1);
+    return lugs + 'x' + valStr;
+  }
+
   /* Build the "quick action" suggestion from a query — same priority order
      as the submit-time router, returned as a shape the dropdown can render. */
   function quickActionFor(q) {
     if (!q || !window.PTTireParse) return null;
+
+    /* Bolt pattern beats every other check — a bolt-pattern query is always a wheel query. */
+    var bp = parseBoltPattern(q);
+    if (bp && wheelsAvailable === true) {
+      return {
+        type: 'bolt_pattern',
+        label: 'Browse wheels for ' + bp + ' bolt pattern',
+        url:   '/collections/wheels?filter.p.m.custom.bolt_pattern=' + encodeURIComponent(bp)
+      };
+    }
 
     var expanded = (typeof window.PTTireParse.expandSynonyms === 'function')
       ? window.PTTireParse.expandSynonyms(q)
