@@ -30,7 +30,7 @@
 
 ## Open loose ends (update every session)
 
-- **Code-review backlog (2026-05-15)** — `docs/code-review-2026-05-15.md`. SEC-2 (Gemini key in the browser) **RESOLVED** this session. **SEC-1 still live** — Shopify Admin API token printed into a public HTML page by `princetires-app/src/app/api/auth/shopify/callback/route.ts`; delete that route (`PROJECT_PLAN.md:60` says it can go). Plus the 7 critical / 16 high issues (collection sidebar Stud filter never renders, AJAX cart badge wrong target, 3 conflicting Product JSON-LD blocks, competing LocalBusiness schemas, contradictory hours, review-count mismatch).
+- **Code-review backlog (2026-05-15)** — `docs/code-review-2026-05-15.md`. SEC-1 + SEC-2 both **RESOLVED** (SEC-1 was deleted in princetires-app commit `757db83`; remaining 3 token-using files all consume server-side, no leak into responses — verified 2026-05-23). Still open: 7 critical / 16 high issues (collection sidebar Stud filter never renders, AJAX cart badge wrong target, 3 conflicting Product JSON-LD blocks, competing LocalBusiness schemas, contradictory hours, review-count mismatch).
 - **Roadmap Phases 4–6 not started** — Phase 4 wholesale portal data, Phase 5 staff B2B cockpit (`orders-create` webhook is still an HMAC-only stub), Phase 6 inventory & containers. Phases 0–3 + 3.5 all built + live. See `docs/PROJECT-STATE.md`.
 - **Untested (need staff login)** — `/admin/services` add/delete and the rebuilt `/admin/customers` CRM compile + deploy clean but weren't click-tested.
 - **Old Gemini key** — confirm the pre-rotation key is deleted in Google AI Studio (the new key is live in Vercel as `GEMINI_API_KEY`).
