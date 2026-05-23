@@ -1,0 +1,334 @@
+{% doc %}
+  Fleet panel for the wholesale portal — lists every vehicle in the
+  wholesale customer's garage with manage actions.
+
+  Backed by /apps/api/vehicles (the same App-Proxy endpoint the
+  consumer garage uses). Wholesale-tag-gated upstream by the parent
+  section's `is_portal_page && is_wholesale` check.
+
+  Designed to scale to ~50 vehicles (typical fleet size). Includes
+  client-side filter, per-row delete + rename + set-default, and an
+  empty state that points back to the bulk-VIN-add card.
+
+  @example
+  {% render 'pt-wholesale-fleet' %}
+{% enddoc %}
+
+<div class="wh-fleet" data-wh-fleet>
+  <div class="wh-fleet__head">
+    <div>
+      <h3 class="wh-fleet__title">Your fleet</h3>
+      <p class="wh-fleet__sub">
+        <span data-wh-fleet-count>—</span> vehicles in your garage. Each one is
+        reusable for tire-size lookups, service reminders, and quick re-orders.
+      </p>
+    </div>
+    <button type="button" class="wh-fleet__add" data-wh-tab-switch="dashboard">
+      + Add more by VIN
+    </button>
+  </div>
+
+  <div class="wh-fleet__toolbar">
+    <input
+      type="search"
+      class="wh-fleet__search"
+      data-wh-fleet-search
+      placeholder="Search by nickname, make, model, or year…"
+      aria-label="Search fleet"
+    >
+    <span class="wh-fleet__visible-count" data-wh-fleet-visible-count></span>
+  </div>
+
+  <div class="wh-fleet__list" data-wh-fleet-list>
+    <div class="wh-fleet__loading" data-wh-fleet-loading>Loading fleet…</div>
+  </div>
+
+  <div class="wh-fleet__empty" data-wh-fleet-empty hidden>
+    <p class="wh-fleet__empty-headline">No vehicles in your fleet yet</p>
+    <p class="wh-fleet__empty-sub">Head to the Dashboard tab and use <strong>Bulk-add vehicles by VIN</strong> to add up to 50 at once.</p>
+    <button type="button" class="wh-fleet__empty-cta" data-wh-tab-switch="dashboard">Go to Dashboard</button>
+  </div>
+</div>
+
+<style>
+  .wh-fleet { font-family: 'Outfit', sans-serif; }
+  .wh-fleet__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.2rem; }
+  .wh-fleet__title { margin: 0 0 0.3rem 0; font-size: 1.3rem; font-weight: 700; color: #111827; }
+  .wh-fleet__sub { margin: 0; color: #52525b; font-size: 0.95rem; }
+  .wh-fleet__add {
+    flex-shrink: 0;
+    background: #DC2626; color: #fff; border: none;
+    padding: 0.6rem 1.1rem; border-radius: 8px;
+    font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 0.9rem;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .wh-fleet__add:hover { background: #b91c1c; }
+
+  .wh-fleet__toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+  .wh-fleet__search {
+    flex: 1; min-width: 0;
+    padding: 0.7rem 1rem;
+    border: 1px solid #cbd5e1; border-radius: 8px;
+    font-family: 'Outfit', sans-serif; font-size: 0.95rem;
+    background: #f8fafc; color: #111827;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .wh-fleet__search:focus { outline: none; border-color: #DC2626; background: #fff; }
+  .wh-fleet__visible-count { color: #71717a; font-size: 0.88rem; flex-shrink: 0; }
+
+  .wh-fleet__list { display: grid; grid-template-columns: 1fr; gap: 0.6rem; }
+  @media (min-width: 720px) { .wh-fleet__list { grid-template-columns: 1fr 1fr; } }
+
+  .wh-fleet__loading { padding: 2rem; text-align: center; color: #71717a; }
+
+  .wh-fleet__card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 1rem 1.1rem;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 0.8rem;
+    transition: border-color 0.15s;
+  }
+  .wh-fleet__card:hover { border-color: #cbd5e1; }
+  .wh-fleet__card[data-default="true"] { border-left: 3px solid #DC2626; }
+
+  .wh-fleet__card-info { min-width: 0; flex: 1; }
+  .wh-fleet__card-nick {
+    margin: 0 0 0.15rem 0; font-size: 1rem; font-weight: 700; color: #111827;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .wh-fleet__card-nick-input {
+    width: 100%; font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 700;
+    background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 5px;
+    padding: 0.2rem 0.5rem;
+  }
+  .wh-fleet__card-vehicle { margin: 0; color: #374151; font-size: 0.92rem; }
+  .wh-fleet__card-meta { margin: 0.1rem 0 0 0; color: #71717a; font-size: 0.83rem; }
+  .wh-fleet__card-default-badge {
+    display: inline-block; padding: 0.1rem 0.5rem;
+    background: rgba(220,38,38,0.10); color: #DC2626;
+    border-radius: 3px; font-size: 0.75rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    margin-left: 0.4rem;
+  }
+
+  .wh-fleet__card-actions { display: flex; flex-direction: column; gap: 0.35rem; }
+  .wh-fleet__action {
+    background: none; border: 1px solid #cbd5e1; color: #475569;
+    padding: 0.25rem 0.55rem; border-radius: 4px;
+    font-family: 'Outfit', sans-serif; font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; white-space: nowrap; transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .wh-fleet__action:hover { background: #f1f5f9; color: #111827; border-color: #94a3b8; }
+  .wh-fleet__action--delete:hover { background: rgba(220,38,38,0.08); color: #991b1b; border-color: #DC2626; }
+  .wh-fleet__action:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .wh-fleet__empty { text-align: center; padding: 2.5rem 1rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; }
+  .wh-fleet__empty-headline { margin: 0 0 0.4rem 0; font-size: 1.05rem; font-weight: 700; color: #111827; }
+  .wh-fleet__empty-sub { margin: 0 0 1rem 0; color: #52525b; }
+  .wh-fleet__empty-cta {
+    background: #DC2626; color: #fff; border: none;
+    padding: 0.6rem 1.4rem; border-radius: 8px;
+    font-family: 'Outfit', sans-serif; font-weight: 600;
+    cursor: pointer;
+  }
+  .wh-fleet__empty-cta:hover { background: #b91c1c; }
+</style>
+
+<script>
+(function () {
+  'use strict';
+
+  var root = document.querySelector('[data-wh-fleet]');
+  if (!root) return;
+
+  var listEl    = root.querySelector('[data-wh-fleet-list]');
+  var loadingEl = root.querySelector('[data-wh-fleet-loading]');
+  var emptyEl   = root.querySelector('[data-wh-fleet-empty]');
+  var countEl   = root.querySelector('[data-wh-fleet-count]');
+  var visEl     = root.querySelector('[data-wh-fleet-visible-count]');
+  var searchEl  = root.querySelector('[data-wh-fleet-search]');
+
+  var vehicles = [];
+  var filter = '';
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) { return ''; }
+  }
+
+  function matches(v, q) {
+    if (!q) return true;
+    var hay = [v.nickname, v.make, v.model, v.trim, String(v.year), v.tireSize].join(' ').toLowerCase();
+    return hay.indexOf(q.toLowerCase()) !== -1;
+  }
+
+  function render() {
+    if (!vehicles.length) {
+      listEl.innerHTML = '';
+      emptyEl.hidden = false;
+      countEl.textContent = '0';
+      visEl.textContent = '';
+      return;
+    }
+    emptyEl.hidden = true;
+    countEl.textContent = String(vehicles.length);
+
+    var filtered = vehicles.filter(function(v) { return matches(v, filter); });
+    visEl.textContent = filter
+      ? 'Showing ' + filtered.length + ' of ' + vehicles.length
+      : '';
+
+    listEl.innerHTML = filtered.map(function(v) {
+      var title = (v.year || '') + ' ' + (v.make || '') + ' ' + (v.model || '');
+      title = title.replace(/\s+/g, ' ').trim();
+      if (v.trim) title += ' · ' + v.trim;
+      var nick = v.nickname || title;
+      return '<div class="wh-fleet__card" data-vehicle-id="' + esc(v.id) + '" data-default="' + (!!v.isDefault) + '">' +
+        '<div class="wh-fleet__card-info">' +
+          '<p class="wh-fleet__card-nick" data-nick>' + esc(nick) +
+            (v.isDefault ? '<span class="wh-fleet__card-default-badge">Default</span>' : '') +
+          '</p>' +
+          '<p class="wh-fleet__card-vehicle">' + esc(title) + '</p>' +
+          '<p class="wh-fleet__card-meta">' +
+            (v.tireSize ? 'Tire size · ' + esc(v.tireSize) + ' &middot; ' : '') +
+            'Added ' + esc(fmtDate(v.addedAt)) +
+          '</p>' +
+        '</div>' +
+        '<div class="wh-fleet__card-actions">' +
+          '<button type="button" class="wh-fleet__action" data-action="rename">Rename</button>' +
+          (v.isDefault ? '' : '<button type="button" class="wh-fleet__action" data-action="set-default">Set default</button>') +
+          '<button type="button" class="wh-fleet__action wh-fleet__action--delete" data-action="delete">Delete</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    listEl.querySelectorAll('[data-action]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var card = btn.closest('[data-vehicle-id]');
+        var id = card.getAttribute('data-vehicle-id');
+        var action = btn.getAttribute('data-action');
+        if      (action === 'delete')      onDelete(id, card);
+        else if (action === 'set-default') onSetDefault(id);
+        else if (action === 'rename')      onRename(id, card);
+      });
+    });
+  }
+
+  async function api(method, path, body) {
+    var opts = { method: method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    var res = await fetch(path, opts);
+    if (!res.ok) throw new Error('API ' + method + ' ' + path + ' → ' + res.status);
+    return res.status === 204 ? null : await res.json();
+  }
+
+  async function load() {
+    try {
+      var data = await api('GET', '/apps/api/vehicles');
+      vehicles = (data && data.vehicles ? data.vehicles : (Array.isArray(data) ? data : []))
+        .map(function(v) {
+          return {
+            id: v.id,
+            nickname: v.nickname || '',
+            year: v.year,
+            make: v.make,
+            model: v.model,
+            trim: v.trim || '',
+            tireSize: v.tireSize || '',
+            isDefault: !!v.isDefault,
+            addedAt: v.createdAt || v.addedAt || null,
+          };
+        });
+      loadingEl.style.display = 'none';
+      render();
+    } catch (e) {
+      loadingEl.textContent = 'Couldn\'t load your fleet. Refresh the page to try again.';
+    }
+  }
+
+  async function onDelete(id, card) {
+    var v = vehicles.find(function(x){ return String(x.id) === String(id); });
+    var label = v ? (v.nickname || (v.year + ' ' + v.make + ' ' + v.model)) : 'this vehicle';
+    if (!confirm('Delete ' + label + ' from your fleet?')) return;
+    card.style.opacity = '0.4';
+    try {
+      await api('DELETE', '/apps/api/vehicles/' + encodeURIComponent(id));
+      vehicles = vehicles.filter(function(x){ return String(x.id) !== String(id); });
+      render();
+    } catch (e) {
+      card.style.opacity = '1';
+      alert('Couldn\'t delete that vehicle. Try again.');
+    }
+  }
+
+  async function onSetDefault(id) {
+    try {
+      await api('PATCH', '/apps/api/vehicles/' + encodeURIComponent(id) + '/default');
+      vehicles = vehicles.map(function(x) { x.isDefault = (String(x.id) === String(id)); return x; });
+      render();
+    } catch (e) {
+      alert('Couldn\'t set default. Try again.');
+    }
+  }
+
+  function onRename(id, card) {
+    var v = vehicles.find(function(x){ return String(x.id) === String(id); });
+    if (!v) return;
+    var nickEl = card.querySelector('[data-nick]');
+    var current = v.nickname || '';
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'wh-fleet__card-nick-input';
+    inp.value = current;
+    inp.maxLength = 60;
+    nickEl.replaceWith(inp);
+    inp.focus();
+    inp.select();
+
+    async function save() {
+      inp.disabled = true;
+      var next = (inp.value || '').trim();
+      if (next === current) { render(); return; }
+      try {
+        await api('PATCH', '/apps/api/vehicles/' + encodeURIComponent(id), { nickname: next });
+        v.nickname = next;
+        render();
+      } catch (e) {
+        alert('Couldn\'t rename. Try again.');
+        render();
+      }
+    }
+    inp.addEventListener('blur', save, { once: true });
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') inp.blur();
+      if (e.key === 'Escape') { inp.removeEventListener('blur', save); render(); }
+    });
+  }
+
+  searchEl.addEventListener('input', function() {
+    filter = searchEl.value || '';
+    render();
+  });
+
+  // Refresh when the fleet panel becomes visible (cheap; the underlying
+  // API call is short). Listen on the tab buttons.
+  document.querySelectorAll('[data-wh-tab="fleet"], [data-wh-tab-switch="fleet"]').forEach(function(t) {
+    t.addEventListener('click', function() { load(); });
+  });
+
+  // Initial load (so the count is right if the customer lands directly on Fleet)
+  load();
+
+  // Also refresh after a successful "Add to garage" from the bulk VIN card
+  document.addEventListener('pt-fleet-vehicle-added', load);
+})();
+</script>

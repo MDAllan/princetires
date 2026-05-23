@@ -1,0 +1,399 @@
+{% doc %}
+  Bulk VIN add for wholesale / fleet customers.
+
+  Paste up to 50 VINs (one per line, comma-separated, or whitespace-separated),
+  click Decode, review the results, and Add-to-garage individually or
+  Add-all-decoded at once.
+
+  Server-side: /api/decode-vin-batch on app.princetires.ca (NHTSA-backed,
+  cached, IP-rate-limited).
+
+  Persistence: the existing customer-account garage at /apps/api/vehicles
+  (App Proxy → princetires-app /api/proxy/vehicles).
+
+  Rendered inside the wholesale-portal dashboard panel — wholesale-only.
+
+  @example
+  {% render 'pt-wholesale-vin-batch' %}
+{% enddoc %}
+
+<div class="wh-vin">
+  <div class="wh-vin__head">
+    <h3 class="wh-vin__title">Bulk-add vehicles by VIN</h3>
+    <p class="wh-vin__sub">Paste up to <strong>50 VINs</strong> from your fleet — one per line, or comma-separated. Each VIN is decoded via NHTSA, then added to your garage. Saved VINs are reusable for tire-size lookups + service reminders.</p>
+  </div>
+
+  <div class="wh-vin__form">
+    <label for="wh-vin-input" class="wh-vin__label">VINs (17 characters each)</label>
+    <textarea
+      id="wh-vin-input"
+      class="wh-vin__textarea"
+      data-wh-vin-input
+      placeholder="2HGFC2F69LH567890&#10;5UXWX7C5LBA12345A&#10;..."
+      rows="6"
+      autocomplete="off"
+      spellcheck="false"
+    ></textarea>
+    <div class="wh-vin__form-row">
+      <button type="button" class="wh-vin__decode-btn" data-wh-vin-decode>
+        <span data-wh-vin-decode-label>Decode VINs</span>
+        <span class="wh-vin__spinner" data-wh-vin-spinner hidden aria-hidden="true"></span>
+      </button>
+      <span class="wh-vin__count" data-wh-vin-count>0 VINs</span>
+    </div>
+    <p class="wh-vin__status" data-wh-vin-status role="status" aria-live="polite" hidden></p>
+  </div>
+
+  <div class="wh-vin__results" data-wh-vin-results hidden>
+    <div class="wh-vin__results-head">
+      <span class="wh-vin__results-title">Decoded vehicles</span>
+      <button type="button" class="wh-vin__add-all" data-wh-vin-add-all>+ Add all decoded to garage</button>
+    </div>
+    <div class="wh-vin__rows" data-wh-vin-rows></div>
+  </div>
+</div>
+
+<style>
+  .wh-vin {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.6rem 1.8rem;
+    margin: 1.5rem 0;
+    font-family: 'Outfit', sans-serif;
+  }
+  .wh-vin__head { margin-bottom: 1.2rem; }
+  .wh-vin__title { margin: 0 0 0.3rem 0; font-size: 1.2rem; font-weight: 700; color: #111827; }
+  .wh-vin__sub { margin: 0; color: #52525b; font-size: 0.95rem; line-height: 1.5; }
+
+  .wh-vin__form { margin-bottom: 1rem; }
+  .wh-vin__label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #111827;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
+  }
+  .wh-vin__textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 0.85rem 1rem;
+    font-family: 'JetBrains Mono', Menlo, monospace;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #111827;
+    resize: vertical;
+    text-transform: uppercase;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .wh-vin__textarea:focus { outline: none; border-color: #DC2626; background: #fff; }
+  .wh-vin__textarea::placeholder { color: #cbd5e1; text-transform: none; letter-spacing: 0; }
+
+  .wh-vin__form-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.7rem;
+  }
+  .wh-vin__decode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.4rem;
+    background: #DC2626;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .wh-vin__decode-btn:hover:not(:disabled) { background: #b91c1c; }
+  .wh-vin__decode-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+  .wh-vin__spinner {
+    width: 0.9rem; height: 0.9rem;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: wh-vin-spin 0.8s linear infinite;
+  }
+  @keyframes wh-vin-spin { to { transform: rotate(360deg); } }
+  .wh-vin__count { color: #71717a; font-size: 0.9rem; }
+
+  .wh-vin__status {
+    margin: 0.6rem 0 0;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.9rem;
+    border-radius: 6px;
+  }
+  .wh-vin__status--ok  { background: rgba(34,197,94,0.08); color: #166534; border-left: 3px solid #22c55e; }
+  .wh-vin__status--err { background: rgba(220,38,38,0.08); color: #991b1b; border-left: 3px solid #dc2626; }
+
+  .wh-vin__results { margin-top: 1.5rem; border-top: 1px solid #e2e8f0; padding-top: 1.2rem; }
+  .wh-vin__results-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+  }
+  .wh-vin__results-title { font-weight: 700; color: #111827; }
+  .wh-vin__add-all {
+    background: none;
+    border: 1px solid #DC2626;
+    color: #DC2626;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 0.88rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .wh-vin__add-all:hover { background: #DC2626; color: #fff; }
+  .wh-vin__add-all:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .wh-vin__rows { display: flex; flex-direction: column; gap: 0.5rem; }
+  .wh-vin__row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.8rem;
+    align-items: center;
+    padding: 0.7rem 1rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+  }
+  .wh-vin__row--ok  { border-left: 3px solid #22c55e; }
+  .wh-vin__row--err { border-left: 3px solid #dc2626; }
+  .wh-vin__row-info { min-width: 0; }
+  .wh-vin__row-vin {
+    font-family: 'JetBrains Mono', Menlo, monospace;
+    font-size: 0.82rem;
+    color: #71717a;
+    letter-spacing: 0.04em;
+  }
+  .wh-vin__row-vehicle {
+    margin-top: 0.15rem;
+    font-weight: 600;
+    color: #111827;
+  }
+  .wh-vin__row-meta {
+    margin-top: 0.1rem;
+    font-size: 0.85rem;
+    color: #52525b;
+  }
+  .wh-vin__row-add {
+    background: #DC2626;
+    color: #fff;
+    border: none;
+    padding: 0.4rem 0.9rem;
+    border-radius: 5px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .wh-vin__row-add:hover:not(:disabled) { background: #b91c1c; }
+  .wh-vin__row-add:disabled { background: #94a3b8; cursor: default; }
+</style>
+
+<script>
+(function () {
+  'use strict';
+
+  var root = document.querySelector('.wh-vin');
+  if (!root) return;
+
+  var input   = root.querySelector('[data-wh-vin-input]');
+  var decode  = root.querySelector('[data-wh-vin-decode]');
+  var lblBtn  = root.querySelector('[data-wh-vin-decode-label]');
+  var spin    = root.querySelector('[data-wh-vin-spinner]');
+  var count   = root.querySelector('[data-wh-vin-count]');
+  var status  = root.querySelector('[data-wh-vin-status]');
+  var results = root.querySelector('[data-wh-vin-results]');
+  var rows    = root.querySelector('[data-wh-vin-rows]');
+  var addAll  = root.querySelector('[data-wh-vin-add-all]');
+
+  var VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
+
+  function setStatus(kind, msg) {
+    status.classList.remove('wh-vin__status--ok', 'wh-vin__status--err');
+    if (!kind) { status.hidden = true; status.textContent = ''; return; }
+    status.classList.add('wh-vin__status--' + kind);
+    status.textContent = msg || '';
+    status.hidden = false;
+  }
+  function setBusy(busy) {
+    decode.disabled = !!busy;
+    spin.hidden = !busy;
+    lblBtn.textContent = busy ? 'Decoding…' : 'Decode VINs';
+  }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+  function parseVinList(text) {
+    if (!text) return [];
+    // Accept newlines, commas, semicolons, or whitespace as separators
+    var raw = String(text).split(/[\s,;]+/).map(function(s){
+      return s.replace(/[-\s]+/g, '').toUpperCase();
+    }).filter(Boolean);
+    // De-dupe in input order
+    var seen = {};
+    return raw.filter(function(v){ if (seen[v]) return false; seen[v] = 1; return true; });
+  }
+
+  input.addEventListener('input', function() {
+    var n = parseVinList(input.value).length;
+    count.textContent = n + ' VIN' + (n === 1 ? '' : 's');
+  });
+
+  decode.addEventListener('click', async function() {
+    var vins = parseVinList(input.value);
+    if (!vins.length) { setStatus('err', 'Paste at least one VIN above.'); return; }
+    if (vins.length > 50) {
+      setStatus('err', 'Max 50 VINs per batch — split into smaller batches.');
+      return;
+    }
+    var bad = vins.filter(function(v){ return !VIN_RE.test(v); });
+
+    setStatus(null);
+    setBusy(true);
+
+    try {
+      var res = await fetch('https://app.princetires.ca/api/decode-vin-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vins: vins })
+      });
+      if (!res.ok) {
+        setStatus('err', 'Decode service is unavailable right now (HTTP ' + res.status + '). Try again in a minute.');
+        return;
+      }
+      var data = await res.json();
+      renderResults(data.results || [], data.summary || {});
+
+      var s = data.summary || {};
+      var summaryMsg = 'Decoded ' + (s.decoded || 0) + ' of ' + (s.total || 0) + ' VINs';
+      if (s.cache_hits) summaryMsg += ' (' + s.cache_hits + ' cached)';
+      if (s.invalid_format) summaryMsg += ' · ' + s.invalid_format + ' invalid format';
+      if (s.no_match)       summaryMsg += ' · ' + s.no_match + ' unknown';
+      setStatus(s.decoded > 0 ? 'ok' : 'err', summaryMsg);
+    } catch (err) {
+      setStatus('err', 'Couldn\'t reach the decode service. Check your connection and try again.');
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  function renderResults(rowsData, summary) {
+    if (!rowsData.length) { results.hidden = true; return; }
+    rows.innerHTML = '';
+    rowsData.forEach(function(r) {
+      var div = document.createElement('div');
+      var v = r.vehicle;
+      var ok = !!v;
+      div.className = 'wh-vin__row ' + (ok ? 'wh-vin__row--ok' : 'wh-vin__row--err');
+      var rowHtml =
+        '<div class="wh-vin__row-info">' +
+          '<div class="wh-vin__row-vin">' + escapeHtml(r.vin) + (r.cached ? ' &middot; cached' : '') + '</div>';
+      if (ok) {
+        rowHtml +=
+          '<div class="wh-vin__row-vehicle">' + escapeHtml(v.year + ' ' + v.make + ' ' + v.model + (v.trim ? ' ' + v.trim : '')) + '</div>' +
+          '<div class="wh-vin__row-meta">' +
+            escapeHtml(v.body_class || '') +
+            (v.engine && (v.engine.cylinders || v.engine.displacement_l) ? ' · ' + (v.engine.cylinders || '?') + 'cyl ' + (v.engine.displacement_l || '?') + 'L' : '') +
+            (v.drive_type ? ' · ' + escapeHtml(v.drive_type) : '') +
+          '</div>';
+      } else {
+        rowHtml +=
+          '<div class="wh-vin__row-vehicle" style="color:#991b1b">' + escapeHtml(r.error_code === 'INVALID_FORMAT' ? 'Invalid VIN format' : 'Couldn\'t decode this VIN') + '</div>' +
+          '<div class="wh-vin__row-meta">' + escapeHtml(r.error_text || '') + '</div>';
+      }
+      rowHtml += '</div>';
+      rowHtml += ok
+        ? '<button type="button" class="wh-vin__row-add" data-add-vehicle>Add to garage</button>'
+        : '<span style="color:#71717a;font-size:0.85rem">—</span>';
+      div.innerHTML = rowHtml;
+      if (ok) {
+        div.querySelector('[data-add-vehicle]').addEventListener('click', function(e) {
+          addToGarage(v, r.vin, e.currentTarget);
+        });
+      }
+      rows.appendChild(div);
+    });
+    results.hidden = false;
+  }
+
+  async function addToGarage(vehicle, vin, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+    try {
+      // The garage write endpoint is the App-Proxy /apps/api/vehicles
+      // (proxied to princetires-app /api/proxy/vehicles).
+      var body = {
+        year: Number(vehicle.year),
+        make: vehicle.make,
+        model: vehicle.model,
+        trim: vehicle.trim || undefined,
+        nickname: 'VIN ' + vin.slice(-6),  // helpful label for fleet identification
+      };
+      var res = await fetch('/apps/api/vehicles', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        btn.textContent = '✓ Added';
+        btn.style.background = '#22c55e';
+        // Notify the Fleet panel that a new vehicle landed in the garage —
+        // it listens for this event and refreshes its list.
+        try { document.dispatchEvent(new CustomEvent('pt-fleet-vehicle-added')); } catch (e) { /* no-op */ }
+      } else {
+        btn.textContent = 'Failed';
+        btn.style.background = '#991b1b';
+        btn.disabled = false;
+        setTimeout(function(){ btn.textContent = 'Add to garage'; btn.style.background = ''; }, 4000);
+      }
+    } catch (e) {
+      btn.textContent = 'Failed';
+      btn.style.background = '#991b1b';
+      btn.disabled = false;
+    }
+  }
+
+  addAll.addEventListener('click', async function() {
+    var btns = rows.querySelectorAll('[data-add-vehicle]:not([disabled])');
+    addAll.disabled = true;
+    addAll.textContent = 'Adding ' + btns.length + '…';
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].click();
+      await new Promise(function(r){ setTimeout(r, 250); });  // gentle pacing
+    }
+    addAll.textContent = '✓ All added — view in Fleet →';
+    addAll.disabled = false;
+    addAll.onclick = function() {
+      // Jump to the Fleet tab so the customer sees what they just added
+      var fleetTab = document.querySelector('[data-wh-tab="fleet"]');
+      if (fleetTab) fleetTab.click();
+    };
+    // Restore original handler + label after a few seconds
+    setTimeout(function() {
+      addAll.textContent = '+ Add all decoded to garage';
+      addAll.onclick = null;  // restored by original listener
+    }, 6000);
+  });
+})();
+</script>

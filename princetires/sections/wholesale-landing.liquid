@@ -1581,6 +1581,7 @@
   <div class="wh-dash-tabs">
     <div class="wh-dash-tabs__inner">
       <button class="wh-dash-tab wh-dash-tab--active" data-wh-tab="dashboard">Dashboard</button>
+      <button class="wh-dash-tab" data-wh-tab="fleet">Fleet</button>
       <button class="wh-dash-tab" data-wh-tab="orders">Order history</button>
       <button class="wh-dash-tab" data-wh-tab="account">Account</button>
     </div>
@@ -1655,6 +1656,11 @@
         </button>
       </div>
 
+      <!-- Bulk VIN add — fleet customers paste up to 50 VINs and bulk-add
+           the resolved vehicles to their garage. Server-side proxy at
+           app.princetires.ca/api/decode-vin-batch (NHTSA-backed, cached). -->
+      {% render 'pt-wholesale-vin-batch' %}
+
       <!-- Promo banner -->
       {%- if section.settings.promo_text != blank -%}
       <div class="wh-dash-promo">
@@ -1667,6 +1673,17 @@
         {%- endif -%}
       </div>
       {%- endif -%}
+    </div>
+
+    <!-- Panel: Fleet — lists every vehicle saved to the wholesale customer's
+         garage. Backed by /apps/api/vehicles. The bulk VIN-add card on the
+         Dashboard panel populates this. Wholesale customers don't see the
+         normal /pages/garage UI from the header, so this is where they
+         manage their fleet. -->
+    <div class="wh-dash-panel wh-dash-panel--hidden" data-wh-panel="fleet">
+      <div class="wh-dash-card wh-dash-card--full">
+        {% render 'pt-wholesale-fleet' %}
+      </div>
     </div>
 
     <!-- Panel: Order History -->
