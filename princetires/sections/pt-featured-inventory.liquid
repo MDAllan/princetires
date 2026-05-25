@@ -1,7 +1,10 @@
 {%- liquid
-  assign source = collections[section.settings.collection]
+  assign source = section.settings.collection
   assign limit = section.settings.product_limit | default: 12
-  assign products = source.products | slice: 0, limit
+  assign has_products = false
+  if source != blank and source.products.size > 0
+    assign has_products = true
+  endif
 -%}
 
 <div class="pti" data-pti>
@@ -22,12 +25,12 @@
       {%- endif -%}
     </div>
 
-    {%- if products.size > 0 -%}
+    {%- if has_products -%}
       <div class="pti__marquee" data-pti-marquee>
         <div class="pti__track" data-pti-track>
           {%- comment -%} Render the products twice for a seamless infinite loop {%- endcomment -%}
           {%- for loop_pass in (1..2) -%}
-            {%- for product in products -%}
+            {%- for product in source.products limit: limit -%}
               {%- liquid
                 assign tire_size = product.metafields.custom.tire_size | default: ''
                 assign clean_title = product.title
@@ -36,22 +39,46 @@
                 endif
                 assign season_tag = ''
                 assign season_color = '#6b7280'
-                for tag in product.tags
-                  assign tag_down = tag | downcase
-                  if tag_down contains 'winter'
-                    assign season_tag = 'Winter'
+                comment
+                  Canonical source: custom.seasonality metafield (set by import +
+                  admin). Tags are noisy — many imported products carry BOTH
+                  "all-weather-rated" AND a stray "Summer" tag from the supplier
+                  feed, and the old tag loop let the last match overwrite the
+                  first (e.g. BFG KO3 ended up labelled "Summer"). Use the
+                  metafield first; only fall back to tags when blank.
+                endcomment
+                assign m_season = product.metafields.custom.seasonality | default: ''
+                if m_season != blank
+                  assign season_tag = m_season
+                endif
+                if season_tag == blank
+                  for tag in product.tags
+                    assign tag_down = tag | downcase
+                    if tag_down contains 'winter'
+                      assign season_tag = 'Winter'
+                    elsif tag_down contains 'all-weather' or tag_down contains 'all weather'
+                      assign season_tag = 'All-Weather'
+                    elsif tag_down contains 'all-season' or tag_down contains 'all season'
+                      assign season_tag = 'All-Season'
+                    elsif tag_down contains 'summer'
+                      assign season_tag = 'Summer'
+                    endif
+                  endfor
+                endif
+                case season_tag
+                  when 'Winter'
                     assign season_color = '#2563eb'
-                  elsif tag_down contains 'all-weather' or tag_down contains 'all weather'
-                    assign season_tag = 'All-Weather'
+                  when 'All-Weather'
                     assign season_color = '#F5820B'
-                  elsif tag_down contains 'all-season' or tag_down contains 'all season'
-                    assign season_tag = 'All-Season'
+                  when 'All-Season'
                     assign season_color = '#16a34a'
-                  elsif tag_down contains 'summer'
-                    assign season_tag = 'Summer'
+                  when 'Summer'
                     assign season_color = '#eab308'
-                  endif
-                endfor
+                  when 'All-Terrain'
+                    assign season_color = '#92400e'
+                  when 'Performance'
+                    assign season_color = '#7c3aed'
+                endcase
               -%}
               <a
                 class="pti__card{% unless product.available %} pti__card--unavailable{% endunless %}"

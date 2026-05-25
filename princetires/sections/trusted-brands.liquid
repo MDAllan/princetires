@@ -13,464 +13,198 @@
     </div>
 
     {%- assign brand_blocks = section.blocks | where: "type", "brand" -%}
-    {%- assign tire_blocks = section.blocks | where: "type", "tire_card" -%}
 
     {%- if brand_blocks.size > 0 -%}
-      <div class="trusted-brands__marquee" data-brand-marquee>
-        <div class="trusted-brands__marquee-inner">
-          <div class="trusted-brands__tabs-track" role="tablist" data-brand-tabs-track>
-            {%- for block in brand_blocks -%}
-              <button
-                class="trusted-brands__tab{% if forloop.first %} trusted-brands__tab--active{% endif %}"
-                role="tab"
-                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
-                data-brand="{{ block.settings.name | handleize }}"
-                data-brand-name="{{ block.settings.name | escape }}"
-                {{ block.shopify_attributes }}
-              >
-                {%- if block.settings.logo != blank -%}
-                  {{ block.settings.logo | image_url: height: 28 | image_tag: class: "trusted-brands__tab-logo", alt: block.settings.name }}
-                {%- else -%}
-                  <span class="trusted-brands__tab-text">{{ block.settings.name }}</span>
-                {%- endif -%}
-              </button>
-            {%- endfor -%}
-          </div>
-          <div class="trusted-brands__tabs-track" aria-hidden="true">
-            {%- for block in brand_blocks -%}
-              <button
-                class="trusted-brands__tab"
-                tabindex="-1"
-                aria-hidden="true"
-                data-brand="{{ block.settings.name | handleize }}"
-                data-brand-name="{{ block.settings.name | escape }}"
-              >
-                {%- if block.settings.logo != blank -%}
-                  {{ block.settings.logo | image_url: height: 28 | image_tag: class: "trusted-brands__tab-logo", alt: block.settings.name }}
-                {%- else -%}
-                  <span class="trusted-brands__tab-text">{{ block.settings.name }}</span>
-                {%- endif -%}
-              </button>
-            {%- endfor -%}
-          </div>
+      <div class="trusted-brands__strip" data-brand-strip>
+        <div class="trusted-brands__track" data-brand-track>
+          {%- for block in brand_blocks -%}
+            {%- comment -%}
+              Link priority:
+                1. /collections/<brand-handle> if a matching collection exists
+                2. fallback /collections/tires?filter.p.vendor=<brand>
+            {%- endcomment -%}
+            {%- assign brand_handle = block.settings.name | handleize -%}
+            {%- assign brand_collection = collections[brand_handle] -%}
+            {%- if brand_collection != empty and brand_collection.handle != blank -%}
+              {%- assign brand_url = '/collections/' | append: brand_handle -%}
+            {%- else -%}
+              {%- assign brand_url = '/collections/tires?filter.p.vendor=' | append: block.settings.name | url_encode -%}
+            {%- endif -%}
+            <a
+              href="{{ brand_url }}"
+              class="trusted-brands__tab"
+              data-brand-name="{{ block.settings.name | escape }}"
+              aria-label="Shop {{ block.settings.name | escape }} tires"
+              {{ block.shopify_attributes }}
+            >
+              {%- if block.settings.logo != blank -%}
+                {{ block.settings.logo | image_url: width: 280 | image_tag: class: "trusted-brands__tab-logo", loading: "lazy", widths: "160,240,320", sizes: "140px", alt: block.settings.name }}
+              {%- else -%}
+                <span class="trusted-brands__tab-text">{{ block.settings.name | escape }}</span>
+              {%- endif -%}
+            </a>
+          {%- endfor -%}
         </div>
       </div>
     {%- endif -%}
-
-    <div class="trusted-brands__carousel-wrap">
-      <button class="trusted-brands__arrow trusted-brands__arrow--left" data-carousel-prev aria-label="{{ 'general.accessibility.previous' | t }}">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
-      </button>
-
-      <div class="trusted-brands__carousel" data-brand-carousel>
-        <div class="trusted-brands__track" data-brand-track data-has-blocks="{{ tire_blocks.size }}">
-          {%- if tire_blocks.size > 0 -%}
-            {%- for block in tire_blocks -%}
-              {%- comment -%}
-                CTA URL priority:
-                  1. block.settings.link — explicit theme-editor override
-                  2. /collections/<brand-handle> — every brand we feature has
-                     its own dedicated Shopify collection (e.g. /collections/
-                     michelin, /collections/bridgestone). Cleaner than a
-                     filtered tires URL, gives the customer a branded landing
-                     with all that brand's products.
-                  3. fallback: /collections/tires?filter.p.vendor=<brand>
-                     (vendor filter always renders) for brands without a
-                     dedicated collection.
-              {%- endcomment -%}
-              {%- assign auto_link = block.settings.brand | append: ' ' | append: block.settings.model -%}
-              {%- assign card_link = block.settings.link | default: blank -%}
-              {%- if card_link == blank and block.settings.brand != blank -%}
-                {%- assign brand_handle = block.settings.brand | handleize -%}
-                {%- assign brand_collection = collections[brand_handle] -%}
-                {%- if brand_collection != empty and brand_collection.handle != blank -%}
-                  {%- assign card_link = '/collections/' | append: brand_handle -%}
-                {%- else -%}
-                  {%- assign card_link = '/collections/tires?filter.p.vendor=' | append: block.settings.brand | url_encode -%}
-                {%- endif -%}
-              {%- endif -%}
-              <div class="trusted-brands__card" data-tire-brand="{{ block.settings.brand | handleize }}" {{ block.shopify_attributes }}>
-                <div class="trusted-brands__card-image">
-                  {%- if block.settings.image != blank -%}
-                    {{ block.settings.image | image_url: width: 500 | image_tag }}
-                  {%- else -%}
-                    <div class="trusted-brands__card-placeholder"></div>
-                  {%- endif -%}
-                </div>
-                <div class="trusted-brands__card-body">
-                  <span class="trusted-brands__card-brand">{{ block.settings.brand | escape }}</span>
-                  <h3 class="trusted-brands__card-model">{{ block.settings.model | escape }}</h3>
-                  {%- if block.settings.season != blank -%}
-                    <span class="trusted-brands__card-season">{{ block.settings.season | escape }}</span>
-                  {%- endif -%}
-                </div>
-                <div class="trusted-brands__card-action">
-                  <a href="{% if card_link != blank %}{{ card_link }}{% else %}/search?q={{ auto_link | url_encode }}&type=product{% endif %}" class="trusted-brands__card-btn">{{ 'sections.trusted_brands.shop_tire' | t }}</a>
-                </div>
-              </div>
-            {%- endfor -%}
-          {%- endif -%}
-        </div>
-      </div>
-
-      <button class="trusted-brands__arrow trusted-brands__arrow--right" data-carousel-next aria-label="{{ 'general.accessibility.next' | t }}">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
-      </button>
-    </div>
-
-    <div class="trusted-brands__footer">
-      <a href="{{ routes.all_products_collection_url }}" class="trusted-brands__view-all" data-brand-view-all>
-        {{ 'sections.trusted_brands.view_all' | t }} <span data-brand-view-all-name>{{ brand_blocks.first.settings.name }}</span> →
-      </a>
-    </div>
   </div>
 
   <script>
-  (function() {
-    var section    = document.currentScript.closest('[data-trusted-brands]');
-    if (!section) return;
+    (function () {
+      var section = document.currentScript.closest('[data-trusted-brands]');
+      if (!section) return;
+      var strip = section.querySelector('[data-brand-strip]');
+      if (!strip) return;
 
-    var marqueeEl    = section.querySelector('[data-brand-marquee]');
-    var marqueeInner = marqueeEl && marqueeEl.querySelector('.trusted-brands__marquee-inner');
-    var tabsTrack    = section.querySelector('[data-brand-tabs-track]');
-    var carousel     = section.querySelector('[data-brand-carousel]');
-    var prevBtn      = section.querySelector('[data-carousel-prev]');
-    var nextBtn      = section.querySelector('[data-carousel-next]');
-    var viewAllLink  = section.querySelector('[data-brand-view-all]');
-    var viewAllName  = section.querySelector('[data-brand-view-all-name]');
+      /* ── Drag-to-scroll on desktop (mousedown + move). Touch uses native scroll. ── */
+      var drag = { active: false, startX: 0, startLeft: 0, moved: 0 };
+      var DRAG_THRESHOLD = 6; // pixels of movement before we count it as a drag, not a click
 
-    if (!carousel) return;
-
-    function switchBrand(brandHandle, brandName) {
-      var cards = section.querySelectorAll('[data-tire-brand]');
-      if (marqueeEl) {
-        marqueeEl.querySelectorAll('[data-brand]').forEach(function(b) {
-          var isActive = b.dataset.brand === brandHandle;
-          b.classList.toggle('trusted-brands__tab--active', isActive);
-          b.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        });
-      }
-      if (viewAllName) viewAllName.textContent = brandName;
-      if (viewAllLink) viewAllLink.href = '/search?q=' + encodeURIComponent(brandName) + '&type=product';
-      cards.forEach(function(card) {
-        card.style.display = card.dataset.tireBrand === brandHandle ? 'flex' : 'none';
+      strip.addEventListener('mousedown', function (e) {
+        if (e.button !== 0) return;
+        drag.active = true;
+        drag.moved = 0;
+        drag.startX = e.pageX;
+        drag.startLeft = strip.scrollLeft;
+        strip.classList.add('is-dragging');
       });
-      carousel.scrollLeft = 0;
-    }
-
-    if (marqueeEl && marqueeInner) {
-      // Auto-marquee restored: pause on hover / touch / reduced-motion.
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        marqueeInner.style.animationPlayState = 'paused';
-      } else {
-        marqueeEl.addEventListener('mouseenter', function() { marqueeInner.style.animationPlayState = 'paused'; });
-        marqueeEl.addEventListener('mouseleave', function() { marqueeInner.style.animationPlayState = 'running'; });
-        marqueeEl.addEventListener('touchstart', function() { marqueeInner.style.animationPlayState = 'paused'; }, { passive: true });
-        marqueeEl.addEventListener('touchend',   function() { setTimeout(function () { marqueeInner.style.animationPlayState = 'running'; }, 800); });
-      }
-      marqueeEl.addEventListener('click', function(e) {
-        var btn = e.target.closest('[data-brand]');
-        if (!btn) return;
-        switchBrand(btn.dataset.brand, btn.dataset.brandName);
+      document.addEventListener('mousemove', function (e) {
+        if (!drag.active) return;
+        e.preventDefault();
+        var dx = e.pageX - drag.startX;
+        drag.moved = Math.max(drag.moved, Math.abs(dx));
+        strip.scrollLeft = drag.startLeft - dx;
+      }, { passive: false });
+      document.addEventListener('mouseup', function () {
+        if (!drag.active) return;
+        drag.active = false;
+        strip.classList.remove('is-dragging');
       });
-    }
 
-    var firstBtn = tabsTrack && tabsTrack.querySelector('[data-brand]');
-    if (firstBtn) switchBrand(firstBtn.dataset.brand, firstBtn.dataset.brandName);
-
-    // Auto-scroll tick loop removed — products only move when user swipes,
-    // drags, or clicks the prev/next arrows.
-
-    var drag = { on: false, startX: 0, startLeft: 0 };
-    carousel.addEventListener('mousedown', function(e) {
-      drag.on = true; drag.startX = e.pageX; drag.startLeft = carousel.scrollLeft;
-      carousel.style.cursor = 'grabbing';
-    });
-    document.addEventListener('mousemove', function(e) {
-      if (!drag.on) return;
-      e.preventDefault();
-      carousel.scrollLeft = drag.startLeft - (e.pageX - drag.startX);
-    }, { passive: false });
-    document.addEventListener('mouseup', function() {
-      if (!drag.on) return;
-      drag.on = false; carousel.style.cursor = '';
-    });
-    carousel.addEventListener('touchstart', function(e) {
-      drag.on = true; drag.startX = e.touches[0].pageX; drag.startLeft = carousel.scrollLeft;
-    }, { passive: true });
-    carousel.addEventListener('touchmove', function(e) {
-      if (!drag.on) return;
-      carousel.scrollLeft = drag.startLeft - (e.touches[0].pageX - drag.startX);
-    }, { passive: true });
-    carousel.addEventListener('touchend', function() {
-      drag.on = false;
-    });
-
-    if (prevBtn) prevBtn.addEventListener('click', function() {
-      carousel.scrollBy({ left: -carousel.offsetWidth * 0.6, behavior: 'smooth' });
-    });
-    if (nextBtn) nextBtn.addEventListener('click', function() {
-      carousel.scrollBy({ left: carousel.offsetWidth * 0.6, behavior: 'smooth' });
-    });
-  }());
+      /* If the user actually dragged (not just clicked), suppress the click on the
+         logo so they don't get teleported to /collections/<brand> mid-drag. */
+      strip.addEventListener('click', function (e) {
+        if (drag.moved > DRAG_THRESHOLD) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
+    }());
   </script>
 </div>
 
 {% stylesheet %}
   .trusted-brands {
     background: #fff;
-    padding: 5rem 0 4rem;
+    padding: 4rem 0 3.5rem;
   }
-
   .trusted-brands__container {
-    max-width: 100%;
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 0 10rem;
+    padding: 0 4rem;
   }
-
   .trusted-brands__header {
     text-align: center;
     margin-bottom: 2.4rem;
   }
-
   .trusted-brands__heading {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 2.8rem;
+    font-size: 2.6rem;
     font-weight: 700;
     color: #111;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    margin: 0 0 0.6rem;
+    margin: 0 0 0.5rem;
   }
-
   .trusted-brands__accent { color: #dc2626; }
-
   .trusted-brands__subtitle {
     font-family: 'Outfit', sans-serif;
-    color: #9ca3af;
-    font-size: 1.4rem;
-    font-weight: 300;
+    color: #6b7280;
+    font-size: 1.25rem;
+    font-weight: 400;
     margin: 0;
   }
 
-  /* ── Brand-logo strip — auto-scrolling marquee, pauses on hover/touch ── */
-  @keyframes tb-marquee {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
-  }
-  .trusted-brands__marquee {
-    overflow: hidden;
-    margin-bottom: 3rem;
-  }
-  .trusted-brands__marquee-inner {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    width: max-content;
-    animation: tb-marquee 28s linear infinite;
-  }
-  .trusted-brands__marquee-inner:hover { animation-play-state: paused; }
-  @media (prefers-reduced-motion: reduce) {
-    .trusted-brands__marquee-inner { animation: none; }
-  }
-
-  .trusted-brands__tabs-track {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    width: max-content;
-    padding: 0.4rem 0;
-  }
-
-  .trusted-brands__tab {
-    background: transparent;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    padding: 0.8rem 2rem;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.3rem;
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-
-  .trusted-brands__tab:hover {
-    background: transparent;
-    border-color: #F5820B;
-    box-shadow: 0 0 0 2px rgba(245, 130, 11, 0.25);
-  }
-
-  .trusted-brands__tab--active {
-    background: transparent;
-    border-color: #F5820B;
-    box-shadow: 0 0 0 2px rgba(245, 130, 11, 0.35);
-  }
-
-  .trusted-brands__tab-logo {
-    height: 24px;
-    width: auto;
-    display: block;
-  }
-
-  .trusted-brands__tab-text { font-size: 1.2rem; font-weight: 500; color: #374151; }
-
-  /* ── Product carousel ── */
-  .trusted-brands__carousel-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-  .trusted-brands__carousel {
+  /* ── Brand strip — horizontal scroll with grab-to-drag on desktop, native swipe on mobile ── */
+  .trusted-brands__strip {
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    flex: 1;
-    border-radius: 8px;
+    cursor: grab;
+    /* Fade the edges so it's visually clear there's more to scroll to */
+    mask-image: linear-gradient(to right, transparent 0, #000 3%, #000 97%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 3%, #000 97%, transparent 100%);
   }
-  .trusted-brands__carousel::-webkit-scrollbar { display: none; }
+  .trusted-brands__strip::-webkit-scrollbar { display: none; }
+  .trusted-brands__strip.is-dragging { cursor: grabbing; }
+  .trusted-brands__strip.is-dragging .trusted-brands__tab { pointer-events: none; }
+
   .trusted-brands__track {
     display: flex;
-    gap: 1.6rem;
-    transition: transform 0.4s ease;
-    cursor: grab;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 0.6rem 0.4rem;
+    width: max-content;
     user-select: none;
-    scroll-snap-type: x mandatory;
   }
-  .trusted-brands__card {
-    scroll-snap-align: start;
-  }
-  .trusted-brands__track:active { cursor: grabbing; }
 
-  .trusted-brands__arrow {
+  /* ── Brand tile — fixed-size pill so every logo aligns the same ── */
+  .trusted-brands__tab {
     flex-shrink: 0;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    width: 160px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.2rem 1.4rem;
+    background: #fff;
     border: 1px solid #e5e7eb;
-    background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: #6b7280;
-    transition: all 0.2s;
-  }
-  .trusted-brands__arrow:hover { border-color: #d1d5db; color: #111; background: #f9fafb; }
-
-  .trusted-brands__card {
-    min-width: calc(25% - 1.2rem);
-    max-width: calc(25% - 1.2rem);
-    border: 1px solid #f0f0f0;
     border-radius: 10px;
-    overflow: hidden;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    transition: box-shadow 0.25s ease, transform 0.25s ease;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    -webkit-user-drag: none;
   }
-  .trusted-brands__card[hidden] { display: none; }
-  .trusted-brands__card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.06); transform: translateY(-2px); }
-
-  .trusted-brands__card-image {
-    background: #f7f7f8;
-    aspect-ratio: 4/3;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    padding: 2rem;
+  .trusted-brands__tab:hover {
+    border-color: #dc2626;
+    box-shadow: 0 6px 18px -8px rgba(220, 38, 38, 0.35);
+    transform: translateY(-2px);
   }
-  .trusted-brands__card-image img { width: 100%; height: 100%; object-fit: contain; }
-  .trusted-brands__card-placeholder { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #e5e7eb, #d1d5db); opacity: 0.5; }
+  .trusted-brands__tab:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+  }
 
-  .trusted-brands__card-body { padding: 1.4rem 1.6rem 1.6rem; display: flex; flex-direction: column; gap: 0.3rem; flex: 1; }
-  .trusted-brands__card-brand { font-family: 'Outfit', sans-serif; font-size: 1.05rem; font-weight: 400; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.08em; }
-  .trusted-brands__card-model { font-family: 'Barlow Condensed', sans-serif; font-size: 1.7rem; font-weight: 600; color: #111; margin: 0; line-height: 1.2; }
-  .trusted-brands__card-season { font-family: 'Outfit', sans-serif; font-size: 1.2rem; color: #6b7280; font-weight: 300; margin-top: 0.2rem; }
-
-  .trusted-brands__card-action { padding: 0 1.6rem 1.6rem; margin-top: auto; }
-  .trusted-brands__card-btn { display: block; background: #dc2626; color: #fff; text-align: center; padding: 0.9rem; border-radius: 8px; text-decoration: none; font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 500; transition: background 0.2s; }
-  .trusted-brands__card-btn:hover { background: #b91c1c; color: #fff; }
-
-  .trusted-brands__footer { text-align: center; margin-top: 2.4rem; }
-  .trusted-brands__view-all { font-family: 'Outfit', sans-serif; font-size: 1.4rem; font-weight: 500; color: #dc2626; text-decoration: none; transition: opacity 0.2s; }
-  .trusted-brands__view-all:hover { opacity: 0.7; }
+  .trusted-brands__tab-logo {
+    max-height: 44px;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    pointer-events: none; /* let the drag handler own all mouse events */
+    -webkit-user-drag: none;
+  }
+  .trusted-brands__tab-text {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
 
   @media (max-width: 768px) {
+    .trusted-brands { padding: 3rem 0 2.5rem; }
     .trusted-brands__container { padding: 0 1.6rem; }
-    .trusted-brands__card { min-width: 70vw; max-width: 70vw; scroll-snap-align: start; }
-    .trusted-brands__arrow {
-      width: 36px;
-      height: 36px;
-      background: rgba(0, 0, 0, 0.06);
-      border-color: transparent;
-    }
-    .trusted-brands__heading { font-size: 2.2rem; }
-  }
-
-  @media (max-width: 480px) {
-    .trusted-brands {
-      padding: 4rem 0 3rem;
-    }
-    .trusted-brands__container {
-      padding: 0 1.6rem;
-    }
-    .trusted-brands__heading {
-      font-size: clamp(1.8rem, 5vw, 2.2rem);
-    }
-    .trusted-brands__subtitle {
-      font-size: 1.2rem;
-    }
-    .trusted-brands__card {
-      min-width: 80vw;
-      max-width: 80vw;
-    }
-    .trusted-brands__card-btn {
-      padding: 1.2rem;
-      min-height: 4.4rem;
-      font-size: 1.4rem;
-    }
+    .trusted-brands__heading { font-size: 2.1rem; }
+    .trusted-brands__subtitle { font-size: 1.15rem; }
     .trusted-brands__tab {
-      padding: 1rem 1.8rem;
-      min-height: 4.4rem;
+      width: 130px;
+      height: 70px;
+      padding: 1rem 1.1rem;
     }
-    .trusted-brands__view-all {
-      font-size: 1.3rem;
-      min-height: 4.4rem;
-      display: inline-flex;
-      align-items: center;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .trusted-brands__container {
-      padding: 0 1.2rem;
-    }
-    .trusted-brands__card {
-      min-width: 85vw;
-      max-width: 85vw;
-    }
-    .trusted-brands__heading {
-      font-size: 1.8rem;
-    }
-    .trusted-brands__card-body {
-      padding: 1.2rem 1.4rem;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .trusted-brands__card {
-      transition: none !important;
-    }
-    .trusted-brands__tab {
-      transition: none !important;
-    }
+    .trusted-brands__tab-logo { max-height: 36px; }
   }
 {% endstylesheet %}
 
@@ -486,48 +220,13 @@
           "type": "text",
           "id": "name",
           "label": "Brand name",
+          "info": "Lowercased + hyphenated to form the link target (e.g. \"BFGoodrich\" → /collections/bfgoodrich). If no matching collection exists, the tile links to the tires page filtered by vendor.",
           "default": "Brand"
         },
         {
           "type": "image_picker",
           "id": "logo",
           "label": "Brand logo"
-        }
-      ]
-    },
-    {
-      "type": "tire_card",
-      "name": "Tire",
-      "settings": [
-        {
-          "type": "text",
-          "id": "brand",
-          "label": "Brand name",
-          "info": "Must match a brand tab name exactly",
-          "default": "Michelin"
-        },
-        {
-          "type": "image_picker",
-          "id": "image",
-          "label": "Tire image"
-        },
-        {
-          "type": "text",
-          "id": "model",
-          "label": "Model name",
-          "default": "Defender 2"
-        },
-        {
-          "type": "text",
-          "id": "season",
-          "label": "Season / type",
-          "default": "All-Season"
-        },
-        {
-          "type": "url",
-          "id": "link",
-          "label": "Link",
-          "info": "Leave blank to auto-link to search for this brand + model"
         }
       ]
     }
@@ -549,7 +248,7 @@
       "type": "text",
       "id": "subtitle",
       "label": "Subtitle",
-      "default": "Browse our top brands and their models"
+      "default": "We carry every major brand Calgary drivers ask for by name"
     }
   ],
   "presets": [
@@ -565,47 +264,7 @@
         { "type": "brand", "settings": { "name": "BFGoodrich" } },
         { "type": "brand", "settings": { "name": "Cooper" } },
         { "type": "brand", "settings": { "name": "Firestone" } },
-        { "type": "brand", "settings": { "name": "General" } },
-        { "type": "tire_card", "settings": { "brand": "Michelin", "model": "Defender 2", "season": "All-Season" } },
-        { "type": "tire_card", "settings": { "brand": "Michelin", "model": "X-Ice Snow", "season": "Winter" } },
-        { "type": "tire_card", "settings": { "brand": "Michelin", "model": "Pilot Sport A/S 4", "season": "Performance" } },
-        { "type": "tire_card", "settings": { "brand": "Michelin", "model": "LTX A/T2", "season": "All-Terrain" } },
-        { "type": "tire_card", "settings": { "brand": "Bridgestone", "model": "Blizzak WS90", "season": "Winter" } },
-        { "type": "tire_card", "settings": { "brand": "Bridgestone", "model": "Turanza QuietTrack", "season": "All-Season" } },
-        { "type": "tire_card", "settings": { "brand": "Bridgestone", "model": "Dueler A/T", "season": "All-Terrain" } },
-        { "type": "tire_card", "settings": { "brand": "Bridgestone", "model": "Potenza Sport", "season": "Performance" } },
-        { "type": "tire_card", "settings": { "brand": "Continental", "model": "ExtremeContact DWS06+", "season": "All-Season" } },
-        { "type": "tire_card", "settings": { "brand": "Continental", "model": "VikingContact 7", "season": "Winter" } },
-        { "type": "tire_card", "settings": { "brand": "Continental", "model": "TerrainContact A/T", "season": "All-Terrain" } },
-        { "type": "tire_card", "settings": { "brand": "Continental", "model": "PureContact LS", "season": "All-Season" } },
-        { "type": "tire_card", "settings": { "brand": "Toyo", "model": "Open Country A/T III", "season": "All-Terrain" } },
-        { "type": "tire_card", "settings": { "brand": "Toyo", "model": "Observe GSi-6", "season": "Winter" } },
-        { "type": "tire_card", "settings": { "brand": "Toyo", "model": "Proxes Sport", "season": "Performance" } },
-        { "type": "tire_card", "settings": { "brand": "Toyo", "model": "Celsius II", "season": "All-Weather" } },
-        { "type": "tire_card", "settings": { "brand": "Yokohama", "model": "ADVAN Sport A/S+", "season": "All-Season" } },
-        { "type": "tire_card", "settings": { "brand": "Yokohama", "model": "iceGUARD iG53", "season": "Winter" } },
-        { "type": "tire_card", "settings": { "brand": "Yokohama", "model": "Geolandar A/T G015", "season": "All-Terrain" } },
-        { "type": "tire_card", "settings": { "brand": "Yokohama", "model": "ADVAN Fleva V701", "season": "Performance" } },
-        { "type": "tire_card", "settings": { "brand": "Kumho", "model": "Road Venture AT52", "season": "All-Terrain" } },
-        { "type": "tire_card", "settings": { "brand": "Kumho", "model": "Wintercraft WP72", "season": "Winter" } },
-        { "type": "tire_card", "settings": { "brand": "Kumho", "model": "Solus TA51a", "season": "All-Season" } },
-        { "type": "tire_card", "settings": { "brand": "Kumho", "model": "Ecsta PA51", "season": "Performance" } },
-        { "type": "tire_card", "settings": { "brand": "BFGoodrich", "model": "All-Terrain T/A KO3", "season": "All-Terrain" } },
-        { "type": "tire_card", "settings": { "brand": "BFGoodrich", "model": "Advantage Control", "season": "All-Season" } },
-        { "type": "tire_card", "settings": { "brand": "BFGoodrich", "model": "Winter T/A KSI", "season": "Winter" } },
-        { "type": "tire_card", "settings": { "brand": "BFGoodrich", "model": "g-Force COMP-2 A/S+", "season": "Performance" } },
-        { "type": "tire_card", "settings": { "brand": "Cooper", "model": "Discoverer AT3 4S", "season": "All-Terrain" } },
-        { "type": "tire_card", "settings": { "brand": "Cooper", "model": "Traction Command", "season": "All-Weather" } },
-        { "type": "tire_card", "settings": { "brand": "Cooper", "model": "Evolution Winter", "season": "Winter" } },
-        { "type": "tire_card", "settings": { "brand": "Cooper", "model": "CS5 Ultra Touring", "season": "All-Season" } },
-        { "type": "tire_card", "settings": { "brand": "Firestone", "model": "Firehawk Indy 500", "season": "Performance" } },
-        { "type": "tire_card", "settings": { "brand": "Firestone", "model": "WeatherGrip", "season": "All-Weather" } },
-        { "type": "tire_card", "settings": { "brand": "Firestone", "model": "Destination LE3", "season": "All-Season" } },
-        { "type": "tire_card", "settings": { "brand": "Firestone", "model": "Winterforce 2", "season": "Winter" } },
-        { "type": "tire_card", "settings": { "brand": "General", "model": "Altimax 365AW", "season": "All-Weather" } },
-        { "type": "tire_card", "settings": { "brand": "General", "model": "Grabber A/TX", "season": "All-Terrain" } },
-        { "type": "tire_card", "settings": { "brand": "General", "model": "Altimax Arctic 12", "season": "Winter" } },
-        { "type": "tire_card", "settings": { "brand": "General", "model": "G-MAX RS", "season": "Performance" } }
+        { "type": "brand", "settings": { "name": "General" } }
       ]
     }
   ]
