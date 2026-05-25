@@ -1,0 +1,388 @@
+<div class="ptr" data-ptr>
+  <div class="ptr__container">
+    <div class="ptr__header">
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="ptr__eyebrow">{{ section.settings.eyebrow }}</span>
+      {%- endif -%}
+      <h2 class="ptr__heading">
+        {{ section.settings.heading }}
+        {%- if section.settings.heading_accent != blank -%}
+          <span class="ptr__accent">{{ section.settings.heading_accent }}</span>
+        {%- endif -%}
+      </h2>
+      {%- if section.settings.subtitle != blank -%}
+        <p class="ptr__subtitle">{{ section.settings.subtitle }}</p>
+      {%- endif -%}
+    </div>
+
+    <div class="ptr__grid" data-rebate-count="{{ section.blocks.size }}">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'rebate' -%}
+          {%- assign claim_url = block.settings.claim_url | default: '#' -%}
+          {%- assign has_link = false -%}
+          {%- if block.settings.claim_url != blank -%}{%- assign has_link = true -%}{%- endif -%}
+          <{% if has_link %}a href="{{ claim_url }}" target="_blank" rel="noopener"{% else %}div{% endif %}
+            class="ptr__card{% if has_link %} ptr__card--linked{% endif %}"
+            {{ block.shopify_attributes }}
+          >
+            <div class="ptr__card-amount">
+              <span class="ptr__card-currency">$</span><span class="ptr__card-value">{{ block.settings.amount }}</span>
+              {%- if block.settings.amount_suffix != blank -%}
+                <span class="ptr__card-suffix">{{ block.settings.amount_suffix }}</span>
+              {%- endif -%}
+            </div>
+            <div class="ptr__card-body">
+              {%- if block.settings.logo != blank -%}
+                <div class="ptr__card-logo">
+                  {{ block.settings.logo | image_url: height: 36 | image_tag: loading: 'lazy', alt: block.settings.brand }}
+                </div>
+              {%- else -%}
+                <span class="ptr__card-brand">{{ block.settings.brand | escape }}</span>
+              {%- endif -%}
+              {%- if block.settings.eligibility != blank -%}
+                <p class="ptr__card-eligibility">{{ block.settings.eligibility | escape }}</p>
+              {%- endif -%}
+              {%- if block.settings.dates != blank -%}
+                <p class="ptr__card-dates">{{ block.settings.dates | escape }}</p>
+              {%- endif -%}
+            </div>
+            {%- if has_link -%}
+              <span class="ptr__card-cta">
+                {{ block.settings.cta_text | default: 'See details' }}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 17L17 7M7 7h10v10"/></svg>
+              </span>
+            {%- endif -%}
+          </{% if has_link %}a{% else %}div{% endif %}>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+
+    {%- if section.settings.disclaimer != blank -%}
+      <p class="ptr__disclaimer">{{ section.settings.disclaimer | escape }}</p>
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .ptr {
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+    color: #fff;
+    padding: 6rem 0 5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .ptr::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #F5820B 0%, #dc2626 100%);
+  }
+  .ptr__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+  }
+  .ptr__header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  .ptr__eyebrow {
+    display: inline-block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #F5820B;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  .ptr__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 3.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    line-height: 1.05;
+    letter-spacing: 0.01em;
+  }
+  .ptr__accent {
+    color: #F5820B;
+    margin-left: 0.4rem;
+  }
+  .ptr__subtitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: rgba(255,255,255,0.7);
+    margin: 0.8rem auto 0;
+    max-width: 60ch;
+  }
+
+  /* ── Grid: auto-fits 1–4 cards across; cards stay equal width ── */
+  .ptr__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.6rem;
+    margin: 0 auto;
+  }
+
+  .ptr__card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 2.2rem 1.8rem 1.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    position: relative;
+  }
+  .ptr__card--linked { cursor: pointer; }
+  .ptr__card--linked:hover {
+    border-color: #F5820B;
+    transform: translateY(-3px);
+    box-shadow: 0 14px 32px -12px rgba(245, 130, 11, 0.4);
+    background: linear-gradient(180deg, rgba(245,130,11,0.08) 0%, rgba(255,255,255,0.02) 100%);
+  }
+
+  .ptr__card-amount {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.15rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    color: #F5820B;
+    line-height: 0.95;
+  }
+  .ptr__card-currency {
+    font-size: 1.8rem;
+    font-weight: 600;
+  }
+  .ptr__card-value {
+    font-size: 4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .ptr__card-suffix {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.6);
+    margin-left: 0.35rem;
+    align-self: flex-end;
+  }
+
+  .ptr__card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    flex: 1;
+  }
+  .ptr__card-logo {
+    height: 36px;
+    display: flex;
+    align-items: center;
+  }
+  .ptr__card-logo img {
+    max-height: 36px;
+    width: auto;
+    filter: brightness(0) invert(1) opacity(0.92);
+  }
+  .ptr__card-brand {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ptr__card-eligibility {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.78);
+    line-height: 1.4;
+    margin: 0;
+  }
+  .ptr__card-dates {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.5);
+    margin: 0;
+  }
+
+  .ptr__card-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #F5820B;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 0.4rem;
+  }
+
+  .ptr__disclaimer {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    margin: 2.4rem auto 0;
+    max-width: 70ch;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 768px) {
+    .ptr { padding: 4rem 0 3rem; }
+    .ptr__container { padding: 0 1.6rem; }
+    .ptr__heading { font-size: 2.2rem; }
+    .ptr__card { padding: 1.8rem 1.4rem 1.4rem; }
+    .ptr__card-value { font-size: 3.4rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ptr__card { transition: none !important; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Manufacturer rebates",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "Save more on a set"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Manufacturer"
+    },
+    {
+      "type": "text",
+      "id": "heading_accent",
+      "label": "Heading accent (orange)",
+      "default": "Rebates"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Buy a qualifying set of four at Prince Tires, then claim your rebate directly from the manufacturer. We'll point you at the right form."
+    },
+    {
+      "type": "textarea",
+      "id": "disclaimer",
+      "label": "Disclaimer / fineprint",
+      "default": "Rebate offers are issued by the tire manufacturer and subject to their terms, eligible product lists, and submission deadlines. Prince Tires sells the tires and helps with installation; we don't process the rebate — the manufacturer pays the prepaid card directly to you."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "rebate",
+      "name": "Rebate offer",
+      "limit": 6,
+      "settings": [
+        {
+          "type": "text",
+          "id": "brand",
+          "label": "Brand name",
+          "default": "Michelin"
+        },
+        {
+          "type": "image_picker",
+          "id": "logo",
+          "label": "Brand logo (white version preferred — auto-inverts on dark bg)"
+        },
+        {
+          "type": "text",
+          "id": "amount",
+          "label": "Rebate amount (number only, no $)",
+          "default": "100"
+        },
+        {
+          "type": "text",
+          "id": "amount_suffix",
+          "label": "Suffix after amount",
+          "default": "on a set of 4"
+        },
+        {
+          "type": "text",
+          "id": "eligibility",
+          "label": "Eligibility line",
+          "info": "What tires qualify — keep it short",
+          "default": "Most passenger and light-truck Michelin tires."
+        },
+        {
+          "type": "text",
+          "id": "dates",
+          "label": "Valid dates",
+          "default": "Through June 29, 2026"
+        },
+        {
+          "type": "url",
+          "id": "claim_url",
+          "label": "Manufacturer claim page URL",
+          "info": "Link directly to the brand's rebate submission form. Opens in a new tab."
+        },
+        {
+          "type": "text",
+          "id": "cta_text",
+          "label": "CTA text",
+          "default": "Claim rebate"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Manufacturer rebates",
+      "blocks": [
+        {
+          "type": "rebate",
+          "settings": {
+            "brand": "Michelin",
+            "amount": "100",
+            "amount_suffix": "on a set of 4",
+            "eligibility": "Most passenger and light-truck Michelin tires.",
+            "dates": "Through June 29, 2026",
+            "cta_text": "Claim rebate"
+          }
+        },
+        {
+          "type": "rebate",
+          "settings": {
+            "brand": "Bridgestone",
+            "amount": "100",
+            "amount_suffix": "on Potenza models",
+            "eligibility": "$70 on WeatherPeak, Alenza, Dueler, Ecopia, Turanza.",
+            "dates": "Spring 2026",
+            "cta_text": "Claim rebate"
+          }
+        },
+        {
+          "type": "rebate",
+          "settings": {
+            "brand": "BFGoodrich",
+            "amount": "100",
+            "amount_suffix": "on All-Terrain T/A KO3",
+            "eligibility": "$70 on other passenger and light-truck models.",
+            "dates": "Through June 29, 2026",
+            "cta_text": "Claim rebate"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

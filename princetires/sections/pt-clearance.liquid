@@ -1,0 +1,455 @@
+{%- liquid
+  assign setting = section.settings.collection
+  assign source = collections[setting]
+  assign limit = section.settings.product_limit | default: 12
+  assign has_products = false
+  if source != blank and source.products.size > 0
+    assign has_products = true
+  endif
+-%}
+
+<div class="ptcl" data-ptcl>
+  <div class="ptcl__container">
+    <div class="ptcl__header">
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="ptcl__eyebrow">{{ section.settings.eyebrow }}</span>
+      {%- endif -%}
+      <h2 class="ptcl__heading">
+        {{ section.settings.heading }}
+        {%- if section.settings.heading_accent != blank -%}
+          <span class="ptcl__accent">{{ section.settings.heading_accent }}</span>
+        {%- endif -%}
+      </h2>
+      {%- if section.settings.subtitle != blank -%}
+        <p class="ptcl__subtitle">{{ section.settings.subtitle }}</p>
+      {%- endif -%}
+    </div>
+
+    {%- if has_products -%}
+      <div class="ptcl__marquee" data-ptcl-marquee>
+        <div class="ptcl__track" data-ptcl-track>
+          {%- for loop_pass in (1..2) -%}
+            {%- for product in source.products limit: limit -%}
+              {%- liquid
+                assign tire_size = product.metafields.custom.tire_size | default: ''
+                assign clean_title = product.title
+                if tire_size != blank
+                  assign clean_title = product.title | remove: tire_size | strip | remove_first: ' '
+                endif
+                assign percent_off = 0
+                if product.compare_at_price > product.price
+                  assign saved = product.compare_at_price | minus: product.price
+                  assign percent_off = saved | times: 100 | divided_by: product.compare_at_price
+                endif
+              -%}
+              <a
+                class="ptcl__card{% unless product.available %} ptcl__card--unavailable{% endunless %}"
+                href="{{ product.url }}"
+                aria-label="{{ product.title | escape }}"
+                {% if loop_pass == 2 %}aria-hidden="true" tabindex="-1"{% endif %}
+              >
+                <div class="ptcl__card-img">
+                  {%- if product.featured_image -%}
+                    {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'ptcl__img', loading: 'lazy', widths: '200,300,400', sizes: '(max-width: 768px) 65vw, 240px', alt: product.title }}
+                  {%- else -%}
+                    <div class="ptcl__card-ph" aria-hidden="true">
+                      <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="50" cy="50" r="45"/>
+                        <circle cx="50" cy="50" r="22"/>
+                      </svg>
+                    </div>
+                  {%- endif -%}
+                  {%- if percent_off > 0 -%}
+                    <span class="ptcl__card-badge ptcl__card-badge--percent">-{{ percent_off }}%</span>
+                  {%- else -%}
+                    <span class="ptcl__card-badge">CLEARANCE</span>
+                  {%- endif -%}
+                </div>
+                <div class="ptcl__card-body">
+                  <span class="ptcl__card-brand">{{ product.vendor | escape }}</span>
+                  <h3 class="ptcl__card-title">{{ clean_title | escape }}</h3>
+                  {%- if tire_size != blank -%}
+                    <span class="ptcl__card-size">{{ tire_size }}</span>
+                  {%- endif -%}
+                  <div class="ptcl__card-foot">
+                    {%- if product.available -%}
+                      <span class="ptcl__card-price">
+                        {%- if product.compare_at_price > product.price -%}
+                          <s class="ptcl__card-was">{{ product.compare_at_price | money_without_trailing_zeros }}</s>
+                        {%- endif -%}
+                        <span class="ptcl__card-now">{{ product.price | money_without_trailing_zeros }}</span>
+                      </span>
+                    {%- else -%}
+                      <span class="ptcl__card-oos">Out of stock</span>
+                    {%- endif -%}
+                    <span class="ptcl__card-view">View
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </span>
+                  </div>
+                </div>
+              </a>
+            {%- endfor -%}
+          {%- endfor -%}
+        </div>
+      </div>
+
+      {%- if section.settings.cta_label != blank -%}
+        <div class="ptcl__cta-wrap">
+          <a href="{{ section.settings.cta_link | default: '/collections/clearance-tires' }}" class="ptcl__cta">
+            {{ section.settings.cta_label }}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      {%- endif -%}
+    {%- else -%}
+      <div class="ptcl__empty">
+        <p>No clearance items yet. Add products to the <strong>{{ source.title | default: setting }}</strong> collection to populate this carousel.</p>
+      </div>
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .ptcl {
+    background: #fff7ed;
+    padding: 5rem 0 4.5rem;
+    overflow: hidden;
+    position: relative;
+  }
+  .ptcl::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #dc2626 0%, #F5820B 100%);
+  }
+  .ptcl__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+  }
+  .ptcl__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 2.4rem;
+  }
+  .ptcl__eyebrow {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #dc2626;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .ptcl__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+    line-height: 1.05;
+  }
+  .ptcl__accent { color: #dc2626; margin-left: 0.4rem; }
+  .ptcl__subtitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    color: #6b7280;
+    margin: 0.2rem 0 0;
+    max-width: 60ch;
+  }
+
+  /* ── Marquee — same pattern as featured inventory but with clearance vibe ── */
+  .ptcl__marquee {
+    position: relative;
+    overflow: hidden;
+    mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+  }
+  .ptcl__track {
+    display: flex;
+    gap: 1.6rem;
+    width: max-content;
+    animation: ptcl-scroll 65s linear infinite;
+    will-change: transform;
+  }
+  .ptcl:hover .ptcl__track,
+  .ptcl:focus-within .ptcl__track {
+    animation-play-state: paused;
+  }
+  @keyframes ptcl-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  /* ── Card ── */
+  .ptcl__card {
+    flex: 0 0 240px;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #fed7aa;
+    border-radius: 10px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .ptcl__card:hover {
+    transform: translateY(-3px);
+    border-color: #dc2626;
+    box-shadow: 0 12px 28px -10px rgba(220, 38, 38, 0.25);
+  }
+  .ptcl__card--unavailable { opacity: 0.65; }
+
+  .ptcl__card-img {
+    position: relative;
+    background: #f9fafb;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+  }
+  .ptcl__img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 1rem;
+  }
+  .ptcl__card-ph {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #d1d5db;
+  }
+  .ptcl__card-ph svg { width: 60%; height: 60%; }
+
+  .ptcl__card-badge {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
+    background: #dc2626;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.7rem;
+    border-radius: 4px;
+    line-height: 1;
+    box-shadow: 0 4px 12px -2px rgba(220, 38, 38, 0.4);
+  }
+  .ptcl__card-badge--percent {
+    background: #111;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.7rem;
+  }
+
+  .ptcl__card-body {
+    padding: 1rem 1.1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1;
+  }
+  .ptcl__card-brand {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .ptcl__card-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .ptcl__card-size {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    color: #4b5563;
+    font-weight: 500;
+  }
+  .ptcl__card-foot {
+    margin-top: auto;
+    padding-top: 0.6rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+  .ptcl__card-price {
+    font-family: 'Barlow Condensed', sans-serif;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.05rem;
+  }
+  .ptcl__card-was {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    font-weight: 500;
+    line-height: 1;
+  }
+  .ptcl__card-now {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #dc2626;
+    line-height: 1;
+  }
+  .ptcl__card-oos {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    color: #9ca3af;
+    font-weight: 600;
+  }
+  .ptcl__card-view {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #dc2626;
+  }
+
+  .ptcl__cta-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.4rem;
+  }
+  .ptcl__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: #dc2626;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.9rem 1.6rem;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.18s;
+  }
+  .ptcl__cta:hover { background: #b91c1c; }
+
+  .ptcl__empty {
+    padding: 2rem;
+    background: rgba(255,255,255,0.6);
+    border: 1px dashed #fdba74;
+    border-radius: 10px;
+    color: #92400e;
+    font-size: 1.05rem;
+  }
+
+  @media (max-width: 768px) {
+    .ptcl { padding: 3.5rem 0 3rem; }
+    .ptcl__container { padding: 0 1.6rem; }
+    .ptcl__heading { font-size: 2rem; }
+    .ptcl__marquee {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+    .ptcl__marquee::-webkit-scrollbar { display: none; }
+    .ptcl__track {
+      animation: none;
+      gap: 1rem;
+      padding: 0 0.4rem 0.4rem;
+    }
+    .ptcl__card {
+      flex: 0 0 75vw;
+      max-width: 280px;
+      scroll-snap-align: start;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ptcl__track { animation: none; }
+    .ptcl__marquee {
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Clearance carousel",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "While they last"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Clearance &"
+    },
+    {
+      "type": "text",
+      "id": "heading_accent",
+      "label": "Heading accent (red)",
+      "default": "Closeouts"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Last-of-stock tires at our lowest prices. When they're gone, they're gone."
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "Source collection",
+      "info": "Pick the collection that holds clearance / sale tires. Tip: set Compare-at price on the products so the % off badge calculates automatically."
+    },
+    {
+      "type": "range",
+      "id": "product_limit",
+      "label": "Max products",
+      "min": 4,
+      "max": 24,
+      "step": 1,
+      "default": 12
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "CTA label",
+      "default": "See all clearance"
+    },
+    {
+      "type": "url",
+      "id": "cta_link",
+      "label": "CTA link",
+      "info": "Leave empty to fall back to /collections/clearance-tires."
+    }
+  ],
+  "presets": [
+    { "name": "Clearance carousel" }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,405 @@
+{%- liquid
+  assign pick_blocks = section.blocks | where: 'type', 'pick'
+-%}
+
+<div class="ptsp" data-ptsp>
+  <div class="ptsp__container">
+    <div class="ptsp__header">
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="ptsp__eyebrow">{{ section.settings.eyebrow }}</span>
+      {%- endif -%}
+      <h2 class="ptsp__heading">
+        {{ section.settings.heading }}
+        {%- if section.settings.heading_accent != blank -%}
+          <span class="ptsp__accent">{{ section.settings.heading_accent }}</span>
+        {%- endif -%}
+      </h2>
+      {%- if section.settings.subtitle != blank -%}
+        <p class="ptsp__subtitle">{{ section.settings.subtitle }}</p>
+      {%- endif -%}
+    </div>
+
+    {%- if pick_blocks.size > 0 -%}
+      <div class="ptsp__grid" data-pick-count="{{ pick_blocks.size }}">
+        {%- for block in pick_blocks -%}
+          {%- assign product = block.settings.product -%}
+          {%- if product != blank -%}
+            {%- liquid
+              assign tire_size = product.metafields.custom.tire_size | default: ''
+              assign clean_title = product.title
+              if tire_size != blank
+                assign clean_title = product.title | remove: tire_size | strip | remove_first: ' '
+              endif
+              assign season_tag = product.metafields.custom.seasonality | default: ''
+            -%}
+            <div class="ptsp__card" {{ block.shopify_attributes }}>
+              <a href="{{ product.url }}" class="ptsp__card-link" aria-label="View {{ product.title | escape }}">
+                <div class="ptsp__card-img">
+                  {%- if product.featured_image -%}
+                    {{ product.featured_image | image_url: width: 400, height: 400, crop: 'center' | image_tag: class: 'ptsp__img', loading: 'lazy', widths: '300,400,600', sizes: '(max-width: 768px) 90vw, 320px', alt: product.title }}
+                  {%- else -%}
+                    <div class="ptsp__card-ph" aria-hidden="true">
+                      <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="50" cy="50" r="45"/>
+                        <circle cx="50" cy="50" r="22"/>
+                      </svg>
+                    </div>
+                  {%- endif -%}
+                  {%- if season_tag != blank -%}
+                    <span class="ptsp__card-season">{{ season_tag }}</span>
+                  {%- endif -%}
+                </div>
+              </a>
+
+              <div class="ptsp__card-body">
+                {%- if block.settings.fit_label != blank -%}
+                  <span class="ptsp__card-fit">{{ block.settings.fit_label | escape }}</span>
+                {%- endif -%}
+                <a href="{{ product.url }}" class="ptsp__card-titlewrap">
+                  <span class="ptsp__card-brand">{{ product.vendor | escape }}</span>
+                  <h3 class="ptsp__card-title">{{ clean_title | escape }}</h3>
+                  {%- if tire_size != blank -%}
+                    <span class="ptsp__card-size">{{ tire_size }}</span>
+                  {%- endif -%}
+                </a>
+
+                {%- if block.settings.quote != blank -%}
+                  <blockquote class="ptsp__card-quote">
+                    <svg class="ptsp__card-quote-mark" width="22" height="18" viewBox="0 0 22 18" fill="currentColor" aria-hidden="true"><path d="M0 18V11.5C0 8.7 0.7 6.3 2.1 4.3 3.5 2.3 5.5 0.9 8.1 0L9.5 2.7C7.9 3.5 6.7 4.5 5.9 5.7 5.1 6.9 4.7 8.3 4.7 9.9H8.6V18H0ZM13 18V11.5C13 8.7 13.7 6.3 15.1 4.3 16.5 2.3 18.5 0.9 21.1 0L22.5 2.7C20.9 3.5 19.7 4.5 18.9 5.7 18.1 6.9 17.7 8.3 17.7 9.9H21.6V18H13Z"/></svg>
+                    <p>{{ block.settings.quote | escape }}</p>
+                  </blockquote>
+                {%- endif -%}
+
+                <div class="ptsp__card-foot">
+                  {%- if product.available -%}
+                    <span class="ptsp__card-price">{{ product.price | money_without_trailing_zeros }}</span>
+                  {%- else -%}
+                    <span class="ptsp__card-oos">Out of stock</span>
+                  {%- endif -%}
+                  <a href="{{ product.url }}" class="ptsp__card-cta">
+                    See tire
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    {%- else -%}
+      <div class="ptsp__empty">
+        <p>No staff picks yet. Add some via the theme editor — each pick takes one product + a short note explaining who it's for.</p>
+      </div>
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .ptsp {
+    background: #f9fafb;
+    padding: 6rem 0 5rem;
+  }
+  .ptsp__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 6rem;
+  }
+  .ptsp__header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  .ptsp__eyebrow {
+    display: inline-block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #dc2626;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  .ptsp__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+    line-height: 1.05;
+  }
+  .ptsp__accent { color: #dc2626; margin-left: 0.4rem; }
+  .ptsp__subtitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    color: #6b7280;
+    margin: 0.6rem auto 0;
+    max-width: 60ch;
+  }
+
+  /* ── Grid: static 3-4 cards across; equal width ── */
+  .ptsp__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  /* When there are exactly 3 picks, force 3 columns even on wider viewports
+     so the layout doesn't sprawl */
+  .ptsp__grid[data-pick-count="3"] { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); max-width: 1100px; }
+  .ptsp__grid[data-pick-count="4"] { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+  .ptsp__card {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .ptsp__card:hover {
+    transform: translateY(-4px);
+    border-color: #dc2626;
+    box-shadow: 0 14px 30px -10px rgba(0,0,0,0.15);
+  }
+
+  .ptsp__card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .ptsp__card-img {
+    position: relative;
+    background: #f3f4f6;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+  }
+  .ptsp__img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 1.2rem;
+  }
+  .ptsp__card-ph {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #d1d5db;
+  }
+  .ptsp__card-ph svg { width: 60%; height: 60%; }
+
+  .ptsp__card-season {
+    position: absolute;
+    top: 0.8rem;
+    left: 0.8rem;
+    background: rgba(17, 17, 17, 0.92);
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    line-height: 1;
+  }
+
+  .ptsp__card-body {
+    padding: 1.6rem 1.6rem 1.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    flex: 1;
+  }
+  .ptsp__card-fit {
+    display: inline-block;
+    align-self: flex-start;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #dc2626;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.3rem 0.7rem;
+    background: rgba(220, 38, 38, 0.08);
+    border-radius: 4px;
+  }
+
+  .ptsp__card-titlewrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    text-decoration: none;
+    color: inherit;
+  }
+  .ptsp__card-brand {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .ptsp__card-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+    line-height: 1.2;
+  }
+  .ptsp__card-size {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    color: #4b5563;
+    font-weight: 500;
+    margin-top: 0.15rem;
+  }
+
+  .ptsp__card-quote {
+    margin: 0.4rem 0 0;
+    padding: 1rem 1.2rem;
+    background: #f9fafb;
+    border-left: 3px solid #dc2626;
+    border-radius: 0 6px 6px 0;
+    position: relative;
+  }
+  .ptsp__card-quote-mark {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.8rem;
+    color: rgba(220, 38, 38, 0.18);
+  }
+  .ptsp__card-quote p {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #374151;
+    font-style: italic;
+    margin: 0;
+    padding-right: 1.6rem;
+  }
+
+  .ptsp__card-foot {
+    margin-top: auto;
+    padding-top: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    border-top: 1px solid #f3f4f6;
+  }
+  .ptsp__card-price {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111;
+  }
+  .ptsp__card-oos {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    color: #9ca3af;
+    font-weight: 600;
+  }
+  .ptsp__card-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #dc2626;
+    text-decoration: none;
+    transition: gap 0.2s ease;
+  }
+  .ptsp__card-cta:hover { gap: 0.6rem; }
+
+  .ptsp__empty {
+    padding: 2rem;
+    background: #fff;
+    border: 1px dashed #d1d5db;
+    border-radius: 10px;
+    color: #6b7280;
+    text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    .ptsp { padding: 4rem 0 3.5rem; }
+    .ptsp__container { padding: 0 1.6rem; }
+    .ptsp__heading { font-size: 2.1rem; }
+    .ptsp__grid { grid-template-columns: 1fr; gap: 1.4rem; max-width: 100%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ptsp__card { transition: none !important; }
+    .ptsp__card-cta { transition: none !important; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Staff picks",
+  "tag": "section",
+  "class": "section",
+  "max_blocks": 4,
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "Hand-picked by us"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Our team's"
+    },
+    {
+      "type": "text",
+      "id": "heading_accent",
+      "label": "Heading accent (red)",
+      "default": "Picks"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Tires our team recommends most for Calgary roads. No algorithms — just what we'd put on our own vehicles."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "pick",
+      "name": "Staff pick",
+      "settings": [
+        {
+          "type": "product",
+          "id": "product",
+          "label": "Product"
+        },
+        {
+          "type": "text",
+          "id": "fit_label",
+          "label": "Who it's for (short)",
+          "info": "e.g. 'Best for daily commuters' or 'For winter mountain trips'",
+          "default": "Best for daily commuters"
+        },
+        {
+          "type": "textarea",
+          "id": "quote",
+          "label": "Our team's note (1–2 sentences)",
+          "info": "Why we recommend this. Plain language, no marketing speak.",
+          "default": "Quiet, long-wearing, predictable in our wet/dry/snowy mix. The one we install most for sedans and crossovers in the SW."
+        }
+      ]
+    }
+  ],
+  "presets": [
+    { "name": "Staff picks" }
+  ]
+}
+{% endschema %}
