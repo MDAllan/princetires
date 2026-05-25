@@ -15,37 +15,25 @@
 {% enddoc %}
 
               {%- liquid
-                assign season_tag = ''
+                # Canonical (and ONLY) source for the season pill: custom.seasonality metafield.
+                # No tag/type fallback — set the metafield on the product if you want a pill.
+                # Backfilled + case-normalized 2026-05-24 (97% coverage).
+                assign season_tag = product.metafields.custom.seasonality | default: '' | strip
                 assign season_color = '#6b7280'
-                for tag in product.tags
-                  assign tag_down = tag | downcase
-                  if tag_down contains 'winter'
-                    assign season_tag = 'Winter'
+                case season_tag
+                  when 'Winter'
                     assign season_color = '#2563eb'
-                  elsif tag_down contains 'all-season' or tag_down contains 'all season'
-                    assign season_tag = 'All-Season'
-                    assign season_color = '#16a34a'
-                  elsif tag_down contains 'all-weather' or tag_down contains 'all weather'
-                    assign season_tag = 'All-Weather'
+                  when 'All-Weather'
                     assign season_color = '#F5820B'
-                  elsif tag_down contains 'summer'
-                    assign season_tag = 'Summer'
-                    assign season_color = '#eab308'
-                  endif
-                endfor
-                if season_tag == blank
-                  assign type_down = product.type | downcase
-                  if type_down contains 'winter'
-                    assign season_tag = 'Winter'
-                    assign season_color = '#2563eb'
-                  elsif type_down contains 'passenger'
-                    assign season_tag = 'All-Season'
+                  when 'All-Season'
                     assign season_color = '#16a34a'
-                  elsif type_down contains 'trailer'
-                    assign season_tag = 'Trailer'
-                    assign season_color = '#6b7280'
-                  endif
-                endif
+                  when 'Summer'
+                    assign season_color = '#eab308'
+                  when 'All-Terrain'
+                    assign season_color = '#92400e'
+                  when 'Performance'
+                    assign season_color = '#7c3aed'
+                endcase
               -%}
               {%- liquid
                 assign tire_size_display = product.metafields.custom.tire_size | default: ''
@@ -191,18 +179,28 @@
                       {{ rebate_text }}
                     </span>
                   {%- endif -%}
+                  {%- comment -%} Phase 5A · trade-price toggle. data-pt-price spans get their text overwritten with retail × multiplier from /apps/api/wholesale/pricing; the trade badge below renders the wholesale cost. {%- endcomment -%}
+                  {%- assign card_variant_id = product.selected_or_first_available_variant.id -%}
                   <div class="ptg__card-price">
                     {%- if product.compare_at_price > product.price -%}
-                      <span class="ptg__price-sale">${{ product.price | money_without_currency }}</span>
+                      <span class="ptg__price-sale" data-pt-price data-pt-variant-id="{{ card_variant_id }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span>
                       <span class="ptg__price-was">${{ product.compare_at_price | money_without_currency }}</span>
                     {%- else -%}
-                      <span>${{ product.price | money_without_currency }}</span>
+                      <span data-pt-price data-pt-variant-id="{{ card_variant_id }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span>
                     {%- endif -%}
                     <span class="ptg__price-per">/tire</span>
                     {%- if section.settings.show_set_price -%}
-                      <span class="ptg__price-set">${{ set_price | money_without_currency }} for 4</span>
+                      <span class="ptg__price-set"><span data-pt-price data-pt-variant-id="{{ card_variant_id }}" data-pt-multiplier="4">${{ set_price | money_without_currency }}</span> for 4</span>
                     {%- endif -%}
                   </div>
+                  {%- if customer.b2b? or customer.tags contains 'wholesale' -%}
+                    {%- comment -%} Visible only when the header toggle is ON (body.pt-trade-visible). JS fills in amount + tier + pct from the API. Gate matches the header — either Shopify's native B2B flag OR the legacy tag. {%- endcomment -%}
+                    <div class="ptg__card-trade" data-pt-trade-info data-pt-variant-id="{{ card_variant_id }}">
+                      <span class="ptg__card-trade-label">Your cost</span>
+                      <span class="ptg__card-trade-amount" data-pt-trade-amount>—</span>
+                      <span class="ptg__card-trade-pct"><span data-pt-trade-pct>—</span>% off</span>
+                    </div>
+                  {%- endif -%}
                   <div class="ptg__card-actions">
                     {%- liquid
                       assign grid_vtype = 'passenger'
@@ -242,6 +240,7 @@
                       data-install-price="{{ product.metafields.custom.install_price.value | default: 30 }}"
                       data-supplier-tier="{{ grid_supplier_tier | strip }}"
                       data-product-handle="{{ product.handle }}"
+                      data-variant-id="{{ product.selected_or_first_available_variant.id }}"
                       onclick="event.preventDefault();event.stopPropagation();if(typeof openBookingModal==='function')openBookingModal(this)">Book Install</button>
                     <button type="button" class="ptg__card-cart"
                       data-variant="{{ product.selected_or_first_available_variant.id }}"
