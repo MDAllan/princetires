@@ -1,0 +1,92 @@
+{% doc %}
+  Renders one panel of the pt-clearance tabbed carousel — the header is
+  handled by the parent section, this snippet just emits the marquee + the
+  per-product clearance cards (with red CLEARANCE badge or % off badge,
+  strikethrough was-price, etc.).
+
+  Mirrors the architecture of snippets/pti-panel.liquid (used by
+  pt-featured-inventory) — extracted so the section file can render multiple
+  tabs without duplicating ~70 lines of card markup.
+
+  @param {collection} source - Collection whose products to render
+  @param {number} limit - Max products to render (each renders twice for the marquee loop)
+  @param {number} [panel_index] - Index used for data-ptcl-panel attribute (default 0)
+  @param {boolean} [hidden] - If true, panel starts hidden (non-active tab)
+
+  @example
+  {% render 'ptcl-panel', source: clearance_collection, limit: 12, panel_index: 0 %}
+{% enddoc %}
+
+<div
+  class="ptcl__panel"
+  role="tabpanel"
+  data-ptcl-panel="{{ panel_index | default: 0 }}"
+  {% if hidden %}hidden{% endif %}
+>
+  <div class="ptcl__marquee">
+    <div class="ptcl__track">
+      {%- for loop_pass in (1..2) -%}
+        {%- for product in source.products limit: limit -%}
+          {%- liquid
+            assign tire_size = product.metafields.custom.tire_size | default: ''
+            assign clean_title = product.title
+            if tire_size != blank
+              assign clean_title = product.title | remove: tire_size | strip | remove_first: ' '
+            endif
+            assign percent_off = 0
+            if product.compare_at_price > product.price
+              assign saved = product.compare_at_price | minus: product.price
+              assign percent_off = saved | times: 100 | divided_by: product.compare_at_price
+            endif
+          -%}
+          <a
+            class="ptcl__card{% unless product.available %} ptcl__card--unavailable{% endunless %}"
+            href="{{ product.url }}"
+            aria-label="{{ product.title | escape }}"
+            {% if loop_pass == 2 %}aria-hidden="true" tabindex="-1"{% endif %}
+          >
+            <div class="ptcl__card-img">
+              {%- if product.featured_image -%}
+                {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'ptcl__img', loading: 'lazy', widths: '200,300,400', sizes: '(max-width: 768px) 65vw, 240px', alt: product.title }}
+              {%- else -%}
+                <div class="ptcl__card-ph" aria-hidden="true">
+                  <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="50" cy="50" r="45"/>
+                    <circle cx="50" cy="50" r="22"/>
+                  </svg>
+                </div>
+              {%- endif -%}
+              {%- if percent_off > 0 -%}
+                <span class="ptcl__card-badge ptcl__card-badge--percent">-{{ percent_off }}%</span>
+              {%- else -%}
+                <span class="ptcl__card-badge">SALE</span>
+              {%- endif -%}
+            </div>
+            <div class="ptcl__card-body">
+              <span class="ptcl__card-brand">{{ product.vendor | escape }}</span>
+              <h3 class="ptcl__card-title">{{ clean_title | escape }}</h3>
+              {%- if tire_size != blank -%}
+                <span class="ptcl__card-size">{{ tire_size }}</span>
+              {%- endif -%}
+              <div class="ptcl__card-foot">
+                {%- if product.available -%}
+                  <span class="ptcl__card-price">
+                    {%- if product.compare_at_price > product.price -%}
+                      <s class="ptcl__card-was">{{ product.compare_at_price | money_without_trailing_zeros }}</s>
+                    {%- endif -%}
+                    <span class="ptcl__card-now">{{ product.price | money_without_trailing_zeros }}</span>
+                  </span>
+                {%- else -%}
+                  <span class="ptcl__card-oos">Out of stock</span>
+                {%- endif -%}
+                <span class="ptcl__card-view">View
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </span>
+              </div>
+            </div>
+          </a>
+        {%- endfor -%}
+      {%- endfor -%}
+    </div>
+  </div>
+</div>
