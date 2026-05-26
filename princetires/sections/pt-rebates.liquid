@@ -1,3 +1,11 @@
+{%- liquid
+  # Today as unix timestamp. Used to filter expired rebates inline below.
+  # Shopify renders Liquid per-request so the section self-updates without
+  # a cron job: when a rebate's valid_until date passes, it auto-hides on
+  # the next page render.
+  assign today_ts = 'now' | date: '%s' | times: 1
+-%}
+
 <div class="ptr" data-ptr>
   <div class="ptr__container">
     <div class="ptr__header">
@@ -15,49 +23,84 @@
       {%- endif -%}
     </div>
 
-    <div class="ptr__grid" data-rebate-count="{{ section.blocks.size }}">
-      {%- for block in section.blocks -%}
-        {%- if block.type == 'rebate' -%}
-          {%- assign claim_url = block.settings.claim_url | default: '#' -%}
-          {%- assign has_link = false -%}
-          {%- if block.settings.claim_url != blank -%}{%- assign has_link = true -%}{%- endif -%}
-          <{% if has_link %}a href="{{ claim_url }}" target="_blank" rel="noopener"{% else %}div{% endif %}
-            class="ptr__card{% if has_link %} ptr__card--linked{% endif %}"
-            {{ block.shopify_attributes }}
-          >
-            <div class="ptr__card-amount">
-              <span class="ptr__card-currency">$</span><span class="ptr__card-value">{{ block.settings.amount }}</span>
-              {%- if block.settings.amount_suffix != blank -%}
-                <span class="ptr__card-suffix">{{ block.settings.amount_suffix }}</span>
-              {%- endif -%}
-            </div>
-            <div class="ptr__card-body">
-              {%- if block.settings.logo != blank -%}
-                <div class="ptr__card-logo">
-                  {{ block.settings.logo | image_url: height: 36 | image_tag: loading: 'lazy', alt: block.settings.brand }}
-                </div>
-              {%- else -%}
-                <span class="ptr__card-brand">{{ block.settings.brand | escape }}</span>
-              {%- endif -%}
-              {%- if block.settings.eligibility != blank -%}
-                <p class="ptr__card-eligibility">{{ block.settings.eligibility | escape }}</p>
-              {%- endif -%}
-              {%- if block.settings.dates != blank -%}
-                <p class="ptr__card-dates">{{ block.settings.dates | escape }}</p>
-              {%- endif -%}
-            </div>
-            {%- if has_link -%}
-              <span class="ptr__card-cta">
-                {{ block.settings.cta_text | default: 'See details' }}
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 17L17 7M7 7h10v10"/></svg>
-              </span>
-            {%- endif -%}
-          </{% if has_link %}a{% else %}div{% endif %}>
-        {%- endif -%}
-      {%- endfor -%}
-    </div>
+    {%- comment -%} Count active (non-expired) rebates so we can hide the whole section if all are expired {%- endcomment -%}
+    {%- assign active_count = 0 -%}
+    {%- for block in section.blocks -%}
+      {%- if block.type != 'rebate' -%}{%- continue -%}{%- endif -%}
+      {%- assign exp = block.settings.valid_until | default: '' -%}
+      {%- if exp == blank -%}
+        {%- assign active_count = active_count | plus: 1 -%}
+      {%- else -%}
+        {%- assign exp_ts = exp | date: '%s' | times: 1 -%}
+        {%- if today_ts <= exp_ts -%}{%- assign active_count = active_count | plus: 1 -%}{%- endif -%}
+      {%- endif -%}
+    {%- endfor -%}
 
-    {%- if section.settings.disclaimer != blank -%}
+    {%- if active_count > 0 -%}
+      <div class="ptr__marquee" data-ptr-marquee>
+        <div class="ptr__track">
+          {%- comment -%} Render twice for seamless infinite loop {%- endcomment -%}
+          {%- for loop_pass in (1..2) -%}
+            {%- for block in section.blocks -%}
+              {%- if block.type != 'rebate' -%}{%- continue -%}{%- endif -%}
+              {%- liquid
+                assign exp = block.settings.valid_until | default: ''
+                assign show = true
+                if exp != blank
+                  assign exp_ts = exp | date: '%s' | times: 1
+                  if today_ts > exp_ts
+                    assign show = false
+                  endif
+                endif
+              -%}
+              {%- if show -%}
+                {%- assign claim_url = block.settings.claim_url | default: '' -%}
+                {%- assign has_link = false -%}
+                {%- if claim_url != blank -%}{%- assign has_link = true -%}{%- endif -%}
+                <{% if has_link %}a href="{{ claim_url }}" target="_blank" rel="noopener"{% else %}div{% endif %}
+                  class="ptr__card{% if has_link %} ptr__card--linked{% endif %}"
+                  {% if loop_pass == 2 %}aria-hidden="true" tabindex="-1"{% else %}{{ block.shopify_attributes }}{% endif %}
+                >
+                  <div class="ptr__card-amount">
+                    <span class="ptr__card-currency">$</span><span class="ptr__card-value">{{ block.settings.amount }}</span>
+                    {%- if block.settings.amount_suffix != blank -%}
+                      <span class="ptr__card-suffix">{{ block.settings.amount_suffix }}</span>
+                    {%- endif -%}
+                  </div>
+                  <div class="ptr__card-body">
+                    {%- if block.settings.logo != blank -%}
+                      <div class="ptr__card-logo">
+                        {{ block.settings.logo | image_url: height: 36 | image_tag: loading: 'lazy', alt: block.settings.brand }}
+                      </div>
+                    {%- else -%}
+                      <span class="ptr__card-brand">{{ block.settings.brand | escape }}</span>
+                    {%- endif -%}
+                    {%- if block.settings.eligibility != blank -%}
+                      <p class="ptr__card-eligibility">{{ block.settings.eligibility | escape }}</p>
+                    {%- endif -%}
+                    {%- if block.settings.dates != blank -%}
+                      <p class="ptr__card-dates">{{ block.settings.dates | escape }}</p>
+                    {%- endif -%}
+                  </div>
+                  {%- if has_link -%}
+                    <span class="ptr__card-cta">
+                      {{ block.settings.cta_text | default: 'See details' }}
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 17L17 7M7 7h10v10"/></svg>
+                    </span>
+                  {%- endif -%}
+                </{% if has_link %}a{% else %}div{% endif %}>
+              {%- endif -%}
+            {%- endfor -%}
+          {%- endfor -%}
+        </div>
+      </div>
+    {%- else -%}
+      <div class="ptr__empty">
+        <p>No active rebates right now — check back next season. New offers from Michelin, Bridgestone, BFGoodrich and other major brands typically launch every spring and fall.</p>
+      </div>
+    {%- endif -%}
+
+    {%- if section.settings.disclaimer != blank and active_count > 0 -%}
       <p class="ptr__disclaimer">{{ section.settings.disclaimer | escape }}</p>
     {%- endif -%}
   </div>
@@ -121,26 +164,45 @@
     max-width: 60ch;
   }
 
-  /* ── Grid: auto-fits 1–4 cards across; cards stay equal width ── */
-  .ptr__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.6rem;
-    margin: 0 auto;
+  /* ── Marquee — desktop: auto-scroll, mobile: native horizontal scroll ── */
+  .ptr__marquee {
+    position: relative;
+    overflow: hidden;
+    /* Fade the left+right edges */
+    mask-image: linear-gradient(to right, transparent 0, #000 3%, #000 97%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 3%, #000 97%, transparent 100%);
+  }
+  .ptr__track {
+    display: flex;
+    gap: 1.4rem;
+    width: max-content;
+    /* Slower than product carousels because rebate cards are denser and the user
+       needs longer to read $X + dates + eligibility text */
+    animation: ptr-scroll 80s linear infinite;
+    will-change: transform;
+  }
+  .ptr:hover .ptr__track,
+  .ptr:focus-within .ptr__track {
+    animation-play-state: paused;
+  }
+  @keyframes ptr-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
   }
 
+  /* ── Card ── */
   .ptr__card {
-    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 14px;
-    padding: 2.2rem 1.8rem 1.8rem;
+    flex: 0 0 290px;
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 2rem 1.6rem 1.6rem;
     text-decoration: none;
     color: inherit;
     transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    position: relative;
   }
   .ptr__card--linked { cursor: pointer; }
   .ptr__card--linked:hover {
@@ -157,6 +219,7 @@
     font-family: 'Barlow Condensed', sans-serif;
     color: #F5820B;
     line-height: 0.95;
+    flex-wrap: wrap;
   }
   .ptr__card-currency {
     font-size: 1.8rem;
@@ -169,11 +232,13 @@
   }
   .ptr__card-suffix {
     font-family: 'Outfit', sans-serif;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 500;
     color: rgba(255,255,255,0.6);
     margin-left: 0.35rem;
     align-self: flex-end;
+    flex-basis: 100%;
+    margin-top: 0.2rem;
   }
 
   .ptr__card-body {
@@ -202,14 +267,14 @@
   }
   .ptr__card-eligibility {
     font-family: 'Outfit', sans-serif;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: rgba(255,255,255,0.78);
     line-height: 1.4;
     margin: 0;
   }
   .ptr__card-dates {
     font-family: 'Outfit', sans-serif;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: rgba(255,255,255,0.5);
     margin: 0;
   }
@@ -237,15 +302,50 @@
     line-height: 1.5;
   }
 
+  .ptr__empty {
+    padding: 2.4rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px dashed rgba(255,255,255,0.15);
+    border-radius: 12px;
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+    font-size: 1.05rem;
+    line-height: 1.5;
+  }
+
   @media (max-width: 768px) {
     .ptr { padding: 4rem 0 3rem; }
     .ptr__container { padding: 0 1.6rem; }
     .ptr__heading { font-size: 2.2rem; }
-    .ptr__card { padding: 1.8rem 1.4rem 1.4rem; }
+    .ptr__marquee {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+    .ptr__marquee::-webkit-scrollbar { display: none; }
+    .ptr__track {
+      animation: none;
+      gap: 1rem;
+      padding: 0 0.4rem 0.4rem;
+    }
+    .ptr__card {
+      flex: 0 0 80vw;
+      max-width: 310px;
+      scroll-snap-align: start;
+    }
     .ptr__card-value { font-size: 3.4rem; }
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .ptr__track { animation: none; }
+    .ptr__marquee {
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
     .ptr__card { transition: none !important; }
   }
 {% endstylesheet %}
@@ -285,6 +385,14 @@
       "id": "disclaimer",
       "label": "Disclaimer / fineprint",
       "default": "Rebate offers are issued by the tire manufacturer and subject to their terms, eligible product lists, and submission deadlines. Prince Tires sells the tires and helps with installation; we don't process the rebate — the manufacturer pays the prepaid card directly to you."
+    },
+    {
+      "type": "header",
+      "content": "How auto-expire works"
+    },
+    {
+      "type": "paragraph",
+      "content": "Each rebate has a 'Valid until' date. The section automatically hides any rebate past that date — no manual cleanup needed. When all rebates are expired, the section shows a 'check back next season' message instead. You'll need to add new offers each rebate cycle (typically spring / fall)."
     }
   ],
   "blocks": [
@@ -302,7 +410,8 @@
         {
           "type": "image_picker",
           "id": "logo",
-          "label": "Brand logo (white version preferred — auto-inverts on dark bg)"
+          "label": "Brand logo",
+          "info": "White or light version of the logo works best — it auto-inverts on the dark card background."
         },
         {
           "type": "text",
@@ -320,14 +429,22 @@
           "type": "text",
           "id": "eligibility",
           "label": "Eligibility line",
-          "info": "What tires qualify — keep it short",
+          "info": "What tires qualify — keep it short, one line.",
           "default": "Most passenger and light-truck Michelin tires."
         },
         {
           "type": "text",
           "id": "dates",
-          "label": "Valid dates",
+          "label": "Dates label (display text)",
+          "info": "Human-readable version shown on the card (e.g. 'Through June 29, 2026').",
           "default": "Through June 29, 2026"
+        },
+        {
+          "type": "text",
+          "id": "valid_until",
+          "label": "Valid until (YYYY-MM-DD)",
+          "info": "The actual expiry date — used to auto-hide this rebate once it expires. Leave blank to always show. Format: 2026-06-29.",
+          "default": "2026-06-29"
         },
         {
           "type": "url",
@@ -346,42 +463,7 @@
   ],
   "presets": [
     {
-      "name": "Manufacturer rebates",
-      "blocks": [
-        {
-          "type": "rebate",
-          "settings": {
-            "brand": "Michelin",
-            "amount": "100",
-            "amount_suffix": "on a set of 4",
-            "eligibility": "Most passenger and light-truck Michelin tires.",
-            "dates": "Through June 29, 2026",
-            "cta_text": "Claim rebate"
-          }
-        },
-        {
-          "type": "rebate",
-          "settings": {
-            "brand": "Bridgestone",
-            "amount": "100",
-            "amount_suffix": "on Potenza models",
-            "eligibility": "$70 on WeatherPeak, Alenza, Dueler, Ecopia, Turanza.",
-            "dates": "Spring 2026",
-            "cta_text": "Claim rebate"
-          }
-        },
-        {
-          "type": "rebate",
-          "settings": {
-            "brand": "BFGoodrich",
-            "amount": "100",
-            "amount_suffix": "on All-Terrain T/A KO3",
-            "eligibility": "$70 on other passenger and light-truck models.",
-            "dates": "Through June 29, 2026",
-            "cta_text": "Claim rebate"
-          }
-        }
-      ]
+      "name": "Manufacturer rebates"
     }
   ]
 }
