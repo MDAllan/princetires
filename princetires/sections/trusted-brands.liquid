@@ -17,32 +17,39 @@
     {%- if brand_blocks.size > 0 -%}
       <div class="trusted-brands__strip" data-brand-strip>
         <div class="trusted-brands__track" data-brand-track>
-          {%- for block in brand_blocks -%}
-            {%- comment -%}
-              Link priority:
-                1. /collections/<brand-handle> if a matching collection exists
-                2. fallback /collections/tires?filter.p.vendor=<brand>
-            {%- endcomment -%}
-            {%- assign brand_handle = block.settings.name | handleize -%}
-            {%- assign brand_collection = collections[brand_handle] -%}
-            {%- if brand_collection != empty and brand_collection.handle != blank -%}
-              {%- assign brand_url = '/collections/' | append: brand_handle -%}
-            {%- else -%}
-              {%- assign brand_url = '/collections/tires?filter.p.vendor=' | append: block.settings.name | url_encode -%}
-            {%- endif -%}
-            <a
-              href="{{ brand_url }}"
-              class="trusted-brands__tab"
-              data-brand-name="{{ block.settings.name | escape }}"
-              aria-label="Shop {{ block.settings.name | escape }} tires"
-              {{ block.shopify_attributes }}
-            >
-              {%- if block.settings.logo != blank -%}
-                {{ block.settings.logo | image_url: width: 280 | image_tag: class: "trusted-brands__tab-logo", loading: "lazy", widths: "160,240,320", sizes: "140px", alt: block.settings.name }}
+          {%- comment -%}
+            Render every brand TWICE so the CSS keyframe (translateX 0 → -50%)
+            loops seamlessly without a visible gap. The duplicate set is
+            aria-hidden so screen readers don't double-announce.
+          {%- endcomment -%}
+          {%- for pass in (1..2) -%}
+            {%- for block in brand_blocks -%}
+              {%- comment -%}
+                Link priority:
+                  1. /collections/<brand-handle> if a matching collection exists
+                  2. fallback /collections/tires?filter.p.vendor=<brand>
+              {%- endcomment -%}
+              {%- assign brand_handle = block.settings.name | handleize -%}
+              {%- assign brand_collection = collections[brand_handle] -%}
+              {%- if brand_collection != empty and brand_collection.handle != blank -%}
+                {%- assign brand_url = '/collections/' | append: brand_handle -%}
               {%- else -%}
-                <span class="trusted-brands__tab-text">{{ block.settings.name | escape }}</span>
+                {%- assign brand_url = '/collections/tires?filter.p.vendor=' | append: block.settings.name | url_encode -%}
               {%- endif -%}
-            </a>
+              <a
+                href="{{ brand_url }}"
+                class="trusted-brands__tab"
+                data-brand-name="{{ block.settings.name | escape }}"
+                aria-label="Shop {{ block.settings.name | escape }} tires"
+                {% if pass == 2 %}aria-hidden="true" tabindex="-1"{% else %}{{ block.shopify_attributes }}{% endif %}
+              >
+                {%- if block.settings.logo != blank -%}
+                  {{ block.settings.logo | image_url: width: 280 | image_tag: class: "trusted-brands__tab-logo", loading: "lazy", widths: "160,240,320", sizes: "140px", alt: block.settings.name }}
+                {%- else -%}
+                  <span class="trusted-brands__tab-text">{{ block.settings.name | escape }}</span>
+                {%- endif -%}
+              </a>
+            {%- endfor -%}
           {%- endfor -%}
         </div>
       </div>
@@ -147,6 +154,25 @@
     padding: 0.6rem 0.4rem;
     width: max-content;
     user-select: none;
+    /* Auto-scrolling marquee. Tabs are rendered twice in HTML so the keyframe
+       (translateX 0 → -50%) loops seamlessly. Slower than product carousels
+       because logos are easier to scan than dense product cards. */
+    animation: tb-strip-scroll 35s linear infinite;
+    will-change: transform;
+  }
+  /* Pause animation when the user hovers, focuses, OR drags. The drag handler
+     adds .is-dragging, so this also covers click-and-hold interactions. */
+  .trusted-brands__strip:hover .trusted-brands__track,
+  .trusted-brands__strip:focus-within .trusted-brands__track,
+  .trusted-brands__strip.is-dragging .trusted-brands__track {
+    animation-play-state: paused;
+  }
+  @keyframes tb-strip-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .trusted-brands__track { animation: none; }
   }
 
   /* ── Brand tile — fixed-size pill so every logo aligns the same ── */
