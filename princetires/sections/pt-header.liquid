@@ -18,6 +18,14 @@
       {%- assign mobile_wordmark = section.settings.mobile_wordmark_text | default: wordmark_text -%}
     {%- endif -%}
 
+    {%- comment -%}
+      Phone CTA — high-converting click-to-call. Derives a tel: URL from the
+      display string in the schema (or falls back to the shop's known number).
+    {%- endcomment -%}
+    {%- assign phone_display = section.settings.phone_number | default: '(403) 452-4283' -%}
+    {%- assign phone_digits = phone_display | remove: ' ' | remove: '(' | remove: ')' | remove: '-' | remove: '.' -%}
+    {%- assign phone_tel = 'tel:+1' | append: phone_digits -%}
+
     <a href="{{ routes.root_url }}" class="pt-header__logo" aria-label="{{ shop.name }}">
       <!-- Desktop variant -->
       <span class="pt-header__logo-variant pt-header__logo-variant--desktop">
@@ -76,8 +84,17 @@
           </svg>
         </button>
 
+        {%- comment -%} Click-to-call CTA — high-converting on a local service business {%- endcomment -%}
+        <a href="{{ phone_tel }}" class="pt-header__icon pt-header__icon--stack pt-header__icon--phone" aria-label="Call Prince Tires at {{ phone_display | escape }}" data-pt-event="phone_click" data-pt-location="header_desktop">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+          <span class="pt-header__icon-label">Call</span>
+        </a>
+
         {%- if customer -%}
-          {%- if customer.tags contains 'wholesale' -%}
+          {%- comment -%} Treat as B2B if either: native Shopify B2B flag (customer.b2b? — true for company-contact customers wired via Markets/Companies) OR the legacy `wholesale` tag. Either alone is enough so a Company contact without the tag still gets the toggle. {%- endcomment -%}
+          {%- if customer.b2b? or customer.tags contains 'wholesale' -%}
             {%- comment -%} Phase 5A · trade-price toggle. Default OFF = retail only (safe to show walk-in customers). {%- endcomment -%}
             <button type="button" class="pt-header__icon pt-header__icon--stack pt-header__trade-toggle" data-trade-toggle aria-pressed="false" aria-label="Toggle trade price visibility">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -142,6 +159,13 @@
         </svg>
       </button>
 
+      {%- comment -%} Mobile click-to-call — single-tap to dial; highest-converting mobile CTA for a local service business {%- endcomment -%}
+      <a href="{{ phone_tel }}" class="pt-header__icon pt-header__icon--phone pt-header__phone-mobile" aria-label="Call Prince Tires at {{ phone_display | escape }}" data-pt-event="phone_click" data-pt-location="header_mobile">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+        </svg>
+      </a>
+
       <a href="{{ routes.cart_url }}" class="pt-header__icon pt-header__cart pt-header__cart-mobile" aria-label="{{ 'sections.pt_header.cart' | t }}">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
@@ -199,6 +223,13 @@
   {%- comment -%} Mobile drawer {%- endcomment -%}
   <div class="pt-header__mobile-menu" data-pt-mobile-menu>
     <nav class="pt-header__mobile-nav">
+      {%- comment -%} Phone CTA pinned at top of drawer — highest-converting action for a local tire shop {%- endcomment -%}
+      <a href="{{ phone_tel }}" class="pt-header__mobile-link pt-header__mobile-phone" data-pt-event="phone_click" data-pt-location="header_drawer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+        </svg>
+        Call {{ phone_display | escape }}
+      </a>
       {%- for block in section.blocks -%}
         {%- if block.type == 'nav_link' -%}
           <a href="{{ block.settings.link | default: '#' }}" class="pt-header__mobile-link">{{ block.settings.label }}</a>
@@ -585,6 +616,30 @@
     background: #dc2626;
     border-color: #dc2626;
   }
+
+  /* Phone CTA — accent treatment matches the garage pill so it reads as
+     high-priority but doesn't compete with the cart. Mobile variant lives
+     in .pt-header__mobile-right and stays icon-only to save space. */
+  .pt-header__icon--phone {
+    color: #dc2626;
+  }
+  .pt-header__icon--phone:hover {
+    color: #fff;
+    background: #dc2626;
+  }
+  .pt-header__icon--phone .pt-header__icon-label {
+    color: inherit;
+  }
+  /* Mobile phone icon — same size as cart icon for tap-target consistency */
+  .pt-header__phone-mobile {
+    width: 40px;
+    height: 40px;
+    color: #dc2626;
+  }
+  .pt-header__phone-mobile:hover {
+    color: #fff;
+    background: #dc2626;
+  }
   .pt-header__garage-label {
     font-size: 0.85rem;
     font-weight: 700;
@@ -696,6 +751,19 @@
   .pt-header__mobile-garage:hover {
     color: #fff;
     background: #dc2626;
+  }
+  /* Mobile drawer phone CTA — full-width, bolder than nav links because tap-to-call
+     is the highest-converting mobile action for a local tire shop */
+  .pt-header__mobile-phone {
+    color: #fff;
+    font-weight: 700;
+    background: #dc2626;
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+  }
+  .pt-header__mobile-phone:hover {
+    color: #fff;
+    background: #b91c1c;
   }
 
   /* ══════════════════════════
@@ -1257,6 +1325,22 @@
   }
   body.pt-trade-visible .pt-trade-info { display: block; }
   .pt-trade-info__amount { color: #DC2626; font-weight: 700; font-size: 14px; }
+
+  /* Cart drawer "Your cost total" — sits below the Estimated total in the
+     drawer footer. Only shows when the header toggle is ON. The pt-cart.liquid
+     page has its own .ptc__summary-trade-total styled inline. */
+  .pt-cart-trade-total {
+    display: none;
+    margin: 0.5rem 0 0;
+    padding: 0.4rem 0.6rem;
+    background: #fef3c7;
+    border-left: 3px solid #DC2626;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #374151;
+  }
+  body.pt-trade-visible .pt-cart-trade-total { display: block; }
+  .pt-cart-trade-total strong { color: #DC2626; font-weight: 700; }
 {% endstylesheet %}
 
 {% javascript %}
@@ -1374,6 +1458,39 @@
       });
     }
 
+    // Cart "Your cost total" — walks every [data-pt-price] inside a cart line
+    // and sums (wholesale ?? retail) × multiplier. Ineligible brands quietly
+    // fall back to retail so the total is always meaningful even on mixed
+    // carts. Selects only ELEMENTS INSIDE A CART context (pt-cart page or
+    // the cart drawer) by walking up from each cart-total to find lines.
+    function applyCartTotal() {
+      document.querySelectorAll('[data-pt-cart-wholesale-total]').forEach(function (totalEl) {
+        // Scope: find the nearest cart container, then sum lines inside it.
+        var scope = totalEl.closest('cart-drawer, .ptc__summary, form.cart, .totals, body');
+        var lines = scope ? scope.parentElement.querySelectorAll('[data-pt-price][data-pt-variant-id][data-pt-multiplier]') : [];
+        // If we couldn't narrow the scope, walk the whole document for cart-style
+        // lines (multiplier > 1 OR explicitly cart-classed).
+        var sum = 0;
+        var anyHit = false;
+        for (var i = 0; i < lines.length; i++) {
+          var el = lines[i];
+          // Only include cart line totals (the line-total span carries the line
+          // quantity as multiplier). Skip unit-price spans where multiplier=1.
+          if (!el.classList.contains('price--end') && !el.classList.contains('ptc__line-total')) continue;
+          var id = el.dataset.ptVariantId;
+          var mult = parseFloat(el.dataset.ptMultiplier || '1');
+          var p = cache[id];
+          if (!p || p.retail == null) continue;
+          var unit = p.wholesale != null ? p.wholesale : p.retail;
+          sum += unit * mult;
+          anyHit = true;
+        }
+        var amountEl = totalEl.querySelector('[data-pt-cart-wholesale-amount]') || totalEl.querySelector('strong');
+        if (!amountEl) return;
+        amountEl.textContent = anyHit ? fmtMoney(sum) : '—';
+      });
+    }
+
     function fetchPrices() {
       var els = document.querySelectorAll('[data-pt-price][data-pt-variant-id]');
       if (els.length === 0) return;
@@ -1389,21 +1506,27 @@
       })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) {
-          if (!data || !data.isWholesale || !Array.isArray(data.prices)) return;
-          for (var i = 0; i < data.prices.length; i++) {
-            var p = data.prices[i];
-            var num = String(p.variantId).split('/').pop();
-            var entry = {
-              retail: typeof p.retail === 'number' ? p.retail : null,
-              wholesale: typeof p.wholesale === 'number' ? p.wholesale : null,
-              discountPct: p.discountPct,
-              tierLabel: p.tierLabel,
-            };
-            cache[num] = entry;
-            cache[p.variantId] = entry;
+          if (data && data.isWholesale && Array.isArray(data.prices)) {
+            for (var i = 0; i < data.prices.length; i++) {
+              var p = data.prices[i];
+              var num = String(p.variantId).split('/').pop();
+              var entry = {
+                retail: typeof p.retail === 'number' ? p.retail : null,
+                wholesale: typeof p.wholesale === 'number' ? p.wholesale : null,
+                discountPct: p.discountPct,
+                tierLabel: p.tierLabel,
+              };
+              cache[num] = entry;
+              cache[p.variantId] = entry;
+            }
+            applyPrices();
           }
-          applyPrices();
+          // Always run applyBadges — when isWholesale=false or a variant came
+          // back with wholesale=null (ineligible brand / no discount in this
+          // tier), the badge gets display:none so we don't show a misleading
+          // placeholder "—" next to the retail price.
           applyBadges();
+          applyCartTotal();
         })
         .catch(function () { /* swallow — Liquid-rendered wholesale stays as fallback */ });
     }
@@ -1412,6 +1535,10 @@
       btn.addEventListener('click', function () {
         setVisible(!isVisible());
         applyButtons();
+        // Re-apply badges + cart-total so any with no cached wholesale stay
+        // correct even immediately after the toggle (no placeholder flash).
+        applyBadges();
+        applyCartTotal();
       });
     });
 

@@ -63,19 +63,42 @@
         </div>
       {%- endif -%}
 
-      {%- comment -%} ─── Panels ─── {%- endcomment -%}
+      {%- comment -%}
+        ─── Panels ───
+        Performance optimization: only the FIRST (active) panel renders into
+        the live DOM. Non-active panels' content goes inside a <template> tag,
+        which the browser parses (so it's in the HTML and Google can index the
+        ItemList JSON-LD), but does NOT add to the rendered DOM until JS
+        clones it on first tab activation. Cuts the rendered DOM by ~60%
+        (2 of 3 tabs deferred). Lighthouse Performance benefits accordingly.
+      {%- endcomment -%}
       {%- if use_tabs -%}
         {%- assign idx = 0 -%}
         {%- for tab in tab_blocks -%}
           {%- if tab.settings.collection != blank and tab.settings.collection.products.size > 0 -%}
             {%- assign panel_limit = tab.settings.product_limit | default: 12 -%}
-            {%- assign panel_hidden = false -%}
-            {%- if idx > 0 -%}{%- assign panel_hidden = true -%}{%- endif -%}
-            {%- render 'pti-panel',
-                source: tab.settings.collection,
-                limit: panel_limit,
-                panel_index: idx,
-                hidden: panel_hidden -%}
+            {%- if idx == 0 -%}
+              {%- comment -%} Active tab — render normally (visible) {%- endcomment -%}
+              {%- render 'pti-panel',
+                  source: tab.settings.collection,
+                  limit: panel_limit,
+                  panel_index: idx,
+                  hidden: false -%}
+            {%- else -%}
+              {%- comment -%}
+                Non-active tab — empty placeholder div + <template> with the
+                full panel markup inside. JS will clone the template content
+                into the placeholder on first tab click.
+              {%- endcomment -%}
+              <div class="pti__panel pti__panel--deferred" data-pti-panel="{{ idx }}" data-pti-defer="1" hidden></div>
+              <template data-pti-tab-template="{{ idx }}">
+                {%- render 'pti-panel',
+                    source: tab.settings.collection,
+                    limit: panel_limit,
+                    panel_index: idx,
+                    hidden: false -%}
+              </template>
+            {%- endif -%}
             {%- assign idx = idx | plus: 1 -%}
           {%- endif -%}
         {%- endfor -%}
@@ -110,14 +133,39 @@
   // Tab switching — show/hide panels via [hidden]; aria + active class on tabs.
   // Each section is scoped independently so multiple pti sections on a page
   // (Featured + Trending) don't interfere.
+  //
+  // Deferred-panel inflate: non-active tabs are rendered as empty placeholder
+  // <div data-pti-defer="1"> divs with the actual panel markup sitting in a
+  // sibling <template data-pti-tab-template="N">. On first activation, the
+  // template content is cloned into the placeholder. This cuts initial
+  // rendered DOM by ~60% (2 of 3 tabs deferred) without losing SEO crawl —
+  // the markup is still in the HTML for Google to see.
   (function () {
+    function inflateDeferredPanel(section, panelIndex) {
+      var placeholder = section.querySelector('[data-pti-panel="' + panelIndex + '"]');
+      if (!placeholder || !placeholder.hasAttribute('data-pti-defer')) return;
+      var template = section.querySelector('[data-pti-tab-template="' + panelIndex + '"]');
+      if (!template || !template.content) return;
+      // Clone the rendered panel out of the template and replace the empty placeholder
+      var inflated = template.content.firstElementChild ? template.content.firstElementChild.cloneNode(true) : null;
+      if (!inflated) return;
+      // Preserve the placeholder's hidden + index state on the inflated node
+      inflated.dataset.ptiPanel = panelIndex;
+      placeholder.replaceWith(inflated);
+      // Drop the template — we won't need it again, and it shouldn't sit in the DOM forever
+      template.remove();
+    }
+
     document.querySelectorAll('[data-pti]').forEach(function (section) {
       var tabs = section.querySelectorAll('[data-pti-tab]');
-      var panels = section.querySelectorAll('[data-pti-panel]');
       if (tabs.length < 2) return;
       tabs.forEach(function (btn) {
         btn.addEventListener('click', function () {
           var id = btn.dataset.ptiTab;
+          // Inflate first (so the panel actually exists before we try to show it)
+          inflateDeferredPanel(section, id);
+          // Re-query panels — the inflate just replaced one of them with a fresh node
+          var panels = section.querySelectorAll('[data-pti-panel]');
           tabs.forEach(function (t) {
             var active = t.dataset.ptiTab === id;
             t.classList.toggle('is-active', active);
@@ -134,7 +182,7 @@
 
 {% stylesheet %}
   .pti {
-    background: #fff;
+    background: #fcfcfa;
     padding: 6rem 0 5rem;
     overflow: hidden;
   }
