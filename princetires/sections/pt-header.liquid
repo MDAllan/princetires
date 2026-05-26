@@ -18,14 +18,6 @@
       {%- assign mobile_wordmark = section.settings.mobile_wordmark_text | default: wordmark_text -%}
     {%- endif -%}
 
-    {%- comment -%}
-      Phone CTA — high-converting click-to-call. Derives a tel: URL from the
-      display string in the schema (or falls back to the shop's known number).
-    {%- endcomment -%}
-    {%- assign phone_display = section.settings.phone_number | default: '(403) 452-4283' -%}
-    {%- assign phone_digits = phone_display | remove: ' ' | remove: '(' | remove: ')' | remove: '-' | remove: '.' -%}
-    {%- assign phone_tel = 'tel:+1' | append: phone_digits -%}
-
     <a href="{{ routes.root_url }}" class="pt-header__logo" aria-label="{{ shop.name }}">
       <!-- Desktop variant -->
       <span class="pt-header__logo-variant pt-header__logo-variant--desktop">
@@ -83,14 +75,6 @@
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
         </button>
-
-        {%- comment -%} Click-to-call CTA — high-converting on a local service business {%- endcomment -%}
-        <a href="{{ phone_tel }}" class="pt-header__icon pt-header__icon--stack pt-header__icon--phone" aria-label="Call Prince Tires at {{ phone_display | escape }}" data-pt-event="phone_click" data-pt-location="header_desktop">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-          </svg>
-          <span class="pt-header__icon-label">Call</span>
-        </a>
 
         {%- if customer -%}
           {%- comment -%} Treat as B2B if either: native Shopify B2B flag (customer.b2b? — true for company-contact customers wired via Markets/Companies) OR the legacy `wholesale` tag. Either alone is enough so a Company contact without the tag still gets the toggle. {%- endcomment -%}
@@ -159,13 +143,6 @@
         </svg>
       </button>
 
-      {%- comment -%} Mobile click-to-call — single-tap to dial; highest-converting mobile CTA for a local service business {%- endcomment -%}
-      <a href="{{ phone_tel }}" class="pt-header__icon pt-header__icon--phone pt-header__phone-mobile" aria-label="Call Prince Tires at {{ phone_display | escape }}" data-pt-event="phone_click" data-pt-location="header_mobile">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-        </svg>
-      </a>
-
       <a href="{{ routes.cart_url }}" class="pt-header__icon pt-header__cart pt-header__cart-mobile" aria-label="{{ 'sections.pt_header.cart' | t }}">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
@@ -223,13 +200,6 @@
   {%- comment -%} Mobile drawer {%- endcomment -%}
   <div class="pt-header__mobile-menu" data-pt-mobile-menu>
     <nav class="pt-header__mobile-nav">
-      {%- comment -%} Phone CTA pinned at top of drawer — highest-converting action for a local tire shop {%- endcomment -%}
-      <a href="{{ phone_tel }}" class="pt-header__mobile-link pt-header__mobile-phone" data-pt-event="phone_click" data-pt-location="header_drawer">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-        </svg>
-        Call {{ phone_display | escape }}
-      </a>
       {%- for block in section.blocks -%}
         {%- if block.type == 'nav_link' -%}
           <a href="{{ block.settings.link | default: '#' }}" class="pt-header__mobile-link">{{ block.settings.label }}</a>
@@ -616,30 +586,6 @@
     background: #dc2626;
     border-color: #dc2626;
   }
-
-  /* Phone CTA — accent treatment matches the garage pill so it reads as
-     high-priority but doesn't compete with the cart. Mobile variant lives
-     in .pt-header__mobile-right and stays icon-only to save space. */
-  .pt-header__icon--phone {
-    color: #dc2626;
-  }
-  .pt-header__icon--phone:hover {
-    color: #fff;
-    background: #dc2626;
-  }
-  .pt-header__icon--phone .pt-header__icon-label {
-    color: inherit;
-  }
-  /* Mobile phone icon — same size as cart icon for tap-target consistency */
-  .pt-header__phone-mobile {
-    width: 40px;
-    height: 40px;
-    color: #dc2626;
-  }
-  .pt-header__phone-mobile:hover {
-    color: #fff;
-    background: #dc2626;
-  }
   .pt-header__garage-label {
     font-size: 0.85rem;
     font-weight: 700;
@@ -751,19 +697,6 @@
   .pt-header__mobile-garage:hover {
     color: #fff;
     background: #dc2626;
-  }
-  /* Mobile drawer phone CTA — full-width, bolder than nav links because tap-to-call
-     is the highest-converting mobile action for a local tire shop */
-  .pt-header__mobile-phone {
-    color: #fff;
-    font-weight: 700;
-    background: #dc2626;
-    margin-bottom: 0.5rem;
-    border-radius: 8px;
-  }
-  .pt-header__mobile-phone:hover {
-    color: #fff;
-    background: #b91c1c;
   }
 
   /* ══════════════════════════
