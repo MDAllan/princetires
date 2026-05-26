@@ -1,10 +1,26 @@
 {%- liquid
-  assign setting = section.settings.collection
-  assign source = collections[setting]
-  assign limit = section.settings.product_limit | default: 12
-  assign has_products = false
-  if source != blank and source.products.size > 0
-    assign has_products = true
+  # Tabbed mode if section has 'tab' blocks; legacy single-collection mode otherwise.
+  # Legacy mode is kept so the "Trending This Week" instance (and any other
+  # un-migrated instances) keep working unchanged.
+  assign tab_blocks = section.blocks | where: 'type', 'tab'
+  assign use_tabs = false
+  if tab_blocks.size > 0
+    assign use_tabs = true
+  endif
+
+  # Count visible (non-empty) panels so we know whether to render the tabs row
+  # (don't render tabs UI for a single visible panel — it'd be a single button).
+  assign visible_count = 0
+  if use_tabs
+    for tab in tab_blocks
+      if tab.settings.collection != blank and tab.settings.collection.products.size > 0
+        assign visible_count = visible_count | plus: 1
+      endif
+    endfor
+  else
+    if section.settings.collection != blank and section.settings.collection.products.size > 0
+      assign visible_count = 1
+    endif
   endif
 -%}
 
@@ -26,109 +42,51 @@
       {%- endif -%}
     </div>
 
-    {%- if has_products -%}
-      <div class="pti__marquee" data-pti-marquee>
-        <div class="pti__track" data-pti-track>
-          {%- comment -%} Render the products twice for a seamless infinite loop {%- endcomment -%}
-          {%- for loop_pass in (1..2) -%}
-            {%- for product in source.products limit: limit -%}
-              {%- liquid
-                assign tire_size = product.metafields.custom.tire_size | default: ''
-                assign clean_title = product.title
-                if tire_size != blank
-                  assign clean_title = product.title | remove: tire_size | strip | remove_first: ' '
-                endif
-                assign season_tag = ''
-                assign season_color = '#6b7280'
-                comment
-                  Canonical source: custom.seasonality metafield (set by import +
-                  admin). Tags are noisy — many imported products carry BOTH
-                  "all-weather-rated" AND a stray "Summer" tag from the supplier
-                  feed, and the old tag loop let the last match overwrite the
-                  first (e.g. BFG KO3 ended up labelled "Summer"). Use the
-                  metafield first; only fall back to tags when blank.
-                endcomment
-                assign m_season = product.metafields.custom.seasonality | default: ''
-                if m_season != blank
-                  assign season_tag = m_season
-                endif
-                if season_tag == blank
-                  for tag in product.tags
-                    assign tag_down = tag | downcase
-                    if tag_down contains 'winter'
-                      assign season_tag = 'Winter'
-                    elsif tag_down contains 'all-weather' or tag_down contains 'all weather'
-                      assign season_tag = 'All-Weather'
-                    elsif tag_down contains 'all-season' or tag_down contains 'all season'
-                      assign season_tag = 'All-Season'
-                    elsif tag_down contains 'summer'
-                      assign season_tag = 'Summer'
-                    endif
-                  endfor
-                endif
-                case season_tag
-                  when 'Winter'
-                    assign season_color = '#2563eb'
-                  when 'All-Weather'
-                    assign season_color = '#F5820B'
-                  when 'All-Season'
-                    assign season_color = '#16a34a'
-                  when 'Summer'
-                    assign season_color = '#eab308'
-                  when 'All-Terrain'
-                    assign season_color = '#92400e'
-                  when 'Performance'
-                    assign season_color = '#7c3aed'
-                endcase
-              -%}
-              <a
-                class="pti__card{% unless product.available %} pti__card--unavailable{% endunless %}"
-                href="{{ product.url }}"
-                aria-label="{{ product.title | escape }}"
-                {% if loop_pass == 2 %}aria-hidden="true" tabindex="-1"{% endif %}
-              >
-                <div class="pti__card-img">
-                  {%- if product.featured_image -%}
-                    {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'pti__img', loading: 'lazy', widths: '200,300,400', sizes: '(max-width: 768px) 65vw, 240px', alt: product.title }}
-                  {%- else -%}
-                    <div class="pti__card-ph" aria-hidden="true">
-                      <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="50" cy="50" r="45"/>
-                        <circle cx="50" cy="50" r="22"/>
-                      </svg>
-                    </div>
-                  {%- endif -%}
-                  {%- if season_tag != blank -%}
-                    <span class="pti__card-season" style="--season:{{ season_color }}">{{ season_tag }}</span>
-                  {%- endif -%}
-                </div>
-                <div class="pti__card-body">
-                  <span class="pti__card-brand">{{ product.vendor | escape }}</span>
-                  <h3 class="pti__card-title">{{ clean_title | escape }}</h3>
-                  {%- if tire_size != blank -%}
-                    <span class="pti__card-size">{{ tire_size }}</span>
-                  {%- endif -%}
-                  <div class="pti__card-foot">
-                    {%- if product.available -%}
-                      <span class="pti__card-price">
-                        {%- if product.compare_at_price > product.price -%}
-                          <s class="pti__card-was">{{ product.compare_at_price | money_without_trailing_zeros }}</s>
-                        {%- endif -%}
-                        {{ product.price | money_without_trailing_zeros }}
-                      </span>
-                    {%- else -%}
-                      <span class="pti__card-oos">Out of stock</span>
-                    {%- endif -%}
-                    <span class="pti__card-view">View
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </span>
-                  </div>
-                </div>
-              </a>
-            {%- endfor -%}
+    {%- if visible_count > 0 -%}
+
+      {%- comment -%} ─── Tabs row (only when 2+ visible panels) ─── {%- endcomment -%}
+      {%- if use_tabs and visible_count > 1 -%}
+        <div class="pti__tabs" role="tablist">
+          {%- assign idx = 0 -%}
+          {%- for tab in tab_blocks -%}
+            {%- if tab.settings.collection != blank and tab.settings.collection.products.size > 0 -%}
+              <button
+                class="pti__tab{% if idx == 0 %} is-active{% endif %}"
+                role="tab"
+                data-pti-tab="{{ idx }}"
+                aria-selected="{% if idx == 0 %}true{% else %}false{% endif %}"
+                {{ tab.shopify_attributes }}
+              >{{ tab.settings.label | default: tab.settings.collection.title }}</button>
+              {%- assign idx = idx | plus: 1 -%}
+            {%- endif -%}
           {%- endfor -%}
         </div>
-      </div>
+      {%- endif -%}
+
+      {%- comment -%} ─── Panels ─── {%- endcomment -%}
+      {%- if use_tabs -%}
+        {%- assign idx = 0 -%}
+        {%- for tab in tab_blocks -%}
+          {%- if tab.settings.collection != blank and tab.settings.collection.products.size > 0 -%}
+            {%- assign panel_limit = tab.settings.product_limit | default: 12 -%}
+            {%- assign panel_hidden = false -%}
+            {%- if idx > 0 -%}{%- assign panel_hidden = true -%}{%- endif -%}
+            {%- render 'pti-panel',
+                source: tab.settings.collection,
+                limit: panel_limit,
+                panel_index: idx,
+                hidden: panel_hidden -%}
+            {%- assign idx = idx | plus: 1 -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- else -%}
+        {%- assign legacy_limit = section.settings.product_limit | default: 12 -%}
+        {%- render 'pti-panel',
+            source: section.settings.collection,
+            limit: legacy_limit,
+            panel_index: 0,
+            hidden: false -%}
+      {%- endif -%}
 
       {%- if section.settings.cta_label != blank -%}
         <div class="pti__cta-wrap">
@@ -138,14 +96,41 @@
           </a>
         </div>
       {%- endif -%}
+
     {%- else -%}
       <div class="pti__empty">
-        <p>No featured products yet. Add products to the <strong>{{ source.title | default: section.settings.collection }}</strong> collection in Shopify admin to populate this carousel.</p>
+        <p>No products to show yet. Add tabs (and pick a collection for each) in the theme editor, or use the section's single-collection setting for a non-tabbed view.</p>
       </div>
     {%- endif -%}
 
   </div>
 </div>
+
+<script>
+  // Tab switching — show/hide panels via [hidden]; aria + active class on tabs.
+  // Each section is scoped independently so multiple pti sections on a page
+  // (Featured + Trending) don't interfere.
+  (function () {
+    document.querySelectorAll('[data-pti]').forEach(function (section) {
+      var tabs = section.querySelectorAll('[data-pti-tab]');
+      var panels = section.querySelectorAll('[data-pti-panel]');
+      if (tabs.length < 2) return;
+      tabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.dataset.ptiTab;
+          tabs.forEach(function (t) {
+            var active = t.dataset.ptiTab === id;
+            t.classList.toggle('is-active', active);
+            t.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+          panels.forEach(function (p) {
+            p.hidden = p.dataset.ptiPanel !== id;
+          });
+        });
+      });
+    });
+  }());
+</script>
 
 {% stylesheet %}
   .pti {
@@ -162,7 +147,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
   }
   .pti__eyebrow {
     font-family: 'Outfit', sans-serif;
@@ -192,11 +177,56 @@
     max-width: 56ch;
   }
 
+  /* ── Tabs row ── */
+  .pti__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.4rem;
+    margin: 0 0 2.4rem;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 0;
+  }
+  .pti__tab {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #6b7280;
+    padding: 0.7rem 1.1rem;
+    border-radius: 6px 6px 0 0;
+    position: relative;
+    transition: color 0.18s ease, background 0.18s ease;
+    letter-spacing: 0.02em;
+  }
+  .pti__tab:hover {
+    color: #111;
+    background: rgba(220, 38, 38, 0.04);
+  }
+  .pti__tab.is-active {
+    color: #111;
+  }
+  .pti__tab.is-active::after {
+    content: '';
+    position: absolute;
+    left: 1.1rem;
+    right: 1.1rem;
+    bottom: -1px;
+    height: 2.5px;
+    background: #dc2626;
+    border-radius: 2px 2px 0 0;
+  }
+  .pti__tab:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+  }
+  .pti__panel[hidden] { display: none; }
+
   /* ── Marquee — desktop: auto-scroll, mobile: native horizontal scroll ── */
   .pti__marquee {
     position: relative;
     overflow: hidden;
-    /* Fade the left+right edges so cards seem to come from / leave to nowhere */
     mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
     -webkit-mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
   }
@@ -377,12 +407,20 @@
     font-size: 1.05rem;
   }
 
-  /* ── Mobile: replace marquee with native horizontal scroll (no animation,
-        users control via swipe). Cards keep size, scroll-snap to each one. ── */
   @media (max-width: 768px) {
     .pti { padding: 4rem 0 3.5rem; }
     .pti__container { padding: 0 1.6rem; }
     .pti__heading { font-size: 2rem; }
+    .pti__tabs {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap: 0.2rem;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      margin-bottom: 1.6rem;
+    }
+    .pti__tabs::-webkit-scrollbar { display: none; }
+    .pti__tab { font-size: 0.95rem; padding: 0.6rem 0.9rem; white-space: nowrap; flex-shrink: 0; }
     .pti__marquee {
       overflow-x: auto;
       overflow-y: hidden;
@@ -405,7 +443,6 @@
     }
   }
 
-  /* ── Reduced motion: no auto-scroll; let users swipe ── */
   @media (prefers-reduced-motion: reduce) {
     .pti__track { animation: none; }
     .pti__marquee {
@@ -446,20 +483,30 @@
       "default": "A curated selection of what we have in stock right now — real prices, real inventory."
     },
     {
+      "type": "header",
+      "content": "Single-collection mode (legacy / no tabs)"
+    },
+    {
+      "type": "paragraph",
+      "content": "If you don't add any Tab blocks below, the section falls back to a single carousel using this collection. If you add tabs, this setting is ignored."
+    },
+    {
       "type": "collection",
       "id": "collection",
-      "label": "Source collection",
-      "info": "Pick the collection of products to feature. Recommend a curated collection of 10–15 items mixed across seasons (winter, all-weather, all-season, performance)."
+      "label": "Source collection"
     },
     {
       "type": "range",
       "id": "product_limit",
-      "label": "Max products",
+      "label": "Max products (legacy mode)",
       "min": 4,
       "max": 24,
       "step": 1,
-      "default": 12,
-      "info": "Will render this many cards in the carousel (max 24)."
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "Call to action"
     },
     {
       "type": "text",
@@ -472,6 +519,37 @@
       "id": "cta_link",
       "label": "CTA link",
       "info": "Leave empty to fall back to /collections/tires."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "tab",
+      "name": "Category tab",
+      "limit": 6,
+      "settings": [
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Tab label",
+          "info": "Short label shown on the tab pill (e.g. \"Featured\", \"Winter\", \"Trailer\").",
+          "default": "Featured"
+        },
+        {
+          "type": "collection",
+          "id": "collection",
+          "label": "Source collection",
+          "info": "Pick the collection of products this tab should show. Tabs whose collection is empty are auto-hidden."
+        },
+        {
+          "type": "range",
+          "id": "product_limit",
+          "label": "Max products",
+          "min": 4,
+          "max": 24,
+          "step": 1,
+          "default": 12
+        }
+      ]
     }
   ],
   "presets": [

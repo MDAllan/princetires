@@ -1,0 +1,123 @@
+{% doc %}
+  Renders one panel of the pt-featured-inventory tabbed carousel — header
+  is handled by the parent section, this snippet just emits the marquee +
+  the per-product cards. Used both by the new tabs mode (one panel per tab)
+  and by the legacy single-collection mode (one panel, no tabs).
+
+  @param {collection} source - Collection whose products to render
+  @param {number} limit - Max number of products to render (each renders twice for the marquee loop)
+  @param {number} [panel_index] - Index used for data-pti-panel attribute (default 0)
+  @param {boolean} [hidden] - If true, panel is hidden initially (non-active tab)
+
+  @example
+  {% render 'pti-panel', source: my_collection, limit: 12, panel_index: 0 %}
+{% enddoc %}
+
+<div
+  class="pti__panel"
+  role="tabpanel"
+  data-pti-panel="{{ panel_index | default: 0 }}"
+  {% if hidden %}hidden{% endif %}
+>
+  <div class="pti__marquee">
+    <div class="pti__track">
+      {%- comment -%} Render the products twice for a seamless infinite loop {%- endcomment -%}
+      {%- for loop_pass in (1..2) -%}
+        {%- for product in source.products limit: limit -%}
+          {%- liquid
+            assign tire_size = product.metafields.custom.tire_size | default: ''
+            assign clean_title = product.title
+            if tire_size != blank
+              assign clean_title = product.title | remove: tire_size | strip | remove_first: ' '
+            endif
+            assign season_tag = ''
+            assign season_color = '#6b7280'
+            # Canonical source: custom.seasonality metafield (set by import + admin).
+            # Tags are noisy — many imported products carry both "all-weather-rated"
+            # and a stray "Summer" tag from the supplier feed; the old tag loop let
+            # the last match overwrite the first (e.g. BFG KO3 ended up labelled
+            # "Summer"). Use the metafield first, fall back to tags only when blank.
+            assign m_season = product.metafields.custom.seasonality | default: ''
+            if m_season != blank
+              assign season_tag = m_season
+            endif
+            if season_tag == blank
+              for tag in product.tags
+                assign tag_down = tag | downcase
+                if tag_down contains 'winter'
+                  assign season_tag = 'Winter'
+                elsif tag_down contains 'all-weather' or tag_down contains 'all weather'
+                  assign season_tag = 'All-Weather'
+                elsif tag_down contains 'all-season' or tag_down contains 'all season'
+                  assign season_tag = 'All-Season'
+                elsif tag_down contains 'summer'
+                  assign season_tag = 'Summer'
+                endif
+              endfor
+            endif
+            case season_tag
+              when 'Winter'
+                assign season_color = '#2563eb'
+              when 'All-Weather'
+                assign season_color = '#F5820B'
+              when 'All-Season'
+                assign season_color = '#16a34a'
+              when 'Summer'
+                assign season_color = '#eab308'
+              when 'All-Terrain'
+                assign season_color = '#92400e'
+              when 'Performance'
+                assign season_color = '#7c3aed'
+              when 'Trailer'
+                assign season_color = '#374151'
+            endcase
+          -%}
+          <a
+            class="pti__card{% unless product.available %} pti__card--unavailable{% endunless %}"
+            href="{{ product.url }}"
+            aria-label="{{ product.title | escape }}"
+            {% if loop_pass == 2 %}aria-hidden="true" tabindex="-1"{% endif %}
+          >
+            <div class="pti__card-img">
+              {%- if product.featured_image -%}
+                {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'pti__img', loading: 'lazy', widths: '200,300,400', sizes: '(max-width: 768px) 65vw, 240px', alt: product.title }}
+              {%- else -%}
+                <div class="pti__card-ph" aria-hidden="true">
+                  <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="50" cy="50" r="45"/>
+                    <circle cx="50" cy="50" r="22"/>
+                  </svg>
+                </div>
+              {%- endif -%}
+              {%- if season_tag != blank -%}
+                <span class="pti__card-season" style="--season:{{ season_color }}">{{ season_tag }}</span>
+              {%- endif -%}
+            </div>
+            <div class="pti__card-body">
+              <span class="pti__card-brand">{{ product.vendor | escape }}</span>
+              <h3 class="pti__card-title">{{ clean_title | escape }}</h3>
+              {%- if tire_size != blank -%}
+                <span class="pti__card-size">{{ tire_size }}</span>
+              {%- endif -%}
+              <div class="pti__card-foot">
+                {%- if product.available -%}
+                  <span class="pti__card-price">
+                    {%- if product.compare_at_price > product.price -%}
+                      <s class="pti__card-was">{{ product.compare_at_price | money_without_trailing_zeros }}</s>
+                    {%- endif -%}
+                    {{ product.price | money_without_trailing_zeros }}
+                  </span>
+                {%- else -%}
+                  <span class="pti__card-oos">Out of stock</span>
+                {%- endif -%}
+                <span class="pti__card-view">View
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </span>
+              </div>
+            </div>
+          </a>
+        {%- endfor -%}
+      {%- endfor -%}
+    </div>
+  </div>
+</div>
