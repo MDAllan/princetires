@@ -9,35 +9,54 @@
 
   assign season_tag = ''
   assign season_color = '#6b7280'
-  for tag in product.tags
-    assign tag_down = tag | downcase
-    if tag_down contains 'winter'
-      assign season_tag = 'Winter'
-      assign season_color = '#2563eb'
-    elsif tag_down contains 'all-season' or tag_down contains 'all season'
-      assign season_tag = 'All-Season'
-      assign season_color = '#16a34a'
-    elsif tag_down contains 'all-weather' or tag_down contains 'all weather'
-      assign season_tag = 'All-Weather'
-      assign season_color = '#F5820B'
-    elsif tag_down contains 'summer'
-      assign season_tag = 'Summer'
-      assign season_color = '#eab308'
-    endif
-  endfor
+  comment
+    Canonical source: custom.seasonality metafield. Tag loop is a fallback only
+    — imported products often carry both an "all-weather-rated" tag AND a stray
+    "Summer" supplier-feed tag, so the in-loop reassignment let the last match
+    win and the PDP showed the wrong badge + wrong FAQ/recommendation copy.
+  endcomment
+  assign m_season = product.metafields.custom.seasonality | default: ''
+  if m_season != blank
+    assign season_tag = m_season
+  endif
+  if season_tag == blank
+    for tag in product.tags
+      assign tag_down = tag | downcase
+      if tag_down contains 'winter'
+        assign season_tag = 'Winter'
+      elsif tag_down contains 'all-weather' or tag_down contains 'all weather'
+        assign season_tag = 'All-Weather'
+      elsif tag_down contains 'all-season' or tag_down contains 'all season'
+        assign season_tag = 'All-Season'
+      elsif tag_down contains 'summer'
+        assign season_tag = 'Summer'
+      endif
+    endfor
+  endif
   if season_tag == blank
     assign type_down = product.type | downcase
     if type_down contains 'winter'
       assign season_tag = 'Winter'
-      assign season_color = '#2563eb'
     elsif type_down contains 'passenger'
       assign season_tag = 'All-Season'
-      assign season_color = '#16a34a'
     elsif type_down contains 'trailer'
       assign season_tag = 'Trailer'
-      assign season_color = '#6b7280'
     endif
   endif
+  case season_tag
+    when 'Winter'
+      assign season_color = '#2563eb'
+    when 'All-Weather'
+      assign season_color = '#F5820B'
+    when 'All-Season'
+      assign season_color = '#16a34a'
+    when 'Summer'
+      assign season_color = '#eab308'
+    when 'All-Terrain'
+      assign season_color = '#92400e'
+    when 'Performance'
+      assign season_color = '#7c3aed'
+  endcase
 
   assign product_form_id = 'pt-product-form-' | append: section.id
 
@@ -224,10 +243,18 @@
     }
     </script>
 
-    {%- comment -%} Vehicle Fitment Banner {%- endcomment -%}
-    <div class="ptp__fitment" data-ptp-fitment hidden>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
-      <span>Fits your <strong data-ptp-fitment-vehicle></strong></span>
+    {%- comment -%}
+      Vehicle Fitment Banner — authoritative fit check via app.princetires.ca/api/wheel-fitment
+      (same API the hero smart-search uses). Compares the product's tire size against the
+      list of factory-compatible sizes for the customer's default garage vehicle.
+      Hidden by default; populated client-side. Three possible states:
+        - .ptp__fitment--fits     → green "Fits your <vehicle>"           (exact match)
+        - .ptp__fitment--may-fit  → amber "Verify fit for your <vehicle>" (same width family)
+        - hidden                  → not a match OR no garage vehicle OR no tire_size
+    {%- endcomment -%}
+    <div class="ptp__fitment" data-ptp-fitment data-ptp-product-tire-size="{{ tire_size | escape }}" hidden>
+      <svg class="ptp__fitment-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+      <span><span data-ptp-fitment-prefix>Fits your</span> <strong data-ptp-fitment-vehicle></strong></span>
       <a href="{{ routes.collections_url }}/tires" class="ptp__fitment-change">Change vehicle</a>
     </div>
 
@@ -394,8 +421,8 @@
               <span class="ptp__price-per">/tire</span>
             {%- endif -%}
           </div>
-          {%- if customer.tags contains 'wholesale' -%}
-            {%- comment -%} Phase 5A · trade-price toggle — see docs/phase-5-wholesale-platform.md. Visible only when the header toggle is ON. {%- endcomment -%}
+          {%- if customer.b2b? or customer.tags contains 'wholesale' -%}
+            {%- comment -%} Phase 5A · trade-price toggle — see docs/phase-5-wholesale-platform.md. Visible only when the header toggle is ON. Gate accepts either Shopify's native B2B flag OR the legacy tag (some company contacts are wired without the tag). {%- endcomment -%}
             <div class="pt-trade-info" data-pt-trade-info data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}">
               Your cost: <span class="pt-trade-info__amount" data-pt-trade-amount>—</span>/tire
               <span data-pt-trade-tier-wrap>· <span data-pt-trade-tier>—</span></span>
@@ -435,7 +462,7 @@
         {%- comment -%} CTAs — Book Installation is PRIMARY {%- endcomment -%}
         {%- capture supplier_tier -%}{% render 'pt-supplier-tier', product: product %}{%- endcapture -%}
         <div class="ptp__cta-stack">
-          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-install-price="{{ product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 }}" data-inventory-source="{{ inventory_source }}" data-supplier-tier="{{ supplier_tier | strip }}" data-product-handle="{{ product.handle }}">
+          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-install-price="{{ product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 }}" data-inventory-source="{{ inventory_source }}" data-supplier-tier="{{ supplier_tier | strip }}" data-product-handle="{{ product.handle }}" data-variant-id="{{ product.selected_or_first_available_variant.id }}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             Book installation
           </button>
@@ -517,7 +544,8 @@
           </div>
         {%- endif -%}
         <div class="ptp__stat">
-          <span class="ptp__stat-num">${{ product.price | money_without_currency }}<span class="ptp__stat-unit">/tire</span></span>
+          {%- comment -%} Phase 5A · trade-price toggle. The numeric span gets rewritten with the API-canonicalized retail per-tire (× mult 1). {%- endcomment -%}
+          <span class="ptp__stat-num"><span data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span><span class="ptp__stat-unit">/tire</span></span>
           <span class="ptp__stat-label">Per tire price</span>
         </div>
         {%- if product.metafields.custom.warranty_km != blank -%}
@@ -874,15 +902,22 @@
       {%- assign sticky_savings = product.compare_at_price | minus: product.price | times: 4 -%}
     {%- endif -%}
     <div class="ptp__sticky" data-ptp-sticky>
+      {%- comment -%} Phase 5A · trade-price toggle on the PDP sticky bar. The set-of-4 span gets ×4 multiplier; the per-tire ×1. {%- endcomment -%}
       <div class="ptp__sticky-price">
-        <span class="ptp__sticky-set" data-ptp-sticky-total>${{ set_price | money_without_currency }}</span>
+        <span class="ptp__sticky-set" data-ptp-sticky-total data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="4">${{ set_price | money_without_currency }}</span>
         <span class="ptp__sticky-per">
-          ${{ product.price | money_without_currency }} / tire
+          <span data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span> / tire
           {%- if sticky_savings > 0 -%}
             <strong class="ptp__sticky-save">· Save ${{ sticky_savings | money_without_currency }}</strong>
           {%- endif -%}
         </span>
       </div>
+      {%- if customer.b2b? or customer.tags contains 'wholesale' -%}
+        {%- comment -%} Visible only when body.pt-trade-visible. JS fills in the cost.  {%- endcomment -%}
+        <div class="ptp__sticky-trade" data-pt-trade-info data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}">
+          Your cost: <span data-pt-trade-amount>—</span>/tire · <strong><span data-pt-trade-pct>—</span>% off</strong>
+        </div>
+      {%- endif -%}
       <div class="ptp__sticky-actions">
         <a class="ptp__sticky-call" href="tel:+1{{ sticky_phone_dig }}" aria-label="Call us">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 12 19.79 19.79 0 0 1 1.17 3.39 2 2 0 0 1 3.14 1.22h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16v.92z"/></svg>
@@ -893,7 +928,7 @@
             Add to cart
           </button>
         {%- endif -%}
-        <button type="button" class="ptp__sticky-book" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-install-price="{{ product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 }}" data-inventory-source="{{ inventory_source }}">
+        <button type="button" class="ptp__sticky-book" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-install-price="{{ product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 }}" data-inventory-source="{{ inventory_source }}" data-variant-id="{{ product.selected_or_first_available_variant.id }}">
           Book install →
         </button>
       </div>
@@ -925,10 +960,17 @@
   .ptp__breadcrumb-list li:last-child { color: #6b7280; }
 
   /* Fitment */
-  .ptp__fitment { display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1.2rem; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--ptp-r-sm); margin-bottom: 1.5rem; font-size: 0.95rem; color: #374151; }
+  .ptp__fitment { display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1.2rem; border-radius: var(--ptp-r-sm); margin-bottom: 1.5rem; font-size: 0.95rem; color: #374151; border: 1px solid transparent; background: #f9fafb; }
   .ptp__fitment[hidden] { display: none; }
   .ptp__fitment strong { color: var(--ptp-text); }
+  .ptp__fitment-icon { color: #6b7280; }
   .ptp__fitment-change { margin-left: auto; font-size: 0.85rem; color: var(--ptp-muted); text-decoration: underline; text-underline-offset: 2px; }
+  /* Confirmed exact-size match → green */
+  .ptp__fitment--fits { background: #ecfdf5; border-color: #a7f3d0; }
+  .ptp__fitment--fits .ptp__fitment-icon { color: #16a34a; }
+  /* Same width family but not exact size → amber "verify" state */
+  .ptp__fitment--may-fit { background: #fffbeb; border-color: #fde68a; }
+  .ptp__fitment--may-fit .ptp__fitment-icon { color: #d97706; }
 
   /* Layout */
   .ptp__layout { display: grid; grid-template-columns: 1fr; gap: 2.5rem; margin-bottom: 3.5rem; }
@@ -1205,6 +1247,23 @@
     .ptp__sticky-set { font-size: 1.05rem; font-weight: 700; color: var(--ptp-text); }
     .ptp__sticky-per { font-size: 0.78rem; color: var(--ptp-subtle); }
     .ptp__sticky-save { color: var(--ptp-cta); font-weight: 700; margin-left: 0.15rem; }
+    /* Trade-price overlay on the sticky bar. Hidden by default; shown when the
+       header "Show cost" toggle is on (body.pt-trade-visible). Tucks under the
+       price line on its own row so the sticky bar grows by ~16px when active. */
+    .ptp__sticky-trade {
+      display: none;
+      grid-column: 1 / -1;
+      margin-top: 0.2rem;
+      padding: 0.25rem 0.45rem;
+      background: #fef3c7;
+      border-left: 3px solid #DC2626;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.25;
+      color: #374151;
+    }
+    body.pt-trade-visible .ptp__sticky-trade { display: block; }
+    .ptp__sticky-trade [data-pt-trade-amount] { color: #DC2626; font-weight: 700; }
     .ptp__sticky-actions {
       display: flex;
       align-items: stretch;
@@ -1467,18 +1526,102 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   })();
 
-  /* Fitment */
+  /* Fitment — authoritative check via the wheel-fitment API
+     (same source the hero smart-search uses). Old behavior just showed
+     "Fits your X" unconditionally if there was ANY default vehicle —
+     which lied to customers about non-matching sizes. Now we fetch the
+     factory-compatible tire sizes for the vehicle and only show the
+     banner when the current product actually matches. */
   (function() {
     var fitment = document.querySelector('[data-ptp-fitment]');
     if (!fitment) return;
+
+    var productSize = (fitment.getAttribute('data-ptp-product-tire-size') || '').trim();
+    if (!productSize) return; // can't fit-check without knowing the product's tire size
+
+    // Find the default garage vehicle from localStorage (set by /pages/garage)
+    var defaultVehicle = null;
     try {
       var keys = Object.keys(localStorage).filter(function(k) { return k.startsWith('pt-garage-'); });
       for (var i = 0; i < keys.length; i++) {
         var vehicles = JSON.parse(localStorage.getItem(keys[i]));
         var def = (vehicles || []).find(function(v) { return v.isDefault; });
-        if (def) { var label = def.year + ' ' + def.make + ' ' + def.model; if (def.trim) label += ' ' + def.trim; fitment.querySelector('[data-ptp-fitment-vehicle]').textContent = label; fitment.hidden = false; break; }
+        if (def) { defaultVehicle = def; break; }
       }
-    } catch(e) {}
+    } catch (e) { /* no garage / parse fail */ }
+    if (!defaultVehicle || !defaultVehicle.year || !defaultVehicle.make || !defaultVehicle.model) return;
+
+    // Normalize tire-size strings: uppercase, strip spaces, drop P/LT/ST/etc prefix
+    function normalize(size) {
+      return (size || '').toUpperCase().replace(/\s+/g, '').replace(/^[A-Z]{1,2}(?=\d)/, '');
+    }
+    function widthOf(normalized) {
+      var m = normalized.match(/^(\d{3})/);
+      return m ? m[1] : null;
+    }
+
+    var key = defaultVehicle.year + ':' + defaultVehicle.make + ':' + defaultVehicle.model;
+    var cacheKey = 'pt-wf-cache:' + key;
+
+    // sessionStorage caches the API response per-vehicle so we don't re-fetch
+    // on every product page visit within the same browsing session
+    function readCache() {
+      try { var raw = sessionStorage.getItem(cacheKey); return raw ? JSON.parse(raw) : null; }
+      catch (e) { return null; }
+    }
+    function writeCache(data) {
+      try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+    }
+
+    function applyFitment(tireSizes) {
+      if (!Array.isArray(tireSizes) || tireSizes.length === 0) return; // upstream had no data → leave hidden
+
+      var productN = normalize(productSize);
+      var productWidth = widthOf(productN);
+      var exact = false;
+      var sameWidth = false;
+      for (var i = 0; i < tireSizes.length; i++) {
+        var n = normalize(tireSizes[i]);
+        if (n === productN) { exact = true; break; }
+        if (productWidth && widthOf(n) === productWidth) sameWidth = true;
+      }
+
+      if (!exact && !sameWidth) return; // not a match → leave hidden (don't mislead)
+
+      var label = defaultVehicle.year + ' ' + defaultVehicle.make + ' ' + defaultVehicle.model;
+      if (defaultVehicle.trim) label += ' ' + defaultVehicle.trim;
+      fitment.querySelector('[data-ptp-fitment-vehicle]').textContent = label;
+
+      var prefixEl = fitment.querySelector('[data-ptp-fitment-prefix]');
+      if (exact) {
+        fitment.classList.add('ptp__fitment--fits');
+        if (prefixEl) prefixEl.textContent = 'Fits your';
+      } else {
+        fitment.classList.add('ptp__fitment--may-fit');
+        if (prefixEl) prefixEl.textContent = 'Verify fit for your';
+      }
+      fitment.hidden = false;
+    }
+
+    var cached = readCache();
+    if (cached && Array.isArray(cached.tire_sizes)) {
+      applyFitment(cached.tire_sizes);
+      return;
+    }
+
+    // Cache miss → fetch from the wheel-fitment API
+    var url = 'https://app.princetires.ca/api/wheel-fitment'
+      + '?year=' + encodeURIComponent(defaultVehicle.year)
+      + '&make=' + encodeURIComponent(defaultVehicle.make)
+      + '&model=' + encodeURIComponent(defaultVehicle.model);
+    fetch(url)
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !Array.isArray(data.tire_sizes)) return;
+        writeCache(data);
+        applyFitment(data.tire_sizes);
+      })
+      .catch(function() { /* silent — banner stays hidden, which is the safe default */ });
   })();
 
   /* Thumbnails */
