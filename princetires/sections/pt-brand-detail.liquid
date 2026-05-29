@@ -159,12 +159,12 @@
                 elsif block.settings.price_override != blank
                   assign price_str = block.settings.price_override
                 endif
-                {%- comment -%}
-                  Shop CTA:
+                comment
+                  Shop CTA priority:
                     1. Merchant-defined shop_link (theme editor override)
-                    2. Otherwise → tires collection filtered by this model's name
-                    3. Last-resort fallback → the rep product's page
-                {%- endcomment -%}
+                    2. Otherwise tires collection filtered by this model's name
+                    3. Last-resort fallback to the rep product's page
+                endcomment
                 assign card_link = block.settings.shop_link
                 if card_link == blank and block.settings.model_name != blank
                   assign m_enc = block.settings.model_name | url_encode
@@ -174,7 +174,7 @@
                   assign card_link = rep.url
                 endif
               -%}
-              <li class="ptbd__card" data-season="{{ season_class }}" {{ block.shopify_attributes }}>
+              <li class="ptbd__card" data-season="{{ season_class }}" id="{{ block.settings.model_name | handleize }}" {{ block.shopify_attributes }}>
                 <div class="ptbd__card-img">
                   {%- if rep != blank and rep.featured_image != blank -%}
                     {{ rep.featured_image | image_url: width: 600 | image_tag: loading: 'lazy', class: 'ptbd__tire-img', alt: block.settings.model_name }}
@@ -818,6 +818,11 @@
     transition: opacity 0.3s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, box-shadow 0.3s;
   }
   @media (max-width: 720px) { .ptbd__card { width: 78vw; } }
+  .ptbd__card--highlight {
+    box-shadow: 0 0 0 3px var(--brand-accent), 0 12px 30px rgba(0,0,0,0.12);
+    transform: translateY(-3px);
+    transition: box-shadow 0.4s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
   .ptbd__card:hover {
     transform: translateY(-3px);
     border-color: color-mix(in oklab, var(--brand-accent) 50%, rgba(10,10,10,0.08));
@@ -1455,6 +1460,30 @@
     });
 
     setArrowState();
+
+    // Hash-driven smooth-scroll to a specific model card (e.g. /pages/brand-michelin#crossclimate2)
+    function scrollToHashCard() {
+      var hash = (location.hash || '').replace(/^#/, '');
+      if (!hash) return;
+      var target = document.getElementById(hash);
+      if (!target || !target.classList.contains('ptbd__card')) return;
+      // If filtered out by an active season tab, reset to "All" so the card is visible
+      if (target.classList.contains('is-filtered-out')) {
+        var allTab = document.querySelector('.ptbd__tab[data-filter="all"]');
+        if (allTab) allTab.click();
+      }
+      setTimeout(function () {
+        // Carousel is a horizontally-scrolling container — scroll inside it
+        var rect = target.getBoundingClientRect();
+        var crect = carousel.getBoundingClientRect();
+        carousel.scrollBy({ left: rect.left - crect.left - 24, behavior: 'smooth' });
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('ptbd__card--highlight');
+        setTimeout(function () { target.classList.remove('ptbd__card--highlight'); }, 1800);
+      }, 120);
+    }
+    scrollToHashCard();
+    window.addEventListener('hashchange', scrollToHashCard);
   })();
 {% endjavascript %}
 

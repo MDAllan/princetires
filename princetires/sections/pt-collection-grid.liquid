@@ -1,19 +1,23 @@
 {%- comment -%}
-  Auto-defaults on first visit: cheapest-first sort + seasonal pre-filter.
-  - Oct → Feb: pre-select Winter
-  - Mar → Sep: pre-select All-Season + All-Weather
-  Skipped on already-seasonal collections (e.g. /collections/winter-tires) where
-  re-filtering would be redundant.
+  Auto-defaults on first visit:
+  - Tire collections (tires / imported-tires): cheapest-first sort + seasonal pre-filter
+    (Oct-Feb: Winter; Mar-Sep: All-Season + All-Weather).
+  - Wheel collections (wheels / alloy-wheels / steel-wheels): in-stock-only filter
+    (SimGym rec #3 — "make wheels browsing shoppable and bias to availability").
+  Skipped on already-scoped collections where re-filtering would be redundant.
   Auto-default runs once per tab session via sessionStorage marker, so the
-  user's choice to clear seasons is respected.
+  user's choice to clear filters is respected for the rest of the session.
 {%- endcomment -%}
 <script>
 (function () {
   if (window.__ptCollSeed) return;
   window.__ptCollSeed = true;
-  var SEASONAL = { 'tires': 1, 'imported-tires': 1 }; // collections that span all seasons
+  var TIRE_COLLS  = { 'tires': 1, 'imported-tires': 1 };
+  var WHEEL_COLLS = { 'wheels': 1, 'alloy-wheels': 1, 'steel-wheels': 1 };
   var handle = {{ collection.handle | json }};
-  if (!SEASONAL[handle]) return;
+  var isTire  = !!TIRE_COLLS[handle];
+  var isWheel = !!WHEEL_COLLS[handle];
+  if (!isTire && !isWheel) return;
 
   // Auto-default runs AT MOST ONCE per browser tab. After the user has touched
   // anything (cleared the season, picked a brand, etc.), the marker keeps the
@@ -24,9 +28,11 @@
   var qs = new URLSearchParams(window.location.search);
   var hasSort = qs.has('sort_by');
   var hasSeason = false;
+  var hasAvailability = false;
   var hasUserFilter = false;
   qs.forEach(function (_v, k) {
     if (k === 'filter.p.m.custom.seasonality') hasSeason = true;
+    if (k === 'filter.v.availability') hasAvailability = true;
     if (k.indexOf('filter.') === 0) hasUserFilter = true;
   });
 
@@ -36,11 +42,12 @@
 
   // If the user arrived with any explicit filter, respect their intent.
   if (hasUserFilter) { markSeeded(); return; }
-  if (hasSort && hasSeason) { markSeeded(); return; }
+  if (hasSort && (isTire ? hasSeason : hasAvailability)) { markSeeded(); return; }
 
   var changed = false;
   if (!hasSort) { qs.set('sort_by', 'price-ascending'); changed = true; }
-  if (!hasSeason) {
+
+  if (isTire && !hasSeason) {
     var m = new Date().getMonth(); // 0 = Jan
     if (m >= 9 || m <= 1) {
       // Oct, Nov, Dec, Jan, Feb → Winter
@@ -53,6 +60,14 @@
       changed = true;
     }
   }
+
+  if (isWheel && !hasAvailability) {
+    // Availability-first: only show in-stock wheels by default. The customer can
+    // clear this filter from the sidebar to see out-of-stock SKUs.
+    qs.set('filter.v.availability', '1');
+    changed = true;
+  }
+
   markSeeded();
   if (changed) {
     window.location.replace(window.location.pathname + '?' + qs.toString());
@@ -993,6 +1008,17 @@
     text-decoration: none;
     color: inherit;
     max-width: 100%;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .ptg__card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    border-color: #e0e0e0;
+  }
+  .ptg__card:focus-visible {
+    outline: 2px solid #DA291C;
+    outline-offset: 2px;
   }
 
   .ptg__card-img {

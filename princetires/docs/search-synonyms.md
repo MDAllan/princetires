@@ -60,3 +60,19 @@ Enter these groups in **Shopify admin → Apps → Search & Discovery → Synony
 | Hancook | Hankook |
 
 > One-way synonyms: search for the misspelling → return results for the correct term, but not vice versa.
+
+## SimGym additions (2026-05-29) — AI-shopper rec #9
+
+Driven by the AI-shopper simulation finding shoppers searched these terms expecting matches in the relevant collection. The in-bar smart search already handles `tire-size patterns` (e.g. `225/65R17`) natively via `assets/pt-tire-parse.js`; these entries cover the storefront `/search` results page.
+
+| Group | Terms |
+|---|---|
+| Winter (3PMS rating) | 3PMS, 3PMSF, three-peak, three peak mountain, severe snow rated, snowflake |
+| TPMS | TPMS, tire pressure sensor, tyre pressure sensor, tire pressure monitoring, pressure sensor, valve sensor |
+| Studded winter | studded, studdable, pin studs, stud-ready |
+| All-weather (3PMS marked but year-round) | all-weather, all weather, 3PMS marked, year-round tires |
+
+### What to skip
+
+- **"passenger" alone** — Group 31 above maps `passenger / P-metric / car tires` together, which is correct. Do NOT add `passenger → tires` as a one-way synonym; it's too broad and would match almost every product.
+- **Tire-size aliases** — `225/65R17`, `225 65 17`, `225-65-17` are all parsed natively by the smart-search bar (`PTTireParse.parseSize`) and routed to `?filter.p.m.custom.tire_size=225/65R17`. Don't add as Shopify synonyms.

@@ -15,6 +15,33 @@
   .drawer {
     visibility: hidden;
   }
+  /* SimGym rec #15 — visible help row in cart drawer */
+  .cart-drawer__help {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    font-size: 13px;
+    color: rgb(var(--color-foreground, 18 18 18));
+  }
+  .cart-drawer__help-label {
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .cart-drawer__help-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: rgb(var(--color-foreground, 18 18 18));
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease;
+  }
+  .cart-drawer__help-link:hover { border-bottom-color: currentColor; }
+  .cart-drawer__help-link svg { flex-shrink: 0; }
 </style>
 
 <cart-drawer class="drawer{% if cart == empty %} is-empty{% endif %}">
@@ -247,12 +274,13 @@
                                 <span class="visually-hidden">
                                   {{ 'products.product.price.sale_price' | t }}
                                 </span>
-                                <span class="price price--end">
+                                {%- comment -%} Phase 5A · trade-price toggle. Multiplier=quantity so JS recomputes retail × qty (matches what Shopify already renders); applyCartTotal then sums per-line wholesale. {%- endcomment -%}
+                                <span class="price price--end" data-pt-price data-pt-variant-id="{{ item.variant.id }}" data-pt-multiplier="{{ item.quantity }}">
                                   {{ item.final_line_price | money }}
                                 </span>
                               </div>
                             {%- else -%}
-                              <span class="price price--end">
+                              <span class="price price--end" data-pt-price data-pt-variant-id="{{ item.variant.id }}" data-pt-multiplier="{{ item.quantity }}">
                                 {{ item.original_line_price | money }}
                               </span>
                             {%- endif -%}
@@ -516,6 +544,12 @@
           <div class="totals" role="status">
             <h2 class="totals__total">{{ 'sections.cart.estimated_total' | t }}</h2>
             <p class="totals__total-value">{{ cart.total_price | money_with_currency }}</p>
+            {%- if customer.b2b? or customer.tags contains 'wholesale' -%}
+              {%- comment -%} Phase 5A · trade-price toggle. JS sums per-line wholesale and writes here. Hidden until body.pt-trade-visible. {%- endcomment -%}
+              <p class="pt-cart-trade-total" data-pt-cart-wholesale-total>
+                Your cost total: <strong data-pt-cart-wholesale-amount>—</strong>
+              </p>
+            {%- endif -%}
           </div>
 
           <small class="tax-note caption-large rte">
@@ -574,6 +608,19 @@
           >
             {{ 'sections.cart.checkout' | t }}
           </button>
+        </div>
+
+        {%- comment -%} SimGym rec #15: visible help/contact in cart for trust + friction recovery {%- endcomment -%}
+        <div class="cart-drawer__help">
+          <span class="cart-drawer__help-label">Need help?</span>
+          <a href="tel:+14034524283" class="cart-drawer__help-link" aria-label="Call Prince Tires">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            (403) 452-4283
+          </a>
+          <a href="mailto:info@princetires.ca" class="cart-drawer__help-link" aria-label="Email Prince Tires">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            info@princetires.ca
+          </a>
         </div>
       </div>
     </div>
