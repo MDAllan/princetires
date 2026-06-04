@@ -23,8 +23,9 @@
     {%- if shop.brand.logo -%}
       "logo": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }},
     {%- endif -%}
-    {%- if shop.phone != blank -%}
-      "telephone": {{ shop.phone | json }},
+    {%- assign org_phone = settings.shop_phone | default: '(403) 452-4283' -%}
+    {%- if org_phone != blank -%}
+      "telephone": {{ org_phone | json }},
     {%- endif -%}
     {%- if shop.email != blank -%}
       "email": {{ shop.email | json }},
@@ -42,6 +43,8 @@
         assign social_links = ''
         if settings.social_facebook_link != blank
           assign social_links = social_links | append: settings.social_facebook_link | append: '|'
+        else
+          assign social_links = social_links | append: 'https://www.facebook.com/PrincetiresLTD' | append: '|'
         endif
         if settings.social_instagram_link != blank
           assign social_links = social_links | append: settings.social_instagram_link | append: '|'

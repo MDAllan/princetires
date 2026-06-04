@@ -1,8 +1,19 @@
 {% doc %}
-  Renders JSON-LD structured data for a local tire business (Schema.org LocalBusiness).
+  Renders JSON-LD structured data for a local tire & wheel shop (Schema.org AutoPartsStore).
 
   Uses shop information and theme settings to output structured data that helps
   search engines display rich results for the business (address, hours, contact info).
+
+  Notes:
+  - @type is AutoPartsStore (a valid Schema.org type for a tire/wheel retailer).
+    "TireShop" is NOT a real Schema.org type, and AutoRepair implies general
+    auto repair (brakes/oil/engine), which Prince Tires does not offer.
+  - Phone is sourced from settings.shop_phone (falling back to the canonical
+    number) rather than shop.phone, because the Shopify store-level phone setting
+    is out of sync. Fix shop.phone in Admin → Settings → Store details too.
+  - No self-serving aggregateRating: Google does not allow a business to mark up
+    its own site-wide rating on its LocalBusiness entity. Real review stars live
+    on Google Business Profile and on product pages (review app metafields).
 
   @example
   {% render 'schema-local-business' %}
@@ -11,14 +22,34 @@
 {%- liquid
   assign business_name = shop.name
   assign business_url = request.origin
-  assign business_phone = shop.phone
+  assign business_phone = settings.shop_phone | default: '(403) 452-4283'
   assign business_description = shop.description | default: shop.name
+
+  assign social_links = ''
+  if settings.social_facebook_link != blank
+    assign social_links = social_links | append: settings.social_facebook_link | append: '|'
+  else
+    assign social_links = social_links | append: 'https://www.facebook.com/PrincetiresLTD' | append: '|'
+  endif
+  if settings.social_instagram_link != blank
+    assign social_links = social_links | append: settings.social_instagram_link | append: '|'
+  endif
+  if settings.social_twitter_link != blank
+    assign social_links = social_links | append: settings.social_twitter_link | append: '|'
+  endif
+  if settings.social_youtube_link != blank
+    assign social_links = social_links | append: settings.social_youtube_link | append: '|'
+  endif
+  if settings.social_tiktok_link != blank
+    assign social_links = social_links | append: settings.social_tiktok_link | append: '|'
+  endif
+  assign social_links = social_links | split: '|' | compact
 -%}
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "AutoRepair",
+  "@type": "AutoPartsStore",
   "name": {{ business_name | json }},
   "url": {{ business_url | json }},
   {%- if business_phone != blank -%}
@@ -42,33 +73,34 @@
     "latitude": {{ shop.latitude | json }},
     "longitude": {{ shop.longitude | json }}
   },
-  "priceRange": "$$",
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.9",
-    "reviewCount": "562",
-    "bestRating": "5",
-    "worstRating": "1"
+  "openingHoursSpecification": [
+    {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      "opens": "09:30",
+      "closes": "17:30"
+    },
+    {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": "Sunday",
+      "opens": "10:00",
+      "closes": "15:30"
+    }
+  ],
+  "areaServed": {
+    "@type": "City",
+    "name": "Calgary"
   },
+  "priceRange": "$$",
   "currenciesAccepted": {{ cart.currency.iso_code | json }},
-  "paymentAccepted": "Cash, Credit Card, Debit Card",
-  "additionalType": "https://schema.org/TireShop",
-  "sameAs": [
-    {%- if settings.social_facebook_link != blank -%}
-      {{ settings.social_facebook_link | json }},
-    {%- endif -%}
-    {%- if settings.social_instagram_link != blank -%}
-      {{ settings.social_instagram_link | json }},
-    {%- endif -%}
-    {%- if settings.social_twitter_link != blank -%}
-      {{ settings.social_twitter_link | json }},
-    {%- endif -%}
-    {%- if settings.social_youtube_link != blank -%}
-      {{ settings.social_youtube_link | json }},
-    {%- endif -%}
-    {%- if settings.social_tiktok_link != blank -%}
-      {{ settings.social_tiktok_link | json }}
-    {%- endif -%}
-  ]
+  "paymentAccepted": "Cash, Credit Card, Debit Card"
+  {%- if social_links.size > 0 -%}
+    ,
+    "sameAs": [
+      {%- for link in social_links -%}
+        {{ link | json }}{% unless forloop.last %},{% endunless %}
+      {%- endfor -%}
+    ]
+  {%- endif -%}
 }
 </script>
