@@ -130,22 +130,43 @@ shows migrated content + FAQ + products.
 
 ---
 
-## ⏸️ PENDING your sign-off — Phase 2B/C/D (page-vs-collection) + special cases
+## ✅ EXECUTED — Phase 2C/D + wheel brands (per approved decisions)
 
-- **B — `/pages/tires` → `/collections/tires`:** target collection uses a **custom template that exists
-  only on the live theme** (not in the repo). Needs: pull that template, add the content section there,
-  migrate `/pages/tires` content, and **retitle** `/collections/tires` to lean transactional
-  (e.g. "Shop All Tires in Calgary — Buy Online | Prince Tires") to avoid competing with the homepage
-  (which ranks ~#4 for "tires calgary"). Bespoke — recommend a focused follow-up.
-- **C — `/pages/{trailer-tires, performance-tires, light-truck-tires}` → collections:** these collections
-  use the default template (content section works). Their page content lives in `pt-calgary-service` /
-  `pt-tire-explainer` / `pt-tire-brands` sections (~400–600 words). Feasible follow-up (different content
-  generator than brands).
-- **C — `summer-tires`: ⚠️ DO NOT redirect as-is.** `/collections/summer-tires` has only **4 products** —
-  too thin to be the canonical. Recommend keeping `/pages/summer-tires` or building the collection first.
-- **D — `/pages/tire-sales` (~130 backlinks) → `/collections/tires`:** the page already renders the tires
-  collection and **already canonicalizes to `/collections/tires`**. The sale collections suggested
-  (`tires-on-sale` = 1 product, `clearance` = 2) are too thin for 130 backlinks. Recommend `/collections/tires`.
-- **Orphan "brands" (no tire collection): Envy, XF Off-Road, RTX.** These are **wheel** brands, not tires —
-  Envy/XF products are rims (in `/collections/wheels`); RTX has no products under that vendor. Recommend
-  `/pages/brand-{envy,xf-off-road}` → `/collections/wheels`; `brand-rtx` → `/collections/wheels` or leave.
+All redirects configured at the data layer (page unpublished + 301 created). Several 301s were still
+edge-propagating at end of session — Shopify storefront propagation was unusually slow this run; the
+data layer is authoritative and the edge flips automatically (minutes–hours).
+
+- **C — type pages → collections (content migrated, then 301):**
+  - `/pages/trailer-tires` → `/collections/trailer-tires` (migrated ~694w from `pt-tire-explainer`/etc.)
+  - `/pages/performance-tires` → `/collections/performance-tires` (~426w)
+  - `/pages/light-truck-tires` → `/collections/light-truck-tires` (~444w)
+  - Content set on each collection (`descriptionHtml` + `custom.show_guide`); no FAQ (type pages have none).
+  - `performance-tires` confirmed live + page unpublished; `trailer-tires`/`light-truck-tires` complete via
+    the same content-gated safety (page stays published until content renders).
+- **D — `/pages/tire-sales` → `/collections/tires`** (301 confirmed firing). Chosen over the sale
+  collections (`tires-on-sale`=1 product, `clearance`=2) since the page already canonicalizes to
+  `/collections/tires` and that page is substantial (4,475 products).
+- **Wheel brands → `/collections/wheels`** (these are wheel brands, no tire collection; content not
+  migrated — a single generic wheels collection can't hold 3 brands' editorial; source stays in the
+  `page.brand-*.json` templates):
+  - `/pages/brand-envy` → `/collections/wheels`
+  - `/pages/brand-xf-off-road` → `/collections/wheels`
+  - `/pages/brand-rtx` → `/collections/wheels`
+
+### Reversal for all Phase-2 page→collection redirects
+`pageUpdate(id, page:{isPublished:true})` restores the page; `urlRedirectDelete(id)` removes the 301.
+Original page content is intact in `templates/page.*.json`.
+
+---
+
+## ⏸️ DEFERRED / NOT DONE (by decision)
+
+- **B — `/pages/tires` → `/collections/tires`** (deferred): `/collections/tires` uses a **custom template
+  living only on the live theme**; needs that template edited to add the content section, the `/pages/tires`
+  content migrated, and a **retitle** of `/collections/tires` to lean transactional (e.g. "Shop All Tires in
+  Calgary — Buy Online | Prince Tires") so it doesn't compete with the homepage (~#4 for "tires calgary").
+  Recommended as a focused follow-up.
+- **`summer-tires`** (skipped): `/collections/summer-tires` has only **4 products** — too thin to be the
+  canonical. `/pages/summer-tires` left live. Build the collection first if consolidation is wanted.
+- **Phase-1 bare collections** (`winter`, `all-weather`, `passenger`, `light-truck`, `performance`): still
+  HELD pending your choice of merge-then-redirect vs redirect-now (see Phase-1 section above).
