@@ -680,14 +680,14 @@
   .hero-smart-search__hint-text {
     margin: 0;
     font-family: 'Outfit', sans-serif;
-    font-size: 0.95rem;
+    font-size: 1.1rem;
     font-weight: 400;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.78);
     white-space: nowrap;
     flex-shrink: 0;
   }
   .hero-smart-search__hint-text-mobile { display: none; }
-  .hero-smart-search__hint-text-desktop { color: rgba(255, 255, 255, 0.55); margin-left: 0.3rem; }
+  .hero-smart-search__hint-text-desktop { color: rgba(255, 255, 255, 0.6); margin-left: 0.3rem; }
 
   .hero-smart-search__chips {
     display: flex;
@@ -706,11 +706,11 @@
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 999px;
-    padding: 0.4rem 0.95rem;
+    padding: 0.5rem 1.1rem;
     font-family: 'Outfit', sans-serif;
-    font-size: 0.85rem;
+    font-size: 1rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 255, 255, 0.92);
     cursor: pointer;
     transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
     white-space: nowrap;
@@ -746,18 +746,18 @@
       margin-top: 0.7rem;
     }
     .hero-smart-search__hint-text {
-      font-size: 0.82rem;
+      font-size: 0.95rem;
       white-space: normal;
     }
     .hero-smart-search__hint-text-desktop { display: none; }
     .hero-smart-search__hint-text-mobile {
       display: inline;
-      color: rgba(255, 255, 255, 0.55);
+      color: rgba(255, 255, 255, 0.6);
       margin-left: 0.25rem;
     }
     .hero-smart-search__chip {
-      font-size: 0.78rem;
-      padding: 0.35rem 0.8rem;
+      font-size: 0.92rem;
+      padding: 0.45rem 0.95rem;
     }
   }
 
@@ -4272,17 +4272,26 @@ document.addEventListener('DOMContentLoaded', function() {
     var input = document.querySelector('[data-smart-search-input]');
     if (!el || !input) return;
 
-    var intro = 'What are you looking for?';
+    // First message ("anchor") — explicitly tells customers they can search BOTH ways.
+    // This sits in the input for 2s before the rotating examples start cycling so even
+    // users who skim past the rotation see the dual-search-mode hint.
+    var intro = 'Enter your tire size or your car year make and model';
+    // Rotation strategy: alternate sizes and vehicles so every other example reinforces
+    // a different search mode. Calgary-popular vehicles chosen (RAV4, F-150, Civic, CR-V,
+    // Tacoma, Camry) — these are the top-selling makes in Alberta. VIN paste cue lives
+    // here too since the smart-search does accept pasted VINs (decode-vin API).
     var PHRASES_BY_MODE = {
       tires: [
-        'tires for Honda Civic SI 2025',
-        'Michelin 225/65R17',
-        'winter tires for my RAV4',
-        'Ford F-150 2024',
-        'all season tires 2055516',
-        'Bridgestone Subaru Outback',
-        'crv 2025 winter',
-        'Toyota Camry LE 2024',
+        '225/65R17',
+        '2022 Toyota RAV4',
+        '275/70R18 LT',
+        '2024 Ford F-150',
+        'Paste your VIN',
+        '2020 Honda Civic',
+        '235/45R18',
+        '2023 Toyota Tacoma',
+        '205/55R16',
+        '2024 Honda CR-V',
       ],
       wheels: [
         '17 inch wheels for Honda Civic',
