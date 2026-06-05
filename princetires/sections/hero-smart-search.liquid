@@ -103,6 +103,14 @@
               role="combobox"
             >
             <span class="hero-smart-search__typewriter" data-typewriter aria-hidden="true"></span>
+            {%- comment -%}
+              Inline ghost-text autocomplete. Only renders when there's exactly
+              one obvious completion (e.g. "2020 Honda Civi" → "c"). The prefix
+              span holds the customer's typed text in transparent color so it
+              measures the exact visual width — the suffix then renders muted
+              right where the cursor sits. Accept with Tab or → at end-of-input.
+            {%- endcomment -%}
+            <span class="hero-smart-search__ghost is-hidden" data-ghost aria-hidden="true"><span class="hero-smart-search__ghost-prefix" data-ghost-prefix></span><span class="hero-smart-search__ghost-suffix" data-ghost-suffix></span></span>
             <button
               class="hero-smart-search__submit"
               data-smart-search-submit
@@ -120,6 +128,31 @@
               <span>{{ 'sections.hero_smart_search.ai_thinking' | t }}</span>
             </div>
             <ul class="hero-smart-search__results-list" role="listbox" data-smart-search-list></ul>
+          </div>
+
+          {%- comment -%}
+            Discoverability hint + clickable example chips. Solves the
+            most common UX gap: customers don't realize the search bar
+            accepts a vehicle ("2022 Toyota RAV4") in addition to a tire
+            size ("225/65R17"). Clicking a chip auto-fills the input and
+            dispatches an `input` event so the existing search handler
+            picks up the value and runs the query.
+
+            Mobile: horizontal-scrolls the chip row, hides the helper
+            text caret arrow, shrinks padding.
+          {%- endcomment -%}
+          <div class="hero-smart-search__hint" data-smart-search-hint>
+            <p class="hero-smart-search__hint-text">
+              Don't know your tire size?
+              <span class="hero-smart-search__hint-text-mobile">Try your vehicle:</span>
+              <span class="hero-smart-search__hint-text-desktop">Just type your vehicle — try one of these ↓</span>
+            </p>
+            <div class="hero-smart-search__chips" role="list">
+              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2022 Toyota RAV4" role="listitem">2022 Toyota RAV4</button>
+              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2024 Ford F-150" role="listitem">2024 Ford F-150</button>
+              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2020 Honda Civic" role="listitem">2020 Honda Civic</button>
+              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="225/65R17" role="listitem">225/65R17</button>
+            </div>
           </div>
         </div>
       </div>
@@ -584,6 +617,38 @@
     50% { opacity: 0; }
   }
 
+  /* Ghost-text autocomplete: prefix is invisible (reserves space for the
+     customer's typed text), suffix is the muted completion that sits at
+     the cursor. Font + padding match the input exactly so the suffix lands
+     right where the caret blinks. pointer-events:none so it never blocks
+     taps on the input itself. */
+  .hero-smart-search__ghost {
+    position: absolute;
+    left: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    line-height: 1;
+    pointer-events: none;
+    white-space: pre;
+    overflow: hidden;
+    /* Leave room for the submit-arrow button at the right edge */
+    max-width: calc(100% - 6rem);
+    z-index: 0;
+  }
+  .hero-smart-search__ghost.is-hidden { display: none; }
+  .hero-smart-search__ghost-prefix { color: transparent; }
+  .hero-smart-search__ghost-suffix { color: rgba(255, 255, 255, 0.32); }
+  /* Match the input's mobile padding + font-size so the suffix still sits
+     at the caret on phones (input goes 2rem→1.4rem horizontal padding and
+     1.4rem→1.6rem font-size at ≤480px — typewriter doesn't bother, but the
+     ghost has to). */
+  @media screen and (max-width: 480px) {
+    .hero-smart-search__ghost { left: 1.4rem; font-size: 1.6rem; max-width: calc(100% - 5rem); }
+  }
+
   .hero-smart-search__submit {
     display: flex;
     align-items: center;
@@ -602,6 +667,98 @@
 
   .hero-smart-search__submit:hover {
     opacity: 0.85;
+  }
+
+  /* ── Hint + clickable example chips below the search ── */
+  .hero-smart-search__hint {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    margin-top: 1rem;
+    padding: 0 0.2rem;
+  }
+  .hero-smart-search__hint-text {
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .hero-smart-search__hint-text-mobile { display: none; }
+  .hero-smart-search__hint-text-desktop { color: rgba(255, 255, 255, 0.55); margin-left: 0.3rem; }
+
+  .hero-smart-search__chips {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: 1;
+    padding-bottom: 0.2rem;
+  }
+  .hero-smart-search__chips::-webkit-scrollbar { display: none; }
+
+  .hero-smart-search__chip {
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    padding: 0.4rem 0.95rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    white-space: nowrap;
+  }
+  .hero-smart-search__chip:hover {
+    background: rgba(220, 38, 38, 0.18);
+    border-color: rgba(220, 38, 38, 0.6);
+    color: #fff;
+  }
+  .hero-smart-search__chip:active {
+    transform: scale(0.96);
+  }
+  .hero-smart-search__chip:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+  }
+
+  /* Hide the entire hint when the search dropdown is open so the chips don't
+     visually fight with the suggestions list. The wrapper sets [data-results-open]
+     in JS (added below alongside the chip click handler). */
+  [data-smart-search][data-results-open] .hero-smart-search__hint {
+    display: none;
+  }
+
+  /* Mobile-tight: swap the desktop wording for a shorter mobile phrase,
+     reduce chip padding, allow horizontal scroll so chips don't wrap into
+     two rows. */
+  @media (max-width: 768px) {
+    .hero-smart-search__hint {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      margin-top: 0.7rem;
+    }
+    .hero-smart-search__hint-text {
+      font-size: 0.82rem;
+      white-space: normal;
+    }
+    .hero-smart-search__hint-text-desktop { display: none; }
+    .hero-smart-search__hint-text-mobile {
+      display: inline;
+      color: rgba(255, 255, 255, 0.55);
+      margin-left: 0.25rem;
+    }
+    .hero-smart-search__chip {
+      font-size: 0.78rem;
+      padding: 0.35rem 0.8rem;
+    }
   }
 
   .hero-smart-search__results {
@@ -1544,6 +1701,10 @@ document.addEventListener('DOMContentLoaded', function() {
       this.list = container.querySelector('[data-smart-search-list]');
       this.submit = container.querySelector('[data-smart-search-submit]');
       this.loading = container.querySelector('[data-smart-search-loading]');
+      // Ghost-text autocomplete overlay (single-candidate completion only).
+      this.ghost = container.querySelector('[data-ghost]');
+      this.ghostPrefix = container.querySelector('[data-ghost-prefix]');
+      this.ghostSuffix = container.querySelector('[data-ghost-suffix]');
       this.selectedIndex = -1;
       this.items = [];
       this.debounceTimer = null;
@@ -1572,6 +1733,22 @@ document.addEventListener('DOMContentLoaded', function() {
       // Top-volume makes in the Calgary tire market — used as quick-pick chips
       // in the year-only guidance card so the customer doesn't have to type a make.
       this.popularMakes = ['Honda','Toyota','Ford','Chevrolet','GMC','RAM','Hyundai','Jeep'];
+      // Top-volume models per make — surfaced as chips on the year-make hint
+      // ("2012 Honda" → Civic / Accord / CR-V …). Curated for the popular makes;
+      // for everything else we fall back to "first N from the year's data file".
+      // Each candidate is fuzzy-matched against the actual model keys in the
+      // year's pt-vehicle-<year>.json so chips never advertise a model the
+      // customer's year doesn't actually have.
+      this.popularModels = {
+        'Honda':     ['Civic','Accord','CR-V','Pilot','Odyssey','Ridgeline','Fit','HR-V'],
+        'Toyota':    ['Corolla','Camry','RAV4','Highlander','Tacoma','4Runner','Tundra','Prius'],
+        'Ford':      ['F-150','Escape','Edge','Explorer','Mustang','Focus','Ranger','Fusion'],
+        'Chevrolet': ['Silverado 1500','Equinox','Cruze','Malibu','Tahoe','Traverse','Colorado','Impala'],
+        'GMC':       ['Sierra 1500','Acadia','Yukon','Terrain','Canyon','Yukon XL','Savana','Sierra 2500'],
+        'RAM':       ['1500','2500','3500','ProMaster','ProMaster City'],
+        'Hyundai':   ['Elantra','Sonata','Tucson','Santa Fe','Accent','Kona','Palisade','Veloster'],
+        'Jeep':      ['Wrangler','Grand Cherokee','Cherokee','Compass','Patriot','Renegade','Gladiator']
+      };
       this.makeAliases = {'chevy':'Chevrolet','vw':'Volkswagen','mercedes':'Mercedes-Benz','benz':'Mercedes-Benz'};
       this.modelShortcuts = {
         'crv':'CR-V','cr-v':'CR-V','hrv':'HR-V','hr-v':'HR-V','rav':'RAV4','rav4':'RAV4',
@@ -1602,7 +1779,16 @@ document.addEventListener('DOMContentLoaded', function() {
         'ioniq5':'Ioniq 5','ioniq6':'Ioniq 6','kona':'Kona',
         'ct4':'CT4','ct5':'CT5','escalade':'Escalade','xt5':'XT5','xt6':'XT6',
       };
-      this.noiseWords = ['tires','tire','for','my','the','a','an','need','needs','looking','want','i','on','new','set','of','best','good','cheap','get','find','buy','shop','what','fit','fits','size','sizes'];
+      // Words stripped from a free-text query before vehicle parse.
+      // Includes both "tires" / "tire" and "wheels" / "wheel" / "rims" / "rim"
+      // so phrasings like "wheels for my rav4 2012" parse to the vehicle
+      // "rav4 2012" — the parser shouldn't care whether the customer asked
+      // for tires or wheels, the active mode (this.mode) drives downstream
+      // routing.
+      this.noiseWords = [
+        'tires','tire','wheels','wheel','rims','rim',
+        'for','my','the','a','an','need','needs','looking','want','i','on','new','set','of','best','good','cheap','get','find','buy','shop','what','fit','fits','size','sizes'
+      ];
 
       // Tires / Wheels mode — persisted in localStorage so the tab the
       // customer last picked sticks across page loads.
@@ -1995,6 +2181,11 @@ document.addEventListener('DOMContentLoaded', function() {
       // the arrow while the trim list is still visible from the same query).
       this.awaitingTrim = false;
       this.awaitingSelection = false;
+
+      // Ghost-text autocomplete is intentionally NOT debounced — it should
+      // update on every keystroke so the suggestion stays in sync with what
+      // the customer sees on screen. The actual search remains debounced.
+      this._updateGhost();
 
       clearTimeout(this.debounceTimer);
       this.debounceTimer = setTimeout(() => {
@@ -2908,15 +3099,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
       var specsRow = [];
       if (fitment.bolt_pattern)  specsRow.push('<span class="hsf-wf__spec"><span class="hsf-wf__spec-label">Bolt pattern</span><span class="hsf-wf__spec-value">' + this.escapeHtml(fitment.bolt_pattern) + '</span></span>');
-      if (fitment.center_bore)   specsRow.push('<span class="hsf-wf__spec"><span class="hsf-wf__spec-label">Center bore</span><span class="hsf-wf__spec-value">' + this.escapeHtml(fitment.center_bore) + ' mm</span></span>');
+      if (fitment.center_bore)   specsRow.push('<span class="hsf-wf__spec"><span class="hsf-wf__spec-label">Hub bore (min)</span><span class="hsf-wf__spec-value">' + this.escapeHtml(fitment.center_bore) + ' mm</span></span>');
       if (fitment.stud_holes)    specsRow.push('<span class="hsf-wf__spec"><span class="hsf-wf__spec-label">Lugs</span><span class="hsf-wf__spec-value">' + fitment.stud_holes + '</span></span>');
 
       var diameters = Array.from(new Set(sizes.map(function(s){ return s.diameter; })));
 
       // PRIMARY CTA — "Wheels that fit your car" combines the OEM bolt
-      // pattern + all OEM diameters in one URL. Requires the wheel catalog
-      // to be enriched with custom.bolt_pattern (done 2026-05-20 — 38/41
-      // wheels have it; the rest gracefully fall back to diameter-only).
+      // pattern + all OEM diameters + a center-bore constraint (wheel bore
+      // must be ≥ OEM hub bore; smaller wouldn't physically seat on the hub).
+      // Larger bores can be made hub-centric with a ring, so we include every
+      // catalog bore ≥ the OEM value as repeated filter params.
+      //
+      // The bore set is hardcoded from a catalog scan (2026-05-22 audit).
+      // If new wheel SKUs introduce new bores, update this list — or move
+      // it to assets/pt-wheel-bores.json the same way pt-tire-sizes.json
+      // is built.
+      var CATALOG_BORES = [54.1, 57.1, 60.1, 63.4, 64.1, 66.6, 67.1, 71.5, 73.1, 84, 87.1, 106.1, 108, 110.1, 131];
       var fitsButton = '';
       if (fitment.bolt_pattern && diameters.length) {
         var fitsUrl = '/collections/wheels'
@@ -2924,6 +3122,18 @@ document.addEventListener('DOMContentLoaded', function() {
         diameters.forEach(function(d){
           fitsUrl += '&filter.p.m.custom.rim_diameter=' + encodeURIComponent(d);
         });
+        // Center-bore constraint: wheel bore must be ≥ OEM hub bore.
+        // Pre-2010 / non-NHTSA-listed vehicles may not have a bore value —
+        // in that case we skip the constraint rather than over-filter.
+        var oemBore = parseFloat(fitment.center_bore);
+        if (isFinite(oemBore) && oemBore > 0) {
+          CATALOG_BORES.filter(function(b) { return b >= oemBore; }).forEach(function(b) {
+            // Catalog stores bores as the string form ("64.1" not "64.10");
+            // emit each candidate as the same string Shopify indexed.
+            var s = (b % 1 === 0) ? String(b) : b.toString();
+            fitsUrl += '&filter.p.m.custom.center_bore=' + encodeURIComponent(s);
+          });
+        }
         fitsButton = '<a class="hsf-wf__cta hsf-wf__cta--primary" href="' + fitsUrl + '" data-wf-fits="true">' +
           '⚙️ Wheels that fit your ' + self.escapeHtml(vLabel.split(' ').slice(1).join(' ')) +
           ' →</a>';
@@ -3137,31 +3347,71 @@ document.addEventListener('DOMContentLoaded', function() {
     static get RECENT_KEY() { return 'pt-recent-searches'; }
     static get RECENT_MAX() { return 5; }
 
-    getRecentSearches() {
+    // Storage shape (current): array of `{query, mode}` objects.
+    // Storage shape (legacy):  array of plain strings — kept compatible
+    // by treating them as { query: <string>, mode: undefined }, which
+    // means "show in both modes" (we don't know what mode they were
+    // typed in). On the next addRecentSearch in either mode, the legacy
+    // string is rewritten with an explicit mode.
+    _readRaw() {
       try {
         var raw = localStorage.getItem('pt-recent-searches');
         if (!raw) return [];
         var arr = JSON.parse(raw);
-        return Array.isArray(arr) ? arr.filter(function(x){ return x && typeof x === 'string' && x.trim().length; }) : [];
+        if (!Array.isArray(arr)) return [];
+        return arr.map(function(x) {
+          if (typeof x === 'string') return { query: x, mode: undefined };
+          if (x && typeof x === 'object' && typeof x.query === 'string') {
+            return { query: x.query, mode: (x.mode === 'tires' || x.mode === 'wheels') ? x.mode : undefined };
+          }
+          return null;
+        }).filter(function(x) { return x && x.query && x.query.trim().length; });
       } catch (e) { return []; }
+    }
+
+    // Returns recent queries scoped to the given mode. Pass null/undefined
+    // to get everything. Legacy entries (no mode) are returned in both
+    // modes so we never silently drop history a customer expected to see.
+    getRecentSearches(mode) {
+      var all = this._readRaw();
+      if (!mode) return all.map(function(x) { return x.query; });
+      return all
+        .filter(function(x) { return x.mode === mode || x.mode === undefined; })
+        .map(function(x) { return x.query; });
     }
 
     addRecentSearch(query) {
       var q = (query || '').trim();
       if (!q || q.length < 2) return;
+      var mode = (this.mode === 'wheels') ? 'wheels' : 'tires';
       try {
-        var current = this.getRecentSearches();
-        // De-duplicate, case-insensitive — keep most-recent-first
+        var all = this._readRaw();
+        // De-duplicate on (query, mode) — same query can exist once per mode
         var lower = q.toLowerCase();
-        current = current.filter(function(x){ return x.toLowerCase() !== lower; });
-        current.unshift(q);
-        if (current.length > 5) current = current.slice(0, 5);
-        localStorage.setItem('pt-recent-searches', JSON.stringify(current));
+        all = all.filter(function(x) {
+          return !(x.query.toLowerCase() === lower && x.mode === mode);
+        });
+        all.unshift({ query: q, mode: mode });
+        // Cap total entries (across all modes) at 10 so each mode usually
+        // has 5 visible, but a single mode can have a few extras if the
+        // other mode is empty. Keeps storage tiny.
+        if (all.length > 10) all = all.slice(0, 10);
+        localStorage.setItem('pt-recent-searches', JSON.stringify(all));
       } catch (e) { /* localStorage full / private mode — silent */ }
     }
 
     clearRecentSearches() {
-      try { localStorage.removeItem('pt-recent-searches'); } catch (e) {}
+      // Clear only the current mode's entries (and legacy untagged ones).
+      // The other mode's history persists. If the customer wants a full
+      // wipe they can flip to the other mode and Clear again.
+      var mode = (this.mode === 'wheels') ? 'wheels' : 'tires';
+      try {
+        var all = this._readRaw().filter(function(x) {
+          return x.mode && x.mode !== mode;
+        });
+        if (all.length) localStorage.setItem('pt-recent-searches', JSON.stringify(all));
+        else            localStorage.removeItem('pt-recent-searches');
+      } catch (e) { /* silent */ }
     }
 
     /* Render the empty-state — recent chips (if any) + curated popular chips.
@@ -3172,7 +3422,10 @@ document.addEventListener('DOMContentLoaded', function() {
       this.awaitingTrim = false;
       this.awaitingSelection = false;
 
-      var recent = this.getRecentSearches();
+      // Mode-aware: when on the Wheels tab, only show wheel-mode recent
+      // searches (and any legacy untagged entries). Same for Tires. Keeps
+      // each mode's history relevant to what the customer is shopping for.
+      var recent = this.getRecentSearches(this.mode);
       // Mode-aware popular chips. Tire chips (sizes, services, brand) make
       // no sense on the Wheels tab; wheel chips (diameters, bolt patterns,
       // vehicle fitment) are tire-irrelevant. Each chip can carry a direct
@@ -3198,7 +3451,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (recent.length) {
         html += '<div class="hero-smart-search__empty-section">' +
           '<div class="hero-smart-search__empty-header">' +
-            '<span class="hero-smart-search__empty-label">Recent searches</span>' +
+            '<span class="hero-smart-search__empty-label">Recent ' + (this.mode === 'wheels' ? 'wheel' : 'tire') + ' searches</span>' +
             '<button type="button" class="hero-smart-search__empty-clear" data-clear-recent="true" aria-label="Clear recent searches">Clear</button>' +
           '</div>' +
           '<div class="hero-smart-search__empty-chips">' +
@@ -3354,6 +3607,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     onKeydown(e) {
+      // Tab (or →) at end-of-input accepts the inline ghost suggestion.
+      // Mid-string Tab keeps its native focus-moving behavior so we don't
+      // hijack it for users navigating the page.
+      if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'ArrowRight') {
+        if (this._ghostSuffix && this._ghostCaretAtEnd()) {
+          e.preventDefault();
+          this._acceptGhost();
+          return;
+        }
+      }
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         if (!this.items.length) return;
@@ -3374,6 +3637,7 @@ document.addEventListener('DOMContentLoaded', function() {
           this.onSubmit();
         }
       } else if (e.key === 'Escape') {
+        this._clearGhost();
         this.hideResults();
       }
     }
@@ -3482,8 +3746,13 @@ document.addEventListener('DOMContentLoaded', function() {
           '</span>';
       } else if (partial.type === 'year-make') {
         title = 'Almost — what model?';
-        sub = 'Try <em>' + partial.year + ' ' + this.escapeHtml(partial.make) + ' [model]</em> — e.g. <em>' + partial.year + ' ' + this.escapeHtml(partial.make) + ' Civic</em>.';
+        sub = 'Pick a model below, or type one (e.g. <em>' + partial.year + ' ' + this.escapeHtml(partial.make) + ' Civic</em>).';
         url = null;
+        // Render a placeholder span; we hydrate it asynchronously from the
+        // year's vehicle data file so chips reflect what actually exists in
+        // pt-vehicle-<year>.json (and so we don't block the hint render on
+        // the fetch — the hint shows immediately, chips fill in next tick).
+        chipsHtml = '<span class="hero-smart-search__guidance-chips" data-model-chips-placeholder></span>';
       } else {
         // make-only
         title = 'Looking for <em>' + this.escapeHtml(partial.make) + '</em> tires?';
@@ -3527,13 +3796,7 @@ document.addEventListener('DOMContentLoaded', function() {
       this.list.querySelectorAll('.hero-smart-search__guidance-chip').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
           e.stopPropagation();
-          var mk = btn.getAttribute('data-make');
-          var yr = btn.getAttribute('data-year');
-          var q = yr + ' ' + mk;
-          self.input.value = q;
-          self.input.focus();
-          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: q, search_type: 'guidance_chip', search_outcome: 'click' });
-          self.search(q);
+          self._handleGuidanceChipClick(btn);
         });
       });
 
@@ -3541,6 +3804,308 @@ document.addEventListener('DOMContentLoaded', function() {
       this.awaitingSelection = false;
       this.results.hidden = false;
       this.input.setAttribute('aria-expanded', 'true');
+
+      // Year-make hint has no chips at first paint; load the year's vehicle
+      // data and inject model chips for the matched make so the customer can
+      // pick one without typing.
+      if (partial.type === 'year-make') {
+        this._populateModelChips(partial);
+      }
+    }
+
+    // Shared chip-click handler for year-only (year+make) and year-make
+    // (year+make+model) guidance chips. data-model is optional — when present,
+    // the chip fills "<year> <make> <model>" and re-runs search; otherwise just
+    // "<year> <make>" (which then routes to the year-make guidance for model).
+    _handleGuidanceChipClick(btn) {
+      var mk = btn.getAttribute('data-make');
+      var yr = btn.getAttribute('data-year');
+      var md = btn.getAttribute('data-model');
+      var q = md ? (yr + ' ' + mk + ' ' + md) : (yr + ' ' + mk);
+      this.input.value = q;
+      this._clearGhost();
+      this.input.focus();
+      window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: q, search_type: 'guidance_chip', search_outcome: 'click' });
+      this.search(q);
+    }
+
+    // --- Inline ghost-text autocomplete ----------------------------------
+    // Single-candidate completion only: we ghost-suggest a tail when (and
+    // only when) the customer's partial query has exactly one obvious
+    // finish. Multi-candidate cases ("2020 Honda" → 8 models, "Mich" →
+    // Michelin + Mickey Thompson) deliberately render nothing here — the
+    // dropdown chips already cover those.
+
+    _setGhost(typed, suffix) {
+      if (!this.ghost || !this.ghostPrefix || !this.ghostSuffix) return;
+      if (!suffix) { this._clearGhost(); return; }
+      this.ghostPrefix.textContent = typed;
+      this.ghostSuffix.textContent = suffix;
+      this.ghost.classList.remove('is-hidden');
+      this._ghostSuffix = suffix;
+    }
+
+    _clearGhost() {
+      if (!this.ghost) return;
+      this.ghost.classList.add('is-hidden');
+      this.ghostPrefix.textContent = '';
+      this.ghostSuffix.textContent = '';
+      this._ghostSuffix = null;
+    }
+
+    // Accept the current ghost suggestion: paste the suffix onto the input,
+    // clear the ghost, and re-run the search synchronously (don't wait for
+    // the 300ms debounce — Tab is an explicit "commit").
+    _acceptGhost() {
+      if (!this._ghostSuffix) return false;
+      var typed = this.input.value;
+      this.input.value = typed + this._ghostSuffix;
+      this._clearGhost();
+      window.PTTireParse && window.PTTireParse.track({
+        surface: 'homepage',
+        search_query: this.input.value,
+        search_type: 'ghost_accept',
+        search_outcome: 'click'
+      });
+      // Move cursor to end so the next keystroke appends naturally
+      try { this.input.setSelectionRange(this.input.value.length, this.input.value.length); } catch (e) {}
+      this.search(this.input.value);
+      return true;
+    }
+
+    // Decide whether the cursor is at the end of the input — only then is
+    // a Tab/→ accept ergonomic (mid-string Tab still moves focus, etc.)
+    _ghostCaretAtEnd() {
+      if (!this.input) return false;
+      var s = this.input.selectionStart, e = this.input.selectionEnd;
+      return s === this.input.value.length && e === this.input.value.length;
+    }
+
+    // Dedicated vehicle-data loader for ghost autocomplete.
+    // loadVehicleData() ties its fetch to this.abortController.signal, which
+    // search() aborts 300ms after every keystroke. That race kills the ghost's
+    // first lookup on the very query that needs it. Use a signal-free fetch
+    // here — populates the same this.vehicleCache so a subsequent search()
+    // still benefits from the warm cache.
+    async _loadVehicleDataForGhost(year) {
+      if (this.vehicleCache[year]) return this.vehicleCache[year];
+      var numYear = parseInt(year);
+      if (numYear < (this.config.minYear || 1990) || numYear > (this.config.maxYear || 2030)) return null;
+      try {
+        var url = this.config.assetUrlBase + 'pt-vehicle-' + year + '.json';
+        var resp = await fetch(url);
+        if (!resp.ok) return null;
+        var data = await resp.json();
+        this.vehicleCache[year] = data;
+        return data;
+      } catch (e) { return null; }
+    }
+
+    // Walk the synchronous completion sources in priority order:
+    //   1. Vehicle model — "<year> <make> <modelPrefix>" with exactly one
+    //      matching model in the year's data file. Requires the year's
+    //      vehicleCache entry to be loaded already (sync). If not loaded
+    //      yet, we kick off the load and re-run on completion.
+    //   2. Brand prefix — single-token query that uniquely prefixes one
+    //      brand name (e.g. "Mich" → "elin"). Skipped when multiple
+    //      brands share the prefix.
+    // Returns the *suffix* (text to append) or null.
+    _computeGhostSuffix(rawQuery) {
+      if (!rawQuery) return null;
+      // Don't ghost when the customer just typed a trailing space — they're
+      // about to start a new token and a ghost would be guessing the wrong word.
+      if (/\s$/.test(rawQuery)) return null;
+      var q = rawQuery;
+
+      // --- Vehicle model completion ------------------------------------
+      // Pull the leading year + first make token, then everything after is
+      // the model prefix.
+      var yearMatch = q.match(/^(\d{4})\s+(.+)$/);
+      if (yearMatch) {
+        var year = yearMatch[1];
+        var rest = yearMatch[2];
+        var tokens = rest.split(/\s+/);
+        if (tokens.length >= 2) {
+          // Try to resolve the make from the first 1-2 tokens
+          var makeKey = null, modelPrefix = null;
+          var twoWord = tokens.slice(0, 2).join(' ').toLowerCase();
+          var oneWord = tokens[0].toLowerCase();
+          var data = this.vehicleCache[year];
+
+          // Async load if we don't have the year cached — re-run ghost compute
+          // when it lands. Synchronous attempt returns null this pass.
+          if (!data) {
+            this._loadVehicleDataForGhost(year).then((d) => {
+              // Only re-apply if the input hasn't moved on
+              if (d && this.input.value === rawQuery) this._updateGhost();
+            }).catch(()=>{});
+            return null;
+          }
+          if (!data.models) return null;
+
+          // 2-word make first (e.g. "land rover") then 1-word
+          var resolveMake = function(candidate) {
+            if (data.models[candidate]) return candidate;
+            var cl = candidate.toLowerCase();
+            for (var k of Object.keys(data.models)) {
+              if (k.toLowerCase() === cl) return k;
+            }
+            return null;
+          };
+          if (tokens.length >= 3) {
+            makeKey = resolveMake(this.makeAliases[twoWord] || tokens.slice(0,2).join(' '));
+            if (makeKey) modelPrefix = tokens.slice(2).join(' ');
+          }
+          if (!makeKey) {
+            var aliased = this.makeAliases[oneWord] || tokens[0];
+            makeKey = resolveMake(aliased);
+            if (makeKey) modelPrefix = tokens.slice(1).join(' ');
+          }
+          if (!makeKey || !modelPrefix) return null;
+
+          // Find models that start with the prefix (case-insensitive). Exactly
+          // one match is the only state that should ghost — anything else
+          // means the dropdown chips/list is the right surface.
+          var available = Object.keys(data.models[makeKey] || {});
+          if (!available.length) return null;
+          var plower = modelPrefix.toLowerCase();
+          var matches = [];
+          // Collapse trim-variant siblings ("F-150 FX2", "F-150 STX" …) to
+          // their base for the uniqueness check, so "F-1" still has exactly
+          // one canonical completion ("F-150").
+          var seenBases = new Set();
+          for (var i = 0; i < available.length; i++) {
+            var name = available[i];
+            var nl = name.toLowerCase();
+            if (!nl.startsWith(plower)) continue;
+            // base = first space-delimited token of the model name
+            var base = nl.split(' ')[0];
+            if (seenBases.has(base)) continue;
+            seenBases.add(base);
+            matches.push(name);
+            if (matches.length > 1) break; // we already know it's ambiguous
+          }
+          if (matches.length !== 1) return null;
+          var matched = matches[0];
+          if (matched.toLowerCase() === plower) return null; // already complete
+          // Suffix: the tail of the canonical name after the prefix. We
+          // preserve canonical casing from the data file.
+          var tail = matched.slice(modelPrefix.length);
+          if (tail.length < 1) return null;
+          return tail;
+        }
+      }
+
+      // --- Brand prefix completion -------------------------------------
+      // Single-token query — find brands whose lowercased label starts with
+      // the token. Only ghost when exactly one matches.
+      if (/^[A-Za-z][A-Za-z0-9'-]*$/.test(q) && q.length >= 2) {
+        var ql = q.toLowerCase();
+        var brandMatches = [];
+        for (var b = 0; b < this.brandLabels.length; b++) {
+          var label = this.brandLabels[b];
+          if (label.toLowerCase().startsWith(ql) && label.length > q.length) {
+            brandMatches.push(label);
+            if (brandMatches.length > 1) break;
+          }
+        }
+        if (brandMatches.length === 1) {
+          return brandMatches[0].slice(q.length);
+        }
+      }
+
+      return null;
+    }
+
+    // Called from onInput on every keystroke (before the search debounce).
+    _updateGhost() {
+      if (!this.ghost) return;
+      var q = this.input.value;
+      if (!q || q.length < 2) { this._clearGhost(); return; }
+      var suffix = this._computeGhostSuffix(q);
+      this._setGhost(q, suffix);
+    }
+
+    // Hydrate the year-make hint with model chips drawn from the year's
+    // pt-vehicle-<year>.json. Curated popularModels names are filtered to
+    // those that actually exist for the year (with fuzzy match for variants
+    // like "F-150 FX2" → "F-150"); makes without a curated list fall back to
+    // the first N alpha model keys from the data.
+    async _populateModelChips(partial) {
+      var ph = this.list.querySelector('[data-model-chips-placeholder]');
+      if (!ph) return;
+      var data;
+      try {
+        data = await this.loadVehicleData(partial.year);
+      } catch (e) { return; }
+      if (!data || !data.models) return;
+
+      // Re-query placeholder — async work may have raced with a new render
+      ph = this.list.querySelector('[data-model-chips-placeholder]');
+      if (!ph) return;
+
+      // Resolve the actual make key in the data file case-insensitively
+      var makeKey = null;
+      if (data.models[partial.make]) {
+        makeKey = partial.make;
+      } else {
+        var ml = partial.make.toLowerCase();
+        for (var k of Object.keys(data.models)) {
+          if (k.toLowerCase() === ml) { makeKey = k; break; }
+        }
+      }
+      if (!makeKey) return;
+
+      var available = Object.keys(data.models[makeKey] || {});
+      if (!available.length) return;
+
+      var curated = this.popularModels[makeKey];
+      var picked = [];
+      if (curated && curated.length) {
+        for (var i = 0; i < curated.length && picked.length < 8; i++) {
+          var cand = curated[i];
+          var candLower = cand.toLowerCase();
+          // 1) exact match
+          var exact = available.find(function(m) { return m.toLowerCase() === candLower; });
+          if (exact) { picked.push(exact); continue; }
+          // 2) variant match — "F-150" picks up "F-150 FX2" etc.
+          var variant = available.find(function(m) {
+            var lm = m.toLowerCase();
+            return lm === candLower || lm.startsWith(candLower + ' ');
+          });
+          if (variant) { picked.push(cand); continue; }
+        }
+      }
+      // Fallback (or fill remaining slots): first alpha-sorted keys not already picked
+      if (picked.length < 8) {
+        var lowerPicked = new Set(picked.map(function(m){ return m.toLowerCase(); }));
+        for (var j = 0; j < available.length && picked.length < 8; j++) {
+          var m = available[j];
+          if (lowerPicked.has(m.toLowerCase())) continue;
+          // Skip "F-150 X"-style variants if we already have the base; otherwise include
+          var baseAlreadyPicked = false;
+          for (var p of lowerPicked) {
+            if (m.toLowerCase().startsWith(p + ' ')) { baseAlreadyPicked = true; break; }
+          }
+          if (baseAlreadyPicked) continue;
+          picked.push(m);
+        }
+      }
+      if (!picked.length) return;
+
+      var self = this;
+      ph.innerHTML = picked.map(function(m) {
+        return '<button type="button" class="hero-smart-search__guidance-chip" data-make="' +
+          self.escapeAttr(makeKey) + '" data-year="' + partial.year + '" data-model="' +
+          self.escapeAttr(m) + '">' + self.escapeHtml(m) + '</button>';
+      }).join('');
+      ph.removeAttribute('data-model-chips-placeholder');
+      ph.querySelectorAll('.hero-smart-search__guidance-chip').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          self._handleGuidanceChipClick(btn);
+        });
+      });
     }
 
     showFallback(query) {
@@ -3888,6 +4453,66 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     start();
+  })();
+
+  /* ───────────────────────────────────────────────────────────────
+     Chip click handler + dropdown-open visibility toggle for the
+     "Don't know your tire size?" discoverability hint.
+
+     Clicking a chip auto-fills the search input with the chip's value
+     and dispatches an `input` event so the existing smart-search
+     handler (which throttles + queries the API) picks it up exactly
+     as if the user had typed it. We also call .focus() and put the
+     caret at the end so the customer can immediately add to or modify
+     the prefilled text.
+
+     We also observe the results dropdown's `hidden` attribute and
+     mirror its state to `[data-results-open]` on the .data-smart-search
+     wrapper, so the hint can hide via CSS when the suggestions list
+     opens (otherwise the chips visually fight with the dropdown).
+     ─────────────────────────────────────────────────────────────── */
+  (function () {
+    document.querySelectorAll('[data-smart-search]').forEach(function (searchEl) {
+      var input  = searchEl.querySelector('[data-smart-search-input]');
+      var results = searchEl.querySelector('[data-smart-search-results]');
+      var chips  = searchEl.querySelectorAll('[data-smart-search-chip]');
+      if (!input || chips.length === 0) return;
+
+      chips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          var value = chip.getAttribute('data-smart-search-chip') || '';
+          if (!value) return;
+
+          input.value = value;
+          input.focus();
+          // Move caret to end so the customer can type more after the prefill
+          try { input.setSelectionRange(value.length, value.length); } catch (e) {}
+          // Trigger the existing search handler (it listens for 'input')
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+
+          // Analytics ping — matches the existing PTTireParse pattern used elsewhere
+          if (window.PTTireParse && typeof window.PTTireParse.track === 'function') {
+            window.PTTireParse.track({
+              surface: 'homepage',
+              search_query: value,
+              search_type: 'example_chip',
+              search_outcome: 'click'
+            });
+          }
+        });
+      });
+
+      // Mirror the dropdown's open state to a data attr on the wrapper so the
+      // hint can hide via CSS. Uses MutationObserver on the `hidden` attribute.
+      if (results) {
+        var sync = function () {
+          if (results.hidden) searchEl.removeAttribute('data-results-open');
+          else searchEl.setAttribute('data-results-open', '');
+        };
+        sync();
+        new MutationObserver(sync).observe(results, { attributes: true, attributeFilter: ['hidden'] });
+      }
+    });
   })();
 });
 </script>
