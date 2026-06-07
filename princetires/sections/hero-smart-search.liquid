@@ -742,12 +742,13 @@
     .hero-smart-search__hint {
       flex-direction: column;
       align-items: stretch;
-      gap: 0.5rem;
-      margin-top: 0.7rem;
+      gap: 0.4rem;
+      margin-top: 0.55rem;
     }
     .hero-smart-search__hint-text {
-      font-size: 0.95rem;
+      font-size: 0.88rem;
       white-space: normal;
+      line-height: 1.25;
     }
     .hero-smart-search__hint-text-desktop { display: none; }
     .hero-smart-search__hint-text-mobile {
@@ -755,9 +756,12 @@
       color: rgba(255, 255, 255, 0.6);
       margin-left: 0.25rem;
     }
+    .hero-smart-search__chips {
+      gap: 0.35rem;
+    }
     .hero-smart-search__chip {
-      font-size: 0.92rem;
-      padding: 0.45rem 0.95rem;
+      font-size: 0.85rem;
+      padding: 0.4rem 0.85rem;
     }
   }
 
@@ -4275,7 +4279,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // First message ("anchor") — explicitly tells customers they can search BOTH ways.
     // This sits in the input for 2s before the rotating examples start cycling so even
     // users who skim past the rotation see the dual-search-mode hint.
-    var intro = 'Enter your tire size or your car year make and model';
+    // Mobile gets a shorter variant — the desktop sentence (52 chars) overflows the
+    // narrow input (~254px usable space) by ~73px, so it gets visually truncated.
+    function getIntroPhrase() {
+      return (window.matchMedia && window.matchMedia('(max-width: 768px)').matches)
+        ? 'Tire size or vehicle — try a chip below'
+        : 'Enter your tire size or your car year make and model';
+    }
+    var intro = getIntroPhrase();
     // Rotation strategy: alternate sizes and vehicles so every other example reinforces
     // a different search mode. Calgary-popular vehicles chosen (RAV4, F-150, Civic, CR-V,
     // Tacoma, Camry) — these are the top-selling makes in Alberta. VIN paste cue lives
