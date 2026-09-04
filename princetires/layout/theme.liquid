@@ -5,7 +5,31 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="theme-color" content="#000000">
-    <link rel="canonical" href="{{ canonical_url }}">
+    {%- liquid
+      # Legacy /collections/vendors?q=Brand URLs self-canonicalize WITH the query
+      # param, so Google indexes each vendor view as its own page competing with
+      # the real brand collection. Point them at /collections/<brand> when one
+      # exists; otherwise self-canonical without the param + noindex. Page 2+ is
+      # left alone — seo-meta.liquid already noindexes paginated views.
+      assign pt_canonical = canonical_url
+      assign pt_vendors_noindex = false
+      if request.page_type == 'collection' and collection.handle == 'vendors'
+        if collection.current_vendor != blank and current_page == 1
+          assign pt_vendor_handle = collection.current_vendor | handleize
+          assign pt_vendor_collection = collections[pt_vendor_handle]
+          if pt_vendor_collection != blank and pt_vendor_collection.products_count > 0
+            assign pt_canonical = shop.url | append: pt_vendor_collection.url
+          else
+            assign pt_canonical = shop.url | append: request.path
+            assign pt_vendors_noindex = true
+          endif
+        endif
+      endif
+    -%}
+    <link rel="canonical" href="{{ pt_canonical }}">
+    {%- if pt_vendors_noindex -%}
+      <meta name="robots" content="noindex, follow">
+    {%- endif -%}
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,9 +37,39 @@
 
     {%- render 'sxo-performance' -%}
 
+    {%- comment -%}
+      Favicon — prefer the merchant-uploaded Theme Settings → Favicon; otherwise
+      fall back to the brand mark on the CDN so a favicon ALWAYS renders (browser
+      tab + Google SERP). 48px size is included because Google's SERP favicon
+      crawler wants a square icon that's a multiple of 48px. Same source image as
+      the PWA manifest fallback (manifest.json.liquid).
+    {%- endcomment -%}
     {%- if settings.favicon != blank -%}
-      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">
+      {%- assign favicon_16 = settings.favicon | image_url: width: 16, height: 16 -%}
+      {%- assign favicon_32 = settings.favicon | image_url: width: 32, height: 32 -%}
+      {%- assign favicon_48 = settings.favicon | image_url: width: 48, height: 48 -%}
+      {%- assign favicon_180 = settings.favicon | image_url: width: 180, height: 180 -%}
+      {%- assign favicon_192 = settings.favicon | image_url: width: 192, height: 192 -%}
+    {%- else -%}
+      {%- assign favicon_16 = 'https://cdn.shopify.com/s/files/1/0698/9542/2227/files/Untitled_design_6_0abd9b57-e83e-48ec-aca6-2a9e4a39b7fe.png?width=16&height=16&v=1780092164' -%}
+      {%- assign favicon_32 = 'https://cdn.shopify.com/s/files/1/0698/9542/2227/files/Untitled_design_6_0abd9b57-e83e-48ec-aca6-2a9e4a39b7fe.png?width=32&height=32&v=1780092164' -%}
+      {%- assign favicon_48 = 'https://cdn.shopify.com/s/files/1/0698/9542/2227/files/Untitled_design_6_0abd9b57-e83e-48ec-aca6-2a9e4a39b7fe.png?width=48&height=48&v=1780092164' -%}
+      {%- assign favicon_180 = 'https://cdn.shopify.com/s/files/1/0698/9542/2227/files/Untitled_design_6_0abd9b57-e83e-48ec-aca6-2a9e4a39b7fe.png?width=180&height=180&v=1780092164' -%}
+      {%- assign favicon_192 = 'https://cdn.shopify.com/s/files/1/0698/9542/2227/files/Untitled_design_6_0abd9b57-e83e-48ec-aca6-2a9e4a39b7fe.png?width=192&height=192&v=1780092164' -%}
     {%- endif -%}
+    <link rel="shortcut icon" type="image/png" href="{{ favicon_32 }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ favicon_16 }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ favicon_32 }}">
+    <link rel="icon" type="image/png" sizes="48x48" href="{{ favicon_48 }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ favicon_192 }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ favicon_180 }}">
+    <meta name="apple-mobile-web-app-title" content="Prince Tires">
+    <meta name="application-name" content="Prince Tires">
+
+    <link rel="manifest" href="{{ 'manifest.json' | asset_url }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
 
     {%- unless settings.type_header_font.system? and settings.type_body_font.system? -%}
       <link rel="preconnect" href="https://fonts.shopifycdn.com" crossorigin>
@@ -42,7 +96,7 @@
       {%- elsif page.handle == 'about' -%}
         About Prince Tires — Calgary's Trusted Tire Shop
       {%- else -%}
-        {{ page_title }}
+        {{- page_title -}}
         {%- if current_tags %} &ndash; tagged "{{ current_tags | join: ', ' }}"{% endif -%}
         {%- if current_page != 1 %} &ndash; Page {{ current_page }}{% endif -%}
         {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
@@ -73,11 +127,35 @@
       <meta name="description" content="Family-owned Calgary tire shop at 111 42 Ave SW. Same-day installation, price-match guarantee, 4.9 stars from 562+ Google reviews. Serving NE/NW/SE/SW Calgary plus Airdrie, Cochrane, Okotoks, and Chestermere with 26 tire and wheel brands in stock.">
     {%- endif -%}
 
+    {%- comment -%}
+      Utility / internal pages — noindex so they don't compete in SERP with
+      the real landing pages. These handles have no SEO purpose (account flows,
+      garage, data-deletion compliance, intermediate quote/search results).
+    {%- endcomment -%}
+    {%- if request.page_type == 'page' -%}
+      {%- assign _no_index_handles = 'garage,sign-in,wheel-quote,find-tires,data-deletion,rapid-search-results' | split: ',' -%}
+      {%- if _no_index_handles contains page.handle -%}
+        <meta name="robots" content="noindex, follow">
+      {%- endif -%}
+    {%- endif -%}
+
     {% render 'meta-tags' %}
     {%- render 'seo-meta' -%}
     {%- render 'aeo-meta' -%}
     {%- render 'geo-meta' -%}
     {%- render 'schema-local-business' -%}
+    {%- render 'pt-locations' -%}
+    {%- comment -%}
+      pt-booking-core is a parse-time dependency ONLY on /pages/book
+      (pt-booking-page.liquid calls PTBookingCore.loadLocations() in a top-level
+      inline script). The booking modals resolve it lazily on open, so it can
+      defer everywhere else — defer scripts finish before DOMContentLoaded.
+    {%- endcomment -%}
+    {%- if template.name == 'page' and template.suffix == 'booking' -%}
+      <script src="{{ 'pt-booking-core.js' | asset_url }}"></script>
+    {%- else -%}
+      <script src="{{ 'pt-booking-core.js' | asset_url }}" defer="defer"></script>
+    {%- endif -%}
     {%- render 'pt-analytics' -%}
 
     <script src="{{ 'constants.js' | asset_url }}" defer="defer"></script>
@@ -231,5 +309,8 @@
     {%- render 'pt-service-booking-modal' -%}
     {%- section 'pt-sticky-book-bar' -%}
     {%- render 'pt-header-search-enhance' -%}
+    {%- render 'pt-pwa-install' -%}
+    {%- comment -%} AI chat widget: desktop floating bubble (hidden on product via CSS) + mobile opens from the bottom tab bar's Chat tab. {%- endcomment -%}
+    {%- render 'pt-chat-widget', page_product: product -%}
   </body>
 </html>

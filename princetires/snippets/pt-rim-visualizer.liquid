@@ -1,0 +1,93 @@
+{% doc %}
+  "See it on your car" rim visualizer for WHEEL product pages. The shopper enters
+  year / make / model and we render their vehicle wearing THIS rim using the
+  Wheel Configurator API (via the Prince Tires app /api/configurator/render).
+  Only renders for products that carry a custom.bolt_pattern (i.e. wheels).
+
+  @param {product} product - The wheel product.
+
+  @example
+  {% render 'pt-rim-visualizer', product: product %}
+{% enddoc %}
+
+{%- liquid
+  assign api_base = settings.chat_api_base | default: 'https://app.princetires.ca'
+  assign rv_bolt = product.metafields.custom.bolt_pattern | default: ''
+-%}
+
+{%- if rv_bolt != blank and product.featured_image != blank -%}
+  <div class="ptp-viz" data-ptp-viz data-api="{{ api_base }}/api/configurator/render" data-rim="{{ product.featured_image | image_url: width: 1000 }}">
+    <div class="ptp-viz__head">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2"/></svg>
+      <strong>See these on your car</strong>
+    </div>
+    <div class="ptp-viz__form">
+      <input class="ptp-viz__in" data-ptp-viz-year type="number" inputmode="numeric" placeholder="Year" min="1990" max="2027" aria-label="Vehicle year" />
+      <input class="ptp-viz__in" data-ptp-viz-make type="text" placeholder="Make (e.g. Honda)" autocomplete="off" aria-label="Vehicle make" />
+      <input class="ptp-viz__in" data-ptp-viz-model type="text" placeholder="Model (e.g. Civic)" autocomplete="off" aria-label="Vehicle model" />
+      <button class="ptp-viz__btn" type="button" data-ptp-viz-go>Visualize</button>
+    </div>
+    <div class="ptp-viz__out" data-ptp-viz-out hidden></div>
+    <div class="ptp-viz__msg" data-ptp-viz-msg hidden></div>
+  </div>
+{%- endif -%}
+
+{% javascript %}
+  (function () {
+    var el = document.querySelector('[data-ptp-viz]');
+    if (!el) return;
+    var api = el.getAttribute('data-api');
+    var rim = el.getAttribute('data-rim');
+    if (rim && rim.indexOf('//') === 0) rim = 'https:' + rim; // protocol-relative -> absolute
+    var yearI = el.querySelector('[data-ptp-viz-year]');
+    var makeI = el.querySelector('[data-ptp-viz-make]');
+    var modelI = el.querySelector('[data-ptp-viz-model]');
+    var btn = el.querySelector('[data-ptp-viz-go]');
+    var out = el.querySelector('[data-ptp-viz-out]');
+    var msg = el.querySelector('[data-ptp-viz-msg]');
+
+    function show(m) { msg.textContent = m; msg.hidden = !m; }
+
+    function go() {
+      var year = (yearI.value || '').trim();
+      var make = (makeI.value || '').trim();
+      var model = (modelI.value || '').trim();
+      if (!year || !make || !model) { show('Enter your year, make, and model.'); return; }
+      show('Rendering your vehicle…'); out.hidden = true; out.innerHTML = '';
+      btn.disabled = true;
+      var qs = 'year=' + encodeURIComponent(year) + '&make=' + encodeURIComponent(make) + '&model=' + encodeURIComponent(model) + '&rim=' + encodeURIComponent(rim);
+      fetch(api + '?' + qs)
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d && d.image) {
+            var img = new Image();
+            img.className = 'ptp-viz__img';
+            img.alt = make + ' ' + model + ' with these wheels';
+            img.onload = function () { out.appendChild(img); out.hidden = false; show(''); };
+            img.onerror = function () { show("Couldn't load the preview — try again."); };
+            img.src = d.image;
+          } else {
+            show("We couldn't find that exact vehicle — double-check the spelling, or ask us in chat.");
+          }
+        })
+        .catch(function () { show("Couldn't render just now — please try again."); })
+        .finally(function () { btn.disabled = false; });
+    }
+    btn.addEventListener('click', go);
+    [yearI, makeI, modelI].forEach(function (i) { i.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); }); });
+  })();
+{% endjavascript %}
+
+{% stylesheet %}
+  .ptp-viz { margin: 1rem 0; padding: 1rem 1.1rem; background: #fafbfc; border: 1px solid #e2e8ed; border-radius: 12px; }
+  .ptp-viz__head { display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; color: #1f2a33; margin-bottom: 0.7rem; }
+  .ptp-viz__head svg { color: #b9221a; }
+  .ptp-viz__form { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .ptp-viz__in { flex: 1 1 90px; min-width: 0; height: 40px; padding: 0 0.7rem; border: 1px solid #cdd6dd; border-radius: 8px; font-size: 1.4rem; font-family: inherit; }
+  .ptp-viz__in:focus { outline: none; border-color: #b9221a; }
+  .ptp-viz__btn { flex: 0 0 auto; height: 40px; padding: 0 1.2rem; border: 0; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #DA291C, #b9221a); color: #fff; font-family: inherit; font-weight: 700; font-size: 1.4rem; }
+  .ptp-viz__btn:disabled { opacity: 0.6; cursor: default; }
+  .ptp-viz__out { margin-top: 0.8rem; }
+  .ptp-viz__img { width: 100%; height: auto; border-radius: 10px; display: block; }
+  .ptp-viz__msg { margin-top: 0.6rem; font-size: 1.3rem; color: #5a6873; }
+{% endstylesheet %}

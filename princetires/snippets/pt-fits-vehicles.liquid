@@ -1,0 +1,97 @@
+{% doc %}
+  Renders a "Fits N vehicles" trust block on a tire (or wheel) product page,
+  plus a TiresVote rating line when available. Data is fetched client-side from
+  the Prince Tires app (/api/fits-vehicles), which is Redis-cached 30 days, so
+  it adds no render-blocking work and at most one cached upstream call.
+
+  @param {product} product - The product to show fitment for.
+
+  @example
+  {% render 'pt-fits-vehicles', product: product %}
+{% enddoc %}
+
+{%- liquid
+  assign api_base = settings.chat_api_base | default: 'https://app.princetires.ca'
+  assign fv_size = product.metafields.custom.tire_size | default: ''
+  assign fv_bolt = product.metafields.custom.bolt_pattern | default: ''
+  assign fv_model = product.metafields.custom.tire_model | default: ''
+  assign fv_rd = product.metafields.custom.rim_diameter | default: ''
+  assign fv_rw = product.metafields.custom.rim_width | default: ''
+  assign fv_ro = product.metafields.custom.rim_offset | default: ''
+-%}
+
+{%- if fv_size != blank or fv_bolt != blank -%}
+  <div
+    class="ptp-fits"
+    data-ptp-fits
+    data-api="{{ api_base }}/api/fits-vehicles"
+    data-size="{{ fv_size | escape }}"
+    data-bolt="{{ fv_bolt | escape }}"
+    data-rd="{{ fv_rd | escape }}"
+    data-rw="{{ fv_rw | escape }}"
+    data-ro="{{ fv_ro | escape }}"
+    data-vendor="{{ product.vendor | escape }}"
+    data-model="{{ fv_model | escape }}"
+    hidden
+  >
+    <svg class="ptp-fits__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+    <span class="ptp-fits__text"></span>
+    <a class="ptp-fits__rating" href="" target="_blank" rel="noopener" hidden></a>
+  </div>
+{%- endif -%}
+
+{% javascript %}
+  (function () {
+    var el = document.querySelector('[data-ptp-fits]');
+    if (!el) return;
+    var api = el.getAttribute('data-api');
+    var size = el.getAttribute('data-size');
+    var bolt = el.getAttribute('data-bolt');
+    var rd = el.getAttribute('data-rd'), rw = el.getAttribute('data-rw'), ro = el.getAttribute('data-ro');
+    var qs = '';
+    if (size) {
+      qs = 'size=' + encodeURIComponent(size);
+    } else if (bolt && rd && rw && ro) {
+      qs = 'bolt_pattern=' + encodeURIComponent(bolt) + '&rim_diameter=' + encodeURIComponent(rd) + '&rim_width=' + encodeURIComponent(rw) + '&rim_offset=' + encodeURIComponent(ro);
+    } else {
+      return;
+    }
+    var vendor = el.getAttribute('data-vendor'), model = el.getAttribute('data-model');
+    if (vendor && model) qs += '&vendor=' + encodeURIComponent(vendor) + '&model=' + encodeURIComponent(model);
+
+    function go() {
+      fetch(api + '?' + qs)
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d) return;
+          var shown = false;
+          var txt = el.querySelector('.ptp-fits__text');
+          if (d.count && d.count > 0) {
+            var names = (d.sample || []).slice(0, 3).map(function (v) { return v.make + ' ' + v.model; });
+            var n = d.count >= 1000 ? (Math.floor(d.count / 100) * 100).toLocaleString() + '+' : d.count;
+            var lead = 'Fits ' + n + ' vehicle' + (d.count === 1 ? '' : 's');
+            txt.textContent = names.length ? lead + ' incl. ' + names.join(', ') : lead;
+            shown = true;
+          }
+          if (d.rating && typeof d.rating.score === 'number') {
+            var rt = el.querySelector('.ptp-fits__rating');
+            rt.textContent = '★ ' + Math.round(d.rating.score) + '/100' + (d.rating.pros && d.rating.pros.length ? ' · ' + d.rating.pros.slice(0, 2).join(', ') : '');
+            if (d.rating.proLink) { rt.href = d.rating.proLink; } else { rt.removeAttribute('href'); }
+            rt.hidden = false;
+            shown = true;
+          }
+          if (shown) el.hidden = false;
+        })
+        .catch(function () {});
+    }
+    if ('requestIdleCallback' in window) { requestIdleCallback(go, { timeout: 1500 }); } else { setTimeout(go, 300); }
+  })();
+{% endjavascript %}
+
+{% stylesheet %}
+  .ptp-fits { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 0.9rem; margin: 0.6rem 0; padding: 0.7rem 1rem; background: #f4f7f9; border: 1px solid #e2e8ed; border-radius: 10px; font-size: 1.4rem; line-height: 1.3; color: #33414d; }
+  .ptp-fits__icon { flex-shrink: 0; color: #1a8a4a; }
+  .ptp-fits__text { font-weight: 600; }
+  .ptp-fits__rating { color: #b9221a; font-weight: 600; text-decoration: none; }
+  .ptp-fits__rating:hover { text-decoration: underline; }
+{% endstylesheet %}

@@ -1,0 +1,165 @@
+{% doc %}
+  Renders a "Our two Calgary locations" cross-link block.
+
+  Pulls all NAP (name / address / phone) for BOTH Prince Tires shops from the
+  single source of truth (the pt-nap snippet) and renders two cards side by side:
+    - SW (42 Ave SW)  -> links to the booking page  (/pages/booking)
+    - NE (Edmonton Trail NE) -> links to the NE landing page
+
+  Drop it on the NE landing page now; reusable on the homepage later.
+
+  @param {string} [sw_url] - Where the SW card links (default: /pages/booking).
+  @param {string} [ne_url] - Where the NE card links (default: /pages/tire-shop-ne-calgary).
+  @param {string} [heading] - Optional heading shown above the cards.
+  @param {string} [active] - Slug of the location the visitor is already on
+      ('sw' or 'ne'); that card is marked "You're here" and is not a link.
+
+  @example
+  {% render 'pt-two-locations' %}
+  {% render 'pt-two-locations', active: 'ne', heading: 'Both Calgary shops' %}
+{% enddoc %}
+
+{%- liquid
+  assign sw_link = sw_url | default: '/pages/booking'
+  assign ne_link = ne_url | default: '/pages/tire-shop-ne-calgary'
+  assign active_slug = active | default: '' | downcase
+  assign loc_slugs = 'sw,ne' | split: ','
+-%}
+
+<div class="pt-2loc">
+  {%- if heading != blank -%}
+    <h2 class="pt-2loc__heading">{{ heading }}</h2>
+  {%- endif -%}
+
+  <div class="pt-2loc__grid">
+    {%- comment -%} ── Loop both shops from the single NAP source ────────────── {%- endcomment -%}
+    {%- for slug in loc_slugs -%}
+      {%- capture public_name -%}{% render 'pt-nap', location: slug, field: 'public_name' %}{%- endcapture -%}
+      {%- capture street -%}{% render 'pt-nap', location: slug, field: 'street' %}{%- endcapture -%}
+      {%- capture city -%}{% render 'pt-nap', location: slug, field: 'city' %}{%- endcapture -%}
+      {%- capture region -%}{% render 'pt-nap', location: slug, field: 'region' %}{%- endcapture -%}
+      {%- capture postal -%}{% render 'pt-nap', location: slug, field: 'postal' %}{%- endcapture -%}
+      {%- capture phone -%}{% render 'pt-nap', location: slug, field: 'phone' %}{%- endcapture -%}
+      {%- capture phone_href -%}{% render 'pt-nap', location: slug, field: 'phone_href' %}{%- endcapture -%}
+      {%- capture maps_url -%}{% render 'pt-nap', location: slug, field: 'maps_url' %}{%- endcapture -%}
+
+      {%- if slug == 'ne' -%}
+        {%- assign card_url = ne_link -%}
+        {%- assign card_cta = 'See the NE shop' -%}
+        {%- assign card_tag = 'Edmonton Trail NE' -%}
+      {%- else -%}
+        {%- assign card_url = sw_link -%}
+        {%- assign card_cta = 'Book at this shop' -%}
+        {%- assign card_tag = '42 Ave SW' -%}
+      {%- endif -%}
+
+      <div class="pt-2loc__card{% if active_slug == slug %} pt-2loc__card--active{% endif %}">
+        <span class="pt-2loc__tag">{{ card_tag | strip }}</span>
+        <h3 class="pt-2loc__name">{{ public_name | strip }}</h3>
+        <address class="pt-2loc__addr">
+          <a href="{{ maps_url | strip }}" target="_blank" rel="noopener">
+            {{ street | strip }}<br>
+            {{ city | strip }}, {{ region | strip }} {{ postal | strip }}
+          </a>
+        </address>
+        <a href="tel:{{ phone_href | strip }}" class="pt-2loc__phone">📞 {{ phone | strip }}</a>
+
+        {%- if active_slug == slug -%}
+          <span class="pt-2loc__here">You're here</span>
+        {%- else -%}
+          <a href="{{ card_url }}" class="pt-2loc__btn">{{ card_cta }}</a>
+        {%- endif -%}
+      </div>
+    {%- endfor -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .pt-2loc { font-family: 'Outfit', sans-serif; }
+  .pt-2loc__heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-align: center;
+    margin: 0 0 2rem;
+    color: #111;
+  }
+  .pt-2loc__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+  .pt-2loc__card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 2rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .pt-2loc__card--active {
+    border-color: #dc2626;
+    box-shadow: 0 4px 20px rgba(220,38,38,0.1);
+  }
+  .pt-2loc__tag {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #dc2626;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .pt-2loc__name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.9rem;
+    font-weight: 700;
+    margin: 0;
+    color: #111;
+  }
+  .pt-2loc__addr {
+    font-style: normal;
+    font-size: 1.3rem;
+    font-weight: 300;
+    line-height: 1.5;
+    color: #555;
+    margin: 0.25rem 0;
+  }
+  .pt-2loc__addr a { color: #555; text-decoration: none; }
+  .pt-2loc__addr a:hover { text-decoration: underline; }
+  .pt-2loc__phone {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #111;
+    text-decoration: none;
+  }
+  .pt-2loc__phone:hover { color: #dc2626; }
+  .pt-2loc__btn {
+    margin-top: 0.75rem;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    background: #dc2626;
+    color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.7rem 1.4rem;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.2s ease;
+  }
+  .pt-2loc__btn:hover { background: #c41a14; }
+  .pt-2loc__here {
+    margin-top: 0.75rem;
+    align-self: flex-start;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #16a34a;
+  }
+  @media (max-width: 749px) {
+    .pt-2loc__grid { grid-template-columns: 1fr; }
+  }
+{% endstylesheet %}

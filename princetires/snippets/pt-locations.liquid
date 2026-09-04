@@ -1,0 +1,22 @@
+{% doc %}
+  Emits the canonical Prince Tires locations data as a JSON island that
+  client-side code (the booking modals, the contact map) reads. The values are
+  derived from pt-nap (the single Liquid source) via its `field: 'json'` mode, so
+  the JSON the browser sees can never drift from what the page server-renders.
+
+  Booking surfaces send the location `slug` ('sw' | 'ne') as the location id to
+  /api/availability and /api/book; the app resolves slug -> location.
+
+  Render ONCE per page (the booking snippets/layout include it). Reading it in JS:
+    const LOCATIONS = JSON.parse(document.getElementById('pt-locations-data').textContent);
+
+  @example
+  {% render 'pt-locations' %}
+{% enddoc %}
+
+<script id="pt-locations-data" type="application/json">
+[
+  {% render 'pt-nap', location: 'sw', field: 'json' %},
+  {% render 'pt-nap', location: 'ne', field: 'json' %}
+]
+</script>

@@ -10,63 +10,12 @@
 {% enddoc %}
 
 {%- comment -%}
-  Organization entity — establishes the business as a known entity
-  in the knowledge graph. Helps AI engines build entity relationships.
+  The Organization + per-location AutoPartsStore entities now live in the
+  canonical @graph in snippets/schema-local-business.liquid (rendered site-wide
+  from the layout). Emitting an Organization here too would create a duplicate,
+  conflicting node — so it has been removed. This snippet keeps the AI-overview
+  summary metas + the product/collection/article entities below.
 {%- endcomment -%}
-{%- if request.page_type == 'index' -%}
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": {{ shop.name | json }},
-    "url": {{ request.origin | json }},
-    {%- if shop.brand.logo -%}
-      "logo": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }},
-    {%- endif -%}
-    {%- assign org_phone = settings.shop_phone | default: '(403) 452-4283' -%}
-    {%- if org_phone != blank -%}
-      "telephone": {{ org_phone | json }},
-    {%- endif -%}
-    {%- if shop.email != blank -%}
-      "email": {{ shop.email | json }},
-    {%- endif -%}
-    "address": {
-      "@type": "PostalAddress",
-      "streetAddress": {{ shop.address.street | json }},
-      "addressLocality": {{ shop.address.city | json }},
-      "addressRegion": {{ shop.address.province_code | json }},
-      "postalCode": {{ shop.address.zip | json }},
-      "addressCountry": {{ shop.address.country_code | json }}
-    },
-    "sameAs": [
-      {%- liquid
-        assign social_links = ''
-        if settings.social_facebook_link != blank
-          assign social_links = social_links | append: settings.social_facebook_link | append: '|'
-        else
-          assign social_links = social_links | append: 'https://www.facebook.com/PrincetiresLTD' | append: '|'
-        endif
-        if settings.social_instagram_link != blank
-          assign social_links = social_links | append: settings.social_instagram_link | append: '|'
-        endif
-        if settings.social_twitter_link != blank
-          assign social_links = social_links | append: settings.social_twitter_link | append: '|'
-        endif
-        if settings.social_youtube_link != blank
-          assign social_links = social_links | append: settings.social_youtube_link | append: '|'
-        endif
-        if settings.social_tiktok_link != blank
-          assign social_links = social_links | append: settings.social_tiktok_link | append: '|'
-        endif
-        assign social_links = social_links | split: '|' | compact
-      -%}
-      {%- for link in social_links -%}
-        {{ link | json }}{% unless forloop.last %},{% endunless %}
-      {%- endfor -%}
-    ]
-  }
-  </script>
-{%- endif -%}
 
 {%- comment -%}
   Product entity enrichment — provides AI engines with detailed

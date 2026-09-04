@@ -1,0 +1,759 @@
+{% doc %}
+  Website chat widget wired to the Prince Tires AI agent (the SAME brain as the
+  SMS assistant - live tire search, real service prices, booking). Rendered on
+  every page by theme.liquid. Desktop: a floating bubble (hidden on product
+  pages via CSS). Mobile: the bubble is hidden and the bottom tab bar's "Chat"
+  tab (pt-sticky-book-bar) opens this same panel via [data-pt-chat-open].
+
+  @example
+  {% render 'pt-chat-widget' %}
+{% enddoc %}
+
+{%- liquid
+  assign api_base = settings.chat_api_base | default: 'https://app.princetires.ca'
+-%}
+
+<div id="pt-chat" class="pt-chat" data-api="{{ api_base }}/api/chat" data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}"{% if page_product %} data-pt-product-handle="{{ page_product.handle }}" data-pt-product-title="{{ page_product.title | escape }}" data-pt-product-vendor="{{ page_product.vendor | escape }}" data-pt-product-size="{{ page_product.metafields.custom.tire_size | escape }}" data-pt-product-price="{{ page_product.selected_or_first_available_variant.price | money_without_currency }}"{% endif %}>
+  <button class="pt-chat__launcher" type="button" aria-label="Chat with Prince Tires" data-pt-chat-open>
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  </button>
+
+  <div class="pt-chat__panel" role="dialog" aria-modal="false" aria-label="Chat with Prince Tires">
+    <div class="pt-chat__header">
+      <div class="pt-chat__brand">
+        <span class="pt-chat__dot" aria-hidden="true"></span>
+        <span>Prince Tires</span>
+      </div>
+      <button class="pt-chat__close" type="button" aria-label="Close chat" data-pt-chat-close>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="pt-chat__messages" data-pt-chat-messages aria-live="polite"></div>
+    <form class="pt-chat__form" data-pt-chat-form>
+      <button class="pt-chat__photo" type="button" aria-label="Send a photo of your tire or VIN" data-pt-chat-photo>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
+      <input class="pt-chat__file" type="file" accept="image/*" capture="environment" data-pt-chat-file hidden aria-hidden="true" />
+      <input class="pt-chat__input" type="text" placeholder="Ask, or snap your tire sidewall..." autocomplete="off" maxlength="800" aria-label="Your message" />
+      <button class="pt-chat__send" type="submit" aria-label="Send message">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </form>
+  </div>
+</div>
+
+{% stylesheet %}
+.pt-chat { display: block; }
+
+/* Launcher — a round bubble, closed by default. */
+.pt-chat__launcher {
+  position: fixed; right: 22px; bottom: 22px; z-index: 1100;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 58px; height: 58px; padding: 0;
+  border: 0; border-radius: 50%; cursor: pointer;
+  background: linear-gradient(135deg, #DA291C 0%, #b9221a 100%);
+  color: #fff;
+  box-shadow: 0 10px 28px -8px rgba(218, 41, 28, 0.65), 0 2px 8px rgba(0,0,0,0.2);
+  transition: transform 140ms ease, box-shadow 160ms ease;
+}
+.pt-chat__launcher:hover { transform: translateY(-2px); box-shadow: 0 16px 34px -8px rgba(218,41,28,0.8), 0 2px 8px rgba(0,0,0,0.25); }
+.pt-chat.is-open .pt-chat__launcher { display: none; }
+
+/* Panel — hidden by default, shown only when open. */
+.pt-chat__panel {
+  display: none;
+  position: fixed; right: 22px; bottom: 22px; z-index: 1101;
+  width: 380px; max-width: calc(100vw - 44px); height: 560px; max-height: calc(100vh - 44px);
+  flex-direction: column; overflow: hidden;
+  background: #0e0e0e; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
+  box-shadow: 0 24px 60px -12px rgba(0,0,0,0.55);
+  font-family: 'Outfit', sans-serif;
+}
+.pt-chat.is-open .pt-chat__panel { display: flex; animation: pt-chat-in 180ms ease; }
+@keyframes pt-chat-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+.pt-chat__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.85rem 1rem; background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.pt-chat__brand { display: flex; align-items: center; gap: 0.5rem; color: #fff; font-weight: 700; font-size: 1.55rem; }
+.pt-chat__dot { width: 8px; height: 8px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 0 3px rgba(61,220,132,0.18); }
+.pt-chat__close { display: inline-flex; padding: 6px; border: 0; background: transparent; color: rgba(255,255,255,0.6); cursor: pointer; border-radius: 8px; }
+.pt-chat__close:hover { color: #fff; background: rgba(255,255,255,0.07); }
+
+.pt-chat__messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.pt-chat__msg { max-width: 82%; padding: 0.7rem 0.95rem; border-radius: 14px; font-size: 1.5rem; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; }
+.pt-chat__msg a { color: #ff8a7e; text-decoration: underline; }
+.pt-chat__msg--bot { align-self: flex-start; background: #1c1c1c; color: #ececec; border-bottom-left-radius: 4px; }
+.pt-chat__msg--user { align-self: flex-end; background: linear-gradient(135deg,#DA291C,#b9221a); color: #fff; border-bottom-right-radius: 4px; }
+.pt-chat__typing { align-self: flex-start; color: rgba(255,255,255,0.5); font-size: 1.3rem; padding: 0.3rem 0.5rem; }
+
+/* Suggested-question chips — tappable starters shown when the chat opens. */
+.pt-chat__chips { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.1rem; }
+.pt-chat__chip {
+  padding: 0.5rem 0.9rem; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.04);
+  color: #ececec; font-family: inherit; font-size: 1.35rem; line-height: 1.2;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.pt-chat__chip:hover { background: rgba(218,41,28,0.16); border-color: rgba(218,41,28,0.6); color: #fff; }
+
+.pt-chat__form { display: flex; gap: 0.5rem; padding: 0.75rem; border-top: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.02); }
+.pt-chat__input {
+  flex: 1; height: 46px; padding: 0 1rem; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12); background: #161616; color: #fff;
+  font-family: inherit; font-size: 1.6rem;
+}
+.pt-chat__input::placeholder { color: rgba(255,255,255,0.4); }
+.pt-chat__input:focus { outline: none; border-color: rgba(218,41,28,0.7); }
+.pt-chat__send {
+  flex-shrink: 0; width: 42px; height: 42px; border: 0; border-radius: 50%; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg,#DA291C,#b9221a); color: #fff;
+}
+.pt-chat__send:disabled { opacity: 0.5; cursor: default; }
+.pt-chat__photo { flex-shrink: 0; width: 42px; height: 42px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.75); }
+.pt-chat__photo:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.pt-chat__msg--photo { padding: 0.3rem; background: transparent; }
+.pt-chat__thumb { max-width: 160px; max-height: 160px; border-radius: 10px; display: block; }
+
+/* Contact gate — shown after a couple of questions to capture name + phone/email. */
+.pt-chat__gate { align-self: stretch; display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.3rem; padding: 0.85rem; background: #161616; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
+.pt-chat__gate-title { font-size: 1.45rem; line-height: 1.35; color: #fff; font-weight: 600; }
+.pt-chat__gate-input { height: 42px; padding: 0 0.85rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.14); background: #0e0e0e; color: #fff; font-family: inherit; font-size: 1.6rem; }
+.pt-chat__gate-input::placeholder { color: rgba(255,255,255,0.4); }
+.pt-chat__gate-input:focus { outline: none; border-color: rgba(218,41,28,0.7); }
+.pt-chat__gate-btn { height: 42px; border: 0; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg,#DA291C,#b9221a); color: #fff; font-family: inherit; font-weight: 700; font-size: 1.45rem; }
+.pt-chat__gate-btn:disabled { opacity: 0.6; cursor: default; }
+.pt-chat__gate-err { color: #ff8a7e; font-size: 1.25rem; line-height: 1.3; min-height: 1em; }
+
+/* Booking-details form — name / phone / email when it's time to book. */
+.pt-chat__bform { align-self: stretch; display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.3rem; padding: 0.85rem; background: #161616; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
+.pt-chat__bform-title { font-size: 1.45rem; line-height: 1.35; color: #fff; font-weight: 600; }
+.pt-chat__bform-in { height: 42px; padding: 0 0.85rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.14); background: #0e0e0e; color: #fff; font-family: inherit; font-size: 1.6rem; }
+.pt-chat__bform-in::placeholder { color: rgba(255,255,255,0.4); }
+.pt-chat__bform-in:focus { outline: none; border-color: rgba(218,41,28,0.7); }
+.pt-chat__bform-btn { height: 44px; border: 0; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg,#DA291C,#b9221a); color: #fff; font-family: inherit; font-weight: 700; font-size: 1.5rem; }
+.pt-chat__bform-btn:disabled { opacity: 0.6; cursor: default; }
+.pt-chat__bform-err { color: #ff8a7e; font-size: 1.25rem; line-height: 1.3; min-height: 1em; }
+
+/* Mobile — the bottom tab bar's "Chat" tab is the opener, so hide the floating
+   bubble; the panel opens ABOVE the tab bar and fills the screen comfortably. */
+@media (max-width: 768px) {
+  .pt-chat__launcher { display: none; }
+  .pt-chat__panel {
+    bottom: 86px; right: 10px; left: 10px;
+    width: auto; max-width: none;
+    height: calc(100vh - 170px); max-height: none;
+  }
+}
+/* Desktop — no floating bubble on product pages (the PDP has its own CTAs). */
+@media (min-width: 769px) {
+  body.template-product .pt-chat__launcher { display: none; }
+}
+
+/* Product recommendation cards — tappable tire results from recommend_tires. */
+.pt-chat__cards { display: flex; flex-direction: column; gap: 0.5rem; align-self: stretch; margin-top: 0.1rem; }
+.pt-chat__card {
+  display: flex; gap: 0.7rem; padding: 0.6rem; text-decoration: none;
+  background: #161616; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+  color: #ececec; transition: border-color 120ms ease, background 120ms ease;
+}
+.pt-chat__card:hover { border-color: rgba(218,41,28,0.6); background: rgba(218,41,28,0.06); }
+.pt-chat__card-img { width: 64px; height: 64px; flex-shrink: 0; object-fit: contain; background: #fff; border-radius: 8px; }
+.pt-chat__card-img--ph { background: #0e0e0e; }
+.pt-chat__card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.pt-chat__card-title { font-size: 1.4rem; font-weight: 600; color: #fff; line-height: 1.25; }
+.pt-chat__card-meta { font-size: 1.2rem; color: rgba(255,255,255,0.6); }
+.pt-chat__card-rating { color: #ffc24b; }
+.pt-chat__card-tags { font-size: 1.15rem; color: #7fd18a; }
+.pt-chat__card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 0.25rem; gap: 0.5rem; }
+.pt-chat__card-price { font-size: 1.5rem; font-weight: 700; color: #fff; }
+.pt-chat__card-cta { font-size: 1.3rem; font-weight: 700; color: #fff; background: linear-gradient(135deg,#DA291C,#b9221a); padding: 0.3rem 0.85rem; border-radius: 999px; }
+{% endstylesheet %}
+
+{% javascript %}
+(function () {
+  var root = document.getElementById('pt-chat');
+  if (!root) return;
+  var api = root.getAttribute('data-api');
+  var msgs = root.querySelector('[data-pt-chat-messages]');
+  var form = root.querySelector('[data-pt-chat-form]');
+  var panel = root.querySelector('.pt-chat__panel');
+  var input = form.querySelector('.pt-chat__input');
+  var sendBtn = form.querySelector('.pt-chat__send');
+  var started = false;
+
+  // --- Live staff replies (console takeover) -------------------------------
+  // When a team member takes a chat over in the Agent Console, their replies
+  // come back through this poll endpoint, not the POST response. We only poll
+  // while a chat is in "human" mode, so normal AI chats make zero extra calls.
+  var pollUrl = api + '/poll';
+  var lastAt = '';
+  var pollTimer = null;
+  var humanMode = false;
+  var connectedNote = false;
+  var seenAt = {};
+
+  // Per-year vehicle dataset base (same data the homepage trim picker uses).
+  var assetBase = root.getAttribute('data-asset-base') || '';
+  var vehicleCache = {};
+  var bookingFormEl = null;
+
+  // Suggested-question chips shown when the chat opens (tap to send).
+  var chipsEl = null;
+  var CHIPS = [
+    { label: 'Find tires', send: "I'm looking for tires for my vehicle" },
+    { label: 'Find rims', send: "I'm looking for rims for my vehicle" },
+    { label: 'Find a package', send: "I'm looking for a tire and wheel package" },
+    { label: 'Book appointment', send: "I'd like to book an appointment" }
+  ];
+
+  function sessionId() {
+    var k = 'pt_chat_sid';
+    var v = '';
+    try { v = localStorage.getItem(k) || ''; } catch (e) {}
+    if (!v) {
+      v = 'w-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+      try { localStorage.setItem(k, v); } catch (e) {}
+    }
+    return v;
+  }
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function linkify(s) {
+    return esc(s).replace(/(https?:\/\/[^\s]+)/g, function (u) {
+      return '<a href="' + u + '" target="_blank" rel="noopener">' + u + '</a>';
+    });
+  }
+  function addMsg(text, who) {
+    var el = document.createElement('div');
+    el.className = 'pt-chat__msg pt-chat__msg--' + who;
+    el.innerHTML = who === 'bot' ? linkify(text) : esc(text);
+    msgs.appendChild(el);
+    msgs.scrollTop = msgs.scrollHeight;
+    return el;
+  }
+
+  function removeChips() { if (chipsEl) { chipsEl.remove(); chipsEl = null; } }
+  function renderChips() {
+    if (chipsEl) return;
+    chipsEl = document.createElement('div');
+    chipsEl.className = 'pt-chat__chips';
+    for (var k = 0; k < CHIPS.length; k++) {
+      (function (c) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'pt-chat__chip';
+        b.textContent = c.label;
+        b.addEventListener('click', function () { removeChips(); sendMessage(c.send); });
+        chipsEl.appendChild(b);
+      })(CHIPS[k]);
+    }
+    msgs.appendChild(chipsEl);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // Tappable picker shown when a vehicle has several sizes. Like the homepage
+  // search: if we know year/make/model, load the per-year dataset and show the
+  // customer's TRIM buttons (tap trim -> exact size). Falls back to size buttons
+  // when the dataset doesn't have the vehicle.
+  function renderSizePicker(opts) {
+    if (!opts) return;
+    if (opts.year && opts.make && opts.model && assetBase) {
+      loadTrims(opts, function (items) {
+        if (items && items.length) renderPickerButtons(items);
+        else renderPickerFromOpts(opts);
+      });
+      return;
+    }
+    renderPickerFromOpts(opts);
+  }
+
+  function renderPickerFromOpts(opts) {
+    var items = [];
+    if (opts.trims && opts.trims.length) {
+      for (var t = 0; t < opts.trims.length; t++) items.push({ label: opts.trims[t].trim + ' - ' + opts.trims[t].size, send: opts.trims[t].size });
+    } else if (opts.sizes && opts.sizes.length) {
+      for (var s = 0; s < opts.sizes.length; s++) items.push({ label: opts.sizes[s], send: opts.sizes[s] });
+    }
+    if (items.length) renderPickerButtons(items);
+  }
+
+  function renderPickerButtons(items) {
+    var wrap = document.createElement('div');
+    wrap.className = 'pt-chat__chips';
+    for (var k = 0; k < items.length; k++) {
+      (function (it) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'pt-chat__chip';
+        b.textContent = it.label;
+        b.addEventListener('click', function () { wrap.remove(); sendMessage(it.send); });
+        wrap.appendChild(b);
+      })(items[k]);
+    }
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // Load the homepage's per-year dataset and resolve this vehicle's trims->sizes.
+  function loadTrims(opts, cb) {
+    var year = String(opts.year);
+    function build(data) {
+      if (!data || !data.models) return cb(null);
+      var makeKey = findKey(data.models, opts.make);
+      if (!makeKey) return cb(null);
+      var modelKey = findKey(data.models[makeKey], opts.model);
+      if (!modelKey) return cb(null);
+      var trims = data.models[makeKey][modelKey];
+      var items = [];
+      Object.keys(trims).forEach(function (trim) {
+        var sizes = trims[trim];
+        var size = (sizes && sizes.length) ? sizes[0] : '';
+        if (size) items.push({ label: trim, send: 'My trim is ' + trim + ' (' + size + ')' });
+      });
+      cb(items);
+    }
+    if (vehicleCache[year]) return build(vehicleCache[year]);
+    fetch(assetBase + 'pt-vehicle-' + year + '.json')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) { vehicleCache[year] = data; build(data); })
+      .catch(function () { cb(null); });
+  }
+
+  // Case-insensitive key match (exact -> prefix -> contains) so the agent's
+  // make/model strings map onto the dataset keys.
+  function findKey(obj, name) {
+    if (!obj || !name) return null;
+    var n = String(name).toLowerCase().trim();
+    var keys = Object.keys(obj);
+    var i;
+    for (i = 0; i < keys.length; i++) if (keys[i].toLowerCase() === n) return keys[i];
+    for (i = 0; i < keys.length; i++) { var k = keys[i].toLowerCase(); if (k.indexOf(n) === 0 || n.indexOf(k) === 0) return keys[i]; }
+    for (i = 0; i < keys.length; i++) if (keys[i].toLowerCase().indexOf(n) > -1) return keys[i];
+    return null;
+  }
+
+  // Booking-details form (name/phone/email) — shown when the agent is ready to
+  // book, instead of asking for each field one at a time.
+  function renderBookingForm(b) {
+    if (!b || bookingFormEl) return;
+    bookingFormEl = document.createElement('div');
+    bookingFormEl.className = 'pt-chat__bform';
+    var when = (b.label || 'your appointment') + (b.time ? ' at ' + b.time : '');
+    bookingFormEl.innerHTML =
+      '<div class="pt-chat__bform-title">Your details to lock in ' + esc(when) + '</div>' +
+      '<input class="pt-chat__bform-in" data-bf-name type="text" placeholder="Full name" autocomplete="name" />' +
+      '<input class="pt-chat__bform-in" data-bf-phone type="tel" placeholder="Phone number" autocomplete="tel" />' +
+      '<input class="pt-chat__bform-in" data-bf-email type="email" placeholder="Email" autocomplete="email" />' +
+      '<button class="pt-chat__bform-btn" type="button">Confirm booking</button>' +
+      '<div class="pt-chat__bform-err"></div>';
+    msgs.appendChild(bookingFormEl);
+    msgs.scrollTop = msgs.scrollHeight;
+    var el = bookingFormEl;
+    var nameI = el.querySelector('[data-bf-name]');
+    var phoneI = el.querySelector('[data-bf-phone]');
+    var emailI = el.querySelector('[data-bf-email]');
+    var btn = el.querySelector('.pt-chat__bform-btn');
+    var err = el.querySelector('.pt-chat__bform-err');
+    setTimeout(function () { nameI.focus(); }, 60);
+    btn.addEventListener('click', function () {
+      var nm = (nameI.value || '').trim(), ph = (phoneI.value || '').trim(), em = (emailI.value || '').trim();
+      if (!nm || ph.length < 7 || em.indexOf('@') < 1) { err.textContent = 'Please add your name, phone, and a valid email.'; return; }
+      el.remove(); bookingFormEl = null;
+      addMsg(nm + ' · ' + ph + ' · ' + em, 'user');
+      sendMessage('My booking details: name ' + nm + ', phone ' + ph + ', email ' + em, true);
+    });
+  }
+
+  // Tappable appointment-time buttons. Tapping sends the chosen time (with the
+  // day, so the agent has full context) and continues the booking.
+  function renderSlots(b) {
+    if (!b || !b.slots || !b.slots.length) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'pt-chat__chips';
+    for (var k = 0; k < b.slots.length; k++) {
+      (function (time) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pt-chat__chip';
+        btn.textContent = time;
+        btn.addEventListener('click', function () { wrap.remove(); sendMessage("I'll take " + time + (b.label ? ' on ' + b.label : '')); });
+        wrap.appendChild(btn);
+      })(b.slots[k]);
+    }
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // Tappable product recommendation cards from recommend_tires (image, brand +
+  // model, size, price, ⭐ rating where available). Each card links to the PDP.
+  function renderProductCards(cards) {
+    if (!cards || !cards.length) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'pt-chat__cards';
+    for (var k = 0; k < cards.length; k++) {
+      (function (c) {
+        var a = document.createElement('a');
+        a.className = 'pt-chat__card';
+        a.href = c.url || '#'; a.target = '_blank'; a.rel = 'noopener';
+        var img = c.image
+          ? '<img class="pt-chat__card-img" src="' + esc(c.image) + '" alt="' + esc(c.title || '') + '" loading="lazy" />'
+          : '<div class="pt-chat__card-img pt-chat__card-img--ph"></div>';
+        var brandModel = esc(((c.vendor || '') + ' ' + (c.model || '')).trim()) || esc(c.title || 'Tire');
+        var price = (typeof c.priceCents === 'number') ? ('$' + (c.priceCents / 100).toFixed(2) + ' ea') : '';
+        var rating = (c.rating && typeof c.rating.score === 'number')
+          ? ' · <span class="pt-chat__card-rating">★ ' + Math.round(c.rating.score) + '/100</span>' : '';
+        var pro = (c.rating && c.rating.pros && c.rating.pros.length)
+          ? '<div class="pt-chat__card-tags">' + esc(c.rating.pros[0]) + '</div>' : '';
+        a.innerHTML =
+          img +
+          '<div class="pt-chat__card-body">' +
+            '<div class="pt-chat__card-title">' + brandModel + '</div>' +
+            '<div class="pt-chat__card-meta">' + esc(c.size || '') + rating + '</div>' +
+            pro +
+            '<div class="pt-chat__card-foot"><span class="pt-chat__card-price">' + price + '</span><span class="pt-chat__card-cta">View</span></div>' +
+          '</div>';
+        wrap.appendChild(a);
+      })(cards[k]);
+    }
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // Render a shop-side message once, keyed by its server timestamp, so two
+  // overlapping polls can never show the same reply twice.
+  function renderShop(text, at) {
+    if (at) { if (seenAt[at]) return; seenAt[at] = 1; }
+    addMsg(text, 'bot');
+  }
+  function poll() {
+    fetch(pollUrl + '?sessionId=' + encodeURIComponent(sessionId()) + '&after=' + encodeURIComponent(lastAt))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data) return;
+        if (data.messages && data.messages.length) {
+          for (var j = 0; j < data.messages.length; j++) renderShop(data.messages[j].text, data.messages[j].at);
+        }
+        if (data.cursor) lastAt = data.cursor;
+      })
+      .catch(function () {});
+  }
+  function startPolling() {
+    if (pollTimer) return;
+    lastAt = ''; // baseline: ignore prior history, only catch replies from here on
+    poll();
+    pollTimer = setInterval(poll, 5000);
+  }
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  var mq = window.matchMedia('(max-width: 768px)');
+  // On phones the on-screen keyboard shrinks the visual viewport and would
+  // otherwise cover the input and the agent's latest reply. Resize the panel to
+  // sit just above the keyboard and keep the newest message in view.
+  function fitPanel() {
+    if (!mq.matches || !window.visualViewport || !root.classList.contains('is-open')) {
+      panel.style.bottom = ''; panel.style.height = '';
+      return;
+    }
+    var vv = window.visualViewport;
+    var keyboard = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height));
+    if (keyboard > 60) {
+      panel.style.bottom = (keyboard + 10) + 'px';
+      panel.style.height = Math.max(240, vv.height - 90) + 'px';
+    } else {
+      panel.style.bottom = ''; panel.style.height = '';
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', fitPanel);
+    window.visualViewport.addEventListener('scroll', fitPanel);
+  }
+
+  function open() {
+    root.classList.add('is-open');
+    if (!started) {
+      started = true;
+      addMsg("👋 Hi, I'm the Prince Tires assistant! I can help you:\n• Find the right tires — by your vehicle (year/make/model), VIN, or size\n• See live prices & book an install or service\n• Check what size & which wheels fit your car\n• Snap a photo of your tire sidewall and I'll read the size\n\nWhat can I help you with? Tap a suggestion below or just ask 👇", 'bot');
+      renderChips();
+    }
+    if (humanMode) startPolling(); // a staff member is handling this chat
+    setTimeout(function () { input.focus(); fitPanel(); }, 50);
+  }
+  function close() {
+    root.classList.remove('is-open');
+    stopPolling();
+    panel.style.bottom = ''; panel.style.height = '';
+  }
+
+  // Re-fit when the keyboard opens/closes (focus/blur fire just before the
+  // viewport animates, so give it a beat to settle).
+  input.addEventListener('focus', function () { setTimeout(fitPanel, 200); });
+  input.addEventListener('blur', function () { setTimeout(fitPanel, 200); });
+
+  // On phones, "Chat" opens the visitor's texting app instead of the in-page
+  // chat — texting is the natural mobile channel and it hands us their number to
+  // reply. Desktop keeps the web chat. 768px = the theme's mobile breakpoint (mq).
+  var SMS_NUMBER = '+14034524283'; // (403) 452-4283 — one line takes calls + texts
+  var SMS_BODY = 'Hi Prince Tires, I have a question';
+  function smsHref() {
+    // iOS expects sms:<number>&body=... ; Android/others expect ...?body=...
+    var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent || '');
+    return 'sms:' + SMS_NUMBER + (isIOS ? '&' : '?') + 'body=' + encodeURIComponent(SMS_BODY);
+  }
+
+  // Bind every opener (the desktop bubble AND the mobile bottom-bar "Chat" tab).
+  // On mobile we send them to SMS; on desktop we open the in-page panel.
+  var openers = document.querySelectorAll('[data-pt-chat-open]');
+  for (var i = 0; i < openers.length; i++) {
+    openers[i].addEventListener('click', function (e) {
+      e.preventDefault();
+      if (mq.matches) { window.location.href = smsHref(); return; }
+      open();
+    });
+  }
+  root.querySelector('[data-pt-chat-close]').addEventListener('click', close);
+
+  var sending = false;
+  var contactUrl = api + '/contact';
+  var gateEl = null;
+  // Desktop contact capture: ask name + email after the first message so the
+  // shop can always follow up. Remembered per browser so we don't re-ask.
+  var contactCaptured = false;
+  try { contactCaptured = !!localStorage.getItem('pt_chat_contact'); } catch (e) {}
+  var userMsgCount = 0;
+
+  // Product-aware chat: on a PDP the container carries data-pt-product-* attrs,
+  // so the agent knows which tire the visitor is looking at.
+  function ptProduct() {
+    var h = root.getAttribute('data-pt-product-handle');
+    if (!h) return null;
+    return {
+      handle: h,
+      title: root.getAttribute('data-pt-product-title') || '',
+      vendor: root.getAttribute('data-pt-product-vendor') || '',
+      size: root.getAttribute('data-pt-product-size') || '',
+      price: root.getAttribute('data-pt-product-price') || ''
+    };
+  }
+
+  function sendMessage(text, resume, image) {
+    if (sending || (!text && !image)) return;
+    removeChips(); // they've engaged — clear the starter chips
+    if (!resume) userMsgCount++; // count genuine visitor turns (not booking resumes)
+    sending = true;
+    if (!resume && text) addMsg(text, 'user'); // on resume (or photo-only) the bubble is already shown
+    sendBtn.disabled = true;
+
+    var typing = document.createElement('div');
+    typing.className = 'pt-chat__typing';
+    typing.textContent = 'typing...';
+    msgs.appendChild(typing);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    fetch(api, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: sessionId(), message: text, product: ptProduct(), image: image || undefined })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        typing.remove();
+        // Per-chat cap reached - stop the AI and offer an OPTIONAL follow-up.
+        if (data && data.capReached) {
+          addMsg((data && data.reply) || "Thanks for chatting! Call or text (403) 452-4283 and we'll help.", 'bot');
+          showFollowUp();
+          return;
+        }
+        if (data && data.state === 'human') {
+          // A staff member is handling this chat — their replies arrive via poll.
+          humanMode = true;
+          if (!connectedNote) {
+            connectedNote = true;
+            addMsg("You're connected to the Prince Tires team. Someone will reply right here.", 'bot');
+          }
+          startPolling();
+          return;
+        }
+        if (data && data.state === 'bot') {
+          if (data.reply) renderShop(data.reply, data.at);
+          if (data.tireSizeOptions) renderSizePicker(data.tireSizeOptions);
+          if (data.bookingSlots) renderSlots(data.bookingSlots);
+          if (data.bookingForm) renderBookingForm(data.bookingForm);
+          if (data.productCards) renderProductCards(data.productCards);
+          // AI flagged a handoff — start watching for a team member's reply now,
+          // before the visitor has to send another message. Dedupe (seenAt) makes
+          // it safe for poll + POST to render the same message.
+          if (data.escalate) { humanMode = true; startPolling(); }
+          // After the first message, ask name + email (desktop) so the shop can
+          // follow up even if the visitor closes the tab.
+          maybeAskContact();
+          return;
+        }
+        // No state field = an inline notice (busy / limit reached), not stored.
+        addMsg((data && data.reply) || "Sorry, I didn't catch that. Call or text (403) 452-4283 and we'll help.", 'bot');
+      })
+      .catch(function () {
+        typing.remove();
+        addMsg("Couldn't reach us just now - please call or text (403) 452-4283.", 'bot');
+      })
+      .finally(function () {
+        sending = false;
+        // While the gate is up, keep the chat input disabled — they fill the form.
+        if (!gateEl) { sendBtn.disabled = false; input.focus(); }
+      });
+  }
+
+  // After the per-chat cap, offer an OPTIONAL follow-up (name + phone/email).
+  // Asking is not required to chat; it just lets the shop reach back out. The
+  // chat input stays disabled once capped (the AI won't reply further).
+  function showFollowUp() {
+    if (gateEl) return;
+    input.disabled = true; sendBtn.disabled = true;
+    gateEl = document.createElement('div');
+    gateEl.className = 'pt-chat__gate';
+    gateEl.innerHTML =
+      '<div class="pt-chat__gate-title">Want us to follow up? Leave your details (optional).</div>' +
+      '<input class="pt-chat__gate-input" type="text" placeholder="Your name" autocomplete="name" />' +
+      '<input class="pt-chat__gate-input" type="text" placeholder="Phone or email" autocomplete="email" />' +
+      '<button class="pt-chat__gate-btn" type="button">Send my info</button>' +
+      '<div class="pt-chat__gate-err"></div>';
+    msgs.appendChild(gateEl);
+    msgs.scrollTop = msgs.scrollHeight;
+    var fields = gateEl.querySelectorAll('.pt-chat__gate-input');
+    var nameI = fields[0], contactI = fields[1];
+    var btn = gateEl.querySelector('.pt-chat__gate-btn');
+    var err = gateEl.querySelector('.pt-chat__gate-err');
+    setTimeout(function () { nameI.focus(); }, 60);
+    function submitContact() {
+      var nm = (nameI.value || '').trim();
+      var ct = (contactI.value || '').trim();
+      if (!nm || !ct) { err.textContent = 'Please add your name and a phone or email.'; return; }
+      var payload = { sessionId: sessionId(), name: nm };
+      if (ct.indexOf('@') > -1) payload.email = ct; else payload.phone = ct;
+      btn.disabled = true; btn.textContent = 'Sending...'; err.textContent = '';
+      fetch(contactUrl, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d && d.ok) {
+            gateEl.remove(); gateEl = null;
+            addMsg("Thanks! We'll be in touch soon.", 'bot');
+          } else {
+            btn.disabled = false; btn.textContent = 'Send my info';
+            err.textContent = (d && d.error) || 'Please check your details and try again.';
+          }
+        })
+        .catch(function () {
+          btn.disabled = false; btn.textContent = 'Send my info';
+          err.textContent = 'Could not send just now. Please try again.';
+        });
+    }
+    btn.addEventListener('click', submitContact);
+    contactI.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitContact(); });
+  }
+
+  // --- Desktop contact capture (after the first message) -------------------
+  // The visitor asks their question first, then we ask for name + email so the
+  // shop can reply even if they leave. Required to keep chatting; stored via
+  // /api/chat/contact (which also alerts the shop). Mobile never gets here — the
+  // mobile "Chat" tab opens SMS instead of the web chat.
+  function maybeAskContact() {
+    if (contactCaptured || gateEl || bookingFormEl || mq.matches) return;
+    if (userMsgCount < 1) return;
+    showContactGate();
+  }
+  function showContactGate() {
+    if (gateEl || contactCaptured) return;
+    input.disabled = true; sendBtn.disabled = true;
+    gateEl = document.createElement('div');
+    gateEl.className = 'pt-chat__gate';
+    gateEl.innerHTML =
+      '<div class="pt-chat__gate-title">Quick one so we can reply — your name and email?</div>' +
+      '<input class="pt-chat__gate-input" data-cg-name type="text" placeholder="Your name" autocomplete="name" />' +
+      '<input class="pt-chat__gate-input" data-cg-email type="email" placeholder="Your email" autocomplete="email" inputmode="email" />' +
+      '<button class="pt-chat__gate-btn" type="button">Continue chatting</button>' +
+      '<div class="pt-chat__gate-err"></div>';
+    msgs.appendChild(gateEl);
+    msgs.scrollTop = msgs.scrollHeight;
+    var nameI = gateEl.querySelector('[data-cg-name]');
+    var emailI = gateEl.querySelector('[data-cg-email]');
+    var btn = gateEl.querySelector('.pt-chat__gate-btn');
+    var err = gateEl.querySelector('.pt-chat__gate-err');
+    setTimeout(function () { nameI.focus(); }, 60);
+    function submitInfo() {
+      var nm = (nameI.value || '').trim();
+      var em = (emailI.value || '').trim();
+      if (!nm) { err.textContent = 'Please add your name.'; return; }
+      if (em.indexOf('@') < 1 || em.lastIndexOf('.') < em.indexOf('@')) { err.textContent = 'Please add a valid email.'; return; }
+      btn.disabled = true; btn.textContent = 'Saving...'; err.textContent = '';
+      fetch(contactUrl, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sessionId(), name: nm, email: em })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d && d.ok) {
+            contactCaptured = true;
+            try { localStorage.setItem('pt_chat_contact', '1'); } catch (e) {}
+            gateEl.remove(); gateEl = null;
+            input.disabled = false; sendBtn.disabled = false; input.focus();
+            addMsg('Thanks, ' + nm.split(' ')[0] + "! Ask away — we've got your email if we get cut off.", 'bot');
+          } else {
+            btn.disabled = false; btn.textContent = 'Continue chatting';
+            err.textContent = (d && d.error) || 'Please check your details and try again.';
+          }
+        })
+        .catch(function () {
+          btn.disabled = false; btn.textContent = 'Continue chatting';
+          err.textContent = 'Could not save just now. Please try again.';
+        });
+    }
+    btn.addEventListener('click', submitInfo);
+    emailI.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitInfo(); });
+  }
+
+  // Photo upload — read a tire-sidewall / VIN photo, show a thumbnail, and send
+  // it for the agent's vision read (reads the size or VIN and finds tires).
+  var fileInput = root.querySelector('[data-pt-chat-file]');
+  var photoBtn = root.querySelector('[data-pt-chat-photo]');
+  if (photoBtn && fileInput) {
+    photoBtn.addEventListener('click', function () { fileInput.click(); });
+    fileInput.addEventListener('change', function () {
+      var f = fileInput.files && fileInput.files[0];
+      fileInput.value = '';
+      if (!f) return;
+      if (f.size > 5 * 1024 * 1024) { addMsg("That photo's a bit large - try one under 5 MB.", 'bot'); return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var dataUrl = String(reader.result || '');
+        var comma = dataUrl.indexOf(',');
+        if (comma < 0 || dataUrl.indexOf('data:image/') !== 0) return;
+        var mime = dataUrl.slice(5, comma).split(';')[0];
+        var b64 = dataUrl.slice(comma + 1);
+        var wrap = document.createElement('div');
+        wrap.className = 'pt-chat__msg pt-chat__msg--user pt-chat__msg--photo';
+        var im = new Image(); im.src = dataUrl; im.className = 'pt-chat__thumb'; im.alt = 'Your photo';
+        wrap.appendChild(im);
+        msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
+        sendMessage('', false, { data: b64, mimeType: mime });
+      };
+      reader.readAsDataURL(f);
+    });
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = (input.value || '').trim();
+    if (!text) return;
+    input.value = '';
+    sendMessage(text);
+  });
+})();
+{% endjavascript %}

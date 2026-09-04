@@ -82,7 +82,26 @@
     endif
   endif
 
-  assign set_price = product.price | times: 4
+  comment
+    Low-stock quantity cap. When the selected variant is tracked AND denies
+    overselling, a customer can never buy/book more tires than are on hand — so
+    the "set of 4" pricing and the qty controls collapse to the available count
+    once stock drops below 4. Every tracked product (including Tier B drop-ship)
+    is inventory_policy: deny in Shopify, so this is universally correct; only an
+    untracked OR continue-selling variant stays uncapped. max_qty == 0 = no cap.
+  endcomment
+  assign cap_variant = product.selected_or_first_available_variant
+  assign max_qty = 0
+  if cap_variant.inventory_management == 'shopify' and cap_variant.inventory_policy == 'deny' and cap_variant.inventory_quantity > 0
+    assign max_qty = cap_variant.inventory_quantity
+  endif
+  assign set_count = 4
+  assign default_qty = 4
+  if max_qty > 0 and max_qty < 4
+    assign set_count = max_qty
+    assign default_qty = max_qty
+  endif
+  assign set_price = product.price | times: set_count
 
   assign on_sale = false
   if product.compare_at_price > product.price
@@ -258,6 +277,12 @@
       <a href="{{ routes.collections_url }}/tires" class="ptp__fitment-change">Change vehicle</a>
     </div>
 
+    {%- comment -%} "Fits N vehicles" + TiresVote rating, fetched from the app {%- endcomment -%}
+    {%- render 'pt-fits-vehicles', product: product -%}
+
+    {%- comment -%} Rim visualizer (wheel products only) — see them on your car {%- endcomment -%}
+    {%- render 'pt-rim-visualizer', product: product -%}
+
     {%- comment -%} Two-Column Layout {%- endcomment -%}
     <div class="ptp__layout">
 
@@ -308,6 +333,20 @@
       <div class="ptp__info-col{% if section.settings.enable_sticky_info %} ptp__info-col--sticky{% endif %}">
         <a href="{{ product.vendor | url_for_vendor }}" class="ptp__vendor">{{ product.vendor }}</a>
         <h1 class="ptp__title">{{ product_title }}</h1>
+
+        {%- comment -%} Share row — moved up under the title for visibility {%- endcomment -%}
+        <div class="ptp__share ptp__share--top" data-ptp-share>
+          <span class="ptp__share-label">{{ 'products.product.share' | t | default: 'Share' }}</span>
+          <a href="https://wa.me/?text={{ product.title | url_encode }}%20{{ shop.url | append: product.url | url_encode }}" target="_blank" rel="noopener" class="ptp__share-btn ptp__share-btn--wa" aria-label="Share on WhatsApp">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          </a>
+          <a href="https://www.facebook.com/sharer/sharer.php?u={{ shop.url | append: product.url | url_encode }}" target="_blank" rel="noopener" class="ptp__share-btn ptp__share-btn--fb" aria-label="Share on Facebook">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          </a>
+          <button type="button" class="ptp__share-btn ptp__share-btn--link" data-ptp-copy-url aria-label="Copy link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          </button>
+        </div>
 
 
         {%- if season_tag != blank -%}
@@ -396,13 +435,13 @@
         <div class="ptp__pricing-card">
           <div class="ptp__price-hero">
             <div class="ptp__price-hero-left">
-              <span class="ptp__price-hero-amount" data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="4">${{ set_price | money_without_currency }}</span>
-              <span class="ptp__price-hero-label">for a set of 4</span>
+              <span class="ptp__price-hero-amount" data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="{{ set_count }}">${{ set_price | money_without_currency }}</span>
+              <span class="ptp__price-hero-label">{%- if set_count == 1 -%}for 1 tire{%- else -%}for a set of {{ set_count }}{%- endif -%}</span>
             </div>
             {%- if product.available -%}
               {%- assign variant_inventory = product.selected_or_first_available_variant.inventory_quantity -%}
               {%- if variant_inventory <= 8 and variant_inventory > 0 and product.selected_or_first_available_variant.inventory_management == 'shopify' -%}
-                <span class="ptp__stock ptp__stock--low"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg> {{ 'products.product.low_stock' | t: count: variant_inventory | default: 'Only ' | append: variant_inventory | append: ' left' }}</span>
+                <span class="ptp__stock ptp__stock--low"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg> {{ 'products.product.low_stock' | t: count: variant_inventory }}</span>
               {%- else -%}
                 <span class="ptp__stock ptp__stock--in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg> {{ 'products.product.in_stock' | t | default: 'In stock' }}</span>
               {%- endif -%}
@@ -434,18 +473,21 @@
             {%- assign install_per_tire = product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 | times: 100 -%}
             {%- assign disposal_per_tire = section.settings.disposal_cost_per_tire | default: '5' | times: 100 -%}
             {%- assign service_per_tire = install_per_tire | plus: disposal_per_tire -%}
-            {%- comment -%} set_price is already price*4 in cents, service needs *4 too {%- endcomment -%}
-            {%- assign service_total = service_per_tire | times: 4 -%}
-            {%- assign installed_total = set_price | plus: service_total -%}
+            {%- comment -%} set_price is already price*set_count in cents, service needs *set_count too {%- endcomment -%}
+            {%- assign service_total = service_per_tire | times: set_count -%}
+            {%- assign installed_subtotal = set_price | plus: service_total -%}
+            {%- comment -%} All-in installed price incl. 5% GST so the PDP matches the booking modal's "Total (incl. GST)". Display-only — the store is tax-exclusive, so Shopify still calculates GST at checkout regardless. {%- endcomment -%}
+            {%- assign installed_gst = installed_subtotal | times: 0.05 | round -%}
+            {%- assign installed_total = installed_subtotal | plus: installed_gst -%}
             <div class="ptp__installed-price">
               <div class="ptp__installed-price-row">
                 <span class="ptp__installed-label">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
                   {{ 'products.product.installed_total' | t | default: 'Installed total' }}
                 </span>
-                <span class="ptp__installed-amount">${{ installed_total | money_without_currency }}</span>
+                <span class="ptp__installed-amount">${{ installed_total | money_without_currency }} <span class="ptp__installed-tax">{{ 'products.product.incl_gst' | t | default: 'incl. GST' }}</span></span>
               </div>
-              <span class="ptp__installed-note">{{ 'products.product.installed_includes' | t | default: 'Includes mount, balance & disposal for 4 tires' }}</span>
+              <span class="ptp__installed-note">{{ 'products.product.installed_includes' | t: count: set_count }}</span>
             </div>
           {%- endif -%}
         </div>
@@ -462,7 +504,7 @@
         {%- comment -%} CTAs — Book Installation is PRIMARY {%- endcomment -%}
         {%- capture supplier_tier -%}{% render 'pt-supplier-tier', product: product %}{%- endcapture -%}
         <div class="ptp__cta-stack">
-          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-install-price="{{ product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 }}" data-inventory-source="{{ inventory_source }}" data-supplier-tier="{{ supplier_tier | strip }}" data-product-handle="{{ product.handle }}" data-variant-id="{{ product.selected_or_first_available_variant.id }}">
+          <button type="button" class="ptp__book-btn" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-install-price="{{ product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 }}" data-inventory-source="{{ inventory_source }}" data-supplier-tier="{{ supplier_tier | strip }}" data-product-handle="{{ product.handle }}" data-variant-id="{{ product.selected_or_first_available_variant.id }}" data-max-qty="{{ max_qty }}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             Book installation
           </button>
@@ -474,7 +516,7 @@
                 <div class="ptp__cart-row">
                   <div class="ptp__qty" role="group" aria-label="Quantity">
                     <button type="button" data-ptp-qty-minus aria-label="Decrease quantity"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg></button>
-                    <input type="number" name="quantity" value="4" min="1" data-ptp-qty aria-label="Quantity">
+                    <input type="number" name="quantity" value="{{ default_qty }}" min="1"{% if max_qty > 0 %} max="{{ max_qty }}"{% endif %} data-ptp-qty data-ptp-max="{{ max_qty }}" aria-label="Quantity">
                     <button type="button" data-ptp-qty-plus aria-label="Increase quantity"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>
                   </div>
                   <button type="submit" class="ptp__add-btn">
@@ -502,6 +544,20 @@
               {%- endif -%}
             {%- endform -%}
           </product-form>
+
+          {%- comment -%} Send a branded quote. Staff → Prince Tires; wholesale company → their white-label profile. The server (resolveSender) decides branding authoritatively; data-quote-mode only adapts the modal UI (blank reseller price, etc.). {%- endcomment -%}
+          {%- assign quote_mode = '' -%}
+          {%- if customer.tags contains 'staff' -%}
+            {%- assign quote_mode = 'staff' -%}
+          {%- elsif customer.b2b? or customer.tags contains 'wholesale' -%}
+            {%- assign quote_mode = 'wholesale' -%}
+          {%- endif -%}
+          {%- if quote_mode != '' -%}
+            <button type="button" class="ptp__quote-btn" onclick="if(typeof openQuoteModal==='function')openQuoteModal(this)" data-quote-mode="{{ quote_mode }}" data-product-handle="{{ product.handle }}" data-variant-id="{{ product.selected_or_first_available_variant.id }}" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-addon-mount="{{ product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 }}" data-addon-levy="{{ section.settings.quote_levy_price | default: 4.5 }}" data-addon-valve="{{ section.settings.quote_valve_price | default: 5 }}" data-addon-disposal="{{ section.settings.disposal_cost_per_tire | default: 5 }}" data-addon-tpms="{{ section.settings.quote_tpms_price | default: 15 }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+              {{ 'sections.quote_modal.cta' | t }}
+            </button>
+          {%- endif -%}
         </div>
 
         {%- comment -%} Trust Signals {%- endcomment -%}
@@ -879,18 +935,6 @@
               <a href="{{ routes.collections_url }}/tires?filter.p.m.custom.tire_size={{ tire_size | url_encode }}" class="ptp__link">Compare {{ tire_size }} tires</a>
             {%- endif -%}
           </div>
-          <div class="ptp__share" data-ptp-share>
-            <span class="ptp__share-label">{{ 'products.product.share' | t | default: 'Share this product' }}</span>
-            <a href="https://wa.me/?text={{ product.title | url_encode }}%20{{ shop.url | append: product.url | url_encode }}" target="_blank" rel="noopener" class="ptp__share-btn ptp__share-btn--wa" aria-label="Share on WhatsApp">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            </a>
-            <a href="https://www.facebook.com/sharer/sharer.php?u={{ shop.url | append: product.url | url_encode }}" target="_blank" rel="noopener" class="ptp__share-btn ptp__share-btn--fb" aria-label="Share on Facebook">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            </a>
-            <button type="button" class="ptp__share-btn ptp__share-btn--link" data-ptp-copy-url aria-label="Copy link">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-            </button>
-          </div>
         </div>
     </div>{%- comment -%} /ptp__tabs-section {%- endcomment -%}
 
@@ -899,12 +943,12 @@
     {%- assign sticky_phone_dig = sticky_phone | replace: ' ', '' | replace: '-', '' | replace: '.', '' | replace: '(', '' | replace: ')', '' -%}
     {%- assign sticky_savings = 0 -%}
     {%- if product.compare_at_price > product.price -%}
-      {%- assign sticky_savings = product.compare_at_price | minus: product.price | times: 4 -%}
+      {%- assign sticky_savings = product.compare_at_price | minus: product.price | times: set_count -%}
     {%- endif -%}
     <div class="ptp__sticky" data-ptp-sticky>
       {%- comment -%} Phase 5A · trade-price toggle on the PDP sticky bar. The set-of-4 span gets ×4 multiplier; the per-tire ×1. {%- endcomment -%}
       <div class="ptp__sticky-price">
-        <span class="ptp__sticky-set" data-ptp-sticky-total data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="4">${{ set_price | money_without_currency }}</span>
+        <span class="ptp__sticky-set" data-ptp-sticky-total data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="{{ set_count }}">${{ set_price | money_without_currency }}</span>
         <span class="ptp__sticky-per">
           <span data-pt-price data-pt-variant-id="{{ product.selected_or_first_available_variant.id }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span> / tire
           {%- if sticky_savings > 0 -%}
@@ -928,12 +972,16 @@
             Add to cart
           </button>
         {%- endif -%}
-        <button type="button" class="ptp__sticky-book" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-install-price="{{ product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 }}" data-inventory-source="{{ inventory_source }}" data-variant-id="{{ product.selected_or_first_available_variant.id }}">
+        <button type="button" class="ptp__sticky-book" onclick="if(typeof openBookingModal==='function')openBookingModal(this)" data-tire-name="{{ product.title | escape }}" data-tire-size="{{ tire_size | escape }}" data-vehicle-type="{{ detected_vehicle }}" data-tire-price="{{ product.selected_or_first_available_variant.price }}" data-install-price="{{ product.metafields.custom.install_price.value | default: section.settings.install_cost_per_tire | default: 30 }}" data-inventory-source="{{ inventory_source }}" data-variant-id="{{ product.selected_or_first_available_variant.id }}" data-max-qty="{{ max_qty }}">
           Book install →
         </button>
       </div>
     </div>
   </div>
+
+  {%- if customer.tags contains 'staff' or customer.b2b? or customer.tags contains 'wholesale' -%}
+    {%- render 'pt-quote-modal' -%}
+  {%- endif -%}
 </product-info>
 
 {% stylesheet %}
@@ -1032,6 +1080,7 @@
   .ptp__installed-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; font-weight: 500; color: var(--ptp-subtle); }
   .ptp__installed-label svg { stroke: var(--ptp-accent); }
   .ptp__installed-amount { font-family: 'Barlow Condensed', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--ptp-accent); }
+  .ptp__installed-tax { font-family: 'Outfit', sans-serif; font-size: 0.7rem; font-weight: 600; color: var(--ptp-muted); letter-spacing: 0.02em; }
   .ptp__installed-note { font-size: 0.75rem; color: var(--ptp-muted); display: block; margin-top: 0.15rem; }
   .ptp__rebate-banner { display: flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1rem; margin-bottom: 0.8rem; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; border-radius: var(--ptp-r-sm); font-size: 0.88rem; font-weight: 600; color: #92400e; }
   .ptp__rebate-banner svg { stroke: #d97706; flex-shrink: 0; }
@@ -1060,11 +1109,20 @@
   @media (max-width: 749px) {
     .ptp__book-btn { padding: 0.6rem 0.75rem; font-size: 0.9rem; white-space: nowrap; }
   }
+  /* Staff-only "Send a quote" — secondary outline so it never competes with Book/Add-to-cart */
+  .ptp__quote-btn {
+    display: flex; width: 100%; background: #fff; color: #0f172a; border: 1.5px dashed #cbd5e1;
+    text-align: center; padding: 0.7rem 1rem; border-radius: 10px;
+    font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; align-items: center; justify-content: center; gap: 0.5rem;
+  }
+  .ptp__quote-btn:hover { border-color: #DA291C; color: #DA291C; }
 
   .ptp__cart-row { display: flex; gap: 0.6rem; }
   .ptp__qty { display: flex; align-items: center; background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px; overflow: hidden; flex-shrink: 0; }
   .ptp__qty button { width: 3.2rem; height: 3.4rem; border: none; background: transparent; cursor: pointer; color: #9ca3af; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .ptp__qty button:hover { color: #111; background: #f9fafb; }
+  .ptp__qty button:disabled { opacity: 0.3; cursor: not-allowed; background: transparent; color: #9ca3af; }
   .ptp__qty input { width: 2.6rem; height: 3.4rem; text-align: center; border: none; background: transparent; font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 600; color: #111; -moz-appearance: textfield; }
   .ptp__qty input::-webkit-inner-spin-button { -webkit-appearance: none; }
   .ptp__add-btn {
@@ -1192,10 +1250,13 @@
   .ptp__links { display: flex; gap: 0.6rem; flex-wrap: wrap; }
   .ptp__link { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.1rem; border: 1.5px solid var(--ptp-border); border-radius: 100px; font-size: 0.9rem; font-weight: 500; color: var(--ptp-muted); text-decoration: none; transition: all 0.2s; }
   .ptp__link:hover { border-color: var(--ptp-accent); color: var(--ptp-accent); }
-  .ptp__share { display: flex; align-items: center; gap: 0.5rem; }
-  .ptp__share-label { font-size: 0.82rem; font-weight: 500; color: var(--ptp-muted); }
-  .ptp__share-btn { width: 2.4rem; height: 2.4rem; display: flex; align-items: center; justify-content: center; border: 1.5px solid transparent; border-radius: 50%; cursor: pointer; transition: all 0.2s; text-decoration: none; }
-  .ptp__share-btn svg { width: 14px; height: 14px; }
+  .ptp__share { display: flex; align-items: center; gap: 0.6rem; }
+  .ptp__share-label { font-size: 0.9rem; font-weight: 600; color: var(--ptp-muted); }
+  .ptp__share-btn { width: 2.75rem; height: 2.75rem; display: flex; align-items: center; justify-content: center; border: 1.5px solid transparent; border-radius: 50%; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+  .ptp__share-btn svg { width: 17px; height: 17px; }
+  /* Top placement — share row under the product title */
+  .ptp__share--top { margin: 0.5rem 0 0.25rem; padding: 0.5rem 0.85rem; background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 100px; width: fit-content; }
+  .ptp__share--top .ptp__share-label { color: #475569; }
   /* WhatsApp */
   .ptp__share-btn--wa { background: #25d366; color: #fff; border-color: #25d366; }
   .ptp__share-btn--wa:hover { background: #20ba5a; border-color: #20ba5a; transform: scale(1.08); }
@@ -1413,15 +1474,27 @@ document.addEventListener('DOMContentLoaded', function() {
   var qtyInput = document.querySelector('[data-ptp-qty]');
   var cartTotal = document.querySelector('[data-ptp-cart-total]');
   var unitPrice = {{ product.selected_or_first_available_variant.price }} / 100;
+  /* On-hand cap: 0 = no cap (untracked / continue-selling). Customers can't add
+     more tires than are in stock, so the qty never exceeds maxQty. */
+  var maxQty = qtyInput ? (parseInt(qtyInput.dataset.ptpMax) || 0) : 0;
 
   function updateTotal() { if (cartTotal && qtyInput) cartTotal.textContent = '$' + (parseInt(qtyInput.value || 1) * unitPrice).toFixed(2); }
   function updateStickyTotal() { var s = document.querySelector('[data-ptp-sticky-total]'); if (s && qtyInput) s.textContent = '$' + (parseInt(qtyInput.value || 1) * unitPrice).toFixed(2); }
 
   if (qtyInput) {
     var m = document.querySelector('[data-ptp-qty-minus]'), p = document.querySelector('[data-ptp-qty-plus]');
-    if (m) m.addEventListener('click', function() { var v = parseInt(qtyInput.value)||1; if(v>1){qtyInput.value=v-1; updateTotal(); updateStickyTotal();} });
-    if (p) p.addEventListener('click', function() { var v = parseInt(qtyInput.value)||1; qtyInput.value=v+1; updateTotal(); updateStickyTotal(); });
-    qtyInput.addEventListener('change', function() { updateTotal(); updateStickyTotal(); });
+    function ptpClampQty() {
+      var v = parseInt(qtyInput.value) || 1;
+      if (v < 1) v = 1;
+      if (maxQty > 0 && v > maxQty) v = maxQty;
+      qtyInput.value = v;
+      if (p) p.disabled = (maxQty > 0 && v >= maxQty);
+      return v;
+    }
+    if (m) m.addEventListener('click', function() { var v = ptpClampQty(); if (v > 1) { qtyInput.value = v - 1; ptpClampQty(); updateTotal(); updateStickyTotal(); } });
+    if (p) p.addEventListener('click', function() { var v = ptpClampQty(); if (maxQty === 0 || v < maxQty) { qtyInput.value = v + 1; ptpClampQty(); updateTotal(); updateStickyTotal(); } });
+    qtyInput.addEventListener('change', function() { ptpClampQty(); updateTotal(); updateStickyTotal(); });
+    ptpClampQty();
   }
 
   /* ── Cart count updater ─────────────────────────────────────────────── */
@@ -1801,6 +1874,11 @@ document.addEventListener('DOMContentLoaded', function() {
     { "type": "checkbox", "id": "show_installed_price", "default": true, "label": "t:sections.pt_product.settings.show_installed_price.label" },
     { "type": "text", "id": "install_cost_per_tire", "default": "30", "label": "t:sections.pt_product.settings.install_cost_per_tire.label" },
     { "type": "text", "id": "disposal_cost_per_tire", "default": "5", "label": "t:sections.pt_product.settings.disposal_cost_per_tire.label" },
+    { "type": "header", "content": "Quote add-on prices (per tire)" },
+    { "type": "paragraph", "content": "Default prices for the 'Send a quote' add-ons. Mount & balance uses the tire's install price; disposal uses the disposal price above. Staff can adjust any add-on per quote." },
+    { "type": "text", "id": "quote_levy_price", "default": "4.5", "label": "Tire levy / eco fee" },
+    { "type": "text", "id": "quote_valve_price", "default": "5", "label": "Valve stems" },
+    { "type": "text", "id": "quote_tpms_price", "default": "15", "label": "TPMS service" },
     { "type": "header", "content": "t:sections.pt_product.settings.header_trust.content" },
     { "type": "checkbox", "id": "show_trust_signals", "default": true, "label": "t:sections.pt_product.settings.show_trust_signals.label" },
     { "type": "text", "id": "trust_1_text", "default": "Fast delivery", "label": "t:sections.pt_product.settings.trust_1_text.label" },

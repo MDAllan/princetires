@@ -81,24 +81,43 @@
             {%- if block.settings.heading != blank -%}
               <h4 class="pt-footer__col-heading">{{ block.settings.heading }}</h4>
             {%- endif -%}
-            <ul class="pt-footer__links">
-              {%- if block.settings.phone != blank -%}
-                {%- assign pd = block.settings.phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
-                <li>
-                  <a href="tel:+1{{ pd }}" class="pt-footer__link pt-footer__link--strong">{{ block.settings.phone }}</a>
-                </li>
-              {%- endif -%}
-              {%- if block.settings.email != blank -%}
+            {%- comment -%}
+              Both Calgary shops, rendered from pt-nap (the single NAP source) so
+              the footer can never drift from the schema/contact/booking address.
+              The email stays shared (block.settings.email).
+            {%- endcomment -%}
+            {%- assign footer_locs = 'sw,ne' | split: ',' -%}
+            {%- for s in footer_locs -%}
+              {%- capture loc_name -%}{% render 'pt-nap', location: s, field: 'public_name' %}{%- endcapture -%}
+              {%- capture loc_phone -%}{% render 'pt-nap', location: s, field: 'phone' %}{%- endcapture -%}
+              {%- capture loc_href -%}{% render 'pt-nap', location: s, field: 'phone_href' %}{%- endcapture -%}
+              {%- capture loc_addr -%}{% render 'pt-nap', location: s, field: 'address' %}{%- endcapture -%}
+              {%- capture loc_maps -%}{% render 'pt-nap', location: s, field: 'maps_url' %}{%- endcapture -%}
+              {%- capture loc_hrs_ms -%}{% render 'pt-nap', location: s, field: 'hours_mon_sat_display' %}{%- endcapture -%}
+              {%- capture loc_hrs_su -%}{% render 'pt-nap', location: s, field: 'hours_sun_display' %}{%- endcapture -%}
+              <div class="pt-footer__location">
+                <p class="pt-footer__location-name">{{ loc_name | strip }}</p>
+                <ul class="pt-footer__links">
+                  <li>
+                    <a href="tel:{{ loc_href | strip }}" class="pt-footer__link pt-footer__link--strong">{{ loc_phone | strip }}</a>
+                  </li>
+                  <li>
+                    <a href="{{ loc_maps | strip }}" class="pt-footer__link pt-footer__link--static" target="_blank" rel="noopener">{{ loc_addr | strip }}</a>
+                  </li>
+                  <li class="pt-footer__hours">
+                    <span class="pt-footer__link pt-footer__link--static">Open 7 days — Mon–Sat: {{ loc_hrs_ms | strip }}</span><br>
+                    <span class="pt-footer__link pt-footer__link--static">Sun: {{ loc_hrs_su | strip }}</span>
+                  </li>
+                </ul>
+              </div>
+            {%- endfor -%}
+            {%- if block.settings.email != blank -%}
+              <ul class="pt-footer__links pt-footer__contact-email">
                 <li>
                   <a href="mailto:{{ block.settings.email }}" class="pt-footer__link">{{ block.settings.email }}</a>
                 </li>
-              {%- endif -%}
-              {%- if block.settings.address != blank -%}
-                <li>
-                  <span class="pt-footer__link pt-footer__link--static">{{ block.settings.address }}</span>
-                </li>
-              {%- endif -%}
-            </ul>
+              </ul>
+            {%- endif -%}
           </div>
         {%- endif -%}
       {%- endfor -%}
@@ -116,7 +135,7 @@
           <li><a href="/pages/light-truck-tires" class="pt-footer__link">Light Truck Tires</a></li>
           <li><a href="/pages/trailer-tires" class="pt-footer__link">Trailer Tires</a></li>
           <li><a href="/pages/wheels-and-rims-calgary" class="pt-footer__link">Wheels &amp; Rims</a></li>
-          <li><a href="/collections/tires" class="pt-footer__link">Shop all tires</a></li>
+          <li><a href="{{ collections.tires.url | default: '/collections/tires' }}" class="pt-footer__link">Shop all tires</a></li>
         </ul>
       </div>
 
@@ -369,6 +388,18 @@
     font-variant-numeric: tabular-nums;
   }
   .pt-footer__link--static { color: rgba(255, 255, 255, 0.6); }
+
+  /* ── Multi-location contact column ── */
+  .pt-footer__location { margin-bottom: 1.4rem; }
+  .pt-footer__location:last-of-type { margin-bottom: 0.8rem; }
+  .pt-footer__location-name {
+    margin: 0 0 0.3rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.82);
+    letter-spacing: 0.01em;
+  }
+  .pt-footer__contact-email { margin-top: 0.4rem; }
 
   /* ── Newsletter ── */
   .pt-footer__col--newsletter {

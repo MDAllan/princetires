@@ -16,11 +16,25 @@
 {%- assign gtm_id = settings.gtm_container_id | strip -%}
 {%- if gtm_id != blank -%}
 
-<!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+<!-- Google Tag Manager (delayed) -->
+<script>(function(w,d,s,l,i){
+// gtm.js + its tags are ~1.7MB of JS that competes with rendering on mobile.
+// dataLayer exists immediately (events queue), but the container itself loads
+// on first user interaction, or after a 3.5s idle fallback — whichever first.
+// Bounce-before-3.5s pageviews are still captured by the Shopify Google channel
+// pixel, which loads independently of GTM.
+w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});
+var loaded=false;
+function loadGTM(){
+  if(loaded)return;loaded=true;
+  var f=d.getElementsByTagName(s)[0],j=d.createElement(s),
+  dl=l!='dataLayer'?'&l='+l:'';j.async=true;
+  j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+  f.parentNode.insertBefore(j,f);
+  ['pointerdown','keydown','touchstart','scroll'].forEach(function(e){d.removeEventListener(e,loadGTM,{passive:true})});
+}
+['pointerdown','keydown','touchstart','scroll'].forEach(function(e){d.addEventListener(e,loadGTM,{passive:true,once:true})});
+setTimeout(loadGTM,3500);
 })(window,document,'script','dataLayer','{{ gtm_id | escape }}');</script>
 <!-- End Google Tag Manager -->
 

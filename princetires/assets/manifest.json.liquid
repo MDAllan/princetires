@@ -1,0 +1,38 @@
+{%- comment -%}
+  Web app manifest for the Prince Tires PWA.
+
+  Icon source priority:
+    1. settings.favicon (Theme settings -> Favicon) — preferred; upload a 512x512 PNG
+       and this manifest will switch to it automatically.
+    2. Fallback: the brand logo uploaded to Shopify Files (referenced in pt-header.liquid).
+
+  Served as application/json by Shopify CDN — browsers accept JSON for the manifest type.
+{%- endcomment -%}
+{%- if settings.favicon != blank -%}
+  {%- assign icon_192 = settings.favicon | image_url: width: 192, height: 192 -%}
+  {%- assign icon_512 = settings.favicon | image_url: width: 512, height: 512 -%}
+{%- else -%}
+  {%- assign icon_192 = 'https://cdn.shopify.com/s/files/1/0698/9542/2227/files/Untitled_design_6_0abd9b57-e83e-48ec-aca6-2a9e4a39b7fe.png?width=192&height=192&v=1780092164' -%}
+  {%- assign icon_512 = 'https://cdn.shopify.com/s/files/1/0698/9542/2227/files/Untitled_design_6_0abd9b57-e83e-48ec-aca6-2a9e4a39b7fe.png?v=1780092164' -%}
+{%- endif -%}
+{
+  "name": "Prince Tires",
+  "short_name": "Prince Tires",
+  "description": "Calgary's family-owned tire shop. Shop tires, wheels, and book installation — fast.",
+  "start_url": "/?utm_source=pwa&utm_medium=homescreen",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "lang": "en-CA",
+  "icons": [
+    { "src": "{{ icon_192 }}", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "{{ icon_512 }}", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Book installation", "url": "/pages/book-now", "description": "Book a tire install or service appointment" },
+    { "name": "Shop tires", "url": "/collections/tires", "description": "Browse our tire inventory" },
+    { "name": "Contact", "url": "/pages/contact", "description": "Phone, address, and hours" }
+  ]
+}

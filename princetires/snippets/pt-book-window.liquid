@@ -1,0 +1,32 @@
+{% doc %}
+  Renders a booking window like "9:00 AM – 4:30 PM" from a 24h open/close plus a
+  minutes-before-close cutoff (last bookable slot = close − cutoff). Used by the
+  booking-calendar hours note so it follows the store_hours metaobject. Inputs
+  are stripped defensively (pt-nap field output is newline-wrapped).
+
+  @param {string} open - open time "HH:MM" (24h)
+  @param {string} close - close time "HH:MM" (24h)
+  @param {string} [cutoff] - minutes before close for the last slot (default 30)
+
+  @example
+  {% render 'pt-book-window', open: '09:00', close: '17:00', cutoff: '30' %}
+{% enddoc %}
+{%- liquid
+  assign o = open | strip
+  assign c = close | strip
+  assign cut = cutoff | strip | default: 30 | times: 1
+  assign cp = c | split: ':'
+  if cp.size >= 2
+    assign cmin = cp[0] | times: 60 | plus: cp[1] | minus: cut
+    assign lh = cmin | divided_by: 60
+    assign lm = cmin | modulo: 60
+    assign lm2 = lm | prepend: '0' | slice: -2, 2
+    assign last24 = lh | append: ':' | append: lm2
+    capture out
+      render 'pt-time12', t: o
+      echo ' – '
+      render 'pt-time12', t: last24
+    endcapture
+    echo out | strip
+  endif
+-%}

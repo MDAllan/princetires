@@ -1,0 +1,30 @@
+{% doc %}
+  Formats a 24-hour "HH:MM" time string as a 12-hour "H:MM AM/PM" label.
+  Blank or malformed input renders nothing. Derives human-readable hours from
+  the store_hours metaobject's 24h fields (single source of truth).
+
+  @param {string} t - a 24h time like "09:00" or "17:30"
+
+  @example
+  {% render 'pt-time12', t: '17:30' %}  → 5:30 PM
+{% enddoc %}
+{%- liquid
+  assign time_str = t | strip
+  assign parts = time_str | split: ':'
+  if parts.size >= 2
+    assign hour = parts[0] | times: 1
+    assign minute = parts[1]
+    assign ampm = 'AM'
+    if hour >= 12
+      assign ampm = 'PM'
+    endif
+    assign hour_12 = hour
+    if hour > 12
+      assign hour_12 = hour | minus: 12
+    endif
+    if hour_12 == 0
+      assign hour_12 = 12
+    endif
+    echo hour_12 | append: ':' | append: minute | append: ' ' | append: ampm
+  endif
+-%}

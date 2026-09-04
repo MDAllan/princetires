@@ -9,6 +9,7 @@
   to pass the product object.
 
   @param {product} product - The Shopify product to render.
+  @param {boolean} [is_clearance] - When true (clearance collection), shows a CLEARANCE badge + % off instead of the generic Sale badge.
 
   @example
   {% render 'pt-collection-card', product: product %}
@@ -42,12 +43,38 @@
                   assign card_title = product.title | remove: tire_size_display | strip | remove_first: ' '
                 endif
                 assign set_price = product.price | times: 4
+                comment
+                  Low-stock cap for the displayed set price (mirrors the PDP). The
+                  full 4x set_price above still feeds the compare drawer so tires
+                  compare apples-to-apples; the card UI shows what's buyable now.
+                endcomment
+                assign card_max_qty = 0
+                if product.selected_or_first_available_variant.inventory_management == 'shopify' and product.selected_or_first_available_variant.inventory_policy == 'deny' and product.selected_or_first_available_variant.inventory_quantity > 0
+                  assign card_max_qty = product.selected_or_first_available_variant.inventory_quantity
+                endif
+                assign card_set_count = 4
+                if card_max_qty > 0 and card_max_qty < 4
+                  assign card_set_count = card_max_qty
+                endif
+                assign card_set_price = product.price | times: card_set_count
                 assign card_rating = product.metafields.reviews.rating.value
                 assign card_rating_count = product.metafields.reviews.rating_count | default: 0
                 assign mileage_warranty = product.metafields.custom.mileage_warranty | default: ''
                 assign card_speed = product.metafields.custom.speed_rating | default: ''
                 assign card_load = product.metafields.custom.load_index | default: ''
                 assign rebate_text = product.metafields.custom.rebate_text | default: ''
+                # Clearance treatment (clearance collection only — flag passed by the grid section).
+                assign is_clearance = is_clearance | default: false
+                assign is_clearance_sale = false
+                assign pct_off = 0
+                if product.compare_at_price > product.price
+                  if is_clearance
+                    assign is_clearance_sale = true
+                  endif
+                  if product.compare_at_price > 0
+                    assign pct_off = product.compare_at_price | minus: product.price | times: 100.0 | divided_by: product.compare_at_price | round
+                  endif
+                endif
                 assign is_bestseller = false
                 for tag in product.tags
                   assign tag_down = tag | downcase
@@ -91,7 +118,9 @@
                   {%- unless product.available -%}
                     <span class="ptg__card-oos">Out of stock</span>
                   {%- endunless -%}
-                  {%- if product.compare_at_price > product.price -%}
+                  {%- if is_clearance_sale -%}
+                    <span class="ptg__card-clearance">Clearance</span>
+                  {%- elsif product.compare_at_price > product.price -%}
                     <span class="ptg__card-sale">Sale</span>
                   {%- endif -%}
                   {%- if section.settings.show_bestseller and is_bestseller -%}
@@ -190,9 +219,16 @@
                     {%- endif -%}
                     <span class="ptg__price-per">/tire</span>
                     {%- if section.settings.show_set_price -%}
-                      <span class="ptg__price-set"><span data-pt-price data-pt-variant-id="{{ card_variant_id }}" data-pt-multiplier="4">${{ set_price | money_without_currency }}</span> for 4</span>
+                      <span class="ptg__price-set"><span data-pt-price data-pt-variant-id="{{ card_variant_id }}" data-pt-multiplier="{{ card_set_count }}">${{ card_set_price | money_without_currency }}</span> for {{ card_set_count }}</span>
                     {%- endif -%}
                   </div>
+                  {%- if is_clearance_sale and pct_off > 0 -%}
+                    <span class="ptg__price-off">{{ pct_off }}% off</span>
+                  {%- endif -%}
+                  {%- comment -%} Low-stock urgency on the grid (mirrors the PDP badge). Fires only for genuinely low stock (1-4 on hand) so it stays meaningful; card_max_qty is already gated on tracked + inventory_policy: deny. {%- endcomment -%}
+                  {%- if product.available and card_max_qty > 0 and card_max_qty <= 4 -%}
+                    <span class="ptg__card-lowstock"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>{{ 'products.product.low_stock' | t: count: card_max_qty }}</span>
+                  {%- endif -%}
                   {%- if customer.b2b? or customer.tags contains 'wholesale' -%}
                     {%- comment -%} Visible only when the header toggle is ON (body.pt-trade-visible). JS fills in amount + tier + pct from the API. Gate matches the header — either Shopify's native B2B flag OR the legacy tag. {%- endcomment -%}
                     <div class="ptg__card-trade" data-pt-trade-info data-pt-variant-id="{{ card_variant_id }}">
@@ -241,6 +277,7 @@
                       data-supplier-tier="{{ grid_supplier_tier | strip }}"
                       data-product-handle="{{ product.handle }}"
                       data-variant-id="{{ product.selected_or_first_available_variant.id }}"
+                      data-max-qty="{{ card_max_qty }}"
                       onclick="event.preventDefault();event.stopPropagation();if(typeof openBookingModal==='function')openBookingModal(this)">Book Install</button>
                     <button type="button" class="ptg__card-cart"
                       data-variant="{{ product.selected_or_first_available_variant.id }}"

@@ -73,11 +73,12 @@
                       {%- endif -%}
                     </div>
                     <div class="ptc__item-prices">
-                      <span class="ptc__line-total" id="ptc-line-{{ item.variant_id }}">{{ item.final_line_price | money }}</span>
+                      {%- comment -%} Phase 5A · trade-price toggle. Multiplier=quantity so JS rewrites with retail × qty (matches Shopify's render); applyCartTotal then sums per-line wholesale. {%- endcomment -%}
+                      <span class="ptc__line-total" id="ptc-line-{{ item.variant_id }}" data-pt-price data-pt-variant-id="{{ item.variant_id }}" data-pt-multiplier="{{ item.quantity }}">{{ item.final_line_price | money }}</span>
                       {%- if item.original_line_price != item.final_line_price -%}
                         <span class="ptc__line-original">{{ item.original_line_price | money }}</span>
                       {%- endif -%}
-                      <span class="ptc__unit-price">{{ item.price | money }} / ea.</span>
+                      <span class="ptc__unit-price"><span data-pt-price data-pt-variant-id="{{ item.variant_id }}" data-pt-multiplier="1">{{ item.price | money }}</span> / ea.</span>
                     </div>
                   </div>
 
@@ -148,6 +149,13 @@
               <span>Estimated total</span>
               <span class="ptc__summary-total-val" id="ptc-total">{{ cart.total_price | money }}</span>
             </div>
+            {%- if customer.b2b? or customer.tags contains 'wholesale' -%}
+              {%- comment -%} Phase 5A · trade-price toggle. JS sums per-line wholesale (falling back to retail for ineligible brands) and writes here. Hidden until body.pt-trade-visible. {%- endcomment -%}
+              <div class="ptc__summary-trade-total" data-pt-cart-wholesale-total>
+                <span>Your cost total</span>
+                <strong data-pt-cart-wholesale-amount>—</strong>
+              </div>
+            {%- endif -%}
 
             {%- if has_tires and first_tire != nil -%}
               <div class="ptc__install-nudge">
@@ -165,7 +173,8 @@
                   data-tire-size="{{ first_tire.product.metafields.custom.tire_size | default: '' | escape }}"
                   data-tire-price="{{ first_tire.price }}"
                   data-install-price="{{ first_tire.product.metafields.custom.install_price.value | default: 30 }}"
-                  data-vehicle-type="">
+                  data-vehicle-type=""
+                  data-max-qty="{{ first_tire.quantity }}">
                   Book install
                 </button>
               </div>
@@ -216,7 +225,7 @@
 /* ── Items header ── */
 .ptc__items-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.25rem; border-bottom: 2px solid #111; padding-bottom: .75rem; }
 .ptc__title { font-size: 1.6rem; font-weight: 700; }
-.ptc__item-count { font-size: .95rem; color: #6b7280; font-weight: 500; }
+.ptc__item-count { font-size: 0.95rem; color: #6b7280; font-weight: 500; }
 
 /* ── Item card ── */
 .ptc__item { position: relative; display: flex; gap: 1.1rem; padding: 1.1rem 0; border-bottom: 1px solid #f0f0f0; transition: opacity .2s; }
@@ -235,15 +244,15 @@
 .ptc__item-meta { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
 .ptc__item-name { font-size: 1rem; font-weight: 600; color: #111; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ptc__item-name:hover { color: #dc2626; }
-.ptc__item-variant { font-size: .9rem; color: #6b7280; }
-.ptc__item-prop { font-size: .85rem; color: #9ca3af; }
-.ptc__size-badge { display: inline-block; background: #111; color: #fff; font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 5px; letter-spacing: .03em; width: fit-content; }
+.ptc__item-variant { font-size: 0.9rem; color: #6b7280; }
+.ptc__item-prop { font-size: 0.85rem; color: #9ca3af; }
+.ptc__size-badge { display: inline-block; background: #111; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 5px; letter-spacing: .03em; width: fit-content; }
 
 /* Prices */
 .ptc__item-prices { text-align: right; flex-shrink: 0; }
 .ptc__line-total { display: block; font-size: 1.05rem; font-weight: 700; color: #111; }
-.ptc__line-original { display: block; font-size: .85rem; color: #9ca3af; text-decoration: line-through; }
-.ptc__unit-price { display: block; font-size: .85rem; color: #9ca3af; }
+.ptc__line-original { display: block; font-size: 0.85rem; color: #9ca3af; text-decoration: line-through; }
+.ptc__unit-price { display: block; font-size: 0.85rem; color: #9ca3af; }
 
 /* Controls */
 .ptc__item-controls { display: flex; align-items: center; gap: .75rem; }
@@ -253,10 +262,10 @@
 .ptc__qty-btn:disabled { opacity: .35; cursor: not-allowed; }
 .ptc__qty-input { width: 2.8rem; height: 2.2rem; text-align: center; border: none; background: transparent; font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 600; color: #111; -moz-appearance: textfield; }
 .ptc__qty-input::-webkit-inner-spin-button, .ptc__qty-input::-webkit-outer-spin-button { -webkit-appearance: none; }
-.ptc__remove { display: flex; align-items: center; gap: .3rem; background: none; border: none; color: #9ca3af; font-family: 'Outfit', sans-serif; font-size: .9rem; cursor: pointer; padding: .3rem .5rem; border-radius: 6px; transition: color .15s, background .15s; }
+.ptc__remove { display: flex; align-items: center; gap: .3rem; background: none; border: none; color: #9ca3af; font-family: 'Outfit', sans-serif; font-size: 0.9rem; cursor: pointer; padding: .3rem .5rem; border-radius: 6px; transition: color .15s, background .15s; }
 .ptc__remove:hover:not(:disabled) { color: #dc2626; background: #fef2f2; }
 .ptc__remove:disabled { opacity: .4; cursor: not-allowed; }
-.ptc__item-err { font-size: .9rem; color: #dc2626; margin: 0; }
+.ptc__item-err { font-size: 0.9rem; color: #dc2626; margin: 0; }
 .ptc__item-err[hidden] { display: none; }
 
 /* Loading overlay */
@@ -266,7 +275,7 @@
 @keyframes ptc-spin { to { transform: rotate(360deg); } }
 
 /* Cart error */
-.ptc__cart-err { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: .65rem 1rem; font-size: .95rem; color: #dc2626; margin-top: .75rem; }
+.ptc__cart-err { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: .65rem 1rem; font-size: 0.95rem; color: #dc2626; margin-top: .75rem; }
 .ptc__cart-err[hidden] { display: none; }
 
 /* ── Sidebar / Summary ── */
@@ -274,18 +283,33 @@
 .ptc__summary { background: #f7f7f8; border-radius: 14px; padding: 1.5rem; }
 .ptc__summary-title { font-size: 1.1rem; font-weight: 700; color: #111; margin-bottom: 1rem; }
 .ptc__summary-rows { border-bottom: 1px solid #e5e7eb; padding-bottom: .9rem; margin-bottom: .9rem; display: flex; flex-direction: column; gap: .45rem; }
-.ptc__summary-row { display: flex; justify-content: space-between; font-size: .95rem; color: #374151; }
+.ptc__summary-row { display: flex; justify-content: space-between; font-size: 0.95rem; color: #374151; }
 .ptc__summary-row--discount { color: #16a34a; font-weight: 500; }
-.ptc__summary-row--muted { color: #9ca3af; font-size: .85rem; }
+.ptc__summary-row--muted { color: #9ca3af; font-size: 0.85rem; }
 .ptc__summary-total { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 700; color: #111; margin-bottom: 1.25rem; }
 .ptc__summary-total-val { color: #16a34a; }
+/* Phase 5A · trade-price toggle. Sits below the Estimated total; only visible when the header "Show cost" toggle is on. */
+.ptc__summary-trade-total {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 1.25rem;
+  padding: 0.5rem 0.75rem;
+  background: #fef3c7;
+  border-left: 3px solid #DC2626;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #374151;
+}
+body.pt-trade-visible .ptc__summary-trade-total { display: flex; }
+.ptc__summary-trade-total strong { color: #DC2626; font-weight: 700; }
 
 /* Install nudge */
 .ptc__install-nudge { background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 10px; padding: .85rem .9rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: .65rem; }
 .ptc__install-nudge-left { display: flex; gap: .65rem; align-items: flex-start; }
-.ptc__install-nudge-left strong { font-size: .95rem; color: #111; display: block; }
-.ptc__install-nudge-left p { font-size: .85rem; color: #6b7280; margin: .1rem 0 0; }
-.ptc__install-btn { width: 100%; padding: .6rem; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: .95rem; font-weight: 600; cursor: pointer; transition: background .15s; }
+.ptc__install-nudge-left strong { font-size: 0.95rem; color: #111; display: block; }
+.ptc__install-nudge-left p { font-size: 0.85rem; color: #6b7280; margin: .1rem 0 0; }
+.ptc__install-btn { width: 100%; padding: .6rem; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background .15s; }
 .ptc__install-btn:hover { background: #b91c1c; }
 
 /* Checkout */
@@ -298,7 +322,7 @@
 .ptc__dynamic-btns { margin-bottom: .75rem; }
 .ptc__dynamic-btns .shopify-payment-button__button { border-radius: 10px !important; }
 
-.ptc__continue { display: flex; align-items: center; justify-content: center; gap: .4rem; color: #6b7280; font-size: .9rem; text-decoration: none; transition: color .15s; }
+.ptc__continue { display: flex; align-items: center; justify-content: center; gap: .4rem; color: #6b7280; font-size: 0.9rem; text-decoration: none; transition: color .15s; }
 .ptc__continue:hover { color: #111; }
 
 /* ── Mobile tweaks ── */

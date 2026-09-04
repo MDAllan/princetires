@@ -607,25 +607,41 @@
                   {%- assign lazy = false -%}
                   {%- if forloop.index > 4 -%}{%- assign lazy = true -%}{%- endif -%}
 
-                  {%- comment -%} Detect season from tags {%- endcomment -%}
+                  {%- comment -%}
+                    Season detection — prefer the canonical custom.seasonality
+                    metafield (set by import + admin). Tag loop is fallback;
+                    imported products often carry stray "Summer" supplier-feed
+                    tags that overwrote the correct All-Weather/All-Season in
+                    the old in-loop reassignment.
+                  {%- endcomment -%}
                   {%- assign season_tag = '' -%}
                   {%- assign season_class = '' -%}
-                  {%- for tag in item.tags -%}
-                    {%- assign tag_lower = tag | downcase -%}
-                    {%- if tag_lower == 'winter' or tag_lower contains 'winter' -%}
-                      {%- assign season_tag = 'Winter' -%}
-                      {%- assign season_class = 'pt-result__tag--season-winter' -%}
-                    {%- elsif tag_lower == 'summer' or tag_lower contains 'summer' -%}
-                      {%- assign season_tag = 'Summer' -%}
-                      {%- assign season_class = 'pt-result__tag--season-summer' -%}
-                    {%- elsif tag_lower contains 'all-season' or tag_lower contains 'all season' or tag_lower contains 'allseason' -%}
-                      {%- assign season_tag = 'All-Season' -%}
-                      {%- assign season_class = 'pt-result__tag--season-allseason' -%}
-                    {%- elsif tag_lower contains '3pms' or tag_lower contains 'three peak' -%}
-                      {%- assign season_tag = '3PMSF' -%}
-                      {%- assign season_class = 'pt-result__tag--season-winter' -%}
-                    {%- endif -%}
-                  {%- endfor -%}
+                  {%- assign m_season = item.metafields.custom.seasonality | default: '' -%}
+                  {%- if m_season != blank -%}
+                    {%- assign season_tag = m_season -%}
+                  {%- else -%}
+                    {%- for tag in item.tags -%}
+                      {%- assign tag_lower = tag | downcase -%}
+                      {%- if tag_lower contains 'winter' -%}
+                        {%- assign season_tag = 'Winter' -%}
+                      {%- elsif tag_lower contains 'all-weather' or tag_lower contains 'all weather' -%}
+                        {%- assign season_tag = 'All-Weather' -%}
+                      {%- elsif tag_lower contains 'all-season' or tag_lower contains 'all season' or tag_lower contains 'allseason' -%}
+                        {%- assign season_tag = 'All-Season' -%}
+                      {%- elsif tag_lower contains '3pms' or tag_lower contains 'three peak' -%}
+                        {%- assign season_tag = '3PMSF' -%}
+                      {%- elsif tag_lower contains 'summer' -%}
+                        {%- assign season_tag = 'Summer' -%}
+                      {%- endif -%}
+                    {%- endfor -%}
+                  {%- endif -%}
+                  {%- case season_tag -%}
+                    {%- when 'Winter' -%}{%- assign season_class = 'pt-result__tag--season-winter' -%}
+                    {%- when 'All-Weather' -%}{%- assign season_class = 'pt-result__tag--season-allseason' -%}
+                    {%- when 'All-Season' -%}{%- assign season_class = 'pt-result__tag--season-allseason' -%}
+                    {%- when 'Summer' -%}{%- assign season_class = 'pt-result__tag--season-summer' -%}
+                    {%- when '3PMSF' -%}{%- assign season_class = 'pt-result__tag--season-winter' -%}
+                  {%- endcase -%}
 
                   <div class="pt-result">
 

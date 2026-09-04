@@ -1,0 +1,193 @@
+{% doc %}
+  Single source of truth for Prince Tires location NAP (name / address / phone).
+
+  Prince Tires has TWO Calgary shops. Rather than scatter the address/phone as
+  string literals across ~57 files, every consumer (footer, contact, schema,
+  booking confirmations, the JSON island in pt-locations) reads from HERE.
+
+  IMPORTANT: "Edmonton Trail" is a Calgary NE arterial road, NOT the city of
+  Edmonton. addressLocality is ALWAYS "Calgary" for both shops.
+
+  @param {string} [location] - Which shop: 'sw' (default, primary 42 Ave SW) or 'ne' (Edmonton Trail NE).
+  @param {string} [field] - Output one raw field instead of the default HTML block.
+      One of: slug | name | public_name | street | city | region | postal | country |
+      phone | phone_href | address | address_full | area_served | is_primary | lat | lng |
+      maps_url | gbp_url | json |
+      hours_mon_sat_display | hours_sun_display |
+      hours_mon_sat_open | hours_mon_sat_close | hours_sun_open | hours_sun_close
+      Omit `field` to render the default NAP HTML block.
+
+  @example
+  {% render 'pt-nap' %}                                   {# SW NAP block #}
+  {% render 'pt-nap', location: 'ne' %}                   {# NE NAP block #}
+  {% render 'pt-nap', location: 'ne', field: 'phone' %}   {# "(403) 953-4283" #}
+  {% render 'pt-nap', location: 'ne', field: 'json' %}    {# JSON object for the data island #}
+{% enddoc %}
+
+{%- liquid
+  assign loc = location | default: 'sw' | downcase
+
+  # ── Per-location data table (the ONLY place these values live) ──
+  case loc
+    when 'ne'
+      assign slug = 'ne'
+      assign name = 'Edmonton Trail NE'
+      assign public_name = 'Prince Tires — Edmonton Trail NE'
+      assign street = 'Unit 101, 3928 Edmonton Trail NE'
+      assign city = 'Calgary'
+      assign region = 'AB'
+      assign postal = 'T2E 3P6'
+      assign country = 'CA'
+      assign phone = '(403) 953-4283'
+      assign phone_href = '+14039534283'
+      # TODO: confirm NE geo + GBP url before schema go-live (NAP must match the live listing).
+      assign lat = ''
+      assign lng = ''
+      assign gbp_url = ''
+      assign area_served = 'Northeast Calgary'
+      assign hours_mon_sat_display = '9:30 AM – 5:30 PM'
+      assign hours_sun_display = '10:00 AM – 3:30 PM'
+      assign hours_mon_sat_open = '09:30'
+      assign hours_mon_sat_close = '17:30'
+      assign hours_sun_open = '10:00'
+      assign hours_sun_close = '15:30'
+      assign is_primary = false
+      # Online booking gate: flip to true only once the NE backend is live
+      # (Phase 3 deployed + NE Google Calendar connected + NE bays configured).
+      assign bookable = false
+    else
+      assign slug = 'sw'
+      assign name = '42 Ave SW'
+      assign public_name = 'Prince Tires — 42 Ave SW'
+      assign street = '111 42 Ave SW'
+      assign city = 'Calgary'
+      assign region = 'AB'
+      assign postal = 'T2G 0A4'
+      assign country = 'CA'
+      assign phone = '(403) 452-4283'
+      assign phone_href = '+14034524283'
+      assign lat = shop.latitude
+      assign lng = shop.longitude
+      assign gbp_url = ''
+      assign area_served = 'Calgary'
+      assign hours_mon_sat_display = '9:00 AM – 5:00 PM'
+      assign hours_sun_display = '9:00 AM – 2:00 PM'
+      assign hours_mon_sat_open = '09:00'
+      assign hours_mon_sat_close = '17:00'
+      assign hours_sun_open = '09:00'
+      assign hours_sun_close = '14:00'
+      assign is_primary = true
+      assign bookable = true
+  endcase
+
+  # Booking cutoff: stop offering appointment slots this many minutes before
+  # close (so a 5:00 close ⇒ last booking 4:30). Overridable per location below.
+  assign booking_cutoff_minutes = 30
+
+  # ── Single source of truth: the 'store_hours' metaobject (Shopify admin →
+  # Content → Metaobjects → Store hours). Overrides the per-location fallbacks
+  # above so hours live in ONE editable place. A missing entry or field keeps
+  # the fallback, so the storefront never breaks if the metaobject is absent. ──
+  assign sh = metaobjects['store_hours'][slug]
+  if sh != blank
+    if sh.mon_sat_open.value != blank
+      assign hours_mon_sat_open = sh.mon_sat_open.value
+    endif
+    if sh.mon_sat_close.value != blank
+      assign hours_mon_sat_close = sh.mon_sat_close.value
+    endif
+    if sh.sun_open.value != blank
+      assign hours_sun_open = sh.sun_open.value
+    endif
+    if sh.sun_close.value != blank
+      assign hours_sun_close = sh.sun_close.value
+    endif
+    if sh.booking_cutoff_minutes.value != blank
+      assign booking_cutoff_minutes = sh.booking_cutoff_minutes.value
+    endif
+    capture d_ms
+      render 'pt-time12', t: hours_mon_sat_open
+      echo ' – '
+      render 'pt-time12', t: hours_mon_sat_close
+    endcapture
+    assign hours_mon_sat_display = d_ms | strip
+    capture d_su
+      render 'pt-time12', t: hours_sun_open
+      echo ' – '
+      render 'pt-time12', t: hours_sun_close
+    endcapture
+    assign hours_sun_display = d_su | strip
+  endif
+
+  # Derived display strings (match the old hardcoded forms exactly).
+  assign address = street | append: ', ' | append: city
+  assign address_full = street | append: ', ' | append: city | append: ', ' | append: region | append: ' ' | append: postal
+  assign maps_query = address_full | url_encode
+  assign maps_url = 'https://www.google.com/maps/search/?api=1&query=' | append: maps_query
+-%}
+
+{%- case field -%}
+  {%- when 'slug' -%}{{ slug }}
+  {%- when 'name' -%}{{ name }}
+  {%- when 'public_name' -%}{{ public_name }}
+  {%- when 'street' -%}{{ street }}
+  {%- when 'city' -%}{{ city }}
+  {%- when 'region' -%}{{ region }}
+  {%- when 'postal' -%}{{ postal }}
+  {%- when 'country' -%}{{ country }}
+  {%- when 'phone' -%}{{ phone }}
+  {%- when 'phone_href' -%}{{ phone_href }}
+  {%- when 'address' -%}{{ address }}
+  {%- when 'address_full' -%}{{ address_full }}
+  {%- when 'area_served' -%}{{ area_served }}
+  {%- when 'maps_url' -%}{{ maps_url }}
+  {%- when 'gbp_url' -%}{{ gbp_url }}
+  {%- when 'hours_mon_sat_display' -%}{{ hours_mon_sat_display }}
+  {%- when 'hours_sun_display' -%}{{ hours_sun_display }}
+  {%- when 'hours_mon_sat_open' -%}{{ hours_mon_sat_open }}
+  {%- when 'hours_mon_sat_close' -%}{{ hours_mon_sat_close }}
+  {%- when 'hours_sun_open' -%}{{ hours_sun_open }}
+  {%- when 'hours_sun_close' -%}{{ hours_sun_close }}
+  {%- when 'booking_cutoff_minutes' -%}{{ booking_cutoff_minutes }}
+  {%- when 'lat' -%}{{ lat }}
+  {%- when 'lng' -%}{{ lng }}
+  {%- when 'is_primary' -%}{% if is_primary %}true{% else %}false{% endif %}
+  {%- when 'bookable' -%}{% if bookable %}true{% else %}false{% endif %}
+  {%- when 'json' -%}
+    {
+      "slug": {{ slug | json }},
+      "name": {{ name | json }},
+      "public_name": {{ public_name | json }},
+      "street": {{ street | json }},
+      "city": {{ city | json }},
+      "region": {{ region | json }},
+      "postal": {{ postal | json }},
+      "country": {{ country | json }},
+      "address": {{ address | json }},
+      "address_full": {{ address_full | json }},
+      "phone": {{ phone | json }},
+      "phone_href": {{ phone_href | json }},
+      "maps_url": {{ maps_url | json }},
+      "area_served": {{ area_served | json }},
+      "is_primary": {% if is_primary %}true{% else %}false{% endif %},
+      "bookable": {% if bookable %}true{% else %}false{% endif %},
+      "lat": {% if lat != blank %}{{ lat | json }}{% else %}null{% endif %},
+      "lng": {% if lng != blank %}{{ lng | json }}{% else %}null{% endif %},
+      "gbp_url": {% if gbp_url != blank %}{{ gbp_url | json }}{% else %}null{% endif %}
+    }
+  {%- else -%}
+    {%- comment -%} Default: a small, accessible NAP block. {%- endcomment -%}
+    <div class="pt-nap" data-location="{{ slug }}">
+      <p class="pt-nap__name">{{ public_name }}</p>
+      <address class="pt-nap__address">
+        {{ street }}<br>
+        {{ city }}, {{ region }} {{ postal }}
+      </address>
+      <p class="pt-nap__phone"><a href="tel:{{ phone_href }}">{{ phone }}</a></p>
+    </div>
+  {%- endcase -%}
+
+{%- comment -%}
+  No {% stylesheet %} here on purpose — consumers (footer, contact) own the
+  layout/styling so the same NAP block adapts to each context.
+{%- endcomment -%}

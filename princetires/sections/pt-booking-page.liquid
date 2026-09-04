@@ -60,6 +60,17 @@
 
       {%- comment -%} Step 1 — What do you need? {%- endcomment -%}
       <div class="bk-page" id="bp-page-1">
+
+        {%- comment -%}
+          Location picker — built by JS from #pt-locations-data (filtered to
+          bookable===true). Stays hidden when fewer than 2 shops are bookable,
+          so the page behaves exactly as before (SW only).
+        {%- endcomment -%}
+        <div class="bp-loc" id="bp-loc" hidden>
+          <p class="bk-label">Which location?</p>
+          <div class="bp-loc-grid" id="bp-loc-grid"></div>
+        </div>
+
         <p class="bk-label">What can we help with?</p>
         <div class="bp-pathways">
           <button class="bp-pathway" data-bp-path="buy" type="button">
@@ -168,7 +179,8 @@
 
         <p class="bk-label">Time</p>
         <div class="bk-time-grid" id="bp-time-grid"></div>
-        <p class="bk-hours-note">Mon–Sat 9:30–5:30 &middot; Sun 10:00–3:30</p>
+        {%- capture bw_mso -%}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{%- endcapture -%}{%- capture bw_msc -%}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{%- endcapture -%}{%- capture bw_suo -%}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{%- endcapture -%}{%- capture bw_suc -%}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{%- endcapture -%}{%- capture bw_cut -%}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{%- endcapture -%}
+        <p class="bk-hours-note">Mon–Sat {% render 'pt-book-window', open: bw_mso, close: bw_msc, cutoff: bw_cut %} &middot; Sun {% render 'pt-book-window', open: bw_suo, close: bw_suc, cutoff: bw_cut %}</p>
 
         <div class="bk-nav-row">
           <button class="bk-back-btn" data-bp-goto="2" type="button">&larr; Back</button>
@@ -386,6 +398,29 @@
 }
 .pt-bp .bp-auto-pick svg { flex-shrink: 0; color: #16a34a; }
 .pt-bp .bp-auto-pick strong { color: #15803d; }
+
+/* ── Location picker (only shown when 2+ shops are bookable) ── */
+.pt-bp .bp-loc[hidden] { display: none !important; }
+.pt-bp .bp-loc { margin-bottom: 1.4rem; }
+.pt-bp .bp-loc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+@media (max-width: 480px) { .pt-bp .bp-loc-grid { grid-template-columns: 1fr; } }
+.pt-bp .bp-loc-card {
+  background: #fafafa;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.18s, background 0.18s;
+}
+.pt-bp .bp-loc-card:hover, .pt-bp .bp-loc-card--active { border-color: #dc2626; background: #fef2f2; }
+.pt-bp .bp-loc-card__name { font-size: 1rem; font-weight: 600; color: #0a0a0a; }
+.pt-bp .bp-loc-card__addr { font-size: 0.88rem; color: #6b7280; }
+.pt-bp .bp-loc-card--active .bp-loc-card__addr { color: #b91c1c; }
 
 .pt-bp .bk-stepper {
   display: flex;
@@ -833,6 +868,21 @@
   var AVAILABILITY_API = 'https://app.princetires.ca/api/availability';
   var SERVICES_API = 'https://app.princetires.ca/api/services';
 
+  // ── Locations (Phase 4 picker) ──────────────────────────────────────────
+  // Read the global #pt-locations-data island (rendered site-wide in the
+  // layout from pt-nap), keep only the shops that accept online bookings.
+  // <2 bookable -> no picker, identical SW-only behaviour. >=2 -> a chooser.
+  var LOCATIONS = PTBookingCore.loadLocations().bookable;
+  function locById(id) {
+    return PTBookingCore.bySlug(LOCATIONS, id) || LOCATIONS[0] || null;
+  }
+  function defaultLocationId() {
+    if (!LOCATIONS.length) return '';
+    // is_primary -> first (the ?location deep-link overrides separately below).
+    var loc = PTBookingCore.pickLocation(LOCATIONS, null);
+    return (loc && loc.slug) || '';
+  }
+
   // ── Logged-in customer prefill ──────────────────────────────────────────
   // Reads the JSON payload Liquid injects above when "customer" is set,
   // then fills name/phone/email and the vehicle text input. Vehicle prefill uses
@@ -959,7 +1009,8 @@
     qty: 4,
     addons: { tpms: false, disposal: false, lowProfile: false },
     date: null,
-    time: null
+    time: null,
+    locationId: defaultLocationId()
   };
   var wk = 0;
 
@@ -1129,6 +1180,41 @@
     var as = document.getElementById('bp-addons-section');
     if (as && !as.hidden) renderAddons();
     if (st.service) updatePrice();
+  }
+
+  // ── Location picker render + wiring ───────────────────────────────────────
+  // Builds the chooser only when 2+ shops are bookable. With <2 it stays
+  // hidden and st.locationId is simply the single bookable shop's slug (or '').
+  function renderLocations() {
+    var wrap = document.getElementById('bp-loc');
+    var grid = document.getElementById('bp-loc-grid');
+    if (!wrap || !grid) return;
+    if (LOCATIONS.length < 2) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    grid.innerHTML = LOCATIONS.map(function (l) {
+      var active = st.locationId === l.slug ? ' bp-loc-card--active' : '';
+      var name = l.public_name || l.name || 'Prince Tires';
+      var addr = l.address || l.address_full || '';
+      return '<button type="button" class="bp-loc-card' + active + '" data-bp-loc="' + l.slug + '">' +
+        '<span class="bp-loc-card__name">' + name + '</span>' +
+        '<span class="bp-loc-card__addr">' + addr + '</span>' +
+        '</button>';
+    }).join('');
+    grid.querySelectorAll('.bp-loc-card').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var id = this.dataset.bpLoc;
+        if (id === st.locationId) return;
+        st.locationId = id;
+        renderLocations();
+        // Availability is location-specific — invalidate the picked slot and
+        // re-query if the customer is already on (or past) the time step.
+        st.time = null;
+        var n3 = document.getElementById('bp-next-3');
+        if (n3) n3.disabled = true;
+        var timeStep = document.getElementById('bp-page-3');
+        if (timeStep && !timeStep.hidden) renderTimes();
+      });
+    });
   }
 
   function goTo(step) {
@@ -1331,7 +1417,7 @@
       var isToday = d.getTime() === today.getTime();
       var isActive = st.date && d.toDateString() === st.date.toDateString();
       var cls = 'bk-day-card' + (isPast ? ' bk-day-card--past' : '') + (isToday ? ' bk-day-card--today' : '') + (isActive ? ' bk-day-card--active' : '');
-      var iso = d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + '-' + (d.getDate()<10?'0':'') + d.getDate();
+      var iso = PTBookingCore.localISO(d);
       html += '<button type="button" class="' + cls + '" data-date="' + iso + '"><span class="bk-day-name">' + dn[i] + '</span><span class="bk-day-num">' + d.getDate() + '</span></button>';
     }
     document.getElementById('bp-day-strip').innerHTML = html;
@@ -1350,7 +1436,22 @@
     var grid = document.getElementById('bp-time-grid');
     if (!st.date) { grid.innerHTML = '<p style="color:#9ca3af;font-size:0.92rem;grid-column:1/-1;text-align:center">Pick a day above.</p>'; return; }
     var isSun = st.date.getDay() === 0;
-    var startH = isSun ? 10 : 9, startM = isSun ? 0 : 30, endH = isSun ? 15 : 17, endM = 30;
+    // Appointment window from the store_hours metaobject (via pt-nap, SW shop):
+    // first slot = open; last slot = close − cutoff. Fallback = the known SW window.
+    {% capture _suo %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{% endcapture %}
+    {% capture _mso %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{% endcapture %}
+    {% capture _suc %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{% endcapture %}
+    {% capture _msc %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{% endcapture %}
+    {% capture _cutv %}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{% endcapture %}
+    var _bo = isSun ? '{{ _suo | strip }}' : '{{ _mso | strip }}';
+    var _bc = isSun ? '{{ _suc | strip }}' : '{{ _msc | strip }}';
+    var _bcut = parseInt('{{ _cutv | strip }}', 10) || 30;
+    var _boa = _bo.split(':'), _bca = _bc.split(':');
+    var startH = parseInt(_boa[0], 10), startM = parseInt(_boa[1], 10) || 0;
+    if (isNaN(startH)) { startH = 9; startM = 0; }
+    var _blast = (parseInt(_bca[0], 10) * 60 + (parseInt(_bca[1], 10) || 0)) - _bcut;
+    if (isNaN(_blast)) { _blast = isSun ? 810 : 990; }
+    var endH = Math.floor(_blast / 60), endM = _blast % 60;
     var slots = [];
     for (var h = startH; h <= endH; h++) {
       for (var m = (h === startH ? startM : 0); m < 60; m += 30) {
@@ -1361,15 +1462,8 @@
     }
     grid.innerHTML = '<p style="color:#9ca3af;font-size:0.92rem;grid-column:1/-1;text-align:center">Checking availability...</p>';
 
-    var booked = [], allDayBlocked = false;
-    try {
-      var d = st.date;
-      var dateParam = d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + '-' + (d.getDate()<10?'0':'') + d.getDate();
-      var r = await fetch(AVAILABILITY_API + '?date=' + dateParam);
-      var data = await r.json();
-      booked = data.booked || [];
-      allDayBlocked = data.allDayBlocked || false;
-    } catch (e) {}
+    var avail = await PTBookingCore.fetchAvailability(AVAILABILITY_API, PTBookingCore.localISO(st.date), st.locationId);
+    var booked = avail.booked, allDayBlocked = avail.allDayBlocked;
 
     if (allDayBlocked) {
       grid.innerHTML = '<p style="color:#dc2626;font-size:0.95rem;grid-column:1/-1;text-align:center;padding:0.5rem 0">Not available this day — please pick another.</p>';
@@ -1445,8 +1539,7 @@
     btn.disabled = true; btn.textContent = 'Booking...';
 
     var pr = calcPrice();
-    var d = st.date;
-    var dateStr = d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + '-' + (d.getDate()<10?'0':'') + d.getDate();
+    var dateStr = PTBookingCore.localISO(st.date);
     var svc = SERVICES[st.service];
 
     var payload = {
@@ -1461,6 +1554,7 @@
       name: name, phone: phone, email: email,
       notes: (notes ? notes + ' · ' : '') + (vehInfo || ''),
       vehicleType: st.vehicle,
+      location_id: st.locationId || '',
       date: dateStr,
       time: st.time,
       subtotal: pr ? pr.raw.subtotal : 0,
@@ -1485,13 +1579,28 @@
 
       var doneCard = document.getElementById('bp-done-card');
       var ds = st.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + st.time;
+      var loc = locById(st.locationId);
+      // Match the prior "street, city, region" form (e.g. "111 42 Ave SW, Calgary, AB").
+      var doneAddr = '111 42 Ave SW, Calgary, AB';
+      if (loc) {
+        doneAddr = loc.address || loc.address_full || doneAddr;
+        if (loc.address && loc.region) doneAddr = loc.address + ', ' + loc.region;
+      }
+      var donePhone = (loc && loc.phone) || '(403) 452-4283';
       var doneH = '';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Service</span><span class="bk-summary-val">' + (svc ? svc.name : '—') + '</span></div>';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Date &amp; time</span><span class="bk-summary-val">' + ds + '</span></div>';
-      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">111 42 Ave SW, Calgary, AB</span></div>';
-      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">(403) 452-4283</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">' + doneAddr + '</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">' + donePhone + '</span></div>';
       if (pr) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
       doneCard.innerHTML = doneH;
+
+      // Done-page subhead — keep the "See you at Prince Tires — <address>." form,
+      // swapping in the selected shop's address (identical wording for SW-only).
+      var doneSub = document.querySelector('.pt-bp .bk-done-sub');
+      if (doneSub && loc) {
+        doneSub.textContent = 'See you at Prince Tires — ' + (loc.address || doneAddr) + '.';
+      }
 
       [1,2,3,4].forEach(function (s) { document.getElementById('bp-page-' + s).hidden = true; });
       document.getElementById('bp-page-done').hidden = false;
@@ -1506,20 +1615,18 @@
   function downloadICS() {
     if (!st.date || !st.time) return;
     var svc = SERVICES[st.service];
-    var tm = st.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-    var h = parseInt(tm[1]), m = parseInt(tm[2]);
-    if (tm[3].toUpperCase() === 'PM' && h < 12) h += 12;
-    if (tm[3].toUpperCase() === 'AM' && h === 12) h = 0;
-    var d = st.date;
-    var dstr = d.getFullYear() + '' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + (d.getDate()<10?'0':'') + d.getDate();
-    var ts = (h<10?'0':'') + h + (m<10?'0':'') + m + '00';
-    var eh = h + 1;
-    var te = (eh<10?'0':'') + eh + (m<10?'0':'') + m + '00';
-    var ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART;TZID=America/Edmonton:' + dstr + 'T' + ts + '\nDTEND;TZID=America/Edmonton:' + dstr + 'T' + te + '\nSUMMARY:' + (svc ? svc.name : 'Service') + ' at Prince Tires\nLOCATION:111 42 Ave SW, Calgary, AB T2G 0A4\nEND:VEVENT\nEND:VCALENDAR';
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
-    a.download = 'prince-tires-service.ics';
-    a.click();
+    var icsLoc = locById(st.locationId);
+    var icsAddr = (icsLoc && (icsLoc.address_full || icsLoc.address)) || '111 42 Ave SW, Calgary, AB T2G 0A4';
+    var ics = PTBookingCore.buildICS({
+      dateISO: PTBookingCore.localISO(st.date),
+      time: st.time,
+      durationMinutes: 60,
+      summary: (svc ? svc.name : 'Service') + ' at Prince Tires',
+      description: '',
+      location: icsAddr
+    });
+    if (!ics) return;
+    PTBookingCore.downloadICS(ics, 'prince-tires-service.ics');
   }
 
   // Wire up
@@ -1545,6 +1652,18 @@
   document.getElementById('bp-next-week').addEventListener('click', function () { wk++; renderWeek(); });
   document.getElementById('bp-confirm-btn').addEventListener('click', submitBooking);
   document.getElementById('bp-cal-btn').addEventListener('click', downloadICS);
+
+  // Location deep-link via ?location=ne (NE landing page links here). Pre-selects
+  // the requested shop when it's bookable; otherwise the is_primary default stays.
+  var preLoc = PTBookingCore.queryLocationSlug();
+  if (preLoc) {
+    preLoc = preLoc.toLowerCase();
+    var preLocHit = PTBookingCore.bySlug(LOCATIONS, preLoc);
+    if (preLocHit) st.locationId = preLoc;
+  }
+
+  // Build the location picker (hidden unless 2+ shops are bookable).
+  renderLocations();
 
   // Deep-link via ?service=installation_off / ?service=balancing / etc.
   try {

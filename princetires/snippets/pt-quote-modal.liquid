@@ -1,0 +1,483 @@
+{% doc %}
+  Staff-only "Send a quote" modal for the product page.
+
+  Opened via openQuoteModal(buttonEl); it reads the tire context from the
+  button's data-* attributes (data-product-handle, data-variant-id,
+  data-tire-name, data-tire-size, data-tire-price [in cents]). Submitting
+  POSTs JSON to the signed Shopify App Proxy `POST /apps/api/quote`, which
+  emails/texts the customer a branded quote and returns a shareable link.
+
+  Render once per product page, gated to staff:
+    {% if customer.tags contains 'staff' %}{% render 'pt-quote-modal' %}{% endif %}
+{% enddoc %}
+
+<div class="ptq-overlay" id="ptq-overlay" hidden>
+  <div class="ptq-modal" role="dialog" aria-modal="true" aria-labelledby="ptq-title">
+    <div class="ptq-header">
+      <h2 class="ptq-title" id="ptq-title">{{ 'sections.quote_modal.title' | t }}</h2>
+      <button type="button" class="ptq-close" onclick="closeQuoteModal()" aria-label="{{ 'sections.quote_modal.close' | t }}">&times;</button>
+    </div>
+
+    <div class="ptq-body" id="ptq-body">
+      <div class="ptq-tire">
+        <span class="ptq-tire-name" id="ptq-tire-name">&mdash;</span>
+        <span class="ptq-tire-size" id="ptq-tire-size" hidden></span>
+      </div>
+
+      <div class="ptq-row">
+        <label class="ptq-field">
+          <span class="ptq-label">{{ 'sections.quote_modal.email' | t }}</span>
+          <input type="email" id="ptq-email" autocomplete="off" placeholder="customer@email.com">
+        </label>
+        <label class="ptq-field">
+          <span class="ptq-label">{{ 'sections.quote_modal.phone' | t }}</span>
+          <input type="tel" id="ptq-phone" autocomplete="off" placeholder="(403) 555-1234">
+        </label>
+      </div>
+      <p class="ptq-hint">{{ 'sections.quote_modal.contact_hint' | t }}</p>
+
+      <div class="ptq-row ptq-row--nums">
+        <label class="ptq-field ptq-field--sm">
+          <span class="ptq-label">{{ 'sections.quote_modal.quantity' | t }}</span>
+          <input type="number" id="ptq-qty" value="4" min="1" max="20" data-ptq-recalc>
+        </label>
+        <label class="ptq-field ptq-field--sm">
+          <span class="ptq-label">{{ 'sections.quote_modal.unit_price' | t }}</span>
+          <input type="number" id="ptq-price" step="0.01" min="0" inputmode="decimal" data-ptq-recalc>
+        </label>
+        <div class="ptq-total-wrap">
+          <span class="ptq-total-label">{{ 'sections.quote_modal.total' | t }}</span>
+          <span class="ptq-total" id="ptq-total">&mdash;</span>
+        </div>
+      </div>
+
+      <div class="ptq-addons" id="ptq-addons">
+        <div class="ptq-addons-head">{{ 'sections.quote_modal.addons' | t }}</div>
+        <div class="ptq-addon" data-addon-slug="mount_balance">
+          <label class="ptq-addon-toggle"><input type="checkbox" class="ptq-addon-check"><span class="ptq-addon-label">{{ 'sections.quote_modal.addon_mount' | t }}</span></label>
+          <div class="ptq-addon-price"><span class="ptq-addon-dollar">$</span><input type="number" class="ptq-addon-input" step="0.01" min="0" inputmode="decimal" data-ptq-recalc disabled></div>
+        </div>
+        <div class="ptq-addon" data-addon-slug="levy">
+          <label class="ptq-addon-toggle"><input type="checkbox" class="ptq-addon-check"><span class="ptq-addon-label">{{ 'sections.quote_modal.addon_levy' | t }}</span></label>
+          <div class="ptq-addon-price"><span class="ptq-addon-dollar">$</span><input type="number" class="ptq-addon-input" step="0.01" min="0" inputmode="decimal" data-ptq-recalc disabled></div>
+        </div>
+        <div class="ptq-addon" data-addon-slug="valve">
+          <label class="ptq-addon-toggle"><input type="checkbox" class="ptq-addon-check"><span class="ptq-addon-label">{{ 'sections.quote_modal.addon_valve' | t }}</span></label>
+          <div class="ptq-addon-price"><span class="ptq-addon-dollar">$</span><input type="number" class="ptq-addon-input" step="0.01" min="0" inputmode="decimal" data-ptq-recalc disabled></div>
+        </div>
+        <div class="ptq-addon" data-addon-slug="disposal">
+          <label class="ptq-addon-toggle"><input type="checkbox" class="ptq-addon-check"><span class="ptq-addon-label">{{ 'sections.quote_modal.addon_disposal' | t }}</span></label>
+          <div class="ptq-addon-price"><span class="ptq-addon-dollar">$</span><input type="number" class="ptq-addon-input" step="0.01" min="0" inputmode="decimal" data-ptq-recalc disabled></div>
+        </div>
+        <div class="ptq-addon" data-addon-slug="tpms">
+          <label class="ptq-addon-toggle"><input type="checkbox" class="ptq-addon-check"><span class="ptq-addon-label">{{ 'sections.quote_modal.addon_tpms' | t }}</span></label>
+          <div class="ptq-addon-price"><span class="ptq-addon-dollar">$</span><input type="number" class="ptq-addon-input" step="0.01" min="0" inputmode="decimal" data-ptq-recalc disabled></div>
+        </div>
+        <div id="ptq-custom-addons"></div>
+        <button type="button" class="ptq-addon-add" id="ptq-addon-add">+ {{ 'sections.quote_modal.addon_custom' | t }}</button>
+      </div>
+
+      <label class="ptq-check" id="ptq-pricematch-row">
+        <input type="checkbox" id="ptq-pricematch" checked>
+        <span>{{ 'sections.quote_modal.price_match' | t }}</span>
+      </label>
+
+      <label class="ptq-field">
+        <span class="ptq-label">{{ 'sections.quote_modal.note' | t }}</span>
+        <textarea id="ptq-note" rows="2" maxlength="1000" placeholder="{{ 'sections.quote_modal.note_ph' | t }}"></textarea>
+      </label>
+
+      <button type="button" class="ptq-send" id="ptq-send" data-label="{{ 'sections.quote_modal.send' | t }}" onclick="ptqSend()">{{ 'sections.quote_modal.send' | t }}</button>
+      <p class="ptq-error" id="ptq-error" role="alert" hidden></p>
+    </div>
+
+    <div class="ptq-success" id="ptq-success" hidden>
+      <svg class="ptq-success-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+      <h3 class="ptq-success-title">{{ 'sections.quote_modal.sent_title' | t }}</h3>
+      <p class="ptq-channels" id="ptq-channels"></p>
+      <a class="ptq-link" id="ptq-link" href="#" target="_blank" rel="noopener"></a>
+      <div class="ptq-success-actions">
+        <button type="button" class="ptq-another" onclick="ptqAnother()">{{ 'sections.quote_modal.send_another' | t }}</button>
+        <button type="button" class="ptq-done" onclick="closeQuoteModal()">{{ 'sections.quote_modal.done' | t }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+  .ptq-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .ptq-overlay[hidden] { display: none; }
+  .ptq-modal {
+    background: #fff;
+    border-radius: 14px;
+    width: 100%;
+    max-width: 460px;
+    max-height: 92vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .ptq-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 8px;
+  }
+  .ptq-title { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; }
+  .ptq-close {
+    background: none; border: 0; font-size: 26px; line-height: 1;
+    color: #94a3b8; cursor: pointer; padding: 0 4px;
+  }
+  .ptq-close:hover { color: #0f172a; }
+  .ptq-body, .ptq-success { padding: 8px 20px 22px; }
+  .ptq-tire {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 14px;
+  }
+  .ptq-tire-name { font-weight: 600; color: #0f172a; font-size: 14px; }
+  .ptq-tire-size {
+    display: inline-block; margin-left: 8px; padding: 1px 8px;
+    background: #0f172a; color: #fff; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .ptq-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .ptq-row--nums { align-items: flex-end; }
+  .ptq-field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .ptq-field--sm { flex: 0 0 84px; }
+  .ptq-label { font-size: 12px; font-weight: 600; color: #475569; }
+  .ptq-field input, .ptq-field textarea {
+    width: 100%; box-sizing: border-box; padding: 9px 10px;
+    border: 1px solid #cbd5e1; border-radius: 7px; font-size: 14px; color: #0f172a;
+    font-family: inherit;
+  }
+  .ptq-field input:focus, .ptq-field textarea:focus {
+    outline: none; border-color: #DA291C; box-shadow: 0 0 0 3px rgba(218, 41, 28, 0.12);
+  }
+  .ptq-hint { margin: -2px 0 12px; font-size: 12px; color: #94a3b8; }
+  .ptq-total-wrap {
+    flex: 1; text-align: right; padding-bottom: 9px;
+  }
+  .ptq-total-label { display: block; font-size: 12px; font-weight: 600; color: #475569; }
+  .ptq-total { font-size: 18px; font-weight: 700; color: #DA291C; }
+  .ptq-addons { border-top: 1px solid #e2e8f0; margin: 14px 0 4px; padding-top: 12px; }
+  .ptq-addons-head { font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+  .ptq-addon { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .ptq-addon-toggle { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; color: #334155; cursor: pointer; min-width: 0; }
+  .ptq-addon-toggle input { accent-color: #DA291C; flex: 0 0 auto; }
+  .ptq-addon-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ptq-addon-name-input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; }
+  .ptq-addon-price { display: flex; align-items: center; gap: 2px; flex: 0 0 92px; }
+  .ptq-addon-dollar { color: #94a3b8; font-size: 13px; }
+  .ptq-addon-input { width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; box-sizing: border-box; }
+  .ptq-addon-input:disabled { background: #f1f5f9; color: #94a3b8; }
+  .ptq-addon-remove { flex: 0 0 auto; background: none; border: 0; color: #94a3b8; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+  .ptq-addon-remove:hover { color: #DA291C; }
+  .ptq-addon-add { background: none; border: 0; color: #DA291C; font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px 0; }
+  .ptq-check {
+    display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 14px;
+    font-size: 13px; color: #334155; cursor: pointer; line-height: 1.4;
+  }
+  .ptq-check input { margin-top: 2px; accent-color: #DA291C; }
+  .ptq-send {
+    width: 100%; background: #DA291C; color: #fff; border: 0; border-radius: 8px;
+    padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 6px;
+  }
+  .ptq-send:hover { background: #b91c1c; }
+  .ptq-send:disabled { opacity: 0.6; cursor: default; }
+  .ptq-error {
+    margin: 10px 0 0; padding: 10px 12px; background: #fef2f2; border: 1px solid #fecaca;
+    border-radius: 7px; color: #b91c1c; font-size: 13px;
+  }
+  .ptq-success { text-align: center; }
+  .ptq-success-icon { margin: 8px auto 4px; display: block; }
+  .ptq-success-title { margin: 4px 0 8px; font-size: 18px; font-weight: 700; color: #0f172a; }
+  .ptq-channels { margin: 0 0 14px; font-size: 13px; color: #475569; line-height: 1.6; }
+  .ptq-link {
+    display: block; word-break: break-all; font-size: 13px; color: #DA291C;
+    text-decoration: underline; margin-bottom: 18px;
+  }
+  .ptq-success-actions { display: flex; gap: 10px; }
+  .ptq-another, .ptq-done {
+    flex: 1; padding: 11px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .ptq-another { background: #fff; border: 1px solid #cbd5e1; color: #0f172a; }
+  .ptq-another:hover { border-color: #94a3b8; }
+  .ptq-done { background: #0f172a; border: 1px solid #0f172a; color: #fff; }
+  @media (max-width: 480px) {
+    .ptq-row { flex-wrap: wrap; }
+    .ptq-field--sm { flex: 1 1 84px; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function () {
+    var overlay, lastFocus;
+
+    function $(id) { return document.getElementById(id); }
+
+    function recalc() {
+      if (!overlay) overlay = $("ptq-overlay");
+      var qty = parseInt($("ptq-qty").value, 10) || 0;
+      var price = parseFloat($("ptq-price").value) || 0;
+      var total = qty * price;
+      if (overlay) {
+        overlay.querySelectorAll(".ptq-addon").forEach(function (row) {
+          var check = row.querySelector(".ptq-addon-check");
+          var input = row.querySelector(".ptq-addon-input");
+          if (check && check.checked && input) total += qty * (parseFloat(input.value) || 0);
+        });
+      }
+      $("ptq-total").textContent = "$" + total.toFixed(2);
+    }
+
+    function collectAddons() {
+      var out = [];
+      if (!overlay) return out;
+      overlay.querySelectorAll(".ptq-addon").forEach(function (row) {
+        var check = row.querySelector(".ptq-addon-check");
+        if (!check || !check.checked) return;
+        var input = row.querySelector(".ptq-addon-input");
+        var price = parseFloat(input && input.value);
+        if (isNaN(price) || price < 0) return;
+        var slug = row.dataset.addonSlug || "custom";
+        var nameInput = row.querySelector(".ptq-addon-name-input");
+        var labelEl = row.querySelector(".ptq-addon-label");
+        var name = nameInput ? nameInput.value.trim() : labelEl ? labelEl.textContent.trim() : slug;
+        if (!name) return;
+        out.push({ slug: slug, name: name, unitPrice: price });
+      });
+      return out;
+    }
+
+    function bindAddonCheck(check) {
+      check.addEventListener("change", function () {
+        var row = check.closest(".ptq-addon");
+        var input = row && row.querySelector(".ptq-addon-input");
+        if (input && !row.classList.contains("ptq-addon--custom")) input.disabled = !check.checked;
+        recalc();
+      });
+    }
+
+    function addCustomAddon() {
+      var wrap = $("ptq-custom-addons");
+      if (!wrap) return;
+      var row = document.createElement("div");
+      row.className = "ptq-addon ptq-addon--custom";
+      row.dataset.addonSlug = "custom";
+      row.innerHTML =
+        '<label class="ptq-addon-toggle"><input type="checkbox" class="ptq-addon-check" checked></label>' +
+        '<input type="text" class="ptq-addon-name-input" placeholder="Add-on name">' +
+        '<div class="ptq-addon-price"><span class="ptq-addon-dollar">$</span><input type="number" class="ptq-addon-input" step="0.01" min="0" inputmode="decimal"></div>' +
+        '<button type="button" class="ptq-addon-remove" aria-label="Remove">×</button>';
+      wrap.appendChild(row);
+      bindAddonCheck(row.querySelector(".ptq-addon-check"));
+      row.querySelector(".ptq-addon-input").addEventListener("input", recalc);
+      row.querySelector(".ptq-addon-remove").addEventListener("click", function () {
+        if (row.parentNode) row.parentNode.removeChild(row);
+        recalc();
+      });
+      row.querySelector(".ptq-addon-name-input").focus();
+    }
+
+    window.openQuoteModal = function (btn) {
+      overlay = $("ptq-overlay");
+      if (!overlay) return;
+      lastFocus = document.activeElement;
+      var d = btn.dataset;
+      overlay.dataset.handle = d.productHandle || "";
+      overlay.dataset.variantId = d.variantId || "";
+
+      var mode = d.quoteMode || "staff";
+      overlay.dataset.mode = mode;
+
+      var priceCents = parseInt(d.tirePrice || "0", 10) || 0;
+      var priceDollars = (priceCents / 100).toFixed(2);
+      overlay.dataset.origPrice = priceDollars;
+
+      $("ptq-tire-name").textContent = d.tireName || "Tire";
+      var sizeEl = $("ptq-tire-size");
+      sizeEl.textContent = d.tireSize || "";
+      sizeEl.hidden = !d.tireSize;
+
+      // Price defaults to retail for everyone (staff + wholesale), fully editable.
+      // The Prince Tires price-match line is hidden on white-label reseller quotes.
+      var priceInput = $("ptq-price");
+      var pmRow = $("ptq-pricematch-row");
+      priceInput.value = priceDollars;
+      if (pmRow) pmRow.hidden = mode === "wholesale";
+
+      // Seed add-on default prices from the button; reset toggles + custom rows.
+      var addonDefaults = {
+        mount_balance: d.addonMount,
+        levy: d.addonLevy,
+        valve: d.addonValve,
+        disposal: d.addonDisposal,
+        tpms: d.addonTpms,
+      };
+      overlay.querySelectorAll(".ptq-addon[data-addon-slug]").forEach(function (row) {
+        if (row.classList.contains("ptq-addon--custom")) return;
+        var slug = row.dataset.addonSlug;
+        var input = row.querySelector(".ptq-addon-input");
+        var check = row.querySelector(".ptq-addon-check");
+        var def = parseFloat(addonDefaults[slug] || "0") || 0;
+        if (input) { input.value = def ? def.toFixed(2) : ""; input.disabled = true; }
+        if (check) check.checked = false;
+      });
+      var customWrap = $("ptq-custom-addons");
+      if (customWrap) customWrap.innerHTML = "";
+
+      $("ptq-qty").value = 4;
+      $("ptq-email").value = "";
+      $("ptq-phone").value = "";
+      $("ptq-note").value = "";
+      $("ptq-pricematch").checked = true;
+
+      $("ptq-success").hidden = true;
+      $("ptq-body").hidden = false;
+      var err = $("ptq-error");
+      err.hidden = true;
+      err.textContent = "";
+
+      recalc();
+      overlay.hidden = false;
+      document.body.style.overflow = "hidden";
+      $("ptq-email").focus();
+    };
+
+    window.closeQuoteModal = function () {
+      if (!overlay) overlay = $("ptq-overlay");
+      if (overlay) overlay.hidden = true;
+      document.body.style.overflow = "";
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    };
+
+    window.ptqAnother = function () {
+      $("ptq-success").hidden = true;
+      $("ptq-body").hidden = false;
+      $("ptq-email").value = "";
+      $("ptq-phone").value = "";
+      $("ptq-note").value = "";
+      var err = $("ptq-error");
+      err.hidden = true;
+      err.textContent = "";
+      $("ptq-email").focus();
+    };
+
+    function channelLine(label, status) {
+      var map = {
+        sent: "✓ sent",
+        skipped: "—",
+        failed: "✗ failed",
+        unconfigured: "not set up yet",
+      };
+      if (status === "skipped") return "";
+      return label + ": " + (map[status] || status);
+    }
+
+    window.ptqSend = function () {
+      var btn = $("ptq-send");
+      var err = $("ptq-error");
+      err.hidden = true;
+      err.textContent = "";
+
+      var email = $("ptq-email").value.trim();
+      var phone = $("ptq-phone").value.trim();
+      if (!email && !phone) {
+        err.textContent = "Enter a customer email or phone number.";
+        err.hidden = false;
+        return;
+      }
+
+      var mode = overlay.dataset.mode || "staff";
+      var qty = parseInt($("ptq-qty").value, 10) || 4;
+      var priceVal = $("ptq-price").value.trim();
+
+      var body = {
+        productHandle: overlay.dataset.handle || null,
+        variantId: overlay.dataset.variantId,
+        customerEmail: email || null,
+        customerPhone: phone || null,
+        quantity: qty,
+        // Price-match is a Prince Tires line — off for white-label reseller quotes.
+        priceMatch: mode === "wholesale" ? false : $("ptq-pricematch").checked,
+        note: $("ptq-note").value.trim() || null,
+        addons: collectAddons(),
+      };
+      // Send a price override only when it differs from the prefilled retail price.
+      if (priceVal !== "" && priceVal !== overlay.dataset.origPrice) {
+        body.unitPrice = parseFloat(priceVal);
+      }
+
+      var defaultLabel = btn.getAttribute("data-label") || "Send quote";
+      btn.disabled = true;
+      btn.textContent = "Sending…";
+
+      fetch("/apps/api/quote", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+        .then(function (r) {
+          return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+        })
+        .then(function (res) {
+          btn.disabled = false;
+          btn.textContent = defaultLabel;
+          if (!res.ok || !res.j || !res.j.ok) {
+            err.textContent = (res.j && res.j.error) || "Could not send the quote. Try again.";
+            err.hidden = false;
+            return;
+          }
+          var ch = res.j.channels || {};
+          var lines = [channelLine("Email", ch.email), channelLine("Text", ch.sms)].filter(Boolean);
+          $("ptq-channels").textContent = lines.join("  ·  ");
+          var link = $("ptq-link");
+          link.href = res.j.quoteUrl;
+          link.textContent = res.j.quoteUrl;
+          $("ptq-body").hidden = true;
+          $("ptq-success").hidden = false;
+        })
+        .catch(function () {
+          btn.disabled = false;
+          btn.textContent = defaultLabel;
+          err.textContent = "Network error — please try again.";
+          err.hidden = false;
+        });
+    };
+
+    function init() {
+      var ov = $("ptq-overlay");
+      if (!ov) return;
+      // Recalc total live.
+      ov.querySelectorAll("[data-ptq-recalc]").forEach(function (el) {
+        el.addEventListener("input", recalc);
+      });
+      // Add-on toggles + custom add-on button.
+      ov.querySelectorAll(".ptq-addon-check").forEach(bindAddonCheck);
+      var addBtn = $("ptq-addon-add");
+      if (addBtn) addBtn.addEventListener("click", addCustomAddon);
+      // Click backdrop or press Escape to close.
+      ov.addEventListener("mousedown", function (e) {
+        if (e.target === ov) window.closeQuoteModal();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !ov.hidden) window.closeQuoteModal();
+      });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  })();
+{% endjavascript %}

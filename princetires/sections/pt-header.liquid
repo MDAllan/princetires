@@ -143,6 +143,22 @@
         </svg>
       </button>
 
+      {%- if customer and customer.b2b? or customer.tags contains 'wholesale' -%}
+        {%- comment -%} Phase 5A · mobile trade-price toggle. Mirror of the desktop one but lives in the mobile-right stack since .pt-header__icons is display:none on phones. Shares the same `data-trade-toggle` so the existing JS attaches one click handler per button and applyButtons() updates both aria-pressed states together. {%- endcomment -%}
+        <button
+          type="button"
+          class="pt-header__icon pt-header__trade-toggle pt-header__trade-toggle-mobile"
+          data-trade-toggle
+          aria-pressed="false"
+          aria-label="Toggle trade price visibility"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      {%- endif -%}
+
       <a href="{{ routes.cart_url }}" class="pt-header__icon pt-header__cart pt-header__cart-mobile" aria-label="{{ 'sections.pt_header.cart' | t }}">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
@@ -801,12 +817,24 @@
   .pt-header__cart-mobile {
     display: none;
   }
+  /* Phase 5A · mobile trade-toggle. Hidden on desktop (desktop has its own
+     copy in .pt-header__icons); revealed on mobile inside the mobile-right
+     stack. Same class as desktop so the [aria-pressed=true] color/border
+     rules a few sections below kick in automatically when toggled on. */
+  .pt-header__trade-toggle-mobile {
+    display: none;
+  }
   @media (max-width: 768px) {
     /* wrapper shown on mobile — children inherit */
     .pt-header__mobile-right {
       display: flex;
     }
     .pt-header__cart-mobile {
+      display: flex;
+      width: 40px;
+      height: 40px;
+    }
+    .pt-header__trade-toggle-mobile {
       display: flex;
       width: 40px;
       height: 40px;
@@ -1474,6 +1502,36 @@
         applyCartTotal();
       });
     });
+
+    // Re-run on every cart change so the "Your cost total" reflects the new
+    // quantities. cart.js dispatches PUB_SUB_EVENTS.cartUpdate after every
+    // /cart/change.js call (qty +/-, remove, add via drawer). The Section
+    // Rendering API replaces line items wholesale, so the new DOM already
+    // has fresh data-pt-multiplier values from Liquid — we just have to
+    // re-apply our cached prices + re-sum.
+    //
+    // Feature-detect: storefronts that don't include cart.js (rare, but
+    // e.g. the customer account routes) won't expose subscribe / PUB_SUB_EVENTS.
+    if (typeof subscribe === 'function' && typeof PUB_SUB_EVENTS !== 'undefined' && PUB_SUB_EVENTS.cartUpdate) {
+      subscribe(PUB_SUB_EVENTS.cartUpdate, function () {
+        // If new variants appeared in the cart that aren't in the cache yet
+        // (e.g. customer added a new SKU via the drawer), refetch the whole
+        // batch — fetchPrices() also runs applyPrices/Badges/CartTotal at the
+        // end of its .then(). Otherwise just re-apply what we already have.
+        var els = document.querySelectorAll('[data-pt-price][data-pt-variant-id]');
+        var anyMiss = false;
+        els.forEach(function (el) {
+          if (!cache[el.dataset.ptVariantId]) anyMiss = true;
+        });
+        if (anyMiss) {
+          fetchPrices();
+        } else {
+          applyPrices();
+          applyBadges();
+          applyCartTotal();
+        }
+      });
+    }
 
     applyButtons();
     fetchPrices();

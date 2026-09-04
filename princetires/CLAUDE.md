@@ -2,6 +2,11 @@
 
 🚨 MANDATORY: USE THE `shopify-liquid-themes` SKILL WHEN WORKING WITH LIQUID THEME FILES.
 
+🧪 MANDATORY: AFTER BUILDING OR CHANGING ANY CUSTOMER-FACING FEATURE, RUN THE PLAYWRIGHT TESTS.
+- The live-site test suite lives at the **project root** (`../`), not in this theme folder. See `../README-TESTS.md`.
+- Quick smoke: `npm run test:chromium` (run from the project root). Full suite before pushing: `npm test`.
+- Add/extend a test in `../tests/` to cover the new feature.
+
 🎨 MANDATORY: FOR EVERY DESIGN, UI, OR STYLING TASK — use the `ui-ux-pro-max` skill BEFORE implementing.
 - Stack: `html-tailwind` (default for Shopify Liquid work)
 

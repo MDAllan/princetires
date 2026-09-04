@@ -1522,6 +1522,16 @@
   .wh-dash-order-table th:nth-child(3), .wh-dash-order-table td:nth-child(3) { display: none; }
   .wh-dash-tab--link { margin: 8px 0 8px 4px; padding: 7px 14px; }
 }
+/* Quote branding panel (Phase 2 — white-label quotes) */
+.wh-branding-intro { font-size: 13px; color: #475569; line-height: 1.5; margin: 0 0 14px; }
+.wh-branding-logo-row { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; }
+.wh-branding-logo-preview { width: 96px; height: 96px; flex: 0 0 96px; border: 1px dashed #cbd5e1; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #f8fafc; overflow: hidden; }
+.wh-branding-logo-preview img { width: 100%; height: 100%; object-fit: contain; }
+.wh-branding-logo-empty { font-size: 11px; color: #94a3b8; text-align: center; padding: 4px; }
+.wh-branding-logo-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.wh-branding-upload-label { display: inline-flex; align-items: center; justify-content: center; height: 36px; }
+.wh-branding-logo-hint { font-size: 11px; color: #94a3b8; }
+.wh-branding-accent-field input[type="color"] { width: 48px; height: 36px; padding: 0; border: 1px solid #cbd5e1; border-radius: 8px; background: none; cursor: pointer; }
 </style>
 
 <div class="wh">
@@ -1763,28 +1773,56 @@
           </div>
         </div>
 
-        <!-- Discount tiers -->
-        <div class="wh-dash-card">
-          <div class="wh-dash-card__head"><h3>Discount tiers</h3></div>
+        <!-- Quote branding — white-label the quotes this company sends from product pages (Phase 2 of the quote feature). Loaded/saved via /apps/api/wholesale/branding. -->
+        <div class="wh-dash-card" id="wh-branding-card">
+          <div class="wh-dash-card__head"><h3>{{ 'sections.wholesale_portal.branding_heading' | t }}</h3></div>
           <div class="wh-dash-card__body">
-            <table class="wh-dash-tier-table">
-              <thead><tr><th>Tier</th><th>Trade discount</th></tr></thead>
-              <tbody>
-                <tr data-wh-tier-row="tier_1">
-                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--bronze"></span>Tier 1</td><td class="wh-dash-tier-table__disc">5%</td>
-                </tr>
-                <tr data-wh-tier-row="tier_2">
-                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--silver"></span>Tier 2</td><td class="wh-dash-tier-table__disc">10%</td>
-                </tr>
-                <tr data-wh-tier-row="tier_3">
-                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--gold"></span>Tier 3</td><td class="wh-dash-tier-table__disc">15%</td>
-                </tr>
-                <tr data-wh-tier-row="tier_pro">
-                  <td><span class="wh-dash-tier-dot wh-dash-tier-dot--elite"></span>Pro</td><td class="wh-dash-tier-table__disc">20%</td>
-                </tr>
-              </tbody>
-            </table>
-            <p class="wh-dash-payment-terms">Your tier is set by your account manager. Payment terms: {{ section.settings.payment_terms | default: 'Contact your account manager for terms' | escape }}</p>
+            <p class="wh-branding-intro">{{ 'sections.wholesale_portal.branding_intro' | t }}</p>
+
+            <div class="wh-branding-logo-row">
+              <div class="wh-branding-logo-preview" id="wh-branding-logo-preview">
+                <span class="wh-branding-logo-empty" id="wh-branding-logo-empty">{{ 'sections.wholesale_portal.branding_no_logo' | t }}</span>
+                <img id="wh-branding-logo-img" alt="" width="96" height="96" hidden>
+              </div>
+              <div class="wh-branding-logo-actions">
+                <label class="wh-dash-update-submit wh-branding-upload-label" for="wh-branding-logo-file">{{ 'sections.wholesale_portal.branding_upload' | t }}</label>
+                <input type="file" id="wh-branding-logo-file" accept="image/png,image/jpeg,image/webp" hidden>
+                <span class="wh-branding-logo-hint">{{ 'sections.wholesale_portal.branding_logo_hint' | t }}</span>
+              </div>
+            </div>
+
+            <div class="wh-delivery-field">
+              <label class="wh-delivery-label" for="wh-branding-name">{{ 'sections.wholesale_portal.branding_name' | t }}</label>
+              <input class="wh-delivery-input" type="text" id="wh-branding-name" maxlength="120" placeholder="Your business name">
+            </div>
+            <div class="wh-delivery-field">
+              <label class="wh-delivery-label" for="wh-branding-phone">{{ 'sections.wholesale_portal.branding_phone' | t }}</label>
+              <input class="wh-delivery-input" type="tel" id="wh-branding-phone" maxlength="40" placeholder="(403) 555-0100">
+            </div>
+            <div class="wh-delivery-field">
+              <label class="wh-delivery-label" for="wh-branding-url">{{ 'sections.wholesale_portal.branding_url' | t }}</label>
+              <input class="wh-delivery-input" type="url" id="wh-branding-url" maxlength="300" placeholder="https://yourshop.ca/book">
+            </div>
+            <div class="wh-delivery-field wh-branding-accent-field">
+              <label class="wh-delivery-label" for="wh-branding-accent">{{ 'sections.wholesale_portal.branding_accent' | t }}</label>
+              <input type="color" id="wh-branding-accent" value="#0f172a">
+            </div>
+
+            <p id="wh-branding-msg" hidden style="font-size:12px;font-weight:600;margin:4px 0 10px"></p>
+            <button type="button" class="wh-dash-update-submit" id="wh-branding-save">{{ 'sections.wholesale_portal.branding_save' | t }}</button>
+          </div>
+        </div>
+
+        {%- comment -%}
+          Phase 5A · removed the old flat-% Discount tiers card. Real discounts
+          are per-tier × per-brand (b2b_brand_discounts table) — a single % per
+          tier is misleading. Per-brand pricing is surfaced live on PDPs /
+          collection cards via the trade-price toggle.
+        {%- endcomment -%}
+        <div class="wh-dash-card">
+          <div class="wh-dash-card__head"><h3>Payment terms</h3></div>
+          <div class="wh-dash-card__body">
+            <p class="wh-dash-payment-terms">{{ section.settings.payment_terms | default: 'Contact your account manager for terms' | escape }}</p>
           </div>
         </div>
 
@@ -2683,6 +2721,83 @@
           showMsg('Network error — please try again.', false);
         });
     });
+  }
+
+  /* 9. Quote branding — white-label profile for quotes this company sends */
+  var brandingCard = document.getElementById('wh-branding-card');
+  if (brandingCard) {
+    var bName   = document.getElementById('wh-branding-name');
+    var bPhone  = document.getElementById('wh-branding-phone');
+    var bUrl    = document.getElementById('wh-branding-url');
+    var bAccent = document.getElementById('wh-branding-accent');
+    var bFile   = document.getElementById('wh-branding-logo-file');
+    var bImg    = document.getElementById('wh-branding-logo-img');
+    var bEmpty  = document.getElementById('wh-branding-logo-empty');
+    var bSave   = document.getElementById('wh-branding-save');
+    var bMsg    = document.getElementById('wh-branding-msg');
+    var bSaveDefault = bSave ? bSave.textContent : 'Save';
+    var pendingLogo = null;
+
+    function bShowLogo(url) {
+      if (url) { bImg.src = url; bImg.hidden = false; bEmpty.hidden = true; }
+      else { bImg.hidden = true; bImg.removeAttribute('src'); bEmpty.hidden = false; }
+    }
+    function bMsgShow(text, ok) {
+      bMsg.hidden = false; bMsg.textContent = text; bMsg.style.color = ok ? '#16a34a' : '#DC2626';
+    }
+    function bFill(br) {
+      if (!br) return;
+      bName.value = br.businessName || '';
+      bPhone.value = br.quotePhone || '';
+      bUrl.value = br.quoteBookingUrl || '';
+      if (br.quoteAccent && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(br.quoteAccent)) bAccent.value = br.quoteAccent;
+      bShowLogo(br.logoUrl);
+    }
+
+    fetch('/apps/api/wholesale/branding', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) { if (data && data.branding) bFill(data.branding); })
+      .catch(function () {});
+
+    if (bFile) {
+      bFile.addEventListener('change', function () {
+        var f = bFile.files && bFile.files[0];
+        if (!f) return;
+        if (f.size > 4 * 1024 * 1024) { bMsgShow('Logo is too large (max 4 MB).', false); bFile.value = ''; return; }
+        pendingLogo = f;
+        var reader = new FileReader();
+        reader.onload = function (e) { bShowLogo(e.target.result); };
+        reader.readAsDataURL(f);
+      });
+    }
+
+    if (bSave) {
+      bSave.addEventListener('click', function () {
+        var fd = new FormData();
+        fd.append('businessName', bName.value.trim());
+        fd.append('quotePhone', bPhone.value.trim());
+        fd.append('quoteBookingUrl', bUrl.value.trim());
+        fd.append('quoteAccent', bAccent.value);
+        if (pendingLogo) fd.append('logo', pendingLogo);
+        bSave.disabled = true; bSave.textContent = 'Saving…'; bMsg.hidden = true;
+        fetch('/apps/api/wholesale/branding', { method: 'POST', credentials: 'same-origin', body: fd })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            bSave.disabled = false; bSave.textContent = bSaveDefault;
+            if (res.ok && res.j && res.j.ok) {
+              pendingLogo = null;
+              if (res.j.branding) bFill(res.j.branding);
+              bMsgShow('Saved. Your quotes now use this branding.', true);
+            } else {
+              bMsgShow('Could not save — ' + ((res.j && res.j.error) || 'please try again.'), false);
+            }
+          })
+          .catch(function () {
+            bSave.disabled = false; bSave.textContent = bSaveDefault;
+            bMsgShow('Network error — please try again.', false);
+          });
+      });
+    }
   }
 
 })();

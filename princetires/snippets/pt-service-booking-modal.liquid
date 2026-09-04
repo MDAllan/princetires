@@ -27,6 +27,12 @@
     {%- comment -%} Step 1: Service → Vehicle + sub-options {%- endcomment -%}
     <div class="bk-page" id="sb-page-1">
 
+      {%- comment -%} Location picker — only shown when 2+ shops are bookable (see sbRenderLocations) {%- endcomment -%}
+      <div id="sb-location-section" hidden>
+        <p class="bk-label">Which location?</p>
+        <div class="sb-loc-grid" id="sb-location-grid"></div>
+      </div>
+
       <p class="bk-label">What service do you need?</p>
       <div class="sb-service-grid" id="sb-service-grid"></div>
 
@@ -96,7 +102,8 @@
 
       <p class="bk-label">Time</p>
       <div class="bk-time-grid" id="sb-time-grid"></div>
-      <p class="bk-hours-note">Mon–Sat 9:30–5:30 · Sun 10:00–3:30</p>
+      {%- capture bw_mso -%}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{%- endcapture -%}{%- capture bw_msc -%}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{%- endcapture -%}{%- capture bw_suo -%}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{%- endcapture -%}{%- capture bw_suc -%}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{%- endcapture -%}{%- capture bw_cut -%}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{%- endcapture -%}
+      <p class="bk-hours-note">Mon–Sat {% render 'pt-book-window', open: bw_mso, close: bw_msc, cutoff: bw_cut %} · Sun {% render 'pt-book-window', open: bw_suo, close: bw_suc, cutoff: bw_cut %}</p>
 
       <div class="bk-nav-row">
         <button class="bk-back-btn" onclick="sbGoTo(1)">&larr; Back</button>
@@ -143,7 +150,7 @@
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
       </div>
       <h2 class="bk-done-title">You're booked!</h2>
-      <p class="bk-done-sub">See you at Prince Tires — 111 42 Ave SW, Calgary.</p>
+      <p class="bk-done-sub" id="sb-done-sub">See you at Prince Tires — 111 42 Ave SW, Calgary.</p>
       <div class="bk-done-card" id="sb-done-card"></div>
       <div class="bk-done-actions">
         <button class="bk-cal-btn" onclick="sbDownloadICS()">Add to calendar</button>
@@ -155,6 +162,42 @@
 </div>
 
 <style>
+/* ── Location picker ── */
+#sb-location-section { margin-bottom: 1.1rem; }
+.sb-loc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .4rem;
+}
+.sb-loc-chip {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  padding: .7rem .85rem;
+  width: 100%;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  background: #fff;
+  text-align: left;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.sb-loc-chip:hover { border-color: #dc2626; }
+.sb-loc-chip--active { border-color: #dc2626; background: #fef2f2; }
+.sb-loc-name {
+  font-size: .95rem;
+  font-weight: 600;
+  color: #111;
+}
+.sb-loc-chip--active .sb-loc-name { color: #dc2626; }
+.sb-loc-addr {
+  font-size: .8rem;
+  font-weight: 400;
+  color: #9ca3af;
+  line-height: 1.3;
+}
+
 /* ── Service chip grid ── */
 .sb-service-grid {
   display: grid;
@@ -376,6 +419,7 @@
 
 /* ── Mobile ── */
 @media (max-width: 480px) {
+  .sb-loc-grid     { grid-template-columns: 1fr; }
   .sb-service-grid { grid-template-columns: 1fr; }
   .sb-repair-grid   { grid-template-columns: 1fr; }
   /* On mobile, prefer tooltip above with full width */
@@ -397,9 +441,47 @@
     looseRims: false,
     qty: 4,
     addons: { disposal: false, tpms: false, lowProfile: false },
+    location: '', // slug of the chosen shop; '' until sbInitLocations() resolves
     date: null,
     time: null
   };
+
+  // ── Locations (multi-shop) ─────────────────────────────────────────────────
+  // Read once from the site-wide #pt-locations-data JSON island. Only shops with
+  // bookable === true are selectable. With <2 bookable shops the picker stays
+  // hidden and the single bookable shop (SW) is used silently — identical to the
+  // prior single-location behavior. sbLocBookable preserves island order; the
+  // default selection is the is_primary shop (or the first bookable one).
+  var sbLocAll = [];
+  var sbLocBookable = [];
+
+  function sbInitLocations() {
+    if (sbLocAll.length) return; // already parsed
+    var parsed = PTBookingCore.loadLocations();
+    sbLocAll = parsed.all;
+    sbLocBookable = parsed.bookable;
+  }
+
+  function sbLocBySlug(slug) {
+    return PTBookingCore.bySlug(sbLocAll, slug);
+  }
+
+  // The currently selected location object (falls back to the first bookable, or
+  // a hardcoded SW shape so the done card / ICS always have an address to show).
+  function sbCurrentLoc() {
+    return sbLocBySlug(sbSt.location)
+      || sbLocBookable[0]
+      || { slug: 'sw', public_name: 'Prince Tires — 42 Ave SW',
+           address_full: '111 42 Ave SW, Calgary, AB T2G 0A4',
+           address: '111 42 Ave SW, Calgary', phone: '(403) 452-4283' };
+  }
+
+  // Resolve the default selection: ?location=<slug> / data-location override,
+  // else the is_primary bookable shop, else the first bookable shop.
+  function sbDefaultLocationSlug(preferred) {
+    var picked = PTBookingCore.pickLocation(sbLocBookable, preferred);
+    return picked ? picked.slug : '';
+  }
 
   // ── Service icons (presentation only — not part of the catalog API) ───────
   var sbIcons = {
@@ -584,6 +666,37 @@
       sbRenderServices();
       if (sbSt.service) { sbShowDetails(); sbUpdatePrice(); }
     }
+  }
+
+  // ── Render: location picker ───────────────────────────────────────────────
+  // Gated: only shows when 2+ shops are bookable. With <2 bookable, the section
+  // stays hidden and behavior is identical to the prior SW-only flow.
+  function sbRenderLocations() {
+    var section = document.getElementById('sb-location-section');
+    var grid = document.getElementById('sb-location-grid');
+    if (!section || !grid) return;
+    if (sbLocBookable.length < 2) { section.hidden = true; return; }
+    section.hidden = false;
+    grid.innerHTML = sbLocBookable.map(function (l) {
+      var active = sbSt.location === l.slug ? ' sb-loc-chip--active' : '';
+      var label = l.name || l.public_name || l.slug;
+      var addr = l.address || l.address_full || '';
+      return '<button class="sb-loc-chip' + active + '" data-loc="' + l.slug + '">' +
+        '<span class="sb-loc-name">' + label + '</span>' +
+        '<span class="sb-loc-addr">' + addr + '</span>' +
+        '</button>';
+    }).join('');
+    grid.querySelectorAll('.sb-loc-chip').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (sbSt.location === this.dataset.loc) return;
+        sbSt.location = this.dataset.loc;
+        try { localStorage.setItem('pt-booking-location', sbSt.location); } catch (e) {}
+        sbRenderLocations();
+        // Availability is location-specific — re-query if the user is on / has
+        // reached the time step.
+        if (sbSt.date) { sbSt.time = null; var n2 = document.getElementById('sb-next-2'); if (n2) n2.disabled = true; sbRenderTimes(); }
+      });
+    });
   }
 
   // ── Render: service chips ─────────────────────────────────────────────────
@@ -817,7 +930,7 @@
       var isToday = d.getTime() === today.getTime();
       var isActive = sbSt.date && d.toDateString() === sbSt.date.toDateString();
       var cls = 'bk-day-card' + (isPast ? ' bk-day-card--past' : '') + (isToday ? ' bk-day-card--today' : '') + (isActive ? ' bk-day-card--active' : '');
-      var localDate = d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'')+(d.getMonth()+1) + '-' + (d.getDate()<10?'0':'')+d.getDate();
+      var localDate = PTBookingCore.localISO(d);
       h += '<div class="' + cls + '" data-date="' + localDate + '"><div class="bk-day-name">' + dn[i] + '</div><div class="bk-day-num">' + d.getDate() + '</div></div>';
     }
     document.getElementById('sb-day-strip').innerHTML = h;
@@ -840,7 +953,22 @@
       return;
     }
     var isSun = sbSt.date.getDay() === 0;
-    var startH = isSun ? 10 : 9, startM = isSun ? 0 : 30, endH = isSun ? 15 : 17, endM = 30;
+    // Appointment window from the store_hours metaobject (via pt-nap, SW shop):
+    // first slot = open; last slot = close − cutoff. Fallback = the known SW window.
+    {% capture _suo %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{% endcapture %}
+    {% capture _mso %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{% endcapture %}
+    {% capture _suc %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{% endcapture %}
+    {% capture _msc %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{% endcapture %}
+    {% capture _cutv %}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{% endcapture %}
+    var _bo = isSun ? '{{ _suo | strip }}' : '{{ _mso | strip }}';
+    var _bc = isSun ? '{{ _suc | strip }}' : '{{ _msc | strip }}';
+    var _bcut = parseInt('{{ _cutv | strip }}', 10) || 30;
+    var _boa = _bo.split(':'), _bca = _bc.split(':');
+    var startH = parseInt(_boa[0], 10), startM = parseInt(_boa[1], 10) || 0;
+    if (isNaN(startH)) { startH = 9; startM = 0; }
+    var _blast = (parseInt(_bca[0], 10) * 60 + (parseInt(_bca[1], 10) || 0)) - _bcut;
+    if (isNaN(_blast)) { _blast = isSun ? 810 : 990; }
+    var endH = Math.floor(_blast / 60), endM = _blast % 60;
     var slots = [];
     for (var h = startH; h <= endH; h++) {
       for (var m = (h === startH ? startM : 0); m < 60; m += 30) {
@@ -850,15 +978,8 @@
       }
     }
     document.getElementById('sb-time-grid').innerHTML = '<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Checking availability…</p>';
-    var booked = [], allDayBlocked = false;
-    try {
-      var _da = sbSt.date;
-      var _dateParam = _da.getFullYear() + '-' + (_da.getMonth()+1<10?'0':'') + (_da.getMonth()+1) + '-' + (_da.getDate()<10?'0':'') + _da.getDate();
-      var r = await fetch(AVAILABILITY_API + '?date=' + _dateParam);
-      var data = await r.json();
-      booked = data.booked || [];
-      allDayBlocked = data.allDayBlocked || false;
-    } catch (e) {}
+    var _avail = await PTBookingCore.fetchAvailability(AVAILABILITY_API, PTBookingCore.localISO(sbSt.date), sbSt.location);
+    var booked = _avail.booked, allDayBlocked = _avail.allDayBlocked;
     if (allDayBlocked) {
       document.getElementById('sb-time-grid').innerHTML = '<p style="color:#dc2626;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">Not available this day — please pick another date.</p>';
       return;
@@ -968,6 +1089,23 @@
   window.openServiceModal = function (btn) {
     var pre = (btn.dataset.serviceName || '').toLowerCase();
 
+    // Resolve the location BEFORE rendering. Override order:
+    //   ?location=<slug>  →  data-location on the trigger  →  saved choice  →  is_primary
+    sbInitLocations();
+    var preferredLoc = '';
+    try {
+      var qp = new URLSearchParams(window.location.search).get('location');
+      if (qp) preferredLoc = qp.toLowerCase();
+    } catch (e) {}
+    if (!preferredLoc && btn.dataset.location) preferredLoc = btn.dataset.location.toLowerCase();
+    if (!preferredLoc) {
+      try {
+        var savedLoc = localStorage.getItem('pt-booking-location');
+        if (savedLoc) preferredLoc = savedLoc.toLowerCase();
+      } catch (e) {}
+    }
+    sbSt.location = sbDefaultLocationSlug(preferredLoc);
+
     // Match pre-selected service by name
     sbSt.service = '';
     if (pre) {
@@ -1017,6 +1155,7 @@
       document.getElementById('sb-notes').value = '';
     } catch (e) {}
 
+    sbRenderLocations();
     sbRenderServices();
     if (sbSt.service) { sbShowDetails(); sbUpdatePrice(); }
     sbUpdateNextBtn();
@@ -1066,13 +1205,12 @@
 
     // Build date string using local time to avoid UTC day-shift
     var d = sbSt.date;
-    var dateStr = d.getFullYear() + '-' +
-      (d.getMonth() + 1 < 10 ? '0' : '') + (d.getMonth() + 1) + '-' +
-      (d.getDate() < 10 ? '0' : '') + d.getDate();
+    var dateStr = PTBookingCore.localISO(d);
 
     try {
       var payload = {
         bookType: 'service',
+        location_id: sbSt.location || '',
         serviceName: svc ? svc.name : 'Service',
         serviceId:   sbSt.service,
         mountState:  sbSt.service === 'installation_off' ? 'off'
@@ -1121,14 +1259,20 @@
         localStorage.setItem('pt-booking-vehicle', sbSt.vehicle);
       } catch (ex) {}
 
-      // Done card
+      // Done card — address/phone come from the SELECTED location (NAP fallback
+      // via PTBookingCore.napOf so it matches the other booking surfaces).
+      var nap = PTBookingCore.napOf(sbCurrentLoc());
+      var doneAddr = nap.addressFull;
+      var donePhone = nap.phone;
       var ds = sbSt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + sbSt.time;
       var vehLabel = sbSt.savedVehicle ? (sbSt.savedVehicle.year + ' ' + sbSt.savedVehicle.make + ' ' + sbSt.savedVehicle.model) : (veh ? veh.name : '');
+      var subEl = document.getElementById('sb-done-sub');
+      if (subEl) subEl.textContent = 'See you at Prince Tires — ' + nap.address + '.';
       var doneH = '';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Service</span><span class="bk-summary-val">' + (svc ? svc.name : '—') + '</span></div>';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
-      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">111 42 Ave SW, Calgary, AB</span></div>';
-      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">(403) 452-4283</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">' + doneAddr + '</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">' + donePhone + '</span></div>';
       if (vehLabel) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
       if (pr) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
       document.getElementById('sb-done-card').innerHTML = doneH;
@@ -1155,23 +1299,19 @@
   // ── ICS download ──────────────────────────────────────────────────────────
   window.sbDownloadICS = function () {
     var svc = sbServices.find(function (s) { return s.id === sbSt.service; });
-    var tm = sbSt.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-    var h = parseInt(tm[1]), m = parseInt(tm[2]);
-    if (tm[3].toUpperCase() === 'PM' && h < 12) h += 12;
-    if (tm[3].toUpperCase() === 'AM' && h === 12) h = 0;
-    var _d = sbSt.date;
-    var _dstr = _d.getFullYear() + '' +
-      (_d.getMonth() + 1 < 10 ? '0' : '') + (_d.getMonth() + 1) +
-      (_d.getDate() < 10 ? '0' : '') + _d.getDate();
-    var ds = _dstr;
-    var ts = (h < 10 ? '0' : '') + h + (m < 10 ? '0' : '') + m + '00';
-    var eh = h + 1;
-    var te = (eh < 10 ? '0' : '') + eh + (m < 10 ? '0' : '') + m + '00';
-    var ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART;TZID=America/Edmonton:' + ds + 'T' + ts + '\nDTEND;TZID=America/Edmonton:' + ds + 'T' + te + '\nSUMMARY:' + (svc ? svc.name : 'Service') + ' at Prince Tires\nLOCATION:111 42 Ave SW\\, Calgary\\, AB T2G 0A4\nDESCRIPTION:' + (svc ? svc.name : 'Service') + ' appointment\nEND:VEVENT\nEND:VCALENDAR';
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
-    a.download = 'prince-tires-service.ics';
-    a.click();
+    var svcName = svc ? svc.name : 'Service';
+    // LOCATION reflects the SELECTED shop; NAP fallback via PTBookingCore.napOf
+    // so it matches the done card + the other booking surfaces.
+    var icsLoc = PTBookingCore.napOf(sbCurrentLoc()).addressFull;
+    var ics = PTBookingCore.buildICS({
+      dateISO: PTBookingCore.localISO(sbSt.date),
+      time: sbSt.time,
+      durationMinutes: 60,
+      summary: svcName + ' at Prince Tires',
+      description: svcName + ' appointment',
+      location: icsLoc
+    });
+    if (ics) PTBookingCore.downloadICS(ics, 'prince-tires-service.ics');
   };
 
   // ── Event listeners ───────────────────────────────────────────────────────

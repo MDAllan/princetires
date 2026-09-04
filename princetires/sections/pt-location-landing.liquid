@@ -1,0 +1,381 @@
+{%- comment -%}
+  pt-location-landing — a polished, on-brand location landing page section.
+
+  Built for the NE (Edmonton Trail) shop but location-aware via the `location`
+  setting ('ne' | 'sw'). ALL address / phone / hours pull from the single NAP
+  source (the pt-nap snippet) — never hardcoded.
+
+  Schema notes:
+    - The global AutoPartsStore/LocalBusiness JSON-LD already renders site-wide
+      from snippets/schema-local-business.liquid, so this section does NOT emit a
+      second one. It only emits FAQPage (mirroring the visible FAQ) plus an
+      optional WebPage describing this location page.
+{%- endcomment -%}
+
+{%- assign loc = section.settings.location | default: 'ne' -%}
+
+{%- comment -%} Pull all NAP from the single source (the pt-nap snippet) — never hardcode. {%- endcomment -%}
+{%- capture public_name %}{% render 'pt-nap', location: loc, field: 'public_name' %}{% endcapture -%}
+{%- capture street %}{% render 'pt-nap', location: loc, field: 'street' %}{% endcapture -%}
+{%- capture city %}{% render 'pt-nap', location: loc, field: 'city' %}{% endcapture -%}
+{%- capture region %}{% render 'pt-nap', location: loc, field: 'region' %}{% endcapture -%}
+{%- capture postal %}{% render 'pt-nap', location: loc, field: 'postal' %}{% endcapture -%}
+{%- capture phone %}{% render 'pt-nap', location: loc, field: 'phone' %}{% endcapture -%}
+{%- capture phone_href %}{% render 'pt-nap', location: loc, field: 'phone_href' %}{% endcapture -%}
+{%- capture address_full %}{% render 'pt-nap', location: loc, field: 'address_full' %}{% endcapture -%}
+{%- capture maps_url %}{% render 'pt-nap', location: loc, field: 'maps_url' %}{% endcapture -%}
+
+{%- liquid
+  assign public_name = public_name | strip
+  assign street = street | strip
+  assign city = city | strip
+  assign region = region | strip
+  assign postal = postal | strip
+  assign phone = phone | strip
+  assign phone_href = phone_href | strip
+  assign address_full = address_full | strip
+  assign maps_url = maps_url | strip
+
+  # Build a Google Maps embed src from the address (no API key needed via the q= form).
+  assign map_q = address_full | url_encode
+  assign map_embed_src = 'https://www.google.com/maps?q=' | append: map_q | append: '&output=embed'
+
+  assign booking_url = section.settings.booking_url | default: '/pages/booking?location=ne'
+  assign faq_blocks = section.blocks | where: 'type', 'faq'
+-%}
+
+<div class="ptll">
+
+  {%- comment -%} ── Hero ──────────────────────────────────────────────────── {%- endcomment -%}
+  <div class="ptll__hero">
+    {%- if section.settings.hero_image -%}
+      <div class="ptll__hero-bg" aria-hidden="true">
+        {{- section.settings.hero_image | image_url: width: 1600 | image_tag: loading: 'eager', fetchpriority: 'high', alt: '' -}}
+      </div>
+    {%- endif -%}
+    <div class="ptll__hero-inner">
+      <div class="ptll__trust-strip">
+        <span>⭐ 4.9 / 5 from hundreds of Calgary drivers</span>
+        <span>✓ Same-day service</span>
+        <span>📍 {{ street }}</span>
+      </div>
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="ptll__eyebrow">{{ section.settings.eyebrow }}</span>
+      {%- endif -%}
+      <h1 class="ptll__title">{{ section.settings.heading | default: 'Tire Shop in NE Calgary — Edmonton Trail' }}</h1>
+      {%- if section.settings.intro != blank -%}
+        <div class="ptll__intro">{{ section.settings.intro }}</div>
+      {%- endif -%}
+      <div class="ptll__hero-ctas">
+        <a
+          href="{{ booking_url }}"
+          class="ptll__btn ptll__btn--primary"
+          data-pt-event="book_cta"
+          data-pt-location="ne_landing_hero"
+        >{{ section.settings.cta_text | default: 'Book at this location' }}</a>
+        <a href="tel:{{ phone_href }}" class="ptll__btn ptll__btn--ghost" data-pt-event="phone_click">
+          📞 {{ phone }}
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} ── Services at this shop ─────────────────────────────────── {%- endcomment -%}
+  <div class="ptll__section ptll__services">
+    <div class="ptll__container">
+      <h2 class="ptll__h2">{{ section.settings.services_heading | default: 'What you can get done at our NE Calgary shop' }}</h2>
+      {%- if section.settings.services_intro != blank -%}
+        <p class="ptll__lead">{{ section.settings.services_intro }}</p>
+      {%- endif -%}
+      <div class="ptll__cards">
+        {%- assign svc_blocks = section.blocks | where: 'type', 'service' -%}
+        {%- if svc_blocks.size > 0 -%}
+          {%- for block in svc_blocks -%}
+            <div class="ptll__card" {{ block.shopify_attributes }}>
+              <h3>{{ block.settings.title }}</h3>
+              <p>{{ block.settings.body }}</p>
+              {%- if block.settings.link != blank and block.settings.link_label != blank -%}
+                <a href="{{ block.settings.link }}" class="ptll__card-link">{{ block.settings.link_label }} →</a>
+              {%- endif -%}
+            </div>
+          {%- endfor -%}
+        {%- endif -%}
+      </div>
+      <div class="ptll__inline-cta">
+        <a href="/pages/services" class="ptll__btn ptll__btn--text">See all services →</a>
+        <a href="{{ collections.tires.url | default: '/collections/tires' }}" class="ptll__btn ptll__btn--text">Shop tires →</a>
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} ── Why NE drivers choose Prince ──────────────────────────── {%- endcomment -%}
+  {%- if section.settings.why_body != blank -%}
+  <div class="ptll__section ptll__why">
+    <div class="ptll__container">
+      <h2 class="ptll__h2">{{ section.settings.why_heading | default: 'Why NE Calgary drivers come to us' }}</h2>
+      <div class="ptll__rich">{{ section.settings.why_body }}</div>
+    </div>
+  </div>
+  {%- endif -%}
+
+  {%- comment -%} ── Brands ────────────────────────────────────────────────── {%- endcomment -%}
+  {%- if section.settings.brands_body != blank -%}
+  <div class="ptll__section ptll__brands">
+    <div class="ptll__container">
+      <h2 class="ptll__h2">{{ section.settings.brands_heading | default: 'Brands we stock' }}</h2>
+      <div class="ptll__rich">{{ section.settings.brands_body }}</div>
+    </div>
+  </div>
+  {%- endif -%}
+
+  {%- comment -%} ── When to come in ───────────────────────────────────────── {%- endcomment -%}
+  {%- if section.settings.when_body != blank -%}
+  <div class="ptll__section ptll__when">
+    <div class="ptll__container">
+      <h2 class="ptll__h2">{{ section.settings.when_heading | default: 'When to come in' }}</h2>
+      <div class="ptll__rich">{{ section.settings.when_body }}</div>
+      <div class="ptll__inline-cta">
+        <a href="/pages/winter-tires-calgary" class="ptll__btn ptll__btn--text">Winter tires in Calgary →</a>
+      </div>
+    </div>
+  </div>
+  {%- endif -%}
+
+  {%- comment -%} ── Find us (map + NAP) ───────────────────────────────────── {%- endcomment -%}
+  <div class="ptll__section ptll__find">
+    <div class="ptll__container ptll__find-grid">
+      <div class="ptll__map">
+        <iframe
+          src="{{ map_embed_src }}"
+          width="100%"
+          height="320"
+          style="border:0;"
+          allowfullscreen=""
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          title="{{ public_name }} on Google Maps"
+        ></iframe>
+      </div>
+      <div class="ptll__nap-card">
+        <h2 class="ptll__h2 ptll__h2--light">Find us</h2>
+        <p class="ptll__nap-name">{{ public_name }}</p>
+        <address class="ptll__nap-addr">
+          {{ street }}<br>
+          {{ city }}, {{ region }} {{ postal }}
+        </address>
+        <p class="ptll__nap-line"><strong>Phone:</strong> <a href="tel:{{ phone_href }}">{{ phone }}</a></p>
+        <p class="ptll__nap-line"><strong>Hours:</strong> Mon–Sat 9:30–5:30, Sun 10:00–3:30</p>
+        <div class="ptll__nap-ctas">
+          <a href="{{ maps_url }}" target="_blank" rel="noopener" class="ptll__btn ptll__btn--ghost-dark">Get directions</a>
+          <a href="{{ booking_url }}" class="ptll__btn ptll__btn--primary" data-pt-event="book_cta" data-pt-location="ne_landing_find">{{ section.settings.cta_text | default: 'Book at this location' }}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} ── FAQ ───────────────────────────────────────────────────── {%- endcomment -%}
+  {%- if faq_blocks.size > 0 -%}
+  <div class="ptll__section ptll__faq">
+    <div class="ptll__container">
+      <h2 class="ptll__h2">{{ section.settings.faq_heading | default: 'NE Calgary tire questions, answered' }}</h2>
+      <div class="ptll__faq-list">
+        {%- for block in faq_blocks -%}
+          <details class="ptll__faq-item" {{ block.shopify_attributes }}>
+            <summary class="ptll__faq-q">{{ block.settings.question }}</summary>
+            <div class="ptll__faq-a">{{ block.settings.answer }}</div>
+          </details>
+        {%- endfor -%}
+      </div>
+    </div>
+  </div>
+  {%- render 'schema-faq', faqs: faq_blocks -%}
+  {%- endif -%}
+
+  {%- comment -%} ── Two-locations cross-link ──────────────────────────────── {%- endcomment -%}
+  <div class="ptll__section ptll__twoloc">
+    <div class="ptll__container">
+      {%- render 'pt-two-locations', active: loc, heading: 'Our two Calgary locations' -%}
+    </div>
+  </div>
+
+  {%- comment -%} ── Bottom CTA ────────────────────────────────────────────── {%- endcomment -%}
+  <div class="ptll__cta-bottom">
+    <div class="ptll__container">
+      <h2>{{ section.settings.bottom_cta_heading | default: 'Ready when you are — book your NE Calgary visit' }}</h2>
+      <p>{{ section.settings.bottom_cta_body | default: 'Pick a time online, or call the shop. We handle tires, installs, and seasonal changeovers right here on Edmonton Trail.' }}</p>
+      <a
+        href="{{ booking_url }}"
+        class="ptll__btn ptll__btn--primary ptll__btn--large"
+        data-pt-event="book_cta"
+        data-pt-location="ne_landing_bottom"
+      >{{ section.settings.cta_text | default: 'Book at this location' }}</a>
+    </div>
+  </div>
+
+</div>
+
+{%- comment -%} ── WebPage JSON-LD (about this location page only; no LocalBusiness) ── {%- endcomment -%}
+{%- if section.settings.emit_webpage_schema -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "url": {{ canonical_url | json }},
+  "name": {{ page_title | default: public_name | json }},
+  "about": {{ public_name | json }}
+}
+</script>
+{%- endif -%}
+
+{% stylesheet %}
+.ptll { --red: #dc2626; --black: #111; font-family: 'Outfit', sans-serif; }
+
+/* Hero */
+.ptll__hero { position: relative; background: var(--black); color: #fff; display: flex; }
+.ptll__hero-bg { position: absolute; inset: 0; overflow: hidden; }
+.ptll__hero-bg img { width: 100%; height: 100%; object-fit: cover; opacity: 0.3; }
+.ptll__hero-inner { position: relative; z-index: 1; padding: 6rem 2.4rem 5rem; max-width: 900px; margin: 0 auto; width: 100%; }
+.ptll__trust-strip { display: flex; flex-wrap: wrap; gap: 1.6rem; font-size: 1.3rem; color: rgba(255,255,255,0.75); margin-bottom: 1.6rem; }
+.ptll__eyebrow { display: block; font-size: 1.2rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--red); margin-bottom: 0.75rem; }
+.ptll__title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(3.2rem, 6vw, 5.4rem); font-weight: 800; line-height: 1.02; margin: 0 0 1.4rem; text-transform: uppercase; }
+.ptll__intro { font-size: 1.7rem; font-weight: 300; color: rgba(255,255,255,0.85); line-height: 1.6; margin: 0 0 2.6rem; max-width: 680px; }
+.ptll__intro p { margin: 0 0 1rem; }
+.ptll__hero-ctas { display: flex; flex-wrap: wrap; gap: 1.2rem; }
+
+/* Buttons */
+.ptll__btn { display: inline-flex; align-items: center; justify-content: center; padding: 1.3rem 2.6rem; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1.6rem; letter-spacing: 0.05em; text-transform: uppercase; transition: all 0.2s; white-space: nowrap; text-decoration: none; }
+.ptll__btn--primary { background: var(--red); color: #fff; }
+.ptll__btn--primary:hover { background: #c41a14; }
+.ptll__btn--ghost { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,0.5); }
+.ptll__btn--ghost:hover { border-color: #fff; }
+.ptll__btn--ghost-dark { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,0.4); }
+.ptll__btn--ghost-dark:hover { border-color: #fff; }
+.ptll__btn--large { padding: 1.7rem 3.8rem; font-size: 1.9rem; }
+.ptll__btn--text { background: none; padding: 0; color: var(--red); font-size: 1.5rem; text-transform: none; letter-spacing: 0; }
+.ptll__btn--text:hover { text-decoration: underline; }
+
+/* Sections */
+.ptll__section { padding: 5.6rem 0; }
+.ptll__container { max-width: 980px; margin: 0 auto; padding: 0 2.4rem; }
+.ptll__h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 2.8rem; font-weight: 700; text-transform: uppercase; margin: 0 0 1.6rem; color: var(--black); }
+.ptll__h2--light { color: #fff; }
+.ptll__lead { font-size: 1.6rem; font-weight: 300; color: #444; line-height: 1.7; margin: 0 0 2.4rem; max-width: 720px; }
+.ptll__rich { font-size: 1.55rem; font-weight: 300; color: #444; line-height: 1.75; max-width: 760px; }
+.ptll__rich p { margin: 0 0 1.2rem; }
+.ptll__rich ul { margin: 0 0 1.2rem 1.4rem; }
+.ptll__rich li { margin-bottom: 0.5rem; }
+.ptll__inline-cta { display: flex; flex-wrap: wrap; gap: 2rem; margin-top: 2.4rem; }
+
+/* Services cards */
+.ptll__services { background: #f8f8f8; }
+.ptll__cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; }
+.ptll__card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 2rem 1.75rem; }
+.ptll__card h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.9rem; font-weight: 700; margin: 0 0 0.6rem; color: var(--black); }
+.ptll__card p { font-size: 1.4rem; font-weight: 300; color: #555; line-height: 1.6; margin: 0 0 0.8rem; }
+.ptll__card-link { font-size: 1.35rem; font-weight: 600; color: var(--red); text-decoration: none; }
+.ptll__card-link:hover { text-decoration: underline; }
+
+/* Why / when */
+.ptll__when { background: #f8f8f8; }
+
+/* Find us */
+.ptll__find { background: var(--black); color: #fff; }
+.ptll__find-grid { display: grid; grid-template-columns: 1fr 360px; gap: 3rem; align-items: stretch; }
+.ptll__map { border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.25); }
+.ptll__map iframe { display: block; height: 100%; min-height: 320px; }
+.ptll__nap-card { display: flex; flex-direction: column; }
+.ptll__nap-name { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 700; margin: 0 0 0.6rem; }
+.ptll__nap-addr { font-style: normal; font-size: 1.5rem; font-weight: 300; line-height: 1.6; color: rgba(255,255,255,0.85); margin: 0 0 1.2rem; }
+.ptll__nap-line { font-size: 1.4rem; font-weight: 300; color: rgba(255,255,255,0.85); margin: 0 0 0.6rem; }
+.ptll__nap-line a { color: #fff; }
+.ptll__nap-ctas { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.4rem; }
+
+/* FAQ */
+.ptll__faq-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.ptll__faq-item { border: 1px solid #e5e5e5; border-radius: 6px; overflow: hidden; }
+.ptll__faq-q { padding: 1.8rem 2rem; font-size: 1.6rem; font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; background: #fff; }
+.ptll__faq-q::after { content: '+'; font-size: 2rem; font-weight: 300; color: var(--red); flex-shrink: 0; margin-left: 1.2rem; }
+.ptll__faq-item[open] .ptll__faq-q::after { content: '−'; }
+.ptll__faq-a { padding: 0 2rem 1.8rem; font-size: 1.5rem; font-weight: 300; color: #555; line-height: 1.7; }
+
+/* Bottom CTA */
+.ptll__cta-bottom { padding: 7rem 2.4rem; background: var(--red); color: #fff; text-align: center; }
+.ptll__cta-bottom h2 { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(2.4rem, 4vw, 4rem); font-weight: 800; text-transform: uppercase; margin: 0 0 1.2rem; }
+.ptll__cta-bottom p { font-size: 1.6rem; font-weight: 300; opacity: 0.92; margin: 0 auto 3rem; max-width: 620px; }
+.ptll__cta-bottom .ptll__btn--primary { background: #fff; color: var(--red); }
+.ptll__cta-bottom .ptll__btn--primary:hover { background: #f0f0f0; }
+
+@media (max-width: 900px) {
+  .ptll__find-grid { grid-template-columns: 1fr; }
+  .ptll__map iframe { min-height: 280px; }
+}
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Location landing page",
+  "tag": "section",
+  "blocks": [
+    {
+      "type": "service",
+      "name": "Service card",
+      "settings": [
+        { "type": "text",     "id": "title",      "label": "Title" },
+        { "type": "textarea", "id": "body",       "label": "Body" },
+        { "type": "url",      "id": "link",        "label": "Link (optional)" },
+        { "type": "text",     "id": "link_label", "label": "Link label", "default": "Learn more" }
+      ]
+    },
+    {
+      "type": "faq",
+      "name": "FAQ item",
+      "settings": [
+        { "type": "text",     "id": "question", "label": "Question" },
+        { "type": "textarea", "id": "answer",   "label": "Answer" }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "select",
+      "id": "location",
+      "label": "Location",
+      "options": [
+        { "value": "ne", "label": "NE — Edmonton Trail" },
+        { "value": "sw", "label": "SW — 42 Ave SW" }
+      ],
+      "default": "ne",
+      "info": "Pulls all address / phone from the pt-nap single source."
+    },
+    { "type": "header",       "content": "Hero" },
+    { "type": "image_picker", "id": "hero_image", "label": "Hero background image" },
+    { "type": "text",         "id": "eyebrow",    "label": "Eyebrow", "default": "NE Calgary · Edmonton Trail" },
+    { "type": "text",         "id": "heading",    "label": "H1 heading", "default": "Tire Shop in NE Calgary — Edmonton Trail" },
+    { "type": "richtext",     "id": "intro",      "label": "Intro" },
+    { "type": "text",         "id": "cta_text",   "label": "Primary CTA text", "default": "Book at this location" },
+    { "type": "url",          "id": "booking_url","label": "Booking URL", "info": "Defaults to /pages/booking?location=ne" },
+    { "type": "header",       "content": "Services section" },
+    { "type": "text",         "id": "services_heading", "label": "Heading", "default": "What you can get done at our NE Calgary shop" },
+    { "type": "textarea",     "id": "services_intro",   "label": "Intro" },
+    { "type": "header",       "content": "Why NE drivers choose Prince" },
+    { "type": "text",         "id": "why_heading", "label": "Heading", "default": "Why NE Calgary drivers come to us" },
+    { "type": "richtext",     "id": "why_body",    "label": "Body" },
+    { "type": "header",       "content": "Brands" },
+    { "type": "text",         "id": "brands_heading", "label": "Heading", "default": "Brands we stock" },
+    { "type": "richtext",     "id": "brands_body",    "label": "Body" },
+    { "type": "header",       "content": "When to come in" },
+    { "type": "text",         "id": "when_heading", "label": "Heading", "default": "When to come in" },
+    { "type": "richtext",     "id": "when_body",    "label": "Body" },
+    { "type": "header",       "content": "FAQ" },
+    { "type": "text",         "id": "faq_heading", "label": "Heading", "default": "NE Calgary tire questions, answered" },
+    { "type": "header",       "content": "Bottom CTA" },
+    { "type": "text",         "id": "bottom_cta_heading", "label": "Heading", "default": "Ready when you are — book your NE Calgary visit" },
+    { "type": "textarea",     "id": "bottom_cta_body",    "label": "Body" },
+    { "type": "header",       "content": "Structured data" },
+    { "type": "checkbox",     "id": "emit_webpage_schema", "label": "Emit WebPage JSON-LD", "default": true, "info": "FAQPage is always emitted when FAQ items exist. LocalBusiness is rendered globally — do not duplicate it here." }
+  ],
+  "presets": [
+    { "name": "Location landing page" }
+  ]
+}
+{% endschema %}

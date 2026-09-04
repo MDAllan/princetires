@@ -44,7 +44,7 @@
             <div class="bk-order-tire-name" id="bk-tire-name-display">Tire</div>
             <span class="bk-tire-badge" id="bk-tire-size-display">—</span>
           </div>
-          <div class="bk-order-veh-info">
+          <div class="bk-order-veh-info bk-install-only">
             <span id="bk-vehicle-display-name">Vehicle</span>
             <span id="bk-vehicle-display-price">—</span>
           </div>
@@ -54,9 +54,43 @@
         <p class="bk-order-note">Est. price · confirmed at time of service</p>
       </div>
 
+      {%- comment -%}
+        Location picker — only rendered (un-hidden) by JS when there are 2+
+        BOOKABLE locations in the #pt-locations-data island. While only SW is
+        bookable it stays hidden and behaves exactly as before (single SW NAP,
+        no location_id sent unless it's SW's slug).
+      {%- endcomment -%}
+      <div id="bk-location-section" hidden>
+        <p class="bk-label">Location</p>
+        <div class="bk-loc-grid" id="bk-loc-grid"></div>
+      </div>
+
       {%- comment -%} Hidden elements kept for JS compatibility {%- endcomment -%}
       <div id="bk-saved-vehicle" hidden><span id="bk-saved-vehicle-label"></span></div>
       <div id="bk-vehicle-section" hidden><div class="bk-vehicle-grid" id="bk-vehicles"></div></div>
+
+      {%- comment -%}
+        Step-zero choice — install (default) vs tires-only.
+        Tires-only skips steps 2 + 3 and adds the variant to Shopify cart.
+      {%- endcomment -%}
+      <p class="bk-label">How would you like this?</p>
+      <div class="bk-flow-grid" id="bk-flow-grid">
+        <label class="bk-flow-card bk-flow-card--active" data-flow="install">
+          <input type="radio" name="bk-flow" value="install" checked>
+          <div class="bk-flow-card-head">
+            <span class="bk-flow-card-title">Tires + installation</span>
+            <span class="bk-flow-card-pill">Recommended</span>
+          </div>
+          <span class="bk-flow-card-sub">Book a slot — mount, balance, torque, ready to drive away.</span>
+        </label>
+        <label class="bk-flow-card" data-flow="tires_only">
+          <input type="radio" name="bk-flow" value="tires_only">
+          <div class="bk-flow-card-head">
+            <span class="bk-flow-card-title">Tires only</span>
+          </div>
+          <span class="bk-flow-card-sub">No appointment — tires to cart for pickup or shipping. Install another time.</span>
+        </label>
+      </div>
 
       <p class="bk-label">Tires</p>
       <select class="bk-qty-select" id="bk-qty-select">
@@ -71,22 +105,29 @@
       </select>
       <div id="bk-qty-grid" hidden></div>
 
-      <p class="bk-label">Add-ons</p>
-      <div class="bk-addons">
-        <label class="bk-addon" id="bk-addon-tpms">
-          <input type="checkbox" id="bk-tpms">
-          <span class="bk-addon-name">TPMS sensor replacement</span>
-          <span class="bk-addon-price">+$75/tire</span>
-        </label>
-        <label class="bk-addon bk-addon--active" id="bk-addon-disposal">
-          <input type="checkbox" id="bk-disposal" checked>
-          <span class="bk-addon-name">Tire disposal</span>
-          <span class="bk-addon-price">+$5/tire</span>
-        </label>
+      <div class="bk-install-only">
+        <p class="bk-label">Add-ons</p>
+        <div class="bk-addons" id="bk-addons-list">
+          <label class="bk-addon" id="bk-addon-tpms">
+            <input type="checkbox" id="bk-tpms">
+            <span class="bk-addon-name">TPMS sensor replacement</span>
+            <span class="bk-addon-price">+$75/tire</span>
+          </label>
+          <label class="bk-addon bk-addon--active" id="bk-addon-disposal">
+            <input type="checkbox" id="bk-disposal" checked>
+            <span class="bk-addon-name">Tire disposal</span>
+            <span class="bk-addon-price">+$5/tire</span>
+          </label>
+          {%- comment -%}
+            Additional custom add-ons rendered here by bkRenderCustomAddons()
+            from GET /api/services (any row with kind='addon' beyond TPMS+disposal).
+          {%- endcomment -%}
+          <div id="bk-custom-addons"></div>
+        </div>
       </div>
 
       <div id="bk-price-box" hidden></div>
-      <button class="bk-next-btn" onclick="bkGoTo(2)">Pick a time &rarr;</button>
+      <button class="bk-next-btn" id="bk-step1-cta" onclick="bkStep1Continue()">Pick a time &rarr;</button>
     </div>
 
     {%- comment -%} Step 2 {%- endcomment -%}
@@ -102,7 +143,8 @@
       <p class="bk-label">Time</p>
       <p class="bk-trial-note" id="bk-trial-note" hidden></p>
       <div class="bk-time-grid" id="bk-time-grid"></div>
-      <p class="bk-hours-note">Mon–Sat 9:30–5:30 · Sun 10:00–3:30</p>
+      {%- capture bw_mso -%}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{%- endcapture -%}{%- capture bw_msc -%}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{%- endcapture -%}{%- capture bw_suo -%}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{%- endcapture -%}{%- capture bw_suc -%}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{%- endcapture -%}{%- capture bw_cut -%}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{%- endcapture -%}
+      <p class="bk-hours-note">Mon–Sat {% render 'pt-book-window', open: bw_mso, close: bw_msc, cutoff: bw_cut %} · Sun {% render 'pt-book-window', open: bw_suo, close: bw_suc, cutoff: bw_cut %}</p>
 
       <div class="bk-nav-row">
         <button class="bk-back-btn" onclick="bkGoTo(1)">&larr; Back</button>
@@ -150,7 +192,7 @@
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
       </div>
       <h2 class="bk-done-title">You're booked!</h2>
-      <p class="bk-done-sub">See you at Prince Tires — 111 42 Ave SW, Calgary.</p>
+      <p class="bk-done-sub" id="bk-done-sub">See you at Prince Tires — 111 42 Ave SW, Calgary.</p>
       <div class="bk-done-card" id="bk-done-card"></div>
       <div class="bk-done-actions">
         <button class="bk-cal-btn" onclick="bkDownloadICS()">Add to calendar</button>
@@ -170,14 +212,14 @@
 
 /* ── Header ── */
 .bk-header{display:flex;align-items:center;gap:.75rem;padding:.9rem 1.25rem .75rem;border-bottom:1px solid #f3f4f6}
-.bk-header-title{font-size:1rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;flex:1}
+.bk-header-title{font-size: 1rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;flex:1}
 .bk-close{background:none;border:none;color:#9ca3af;cursor:pointer;padding:4px;display:flex;border-radius:6px;transition:color .15s}
 .bk-close:hover{color:#111}
 
 /* ── Stepper (dots) ── */
 .bk-stepper{display:flex;align-items:center;gap:.3rem;transition:opacity .3s}
 .bk-step{display:flex;align-items:center}
-.bk-step-circle{width:26px;height:26px;border-radius:50%;border:1.5px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:600;color:#d1d5db;transition:all .2s}
+.bk-step-circle{width:26px;height:26px;border-radius:50%;border:1.5px solid #e5e7eb;display:flex;align-items:center;justify-content:center;font-size: 0.9rem;font-weight:600;color:#d1d5db;transition:all .2s}
 .bk-step-circle--active{background:#dc2626;border-color:#dc2626;color:#fff}
 .bk-step-circle--done{background:#16a34a;border-color:#16a34a;color:#fff}
 .bk-step-label{display:none}
@@ -189,19 +231,19 @@
 
 /* ── Tire row ── */
 .bk-tire-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;padding-bottom:.9rem;border-bottom:1px solid #f3f4f6}
-.bk-tire-name{font-size:1.1rem;font-weight:600;color:#111;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:.5rem}
-.bk-tire-badge{font-size:1rem;font-weight:600;color:#dc2626;background:#fef2f2;padding:.2rem .6rem;border-radius:20px;flex-shrink:0;white-space:nowrap}
+.bk-tire-name{font-size: 1.1rem;font-weight:600;color:#111;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:.5rem}
+.bk-tire-badge{font-size: 1rem;font-weight:600;color:#dc2626;background:#fef2f2;padding:.2rem .6rem;border-radius:20px;flex-shrink:0;white-space:nowrap}
 .bk-tire-badge--gray{color:#6b7280;background:#f3f4f6}
 
 /* ── Saved vehicle ── */
-.bk-saved-vehicle{display:flex;align-items:center;gap:.4rem;font-size:1rem;color:#374151;margin-bottom:.8rem;padding:.5rem .7rem;background:#f0fdf4;border-radius:8px}
+.bk-saved-vehicle{display:flex;align-items:center;gap:.4rem;font-size: 1rem;color:#374151;margin-bottom:.8rem;padding:.5rem .7rem;background:#f0fdf4;border-radius:8px}
 .bk-saved-vehicle[hidden]{display:none}
-.bk-link-btn{background:none;border:none;color:#F5820B;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;padding:0;margin-left:auto;text-decoration:underline;text-underline-offset:2px}
+.bk-link-btn{background:none;border:none;color:#F5820B;font-family:'Outfit',sans-serif;font-size: 1rem;font-weight:600;cursor:pointer;padding:0;margin-left:auto;text-decoration:underline;text-underline-offset:2px}
 
 /* ── Section label ── */
-.bk-label{font-size:.95rem;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin:.9rem 0 .4rem}
+.bk-label{font-size: 0.95rem;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin:.9rem 0 .4rem}
 .bk-label:first-of-type{margin-top:0}
-.bk-hours-note{font-size:1rem;color:#9ca3af;margin:.6rem 0 0;text-align:center}
+.bk-hours-note{font-size: 1rem;color:#9ca3af;margin:.6rem 0 0;text-align:center}
 .bk-optional{color:#9ca3af;font-weight:400}
 
 /* ── Vehicle chips ── */
@@ -213,72 +255,99 @@
 .bk-vehicle-card--active{border-color:#dc2626;background:#fef2f2}
 .bk-vehicle-card--active .bk-vehicle-name{color:#dc2626}
 .bk-vehicle-icon{display:none}
-.bk-vehicle-name{font-size:1rem;font-weight:500;color:#374151}
+.bk-vehicle-name{font-size: 1rem;font-weight:500;color:#374151}
 .bk-vehicle-card--active .bk-vehicle-name{color:#dc2626;font-weight:600}
 .bk-vehicle-price{display:none}
 
 /* ── Qty dropdown ── */
-.bk-qty-select{width:100%;padding:.7rem .85rem;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:500;color:#111;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;transition:border-color .15s}
+.bk-qty-select{width:100%;padding:.7rem .85rem;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-family:'Outfit',sans-serif;font-size: 1.05rem;font-weight:500;color:#111;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;transition:border-color .15s}
 .bk-qty-select:focus,.bk-qty-select:hover{border-color:#dc2626}
+
+/* ── Flow cards (step zero: install vs tires-only) ── */
+.bk-flow-grid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-bottom:1rem}
+.bk-flow-card{position:relative;display:flex;flex-direction:column;gap:.3rem;padding:.85rem .9rem;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;transition:border-color .15s,background-color .15s;background:#fff}
+.bk-flow-card:hover{border-color:#9ca3af}
+.bk-flow-card input{position:absolute;opacity:0;pointer-events:none}
+.bk-flow-card--active{border-color:#dc2626;background:#fef2f2}
+.bk-flow-card-head{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.bk-flow-card-title{font-weight:700;color:#111;font-size: 1.05rem}
+.bk-flow-card-pill{display:inline-block;padding:1px 7px;background:#dc2626;color:#fff;font-size: 0.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:3px}
+.bk-flow-card-sub{color:#6b7280;font-size: 0.9rem;line-height:1.35}
+@media (max-width:560px){.bk-flow-grid{grid-template-columns:1fr}}
+
+/* ── Location picker (only shown when 2+ bookable locations) ── */
+.bk-loc-grid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-bottom:.4rem}
+@media (max-width:560px){.bk-loc-grid{grid-template-columns:1fr}}
+.bk-loc-card{position:relative;display:flex;flex-direction:column;gap:.15rem;padding:.7rem .85rem;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;transition:border-color .15s,background-color .15s;background:#fff}
+.bk-loc-card:hover{border-color:#9ca3af}
+.bk-loc-card input{position:absolute;opacity:0;pointer-events:none}
+.bk-loc-card--active{border-color:#dc2626;background:#fef2f2}
+.bk-loc-name{font-weight:700;color:#111;font-size: 1rem}
+.bk-loc-card--active .bk-loc-name{color:#dc2626}
+.bk-loc-addr{color:#6b7280;font-size: 0.85rem;line-height:1.3}
+
+/* When tires-only is selected, hide install-only sections + chrome */
+.bk-flow-tires-only .bk-install-only{display:none !important}
+.bk-flow-tires-only #bk-stepper{visibility:hidden}
 
 /* ── Addons ── */
 .bk-addons{display:flex;flex-direction:column}
-.bk-addon{display:flex;align-items:center;gap:.5rem;padding:.65rem 0;border-bottom:1px solid #f3f4f6;cursor:pointer;font-size:1.05rem;color:#374151;transition:color .15s}
+.bk-addon{display:flex;align-items:center;gap:.5rem;padding:.65rem 0;border-bottom:1px solid #f3f4f6;cursor:pointer;font-size: 1.05rem;color:#374151;transition:color .15s}
 .bk-addon:last-child{border-bottom:none}
 .bk-addon input{accent-color:#dc2626;flex-shrink:0;width:19px;height:19px;cursor:pointer}
-.bk-addon-name{flex:1;font-size:1.05rem;font-weight:500;color:#374151}
+.bk-addon-name{flex:1;font-size: 1.05rem;font-weight:500;color:#374151}
 .bk-addon--active .bk-addon-name{color:#111}
-.bk-addon-price{flex-shrink:0;color:#9ca3af;font-size:1rem;font-weight:500}
+.bk-addon-price{flex-shrink:0;color:#9ca3af;font-size: 1rem;font-weight:500}
 .bk-addon--active .bk-addon-price{color:#dc2626}
 
 /* ── Price box ── */
-.bk-price-box{margin-top:.9rem;padding-top:.8rem;border-top:1px solid #f3f4f6;font-size:1.05rem}
-.bk-price-row{display:flex;justify-content:space-between;padding:.25rem 0;color:#9ca3af;font-size:1rem}
-.bk-price-row--total{color:#111;font-weight:700;font-size:1.1rem;padding-top:.4rem;margin-top:.25rem;border-top:1px solid #f3f4f6}
+.bk-price-box{margin-top:.9rem;padding-top:.8rem;border-top:1px solid #f3f4f6;font-size: 1.05rem}
+.bk-price-row{display:flex;justify-content:space-between;padding:.25rem 0;color:#9ca3af;font-size: 1rem}
+.bk-price-row--total{color:#111;font-weight:700;font-size: 1.1rem;padding-top:.4rem;margin-top:.25rem;border-top:1px solid #f3f4f6}
 .bk-price-row--total .bk-price-val{color:#16a34a}
-.bk-price-note{font-size:.95rem;color:#9ca3af;margin-top:.4rem;text-align:center}
+.bk-price-note{font-size: 0.95rem;color:#9ca3af;margin-top:.4rem;text-align:center}
 
 /* ── Order summary card (Step 1) ── */
 .bk-order-card{background:#f7f7f8;border-radius:10px;padding:.85rem 1rem .65rem;margin-bottom:.9rem}
 .bk-order-header{display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;padding-bottom:.7rem;margin-bottom:.65rem;border-bottom:1px solid #e5e7eb}
 .bk-order-tire-info{min-width:0;flex:1}
-.bk-order-tire-name{font-size:1rem;font-weight:700;color:#111;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-order-tire-name{font-size: 1rem;font-weight:700;color:#111;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bk-order-veh-info{text-align:right;flex-shrink:0}
-.bk-order-veh-info span:first-child{display:block;font-size:.85rem;color:#6b7280}
-.bk-order-veh-info span:last-child{display:block;font-size:.85rem;font-weight:600;color:#374151}
+.bk-order-veh-info span:first-child{display:block;font-size: 0.85rem;color:#6b7280}
+.bk-order-veh-info span:last-child{display:block;font-size: 0.85rem;font-weight:600;color:#374151}
 .bk-order-lines{display:flex;flex-direction:column;gap:.15rem;margin-bottom:.5rem}
-.bk-order-row{display:flex;justify-content:space-between;font-size:.95rem;color:#6b7280;padding:.1rem 0}
-.bk-order-total-row{display:flex;justify-content:space-between;border-top:1.5px solid #d1d5db;padding-top:.55rem;font-size:1.05rem;font-weight:700;color:#111}
-.bk-order-total-val{color:#16a34a;font-size:1.1rem;font-weight:700}
-.bk-order-note{font-size:.8rem;color:#9ca3af;text-align:center;margin:.45rem 0 0;padding-top:.4rem;border-top:1px solid #ececec}
+.bk-order-row{display:flex;justify-content:space-between;font-size: 0.95rem;color:#6b7280;padding:.1rem 0}
+.bk-order-total-row{display:flex;justify-content:space-between;border-top:1.5px solid #d1d5db;padding-top:.55rem;font-size: 1.05rem;font-weight:700;color:#111}
+.bk-order-total-val{color:#16a34a;font-size: 1.1rem;font-weight:700}
+.bk-order-note{font-size: 0.8rem;color:#9ca3af;text-align:center;margin:.45rem 0 0;padding-top:.4rem;border-top:1px solid #ececec}
 
 /* ── Buttons ── */
-.bk-next-btn{display:block;width:100%;padding:13px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:600;cursor:pointer;margin-top:1rem;transition:background .15s;text-align:center}
+.bk-next-btn{display:block;width:100%;padding:13px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size: 1.1rem;font-weight:600;cursor:pointer;margin-top:1rem;transition:background .15s;text-align:center}
 .bk-next-btn:hover{background:#b91c1c}
 .bk-next-btn:disabled{opacity:.4;cursor:not-allowed}
-.bk-back-btn{padding:13px 18px;border:1.5px solid #e5e7eb;background:#fff;color:#6b7280;font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:500;border-radius:8px;cursor:pointer;transition:all .15s}
+.bk-back-btn{padding:13px 18px;border:1.5px solid #e5e7eb;background:#fff;color:#6b7280;font-family:'Outfit',sans-serif;font-size: 1.05rem;font-weight:500;border-radius:8px;cursor:pointer;transition:all .15s}
 .bk-back-btn:hover{border-color:#d1d5db;color:#111}
 .bk-nav-row{display:flex;gap:.5rem;margin-top:1rem}
 .bk-nav-row .bk-next-btn{flex:1;margin-top:0}
-.bk-confirm-btn{flex:1;padding:13px;background:#16a34a;border:none;color:#fff;font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:600;border-radius:8px;cursor:pointer;transition:background .15s}
+.bk-confirm-btn{flex:1;padding:13px;background:#16a34a;border:none;color:#fff;font-family:'Outfit',sans-serif;font-size: 1.1rem;font-weight:600;border-radius:8px;cursor:pointer;transition:background .15s}
 .bk-confirm-btn:hover:not(:disabled){background:#15803d}
 .bk-confirm-btn:disabled{opacity:.5;cursor:not-allowed}
 
 /* ── Trial note ── */
-.bk-trial-note{font-size:.9rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:.5rem .75rem;margin:0 0 .5rem;line-height:1.4}
+.bk-trial-note{font-size: 0.9rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:.5rem .75rem;margin:0 0 .5rem;line-height:1.4}
 .bk-trial-note[hidden]{display:none}
 
 /* ── Form error ── */
-.bk-form-error{background:#fef2f2;border-radius:7px;padding:.6rem .8rem;font-size:1rem;color:#dc2626;margin-top:.7rem}
+.bk-form-error{background:#fef2f2;border-radius:7px;padding:.6rem .8rem;font-size: 1rem;color:#dc2626;margin-top:.7rem}
 .bk-form-error[hidden]{display:none}
 .bk-field--error input,.bk-field--error textarea{border-color:#dc2626!important}
 
 /* ── Calendar ── */
 .bk-week-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
-.bk-week-arrow{width:30px;height:30px;border:1.5px solid #e5e7eb;border-radius:7px;background:#fff;font-size:1.2rem;color:#374151;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.bk-week-arrow{width:30px;height:30px;border:1.5px solid #e5e7eb;border-radius:7px;background:#fff;font-size: 1.2rem;color:#374151;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .bk-week-arrow:hover{border-color:#dc2626;color:#dc2626}
 .bk-week-arrow:disabled{opacity:.3;cursor:not-allowed}
-.bk-week-label{font-size:1.05rem;font-weight:500;color:#111}
+.bk-week-label{font-size: 1.05rem;font-weight:500;color:#111}
 .bk-day-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem;margin-bottom:.9rem}
 .bk-day-card{padding:.45rem 0;border:1.5px solid #f3f4f6;border-radius:8px;text-align:center;cursor:pointer;transition:all .15s;background:#fff}
 .bk-day-card:hover:not(.bk-day-card--past){border-color:#dc2626}
@@ -287,17 +356,17 @@
 .bk-day-card--past{opacity:.3;cursor:not-allowed;background:#fafafa}
 .bk-day-card--active{border-color:#dc2626;background:#fef2f2}
 .bk-day-card--active .bk-day-name,.bk-day-card--active .bk-day-num{color:#dc2626}
-.bk-day-name{font-size:.85rem;color:#9ca3af}
-.bk-day-num{font-size:1.1rem;font-weight:600;color:#111}
+.bk-day-name{font-size: 0.85rem;color:#9ca3af}
+.bk-day-num{font-size: 1.1rem;font-weight:600;color:#111}
 .bk-time-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.3rem}
-.bk-time-slot{padding:.55rem;border:1.5px solid #f3f4f6;border-radius:7px;text-align:center;font-size:1rem;color:#374151;cursor:pointer;transition:all .15s;background:#fff}
+.bk-time-slot{padding:.55rem;border:1.5px solid #f3f4f6;border-radius:7px;text-align:center;font-size: 1rem;color:#374151;cursor:pointer;transition:all .15s;background:#fff}
 .bk-time-slot:hover{border-color:#dc2626;color:#dc2626}
 .bk-time-slot--active{border-color:#dc2626;background:#fef2f2;color:#dc2626;font-weight:600}
 .bk-time-slot--booked{background:#fafafa;color:#d1d5db;text-decoration:line-through;cursor:not-allowed;border-color:#f3f4f6}
 
 /* ── Step 3 summary ── */
 .bk-summary{padding-bottom:.8rem;margin-bottom:.8rem;border-bottom:1px solid #f3f4f6}
-.bk-summary-row{display:flex;justify-content:space-between;padding:.3rem 0;font-size:1.05rem}
+.bk-summary-row{display:flex;justify-content:space-between;padding:.3rem 0;font-size: 1.05rem}
 .bk-summary-row:last-child{border-bottom:none}
 .bk-summary-label{color:#9ca3af}
 .bk-summary-val{color:#111;font-weight:600;text-align:right;max-width:60%}
@@ -306,20 +375,20 @@
 /* ── Form ── */
 .bk-form{display:flex;flex-direction:column;gap:.6rem}
 .bk-form-row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
-.bk-field label{display:block;font-size:1rem;font-weight:500;color:#6b7280;margin-bottom:.3rem}
-.bk-field input,.bk-field textarea{width:100%;padding:.7rem .85rem;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Outfit',sans-serif;font-size:1.1rem;outline:none;box-sizing:border-box;color:#111;transition:border-color .15s}
+.bk-field label{display:block;font-size: 1rem;font-weight:500;color:#6b7280;margin-bottom:.3rem}
+.bk-field input,.bk-field textarea{width:100%;padding:.7rem .85rem;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Outfit',sans-serif;font-size: 1.1rem;outline:none;box-sizing:border-box;color:#111;transition:border-color .15s}
 .bk-field input:focus,.bk-field textarea:focus{border-color:#dc2626}
 .bk-field textarea{resize:none}
 
 /* ── Done page ── */
 .bk-done-icon{width:44px;height:44px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .7rem}
-.bk-done-title{font-size:1.4rem;font-weight:700;color:#111;text-align:center;margin:0 0 .2rem}
-.bk-done-sub{font-size:1.05rem;color:#9ca3af;text-align:center;margin:0 0 .9rem}
+.bk-done-title{font-size: 1.4rem;font-weight:700;color:#111;text-align:center;margin:0 0 .2rem}
+.bk-done-sub{font-size: 1.05rem;color:#9ca3af;text-align:center;margin:0 0 .9rem}
 .bk-done-card{padding:.7rem 0;margin-bottom:.9rem;border-top:1px solid #f3f4f6;border-bottom:1px solid #f3f4f6}
 .bk-done-actions{display:flex;gap:.5rem}
-.bk-cal-btn{flex:1;padding:12px;border:1.5px solid #e5e7eb;background:#fff;color:#374151;font-family:'Outfit',sans-serif;font-weight:600;font-size:1.05rem;border-radius:8px;cursor:pointer;transition:all .15s}
+.bk-cal-btn{flex:1;padding:12px;border:1.5px solid #e5e7eb;background:#fff;color:#374151;font-family:'Outfit',sans-serif;font-weight:600;font-size: 1.05rem;border-radius:8px;cursor:pointer;transition:all .15s}
 .bk-cal-btn:hover{border-color:#16a34a;color:#16a34a}
-.bk-done-btn{flex:1;padding:12px;border:none;background:#16a34a;color:#fff;font-family:'Outfit',sans-serif;font-weight:600;font-size:1.05rem;border-radius:8px;cursor:pointer;transition:background .15s}
+.bk-done-btn{flex:1;padding:12px;border:none;background:#16a34a;color:#fff;font-family:'Outfit',sans-serif;font-weight:600;font-size: 1.05rem;border-radius:8px;cursor:pointer;transition:background .15s}
 .bk-done-btn:hover{background:#15803d}
 
 /* ── Tablet ── */
@@ -343,8 +412,15 @@
   var AVAILABILITY_API = 'https://app.princetires.ca/api/availability';
   var SERVICES_API = 'https://app.princetires.ca/api/services';
 
-  var st = { tireName: '', tireSize: '', tirePrice: 0, installPrice: 30, vehicle: 'passenger', qty: 4, tpms: false, disposal: true, date: null, time: null, savedVehicle: null, inventorySource: 'store', supplierTier: 'B', productHandle: '' };
+  var st = { tireName: '', tireSize: '', tirePrice: 0, installPrice: 30, vehicle: 'passenger', qty: 4, maxQty: 0, tpms: false, disposal: true, date: null, time: null, savedVehicle: null, inventorySource: 'store', supplierTier: 'B', productHandle: '', variantId: '', flow: 'install', customAddons: [], location: null };
   var wk = 0;
+  // Bookable locations (bookable === true) from the #pt-locations-data island.
+  // When fewer than 2 are bookable there is NO picker UI — the single bookable
+  // location (SW today) is used silently and behaves exactly as before.
+  var bkLocations = [];
+  // Loaded from GET /api/services on first openBookingModal — populated by bkRenderCustomAddons().
+  // Each entry: { slug, name, description, amount, unit, selected }.
+  var bkCustomAddonCatalog = [];
 
   // Vehicle type drives appointment DURATION + the calendar event only — not price.
   // Install price is per tire, set on each product via the custom.install_price
@@ -379,41 +455,127 @@
   };
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  // Format a Date as a local YYYY-MM-DD. Never use toISOString() for this —
-  // it converts to UTC and rolls the day back for any device at/ahead of UTC.
-  // Mirrors the local-date handling in pt-booking-page.liquid + pt-service-booking-modal.liquid.
+  // Format a Date as a local YYYY-MM-DD. Shared via window.PTBookingCore.localISO
+  // (DOM-independent helper deduped across the 3 booking surfaces). Never UTC —
+  // toISOString would roll the day back for any device at/ahead of UTC.
   function bkLocalISO(d) {
-    return d.getFullYear() + '-' +
-      (d.getMonth() + 1 < 10 ? '0' : '') + (d.getMonth() + 1) + '-' +
-      (d.getDate() < 10 ? '0' : '') + d.getDate();
+    return PTBookingCore.localISO(d);
+  }
+
+  // ── Locations ────────────────────────────────────────────────────────────
+  // Read the global #pt-locations-data island and keep only bookable shops, via
+  // the shared window.PTBookingCore.loadLocations() (deduped parse+filter; never
+  // throws). Defensive: any parse failure leaves bkLocations empty → no picker,
+  // and the modal proceeds exactly as before (no location_id sent).
+  function bkLoadLocations() {
+    if (bkLocations.length) return bkLocations;
+    bkLocations = PTBookingCore.loadLocations().bookable;
+    return bkLocations;
+  }
+
+  // Pick the starting location for an open: data-location on the trigger, then
+  // ?location= query param, then the primary (is_primary) shop, then the first.
+  // Delegates the slug→primary→first pick to window.PTBookingCore.pickLocation;
+  // the explicit slug (data-location / ?location=) is lower-cased here first so
+  // case-insensitive matching is preserved exactly as before.
+  function bkPickInitialLocation(btn) {
+    var locs = bkLoadLocations();
+    if (!locs.length) return null;
+    var slug = (btn && btn.dataset && btn.dataset.location) || PTBookingCore.queryLocationSlug();
+    if (slug) slug = String(slug).toLowerCase();
+    return PTBookingCore.pickLocation(locs, slug);
+  }
+
+  // Render the radio/segmented picker into #bk-loc-grid — only when 2+ bookable.
+  // Fewer than 2 → keep the section hidden (single-location behavior unchanged).
+  function renderLocationPicker() {
+    var section = document.getElementById('bk-location-section');
+    var grid = document.getElementById('bk-loc-grid');
+    if (!section || !grid) return;
+    if (!bkLocations || bkLocations.length < 2) { section.hidden = true; return; }
+    section.hidden = false;
+    var h = '';
+    bkLocations.forEach(function (l, idx) {
+      var active = st.location && st.location.slug === l.slug;
+      h += '<label class="bk-loc-card' + (active ? ' bk-loc-card--active' : '') + '" data-loc-slug="' + l.slug + '">'
+        + '<input type="radio" name="bk-location" value="' + l.slug + '"' + (active ? ' checked' : '') + '>'
+        + '<span class="bk-loc-name">' + (l.public_name || l.name || 'Prince Tires') + '</span>'
+        + '<span class="bk-loc-addr">' + (l.address || l.address_full || '') + '</span>'
+        + '</label>';
+    });
+    grid.innerHTML = h;
+    grid.querySelectorAll('input[name="bk-location"]').forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        if (!this.checked) return;
+        var next = bkLocations.find(function (l) { return l.slug === radio.value; });
+        if (!next) return;
+        st.location = next;
+        grid.querySelectorAll('.bk-loc-card').forEach(function (card) {
+          card.classList.toggle('bk-loc-card--active', card.dataset.locSlug === next.slug);
+        });
+        // Availability is per-location → re-query if we're already on the
+        // calendar step with a day selected.
+        if (st.date) renderTimes();
+      });
+    });
   }
 
   function calcPrice() {
     var tp = st.tirePrice > 0 ? st.tirePrice * st.qty : 0;
+    // Tires-only flow strips out every install-related line and turns the
+    // modal into a thin cart add. Add-ons, install, TPMS, and disposal are
+    // all installation-time concerns.
+    var installable = st.flow === 'install';
     // Install is per tire (st.installPrice) — set per product via the install_price metafield.
-    var i = st.installPrice * st.qty;
-    var t = st.tpms ? bkTpmsPrice * st.qty : 0;
-    var d = st.disposal ? bkDisposalPrice * st.qty : 0;
-    var s = tp + i + t + d;
-    var g = s * 0.05;
-    return { tires: tp, install: i, tpms: t, disposal: d, subtotal: s, gst: g, total: s + g };
+    var i = installable ? st.installPrice * st.qty : 0;
+    var t = installable && st.tpms ? bkTpmsPrice * st.qty : 0;
+    var d = installable && st.disposal ? bkDisposalPrice * st.qty : 0;
+    var ca = 0;
+    if (installable && Array.isArray(st.customAddons)) {
+      for (var k = 0; k < st.customAddons.length; k++) {
+        var a = st.customAddons[k];
+        if (a && a.selected && typeof a.amount === 'number') {
+          ca += a.amount * st.qty;
+        }
+      }
+    }
+    var s = tp + i + t + d + ca;
+    // Round GST on integer cents (half-up) so this matches the PDP's Liquid
+    // "Installed total (incl. GST)" (installed_subtotal | times: 0.05 | round)
+    // to the cent, and so the modal's own line items sum exactly to its total.
+    var subCents = Math.round(s * 100);
+    var gstCents = Math.round(subCents * 0.05);
+    return { tires: tp, install: i, tpms: t, disposal: d, customAddons: ca, subtotal: subCents / 100, gst: gstCents / 100, total: (subCents + gstCents) / 100 };
   }
 
   // ── Stage 2: overlay add-on pricing from GET /api/services ────────────────
-  // Mutates the TPMS / disposal add-on rates from the admin-managed catalog.
-  // Install price is per product (the custom.install_price metafield), so it is
-  // not overlaid here. Defensive: missing or malformed data leaves the hardcoded
-  // fallback in place, so booking can never break on an API hiccup.
+  // Mutates the TPMS / disposal add-on rates from the admin-managed catalog
+  // AND captures any extra admin-created add-ons (e.g. tire bags, nitrogen,
+  // lug-nut sets) so they appear under the existing two as checkboxes.
+  // Install price is per product (the custom.install_price metafield), so it
+  // is not overlaid here. Defensive: missing or malformed data leaves the
+  // hardcoded fallback in place, so booking can never break on an API hiccup.
   function bkApplyCatalog(services) {
     if (!Array.isArray(services)) return;
+    var extras = [];
     services.forEach(function (svc) {
       if (!svc || !svc.prices) return;
       if (svc.slug === 'addon_tpms' && typeof svc.prices.amount === 'number') {
         bkTpmsPrice = svc.prices.amount;
       } else if (svc.slug === 'addon_disposal' && typeof svc.prices.amount === 'number') {
         bkDisposalPrice = svc.prices.amount;
+      } else if (svc.kind === 'addon' && typeof svc.prices.amount === 'number') {
+        extras.push({
+          slug: svc.slug,
+          name: svc.name || svc.slug,
+          description: svc.description || '',
+          amount: svc.prices.amount,
+          unit: svc.unit || 'tire',
+          selected: false
+        });
       }
     });
+    bkCustomAddonCatalog = extras;
     // Refresh the static add-on price labels.
     var setLabel = function (id, text) {
       var el = document.querySelector('#' + id + ' .bk-addon-price');
@@ -421,9 +583,49 @@
     };
     setLabel('bk-addon-tpms', '+$' + bkTpmsPrice + '/tire');
     setLabel('bk-addon-disposal', '+$' + bkDisposalPrice + '/tire');
+    bkRenderCustomAddons();
     // Repaint if the modal is already open when the catalog lands.
     var ov = document.getElementById('bk-overlay');
     if (ov && !ov.hidden) renderVehicles();
+  }
+
+  // Render any admin-created add-ons (beyond TPMS + disposal) as checkbox rows
+  // mounted into #bk-custom-addons. Each tick mutates st.customAddons.
+  function bkRenderCustomAddons() {
+    var host = document.getElementById('bk-custom-addons');
+    if (!host) return;
+    if (!bkCustomAddonCatalog.length) {
+      host.innerHTML = '';
+      st.customAddons = [];
+      return;
+    }
+    // Seed st.customAddons from the catalog while preserving any prior ticks.
+    var prior = {};
+    (st.customAddons || []).forEach(function (a) { if (a && a.slug) prior[a.slug] = !!a.selected; });
+    st.customAddons = bkCustomAddonCatalog.map(function (a) {
+      return Object.assign({}, a, { selected: !!prior[a.slug] });
+    });
+    var h = '';
+    st.customAddons.forEach(function (a, idx) {
+      var id = 'bk-addon-custom-' + idx;
+      var unit = a.unit ? '/' + a.unit : '';
+      h += '<label class="bk-addon' + (a.selected ? ' bk-addon--active' : '') + '" data-custom-slug="' + a.slug + '">'
+        + '<input type="checkbox" data-custom-idx="' + idx + '" id="' + id + '"' + (a.selected ? ' checked' : '') + '>'
+        + '<span class="bk-addon-name">' + a.name + '</span>'
+        + '<span class="bk-addon-price">+$' + a.amount + unit + '</span>'
+        + '</label>';
+    });
+    host.innerHTML = h;
+    host.querySelectorAll('input[type="checkbox"][data-custom-idx]').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        var i = parseInt(this.dataset.customIdx);
+        if (!st.customAddons[i]) return;
+        st.customAddons[i].selected = this.checked;
+        var lbl = this.closest('.bk-addon');
+        if (lbl) lbl.classList.toggle('bk-addon--active', this.checked);
+        renderPrice();
+      });
+    });
   }
 
   function autoDetectVehicle(tireSize, garage) {
@@ -460,18 +662,88 @@
     var totalEl = document.getElementById('bk-order-total-row');
     if (!linesEl || !totalEl) return;
 
+    var installable = st.flow === 'install';
     var h = '';
     if (st.tirePrice > 0) {
       h += '<div class="bk-order-row"><span>' + st.qty + ' tire' + (st.qty !== 1 ? 's' : '') + ' × $' + st.tirePrice.toFixed(2) + '</span><span>$' + c.tires.toFixed(2) + '</span></div>';
     }
-    var installLabel = 'Installation × ' + st.qty + ' ($' + st.installPrice + '/tire)';
-    h += '<div class="bk-order-row"><span>' + installLabel + '</span><span>$' + c.install.toFixed(2) + '</span></div>';
-    if (st.tpms) h += '<div class="bk-order-row"><span>TPMS sensors × ' + st.qty + '</span><span>+$' + c.tpms.toFixed(2) + '</span></div>';
-    if (st.disposal) h += '<div class="bk-order-row"><span>Tire disposal × ' + st.qty + '</span><span>+$' + c.disposal.toFixed(2) + '</span></div>';
+    if (installable) {
+      var installLabel = 'Installation × ' + st.qty + ' ($' + st.installPrice + '/tire)';
+      h += '<div class="bk-order-row"><span>' + installLabel + '</span><span>$' + c.install.toFixed(2) + '</span></div>';
+      if (st.tpms) h += '<div class="bk-order-row"><span>TPMS sensors × ' + st.qty + '</span><span>+$' + c.tpms.toFixed(2) + '</span></div>';
+      if (st.disposal) h += '<div class="bk-order-row"><span>Tire disposal × ' + st.qty + '</span><span>+$' + c.disposal.toFixed(2) + '</span></div>';
+      (st.customAddons || []).forEach(function (a) {
+        if (a && a.selected) {
+          h += '<div class="bk-order-row"><span>' + a.name + ' × ' + st.qty + '</span><span>+$' + (a.amount * st.qty).toFixed(2) + '</span></div>';
+        }
+      });
+    }
     h += '<div class="bk-order-row"><span>GST (5%)</span><span>$' + c.gst.toFixed(2) + '</span></div>';
     linesEl.innerHTML = h;
     totalEl.innerHTML = '<span>Total (incl. GST)</span><span class="bk-order-total-val">$' + c.total.toFixed(2) + '</span>';
   }
+
+  // ── Flow toggle ─────────────────────────────────────────────────────────
+  // Default flow = 'install'. Picking 'tires_only' hides every install-time
+  // section, hides the stepper (no steps 2/3), and swaps the CTA copy.
+  function bkSetFlow(flow) {
+    if (flow !== 'install' && flow !== 'tires_only') flow = 'install';
+    st.flow = flow;
+    var grid = document.getElementById('bk-flow-grid');
+    if (grid) {
+      grid.querySelectorAll('.bk-flow-card').forEach(function (card) {
+        card.classList.toggle('bk-flow-card--active', card.dataset.flow === flow);
+      });
+    }
+    var modal = document.getElementById('bk-modal');
+    if (modal) modal.classList.toggle('bk-flow-tires-only', flow === 'tires_only');
+    var cta = document.getElementById('bk-step1-cta');
+    if (cta) {
+      cta.innerHTML = flow === 'install'
+        ? 'Pick a time &rarr;'
+        : 'Add to cart &rarr;';
+    }
+    renderPrice();
+  }
+
+  // ── Step 1 CTA — branches between booking (install) and cart-add (tires-only)
+  window.bkStep1Continue = function () {
+    if (st.flow === 'tires_only') {
+      bkAddToCartOnly();
+    } else {
+      bkGoTo(2);
+    }
+  };
+
+  // POST to Shopify's /cart/add.js with the PDP variant + qty, then redirect
+  // to /cart. Falls back to /cart link if variantId is missing for any reason.
+  window.bkAddToCartOnly = function () {
+    var cta = document.getElementById('bk-step1-cta');
+    if (!st.variantId) {
+      // No variant id wired — open the cart so the customer can add manually.
+      window.location.href = '/cart';
+      return;
+    }
+    if (cta) { cta.disabled = true; cta.innerHTML = 'Adding…'; }
+    fetch('/cart/add.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ id: st.variantId, quantity: st.qty })
+    })
+      .then(function (r) {
+        // Shopify returns 422 if the variant isn't purchasable.
+        if (!r.ok) { return r.json().then(function (j) { throw new Error(j.description || 'Could not add to cart'); }); }
+        window.location.href = '/cart';
+      })
+      .catch(function (err) {
+        console.error('[booking] tires-only add to cart failed:', err);
+        if (cta) {
+          cta.disabled = false;
+          cta.innerHTML = 'Add to cart &rarr;';
+        }
+        alert("Couldn't add tires to cart — " + (err && err.message ? err.message : 'try again or call (403) 452-4283') + '.');
+      });
+  };
 
   // ── Render: vehicle display (read-only) ──────────────────────────────────
   function renderVehicles() {
@@ -487,6 +759,16 @@
   function renderQty() {
     var sel = document.getElementById('bk-qty-select');
     if (!sel) return;
+    // Rebuild the options so a customer can never pick more tires than are on
+    // hand. st.maxQty === 0 means "no cap" → offer the standard 1–8.
+    var cap = (st.maxQty > 0) ? Math.min(st.maxQty, 8) : 8;
+    if (st.qty > cap) st.qty = cap;
+    if (st.qty < 1) st.qty = 1;
+    var opts = '';
+    for (var n = 1; n <= cap; n++) {
+      opts += '<option value="' + n + '"' + (n === st.qty ? ' selected' : '') + '>' + n + (n === 1 ? ' tire' : ' tires') + '</option>';
+    }
+    sel.innerHTML = opts;
     sel.value = String(st.qty);
     if (!sel._wired) {
       sel._wired = true;
@@ -548,12 +830,26 @@
   // ── Render: time slots ───────────────────────────────────────────────────
   async function renderTimes() {
     if (!st.date) {
-      document.getElementById('bk-time-grid').innerHTML = '<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Select a day above</p>';
+      document.getElementById('bk-time-grid').innerHTML = '<p style="color:#9ca3af;font-size: 0.9rem;grid-column:1/-1">Select a day above</p>';
       return;
     }
     var isSun = st.date.getDay() === 0;
-    var startH = isSun ? 10 : 9, startM = isSun ? 0 : 30;
-    var endH = isSun ? 15 : 17, endM = 30;
+    // Appointment window from the store_hours metaobject (via pt-nap, SW shop):
+    // first slot = open; last slot = close − cutoff. Fallback = the known SW window.
+    {% capture _suo %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{% endcapture %}
+    {% capture _mso %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{% endcapture %}
+    {% capture _suc %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{% endcapture %}
+    {% capture _msc %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{% endcapture %}
+    {% capture _cutv %}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{% endcapture %}
+    var _bo = isSun ? '{{ _suo | strip }}' : '{{ _mso | strip }}';
+    var _bc = isSun ? '{{ _suc | strip }}' : '{{ _msc | strip }}';
+    var _bcut = parseInt('{{ _cutv | strip }}', 10) || 30;
+    var _boa = _bo.split(':'), _bca = _bc.split(':');
+    var startH = parseInt(_boa[0], 10), startM = parseInt(_boa[1], 10) || 0;
+    if (isNaN(startH)) { startH = 9; startM = 0; }
+    var _blast = (parseInt(_bca[0], 10) * 60 + (parseInt(_bca[1], 10) || 0)) - _bcut;
+    if (isNaN(_blast)) { _blast = isSun ? 810 : 990; }
+    var endH = Math.floor(_blast / 60), endM = _blast % 60;
     var slots = [];
     for (var h = startH; h <= endH; h++) {
       for (var m = (h === startH ? startM : 0); m < 60; m += 30) {
@@ -563,19 +859,22 @@
       }
     }
 
-    document.getElementById('bk-time-grid').innerHTML = '<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Checking availability…</p>';
+    document.getElementById('bk-time-grid').innerHTML = '<p style="color:#9ca3af;font-size: 0.9rem;grid-column:1/-1">Checking availability…</p>';
     var booked = [];
     var allDayBlocked = false;
-    try {
-      var ds = bkLocalISO(st.date);
-      var r = await fetch(AVAILABILITY_API + '?date=' + ds);
-      var data = await r.json();
-      booked = data.booked || [];
-      allDayBlocked = data.allDayBlocked || false;
-    } catch (e) {}
+    // Per-location availability via the shared PTBookingCore.fetchAvailability
+    // (deduped GET+parse; never rejects). The chosen location slug is sent only
+    // when set so the backend resolves slug→shop (defaults SW when omitted).
+    var availRes = await PTBookingCore.fetchAvailability(
+      AVAILABILITY_API,
+      bkLocalISO(st.date),
+      (st.location && st.location.slug) ? st.location.slug : null
+    );
+    booked = availRes.booked;
+    allDayBlocked = availRes.allDayBlocked;
 
     if (allDayBlocked) {
-      document.getElementById('bk-time-grid').innerHTML = '<p style="color:#dc2626;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">Not available this day — please pick another date.</p>';
+      document.getElementById('bk-time-grid').innerHTML = '<p style="color:#dc2626;font-size: 0.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">Not available this day — please pick another date.</p>';
       var noteEl = document.getElementById('bk-trial-note');
       if (noteEl) noteEl.hidden = true;
       return;
@@ -683,6 +982,11 @@
     var vehLabel = buildVehicleLabel(v);
     var h = '';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
+    // Only surface a Location row when the customer actually had a choice
+    // (2+ bookable shops) — keeps the single-SW summary identical to before.
+    if (bkLocations && bkLocations.length >= 2 && st.location) {
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">Location</span><span class="bk-summary-val">' + (st.location.public_name || st.location.name || '') + '</span></div>';
+    }
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire</span><span class="bk-summary-val">' + (st.tireSize || '—') + ' × ' + st.qty + '</span></div>';
     if (addons.length) h += '<div class="bk-summary-row"><span class="bk-summary-label">Add-ons</span><span class="bk-summary-val">' + addons.join(', ') + '</span></div>';
@@ -716,11 +1020,31 @@
     // Tier 'B' = Trail Tire warehouse → next business day after 12:30 PM. Default to B (slowest, safest).
     st.supplierTier = (btn.dataset.supplierTier === 'A') ? 'A' : 'B';
     st.productHandle = btn.dataset.productHandle || '';
+    // Shopify variant id — required for the tires-only → cart-add path. PDP
+    // buttons pass data-variant-id; collection cards may not (in which case
+    // the tires-only CTA falls back to /cart).
+    st.variantId = btn.dataset.variantId || '';
+    // On-hand stock cap (0 = no cap). PDP + grid book buttons pass data-max-qty
+    // so a customer can never book more tires than are in stock; surfaces that
+    // don't pass it (e.g. some search results) fall back to the standard 1–8.
+    st.maxQty = parseInt(btn.dataset.maxQty) || 0;
+    // Reset opt-out add-on state for every open.
     st.tpms = false;
     st.disposal = true;
+    st.flow = 'install';
+    if (Array.isArray(st.customAddons)) {
+      st.customAddons.forEach(function (a) { if (a) a.selected = false; });
+    }
     st.date = null;
     st.time = null;
     wk = 0;
+
+    // Resolve bookable location(s) + initial selection. With <2 bookable shops
+    // this still sets st.location to the single bookable shop (SW) but renders
+    // no picker — keeping current behavior identical.
+    bkLoadLocations();
+    st.location = bkPickInitialLocation(btn);
+    renderLocationPicker();
 
     // Load saved garage vehicle (default)
     st.savedVehicle = null;
@@ -733,11 +1057,12 @@
       }
     } catch (e) {}
 
-    // Load last-used qty (default 4)
+    // Load last-used qty (default 4), then clamp to what's in stock.
     try {
       var savedQty = parseInt(localStorage.getItem('pt-booking-qty'));
       st.qty = (savedQty > 0 && savedQty <= 20) ? savedQty : 4;
     } catch (e) { st.qty = 4; }
+    if (st.maxQty > 0 && st.qty > st.maxQty) st.qty = st.maxQty;
 
     // Determine vehicle type
     var forceVehicle = btn.dataset.vehicleType || '';
@@ -776,6 +1101,12 @@
     document.getElementById('bk-disposal').checked = true;
     document.getElementById('bk-addon-tpms').classList.remove('bk-addon--active');
     document.getElementById('bk-addon-disposal').classList.add('bk-addon--active');
+
+    // Reset flow radio + visuals to install (default).
+    var instRadio = document.querySelector('#bk-flow-grid input[value="install"]');
+    if (instRadio) instRadio.checked = true;
+    bkSetFlow('install');
+    bkRenderCustomAddons();
 
     renderVehicles();
     renderQty();
@@ -917,6 +1248,15 @@
     var v = vehs.find(function (x) { return x.id === st.vehicle; });
 
     try {
+      // Only selected custom add-ons travel to the API. Includes name + amount
+      // snapshot so historical bookings stay accurate even if the catalog row
+      // is later renamed or repriced.
+      var customAddonsForApi = (st.customAddons || [])
+        .filter(function (a) { return a && a.selected; })
+        .map(function (a) {
+          return { slug: a.slug, name: a.name, qty: st.qty, amount: a.amount };
+        });
+
       var payload = {
         name: name,
         phone: phone,
@@ -932,8 +1272,10 @@
         qty: st.qty,
         tpms: st.tpms,
         disposal: st.disposal,
+        customAddons: customAddonsForApi,
         serviceId: 'installation_off',
         mountState: 'off',
+        location_id: (st.location && st.location.slug) ? st.location.slug : 'sw',
         supplierTier: st.supplierTier,
         productHandle: st.productHandle,
         inventorySource: st.inventorySource,
@@ -987,13 +1329,19 @@
         localStorage.setItem('pt-booking-vehicle', st.vehicle);
       } catch (ex) {}
 
-      // Build done card
+      // Build done card — use the SELECTED location's NAP (falls back to the
+      // SW defaults when no location is resolved) via PTBookingCore.napOf.
+      var nap = PTBookingCore.napOf(st.location);
+      var locAddr = nap.addressFull;
+      var locPhone = nap.phone;
+      var subEl = document.getElementById('bk-done-sub');
+      if (subEl) subEl.textContent = 'See you at Prince Tires — ' + nap.address + '.';
       var ds = st.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + st.time;
       var vehLabel = buildVehicleLabel(v);
       var doneH = '';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
-      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">111 42 Ave SW, Calgary, AB</span></div>';
-      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">(403) 452-4283</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">' + locAddr + '</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">' + locPhone + '</span></div>';
       if (vehLabel) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Tire</span><span class="bk-summary-val">' + (st.tireSize || '—') + ' × ' + st.qty + '</span></div>';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label" style="font-weight:700;color:#111">Total (incl. GST)</span><span class="bk-summary-val bk-summary-val--green">$' + c.total.toFixed(2) + '</span></div>';
@@ -1022,20 +1370,21 @@
   };
 
   // ── Download ICS calendar file ───────────────────────────────────────────
+  // Build + download via the shared PTBookingCore (.ics builder + downloader).
+  // Duration: this surface rounds the appointment UP to whole hours
+  // (Math.ceil(qty * 0.5) hours) — passed as minutes so DTEND is byte-identical
+  // to the previous inline build. LOCATION comes from the SELECTED shop's
+  // address_full (SW fallback baked into PTBookingCore.napOf).
   window.bkDownloadICS = function () {
-    var tm = st.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-    var h = parseInt(tm[1]), m = parseInt(tm[2]);
-    if (tm[3].toUpperCase() === 'PM' && h < 12) h += 12;
-    if (tm[3].toUpperCase() === 'AM' && h === 12) h = 0;
-    var ds = bkLocalISO(st.date).replace(/-/g, '');
-    var st2 = (h < 10 ? '0' : '') + h + (m < 10 ? '0' : '') + m + '00';
-    var eh = h + Math.ceil(st.qty * 0.5);
-    var et = (eh < 10 ? '0' : '') + eh + (m < 10 ? '0' : '') + m + '00';
-    var ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART;TZID=America/Edmonton:' + ds + 'T' + st2 + '\nDTEND;TZID=America/Edmonton:' + ds + 'T' + et + '\nSUMMARY:Tire Installation at Prince Tires\nLOCATION:111 42 Ave SW\\, Calgary\\, AB T2G 0A4\nDESCRIPTION:' + (st.tireSize || '') + ' × ' + st.qty + ' tires\nEND:VEVENT\nEND:VCALENDAR';
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
-    a.download = 'prince-tires-booking.ics';
-    a.click();
+    var ics = PTBookingCore.buildICS({
+      dateISO: bkLocalISO(st.date),
+      time: st.time,
+      durationMinutes: Math.ceil(st.qty * 0.5) * 60,
+      summary: 'Tire Installation at Prince Tires',
+      description: (st.tireSize || '') + ' × ' + st.qty + ' tires',
+      location: PTBookingCore.napOf(st.location).addressFull
+    });
+    if (ics) PTBookingCore.downloadICS(ics, 'prince-tires-booking.ics');
   };
 
   // ── Event listeners ──────────────────────────────────────────────────────
@@ -1048,6 +1397,12 @@
     st.disposal = this.checked;
     document.getElementById('bk-addon-disposal').classList.toggle('bk-addon--active', this.checked);
     renderPrice();
+  });
+  // Flow toggle (install ↔ tires-only) — radio cards in #bk-flow-grid.
+  document.querySelectorAll('#bk-flow-grid input[name="bk-flow"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      if (this.checked) bkSetFlow(this.value);
+    });
   });
   document.getElementById('bk-prev-week').addEventListener('click', function () { if (wk > 0) { wk--; renderWeek(); } });
   document.getElementById('bk-next-week').addEventListener('click', function () { wk++; renderWeek(); });

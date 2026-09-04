@@ -1,19 +1,20 @@
 {% doc %}
-  Renders JSON-LD structured data for a local tire & wheel shop (Schema.org AutoPartsStore).
+  Renders the canonical JSON-LD @graph for Prince Tires (Schema.org).
 
-  Uses shop information and theme settings to output structured data that helps
-  search engines display rich results for the business (address, hours, contact info).
+  Prince Tires has TWO Calgary shops, so this emits ONE Organization (the brand)
+  plus ONE AutoPartsStore per physical location, each anchored to a distinct @id
+  and pointing back to the Organization via parentOrganization. All per-location
+  NAP is pulled from the pt-nap snippet (the single source) so the structured
+  data can never drift from the footer/contact/booking NAP.
 
   Notes:
-  - @type is AutoPartsStore (a valid Schema.org type for a tire/wheel retailer).
-    "TireShop" is NOT a real Schema.org type, and AutoRepair implies general
-    auto repair (brakes/oil/engine), which Prince Tires does not offer.
-  - Phone is sourced from settings.shop_phone (falling back to the canonical
-    number) rather than shop.phone, because the Shopify store-level phone setting
-    has been out of sync.
-  - No self-serving aggregateRating: Google does not allow a business to mark up
-    its own site-wide rating on its LocalBusiness entity. Real review stars live
-    on Google Business Profile and on product pages (review app metafields).
+  - @type AutoPartsStore is a valid Schema.org type for a tire/wheel retailer.
+    "TireShop" is NOT real; AutoRepair implies general auto repair we don't offer.
+  - NO self-serving aggregateRating: Google does not allow a business to mark up
+    its own site-wide rating. Real stars live on Google Business Profile + product
+    pages (review app metafields).
+  - "Edmonton Trail" is a Calgary NE road, NOT the city of Edmonton —
+    addressLocality is "Calgary" for both shops.
 
   @example
   {% render 'schema-local-business' %}
@@ -22,8 +23,7 @@
 {%- liquid
   assign business_name = shop.name
   assign business_url = request.origin
-  assign business_phone = settings.shop_phone | default: '(403) 452-4283'
-  assign business_description = shop.description | default: shop.name
+  assign org_id = business_url | append: '/#organization'
 
   assign social_links = ''
   if settings.social_facebook_link != blank
@@ -44,63 +44,111 @@
     assign social_links = social_links | append: settings.social_tiktok_link | append: '|'
   endif
   assign social_links = social_links | split: '|' | compact
+
+  # Both Calgary shops. Add a third slug here if a location is ever added.
+  assign loc_slugs = 'sw,ne' | split: ','
 -%}
+
+{%- capture org_phone -%}{% render 'pt-nap', location: 'sw', field: 'phone' %}{%- endcapture -%}
+{%- assign org_phone = org_phone | strip -%}
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "AutoPartsStore",
-  "name": {{ business_name | json }},
-  "url": {{ business_url | json }},
-  {%- if business_phone != blank -%}
-    "telephone": {{ business_phone | json }},
-  {%- endif -%}
-  "description": {{ business_description | strip_html | json }},
-  {%- if shop.brand.logo -%}
-    "logo": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }},
-    "image": {{ shop.brand.logo | image_url: width: 1200 | prepend: 'https:' | json }},
-  {%- endif -%}
-  "address": {
-    "@type": "PostalAddress",
-    "streetAddress": {{ shop.address.street | json }},
-    "addressLocality": {{ shop.address.city | json }},
-    "addressRegion": {{ shop.address.province_code | json }},
-    "postalCode": {{ shop.address.zip | json }},
-    "addressCountry": {{ shop.address.country_code | json }}
-  },
-  "geo": {
-    "@type": "GeoCoordinates",
-    "latitude": {{ shop.latitude | json }},
-    "longitude": {{ shop.longitude | json }}
-  },
-  "openingHoursSpecification": [
+  "@graph": [
     {
-      "@type": "OpeningHoursSpecification",
-      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-      "opens": "09:30",
-      "closes": "17:30"
+      "@type": "Organization",
+      "@id": {{ org_id | json }},
+      "name": {{ business_name | json }},
+      "url": {{ business_url | json }},
+      {%- if shop.brand.logo -%}
+        "logo": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }},
+        "image": {{ shop.brand.logo | image_url: width: 1200 | prepend: 'https:' | json }},
+      {%- endif -%}
+      {%- if shop.email != blank -%}
+        "email": {{ shop.email | json }},
+      {%- endif -%}
+      "telephone": {{ org_phone | json }},
+      "location": [
+        {%- for s in loc_slugs -%}
+          { "@id": {{ business_url | append: '/#' | append: s | append: '-location' | json }} }{% unless forloop.last %},{% endunless %}
+        {%- endfor -%}
+      ]
+      {%- if social_links.size > 0 -%}
+        ,
+        "sameAs": [
+          {%- for link in social_links -%}
+            {{ link | json }}{% unless forloop.last %},{% endunless %}
+          {%- endfor -%}
+        ]
+      {%- endif -%}
     },
-    {
-      "@type": "OpeningHoursSpecification",
-      "dayOfWeek": "Sunday",
-      "opens": "10:00",
-      "closes": "15:30"
-    }
-  ],
-  "areaServed": {
-    "@type": "City",
-    "name": "Calgary"
-  },
-  "priceRange": "$$",
-  "currenciesAccepted": {{ cart.currency.iso_code | json }},
-  "paymentAccepted": "Cash, Credit Card, Debit Card"
-  {%- if social_links.size > 0 -%}
-    ,
-    "sameAs": [
-      {%- for link in social_links -%}
-        {{ link | json }}{% unless forloop.last %},{% endunless %}
-      {%- endfor -%}
-    ]
-  {%- endif -%}
+    {%- for s in loc_slugs -%}
+      {%- capture v_name -%}{% render 'pt-nap', location: s, field: 'public_name' %}{%- endcapture -%}
+      {%- capture v_street -%}{% render 'pt-nap', location: s, field: 'street' %}{%- endcapture -%}
+      {%- capture v_city -%}{% render 'pt-nap', location: s, field: 'city' %}{%- endcapture -%}
+      {%- capture v_region -%}{% render 'pt-nap', location: s, field: 'region' %}{%- endcapture -%}
+      {%- capture v_postal -%}{% render 'pt-nap', location: s, field: 'postal' %}{%- endcapture -%}
+      {%- capture v_country -%}{% render 'pt-nap', location: s, field: 'country' %}{%- endcapture -%}
+      {%- capture v_phone -%}{% render 'pt-nap', location: s, field: 'phone' %}{%- endcapture -%}
+      {%- capture v_lat -%}{% render 'pt-nap', location: s, field: 'lat' %}{%- endcapture -%}
+      {%- capture v_lng -%}{% render 'pt-nap', location: s, field: 'lng' %}{%- endcapture -%}
+      {%- capture v_gbp -%}{% render 'pt-nap', location: s, field: 'gbp_url' %}{%- endcapture -%}
+      {%- capture v_hrs_ms_open -%}{% render 'pt-nap', location: s, field: 'hours_mon_sat_open' %}{%- endcapture -%}
+      {%- capture v_hrs_ms_close -%}{% render 'pt-nap', location: s, field: 'hours_mon_sat_close' %}{%- endcapture -%}
+      {%- capture v_hrs_su_open -%}{% render 'pt-nap', location: s, field: 'hours_sun_open' %}{%- endcapture -%}
+      {%- capture v_hrs_su_close -%}{% render 'pt-nap', location: s, field: 'hours_sun_close' %}{%- endcapture -%}
+      {%- assign v_lat = v_lat | strip -%}
+      {%- assign v_lng = v_lng | strip -%}
+      {%- assign v_gbp = v_gbp | strip -%}
+      {
+        "@type": "AutoPartsStore",
+        "@id": {{ business_url | append: '/#' | append: s | append: '-location' | json }},
+        "name": {{ v_name | strip | json }},
+        "parentOrganization": { "@id": {{ org_id | json }} },
+        {%- if s == 'sw' -%}
+          "url": {{ business_url | json }},
+        {%- endif -%}
+        "telephone": {{ v_phone | strip | json }},
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": {{ v_street | strip | json }},
+          "addressLocality": {{ v_city | strip | json }},
+          "addressRegion": {{ v_region | strip | json }},
+          "postalCode": {{ v_postal | strip | json }},
+          "addressCountry": {{ v_country | strip | json }}
+        },
+        {%- if v_lat != blank and v_lng != blank -%}
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": {{ v_lat | json }},
+            "longitude": {{ v_lng | json }}
+          },
+        {%- endif -%}
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+            "opens": {{ v_hrs_ms_open | strip | json }},
+            "closes": {{ v_hrs_ms_close | strip | json }}
+          },
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": "Sunday",
+            "opens": {{ v_hrs_su_open | strip | json }},
+            "closes": {{ v_hrs_su_close | strip | json }}
+          }
+        ],
+        "areaServed": { "@type": "City", "name": "Calgary" },
+        "priceRange": "$$",
+        "currenciesAccepted": {{ cart.currency.iso_code | json }},
+        "paymentAccepted": "Cash, Credit Card, Debit Card"
+        {%- if v_gbp != blank -%}
+          ,
+          "sameAs": [{{ v_gbp | json }}]
+        {%- endif -%}
+      }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]
 }
 </script>

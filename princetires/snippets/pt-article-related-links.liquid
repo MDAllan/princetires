@@ -1,0 +1,69 @@
+{% doc %}
+  Related service links for blog articles — passes link equity from ranking
+  posts (e.g. the tire-swap cost guide) to the commercial service pages with
+  exact-match anchors.
+
+  Link source, in order of precedence:
+  1. article.metafields.custom.related_links — json list of
+     [{"label": "Seasonal Tire Change Calgary", "url": "/pages/seasonal-tire-change-calgary"}, ...]
+  2. Fallback: article tags matched (case-insensitive substring) against the
+     tag map below, pointing at the live /pages/ service URLs.
+
+  Renders nothing when neither source yields a link.
+
+  @param {object} article - The article drop
+  @param {string} [heading] - Block heading (default "Related services")
+
+  @example
+  {% render 'pt-article-related-links', article: article %}
+{% enddoc %}
+
+{%- liquid
+  assign links_mf = article.metafields.custom.related_links.value
+-%}
+{%- if links_mf != blank and links_mf.size > 0 -%}
+  <aside class="pt-article__services" aria-label="Related services">
+    <h2 class="pt-article__services-heading">{{ heading | default: 'Related services' }}</h2>
+    <ul class="pt-article__services-list">
+      {%- for l in links_mf limit: 4 -%}
+        {%- if l.url != blank and l.label != blank -%}
+          <li><a class="pt-article__services-link" href="{{ l.url }}">{{ l.label }}</a></li>
+        {%- endif -%}
+      {%- endfor -%}
+    </ul>
+  </aside>
+{%- else -%}
+  {%- comment -%}
+    Tag fallback. Format: <tag-substring>><url>><label>, entries split on '|'.
+    Keys are matched against downcased article tags via `contains`.
+  {%- endcomment -%}
+  {%- assign tag_map = 'winter>/pages/winter-tires-calgary>Winter tires in Calgary|all-weather>/pages/all-weather-tires-calgary>All-weather tires in Calgary|all-season>/pages/all-season-tires-calgary>All-season tires in Calgary|trailer>/pages/trailer-tires>Trailer tires in Calgary|repair>/pages/tire-repair-calgary>Flat tire repair in Calgary|balanc>/pages/tire-balancing>Tire balancing service in Calgary|rotation>/pages/tire-rotation>Tire rotation in Calgary|install>/pages/tire-installation-calgary>Tire installation in Calgary|seasonal>/pages/seasonal-tire-change-calgary>Seasonal tire change in Calgary|changeover>/pages/seasonal-tire-change-calgary>Seasonal tire change in Calgary|tpms>/pages/tpms-calgary>TPMS service in Calgary|wheel>/pages/wheels-and-rims-calgary>Wheels and rims in Calgary' | split: '|' -%}
+  {%- capture fallback_items -%}
+    {%- assign used_urls = '' -%}
+    {%- for entry in tag_map -%}
+      {%- assign parts = entry | split: '>' -%}
+      {%- assign matched = false -%}
+      {%- for tag in article.tags -%}
+        {%- assign t = tag | downcase -%}
+        {%- if t contains parts[0] -%}
+          {%- assign matched = true -%}
+          {%- break -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {%- if matched -%}
+        {%- unless used_urls contains parts[1] -%}
+          {%- assign used_urls = used_urls | append: ' ' | append: parts[1] -%}
+          <li><a class="pt-article__services-link" href="{{ parts[1] }}">{{ parts[2] }}</a></li>
+        {%- endunless -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endcapture -%}
+  {%- if fallback_items contains '<li' -%}
+    <aside class="pt-article__services" aria-label="Related services">
+      <h2 class="pt-article__services-heading">{{ heading | default: 'Related services' }}</h2>
+      <ul class="pt-article__services-list">
+        {{ fallback_items }}
+      </ul>
+    </aside>
+  {%- endif -%}
+{%- endif -%}

@@ -1,10 +1,11 @@
 {%- comment -%}
   Auto-defaults on first visit:
-  - Tire collections (tires / imported-tires): cheapest-first sort + seasonal pre-filter
+  - All collections: cheapest-first sort (price-ascending) so customers see the
+    lowest price first when they land.
+  - Tire collections (tires / imported-tires): also add a seasonal pre-filter
     (Oct-Feb: Winter; Mar-Sep: All-Season + All-Weather).
-  - Wheel collections (wheels / alloy-wheels / steel-wheels): in-stock-only filter
-    (SimGym rec #3 — "make wheels browsing shoppable and bias to availability").
-  Skipped on already-scoped collections where re-filtering would be redundant.
+  - Wheel collections (wheels / alloy-wheels / steel-wheels): also add an
+    in-stock-only filter (SimGym rec #3 — bias wheels browsing to availability).
   Auto-default runs once per tab session via sessionStorage marker, so the
   user's choice to clear filters is respected for the rest of the session.
 {%- endcomment -%}
@@ -17,7 +18,8 @@
   var handle = {{ collection.handle | json }};
   var isTire  = !!TIRE_COLLS[handle];
   var isWheel = !!WHEEL_COLLS[handle];
-  if (!isTire && !isWheel) return;
+  // Cheapest-first now applies to EVERY collection; the seasonal / availability
+  // extras below stay scoped to tire / wheel collections only.
 
   // Auto-default runs AT MOST ONCE per browser tab. After the user has touched
   // anything (cleared the season, picked a brand, etc.), the marker keeps the
@@ -42,7 +44,13 @@
 
   // If the user arrived with any explicit filter, respect their intent.
   if (hasUserFilter) { markSeeded(); return; }
-  if (hasSort && (isTire ? hasSeason : hasAvailability)) { markSeeded(); return; }
+  // If a sort is already in the URL and this collection has no extra default left
+  // to apply (season for tires, availability for wheels), respect the user's state.
+  if (hasSort) {
+    if (isTire && !hasSeason) { /* fall through to add the seasonal default */ }
+    else if (isWheel && !hasAvailability) { /* fall through to add availability */ }
+    else { markSeeded(); return; }
+  }
 
   var changed = false;
   if (!hasSort) { qs.set('sort_by', 'price-ascending'); changed = true; }
@@ -105,6 +113,13 @@
   assign price_max_rounded = price_max_val | plus: 49 | divided_by: 50 | times: 50
   assign price_max_rounded = price_max_rounded | at_least: 200
 -%}
+{%- liquid
+  # Clearance collection gets a banner + per-card CLEARANCE badge + % off.
+  assign is_clearance = false
+  if collection.handle == 'clearance'
+    assign is_clearance = true
+  endif
+-%}
 <div class="ptg" style="--ptg-img-pad: {{ section.settings.image_padding }}rem; --ptg-img-ratio: {{ section.settings.image_ratio }};">
 
   <div class="ptg__container">
@@ -124,6 +139,13 @@
         {% render 'pt-collection-garage-banner' %}
 
         {%- if section.settings.show_trust_bar -%}
+        {%- endif -%}
+
+        {%- if is_clearance -%}
+          <div class="ptg__clearance-banner" role="note">
+            <svg class="ptg__clearance-banner-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <span class="ptg__clearance-banner-text"><strong>Clearance</strong> — final markdowns, while quantities last</span>
+          </div>
         {%- endif -%}
 
         <div class="ptg__toolbar">
@@ -150,8 +172,8 @@
                 <option value="manual" {% if sort_by == 'manual' %}selected{% endif %}>Featured</option>
                 <option value="best-selling" {% if sort_by == 'best-selling' %}selected{% endif %}>Best selling</option>
                 <option value="created-descending" {% if sort_by == 'created-descending' %}selected{% endif %}>Newest</option>
-                <option value="price-ascending" {% if sort_by == 'price-ascending' %}selected{% endif %}>Price ↑</option>
-                <option value="price-descending" {% if sort_by == 'price-descending' %}selected{% endif %}>Price ↓</option>
+                <option value="price-ascending" {% if sort_by == 'price-ascending' %}selected{% endif %}>Lowest price</option>
+                <option value="price-descending" {% if sort_by == 'price-descending' %}selected{% endif %}>Highest price</option>
               </select>
               <svg class="ptg__sort-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
             </div>
@@ -182,7 +204,7 @@
               the first-page sort happened to land on sold-out items.
             {%- endcomment -%}
             {%- for product in collection.products -%}
-              {% render 'pt-collection-card', product: product %}
+              {% render 'pt-collection-card', product: product, is_clearance: is_clearance %}
             {%- endfor -%}
           </div>
 
@@ -1109,6 +1131,18 @@
     border-radius: 3px;
     text-transform: uppercase;
   }
+  .ptg__card-lowstock {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.35rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #dc2626;
+    line-height: 1.2;
+  }
+  .ptg__card-lowstock svg { flex-shrink: 0; }
 
   .ptg__card-img-bottom {
     position: absolute;
@@ -1306,6 +1340,52 @@
   .ptg__price-was { font-size: 1.05rem; font-weight: 300; color: #9ca3af; text-decoration: line-through; }
   .ptg__price-per { font-size: 1rem; font-weight: 300; color: #9ca3af; }
   .ptg__price-set { font-size: 0.9rem; font-weight: 400; color: #6b7280; margin-left: auto; }
+
+  /* ── Clearance collection treatment (collection.handle == 'clearance') ── */
+  .ptg__card-clearance {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
+    background: #b91c1c;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    box-shadow: 0 1px 4px rgba(185, 28, 28, 0.4);
+    z-index: 2;
+  }
+  .ptg__price-off {
+    display: inline-block;
+    margin-top: 0.35rem;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .ptg__clearance-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: linear-gradient(90deg, #dc2626, #b91c1c);
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    padding: 0.75rem 1.1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 10px rgba(220, 38, 38, 0.25);
+  }
+  .ptg__clearance-banner-icon { flex-shrink: 0; }
+  .ptg__clearance-banner-text { font-size: 0.95rem; font-weight: 400; line-height: 1.3; }
+  .ptg__clearance-banner-text strong { font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
 
   /* Phase 5A · trade-price badge on collection cards. Hidden by default; shown
      when body.pt-trade-visible (header "Show cost" toggle is on). Compact so

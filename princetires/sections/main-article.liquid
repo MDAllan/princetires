@@ -64,6 +64,15 @@
       {%- endif -%}
     {%- endfor -%}
 
+    {%- comment -%} Related service links {%- endcomment -%}
+    {%- for block in section.blocks -%}
+      {%- if block.type == 'related_links' -%}
+        <div {{ block.shopify_attributes }}>
+          {% render 'pt-article-related-links', article: article, heading: block.settings.heading %}
+        </div>
+      {%- endif -%}
+    {%- endfor -%}
+
     {%- comment -%} Share {%- endcomment -%}
     {%- for block in section.blocks -%}
       {%- if block.type == 'share' -%}
@@ -482,6 +491,52 @@
     color: #fff;
   }
 
+  /* ── Related service links ── */
+  .pt-article__services {
+    margin-top: 3rem;
+    padding: 2rem 2.4rem;
+    background: #f9fafb;
+    border: 1px solid #f3f4f6;
+    border-radius: 1.2rem;
+  }
+
+  .pt-article__services-heading {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0 0 1.2rem;
+  }
+
+  .pt-article__services-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .pt-article__services-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.8rem 1.4rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #111;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .pt-article__services-link:hover {
+    border-color: #dc2626;
+    color: #dc2626;
+  }
+
   /* ── Back link ── */
   .pt-article__back {
     padding-top: 2rem;
@@ -878,6 +933,19 @@
       "type": "content",
       "name": "Content",
       "limit": 1
+    },
+    {
+      "type": "related_links",
+      "name": "Related service links",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Related services"
+        }
+      ]
     },
     {
       "type": "share",
