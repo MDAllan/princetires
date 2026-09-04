@@ -69,11 +69,19 @@ test('old "Shop Tires" / "Shop Wheels" buttons no longer render', async ({ page 
   }
 });
 
-test('mode persists across page reload', async ({ page }) => {
+test('mode resets to Tires on page reload (by design)', async ({ page }) => {
+  // Product decision (2026-05-22): every fresh visit starts on Tires —
+  // the higher-inventory default. Mid-session, Wheels clicks switch the
+  // mode and the search re-runs in wheel mode, but a reload returns to
+  // Tires. This avoids customers landing on a Wheels filter URL with a
+  // stale-mode mismatch.
   await page.locator('[data-search-mode="wheels"][role="tab"]').click();
+  await expect(page.locator('[data-search-mode="wheels"][role="tab"]')).toHaveAttribute('aria-selected', 'true');
   await page.reload();
   await page.locator('[data-smart-search-input]').first().waitFor({ state: 'visible', timeout: 15000 });
-  await expect(page.locator('[data-search-mode="wheels"][role="tab"]')).toHaveAttribute('aria-selected', 'true');
+  // After reload: Tires is active again, Wheels is inactive
+  await expect(page.locator('[data-search-mode="tires"][role="tab"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('[data-search-mode="wheels"][role="tab"]')).toHaveAttribute('aria-selected', 'false');
 });
 
 test('Wheels mode: empty focus shows WHEEL-specific Popular chips (not tire-centric)', async ({ page }) => {
