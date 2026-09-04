@@ -1,0 +1,386 @@
+- main [ref=e5]:
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - list [ref=e13]:
+        - listitem [ref=e14]:
+          - link "RINGCENTRAL.COM" [ref=e15] [cursor=pointer]:
+            - /url: https://www.ringcentral.com
+        - listitem [ref=e16]:
+          - link "APP GALLERY" [ref=e17] [cursor=pointer]:
+            - /url: https://www.ringcentral.com/apps
+        - listitem [ref=e18]:
+          - generic [ref=e20]:
+            - generic [ref=e21]: MOHAMAD
+            - generic [ref=e22]: 
+      - generic [ref=e24]:
+        - link "RingCentral Developers" [ref=e26] [cursor=pointer]:
+          - /url: /
+        - list [ref=e30]:
+          - listitem [ref=e31]:
+            - link "APIs" [ref=e32] [cursor=pointer]:
+              - /url: /api-products
+              - text: APIs
+              - img [ref=e33]: expand_more
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: APIs
+                    - generic:
+                      - generic:
+                        - button "RingEX":
+                          - generic: RingEX
+                      - generic:
+                        - button "RingCX":
+                          - generic: RingCX
+                      - generic:
+                        - button "AI Agents":
+                          - generic: AI Agents
+                      - generic:
+                        - button "RingCentral Video":
+                          - generic: RingCentral Video
+                      - generic:
+                        - button "RingCentral Events":
+                          - generic: RingCentral Events
+                      - generic:
+                        - button "Contact Center":
+                          - generic: Contact Center
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Region
+                      - button "toggle button":
+                        - generic:
+                          - img: expand_more
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Carrier
+                      - button "toggle button":
+                        - generic:
+                          - img: expand_more
+          - listitem [ref=e34]:
+            - link "Solutions" [ref=e35] [cursor=pointer]:
+              - /url: /solutions
+              - text: Solutions
+              - img [ref=e36]: expand_more
+          - listitem [ref=e37]:
+            - link "Pricing" [ref=e38] [cursor=pointer]:
+              - /url: /pricing
+          - listitem [ref=e39]:
+            - link "Partners" [ref=e40] [cursor=pointer]:
+              - /url: https://www.ringcentral.com/partner/isv.html
+              - text: Partners
+              - img [ref=e41]: expand_more
+          - listitem [ref=e42]:
+            - link "Community" [ref=e43] [cursor=pointer]:
+              - /url: /community.html
+              - text: Community
+              - img [ref=e44]: expand_more
+          - listitem [ref=e45]:
+            - link "Support" [ref=e46] [cursor=pointer]:
+              - /url: /support
+              - text: Support
+              - img [ref=e47]: expand_more
+        - link "Console" [ref=e52] [cursor=pointer]:
+          - /url: /my-account.html
+    - generic [ref=e53]:
+      - list [ref=e55]:
+        - listitem [ref=e56]:
+          - link "Apps" [ref=e57] [cursor=pointer]:
+            - /url: /my-account.html#/applications
+          - text: ">"
+        - listitem [ref=e58]: Prince Tires Quote SMS
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - generic [ref=e62]:
+            - definition [ref=e63]:
+              - link "Dashboard" [ref=e64] [cursor=pointer]:
+                - /url: /my-account.html#/application-dashboard/XbleBTPpknuaVfyz4d0GSx~dRZH7n6vWcuea71kCH7Swt
+                - generic [ref=e65]: Dashboard
+            - definition [ref=e66]:
+              - link "Settings chevron_right" [ref=e67] [cursor=pointer]:
+                - /url: /console/application/XbleBTPpknuaVfyz4d0GSx~dRZH7n6vWcuea71kCH7Swt/settings
+                - generic [ref=e68]: Settings
+                - generic [ref=e70]: chevron_right
+            - definition [ref=e71]:
+              - link "Rate limits" [ref=e72] [cursor=pointer]:
+                - /url: /my-account.html#/app-usage-plan-details/XbleBTPpknuaVfyz4d0GSx~dRZH7n6vWcuea71kCH7Swt
+                - generic [ref=e73]: Rate limits
+            - definition [ref=e74]:
+              - link "Analytics" [ref=e75] [cursor=pointer]:
+                - /url: /my-account.html#/application/XbleBTPpknuaVfyz4d0GSx~dRZH7n6vWcuea71kCH7Swt/reports
+                - generic [ref=e76]: Analytics
+            - definition [ref=e77]:
+              - link "API history" [ref=e78] [cursor=pointer]:
+                - /url: /console/application/XbleBTPpknuaVfyz4d0GSx~dRZH7n6vWcuea71kCH7Swt/api-call-history
+                - generic [ref=e79]: API history
+          - link "Need help? Just ask" [ref=e81] [cursor=pointer]:
+            - /url: https://developers.ringcentral.com/support
+        - generic [ref=e82]:
+          - generic [ref=e83]:
+            - generic [ref=e85]:
+              - generic [ref=e87]: App Type
+              - generic [ref=e90]:
+                - generic [ref=e91]: App Type
+                - generic [ref=e92]: REST API App (most common)
+            - generic [ref=e94]:
+              - generic [ref=e96]: App Properties (internal-use only)
+              - generic [ref=e97]:
+                - generic [ref=e98]: Use these fields to record internal information about your application. The information you provide will never be displayed publicly.
+                - generic [ref=e99]:
+                  - generic [ref=e101]:
+                    - text: App Name *
+                    - generic [ref=e103]: 
+                  - textbox [ref=e105]: Prince Tires Quote SMS
+                - generic [ref=e106]:
+                  - generic [ref=e108]:
+                    - text: App Description *
+                    - generic [ref=e110]: 
+                  - textbox [ref=e113]: Sends tire price quotes to customers by SMS from the Prince Tires website quote tool.
+                - generic [ref=e114]:
+                  - generic [ref=e116]:
+                    - text: Primary Contact *
+                    - generic [ref=e118]: 
+                  - generic [ref=e124]:
+                    - generic [ref=e125]:
+                      - generic [ref=e127]:
+                        - generic [ref=e128]: MOHAMAD ALLAQ (me)
+                        - generic "mahmoudmoyah2@gmail.com" [ref=e129]
+                      - combobox [ref=e130]:
+                        - textbox [ref=e131]
+                    - generic "Clear all" [ref=e132] [cursor=pointer]:
+                      - generic: ×
+                - generic [ref=e134]:
+                  - generic [ref=e136]:
+                    - text: Do you intend to promote this app in the RingCentral App Gallery? *
+                    - generic [ref=e138]: 
+                  - generic [ref=e141]:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: "Yes"
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: "No"
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: I don't know
+            - generic [ref=e143]:
+              - generic [ref=e145]: App Card
+              - generic [ref=e146]:
+                - generic [ref=e147]:
+                  - text: Use the fields below to configure how your application will be presented within our App Gallery. Consult our
+                  - link "App Gallery Best Practices guide" [ref=e148] [cursor=pointer]:
+                    - /url: /guide/basics/app-gallery-checklist
+                  - text: to learn how to customize your profiles for our partners' app galleries.
+                - generic [ref=e149]:
+                  - generic [ref=e150]:
+                    - generic [ref=e152]:
+                      - generic [ref=e154]:
+                        - text: Display Name *
+                        - generic [ref=e156]: 
+                      - textbox [ref=e158]: Prince Tires Quote SMS
+                    - generic [ref=e160]:
+                      - generic [ref=e162]:
+                        - text: Summary *
+                        - generic [ref=e164]: 
+                      - textbox "Enter a short summary of your app (max. 140 characters)" [ref=e168]: Internal Prince Tires SMS integration (quotes + inbound assistant). Not for public gallery.
+                    - generic [ref=e170]:
+                      - generic [ref=e172]:
+                        - text: App Icon *
+                        - generic [ref=e174]: 
+                      - generic [ref=e176]:
+                        - generic [ref=e177]:
+                          - img "*" [ref=e179]
+                          - generic [ref=e180]:
+                            - paragraph [ref=e181]: Image must be a square
+                            - paragraph [ref=e182]: "File format supported: jpg, png, svg or gif"
+                            - paragraph [ref=e183]: "Size: less than 2MB"
+                        - generic [ref=e184]:
+                          - button "Remove" [ref=e185] [cursor=pointer]
+                          - generic [ref=e186] [cursor=pointer]: Choose
+                  - generic [ref=e188]:
+                    - generic [ref=e189]: App card preview
+                    - generic [ref=e190]:
+                      - generic "Prince Tires Quote SMS" [ref=e195]
+                      - generic [ref=e196]: PRINCE TIRES LTD
+                      - generic "Internal Prince Tires SMS integration (quotes + inbound assistant). Not for public gallery." [ref=e197]
+            - generic [ref=e199]:
+              - generic [ref=e201]: Auth
+              - generic [ref=e202]:
+                - generic [ref=e203]: For apps that must authenticate directly to the platform, select the authentication method your app will use.
+                - radiogroup [ref=e204]:
+                  - generic [ref=e210] [cursor=pointer]: 3-legged OAuth flow authorization code
+                  - generic [ref=e212]:
+                    - text: This common OAuth flow requires users to log into the application via the RingCentral website,
+                    - text: and to exchange an auth token for an access key.
+                  - generic [ref=e218] [cursor=pointer]: JWT auth flow
+                  - generic [ref=e219]: This OAuth flow is recommended for server-side apps that do not have a user interface (e.g. scripts, cronjobs, daemons, and other command-line tools), as well as applications that are accessed by way of an "API key."
+                - generic [ref=e220]:
+                  - generic [ref=e222]: Issue refresh tokens? *
+                  - generic [ref=e223]:
+                    - text: When this is enabled, RingCentral will issue a refresh token to allow sessions to be extended beyond their
+                    - text: original lifetime, without having to reauthenticate.
+                    - generic [ref=e224]:
+                      - generic [ref=e226]: "Yes"
+                      - generic [ref=e228] [cursor=pointer]: "No"
+            - generic [ref=e230]:
+              - generic [ref=e232]: Security
+              - generic [ref=e234]:
+                - generic [ref=e236]:
+                  - generic [ref=e238]:
+                    - text: Application Scopes
+                    - generic [ref=e240]: 
+                  - generic [ref=e244]:
+                    - generic [ref=e245]:
+                      - generic [ref=e246]:
+                        - generic [ref=e247] [cursor=pointer]: ×
+                        - generic [ref=e248]: A2P SMS
+                      - generic [ref=e249]:
+                        - generic [ref=e250] [cursor=pointer]: ×
+                        - generic [ref=e251]: Call Control
+                      - generic [ref=e252]:
+                        - generic [ref=e253] [cursor=pointer]: ×
+                        - generic [ref=e254]: SMS
+                      - generic [ref=e255]:
+                        - generic [ref=e256] [cursor=pointer]: ×
+                        - generic [ref=e257]: Webhook Subscriptions
+                      - combobox [ref=e258]:
+                        - textbox [ref=e259]
+                    - generic "Clear all" [ref=e260] [cursor=pointer]:
+                      - generic: ×
+                - generic [ref=e263]:
+                  - generic [ref=e265]: Who will be authorized to access your app? *
+                  - radiogroup [ref=e267]:
+                    - generic [ref=e273] [cursor=pointer]:
+                      - generic [ref=e274]: This app is public and will be callable via any RingCentral customer.
+                      - generic [ref=e276]: Advanced settings
+                      - text:  
+                    - generic [ref=e283] [cursor=pointer]:
+                      - generic [ref=e284]: This app is private and will only be callable using credentials from the same RingCentral account.
+                      - generic [ref=e286]: 
+            - generic [ref=e288]:
+              - generic [ref=e290]: App Features
+              - generic [ref=e294]:
+                - generic [ref=e296] [cursor=pointer]:
+                  - generic [ref=e297]:
+                    - generic:
+                      - img
+                  - generic [ref=e298]: Interactive Messages
+                - generic [ref=e299]: Select this option if you app posts interactive messages to RingCentral Team Messaging chats. Interactive messages include elements such as buttons, form input fields, and other interactive elements.
+          - button "Update" [ref=e301] [cursor=pointer]: Update
+    - generic [ref=e304]:
+      - link "RingCentral" [ref=e307] [cursor=pointer]:
+        - /url: https://www.ringcentral.com
+      - generic [ref=e308]:
+        - generic [ref=e309]:
+          - generic [ref=e310]: APIs
+          - generic [ref=e311]:
+            - link "RingEX" [ref=e313] [cursor=pointer]:
+              - /url: /api-products
+            - link "RingCX" [ref=e315] [cursor=pointer]:
+              - /url: /api-products
+            - link "RingSense" [ref=e317] [cursor=pointer]:
+              - /url: /api-products
+            - link "RingCentral Video" [ref=e319] [cursor=pointer]:
+              - /url: /api-products
+            - link "RingCentral Events" [ref=e321] [cursor=pointer]:
+              - /url: /api-products
+            - link "Contact Center" [ref=e323] [cursor=pointer]:
+              - /url: /api-products
+        - generic [ref=e324]:
+          - generic [ref=e325]: SOLUTIONS
+          - generic [ref=e326]:
+            - link "Healthcare" [ref=e328] [cursor=pointer]:
+              - /url: /solutions/healthcare
+            - link "Finance" [ref=e330] [cursor=pointer]:
+              - /url: /solutions/financial-services
+            - link "Retail" [ref=e332] [cursor=pointer]:
+              - /url: /solutions/retail
+            - link "Education" [ref=e334] [cursor=pointer]:
+              - /url: /solutions/education
+            - link "View all" [ref=e336] [cursor=pointer]:
+              - /url: /solutions
+        - generic [ref=e337]:
+          - generic [ref=e338]: PARTNERS
+          - generic [ref=e339]:
+            - link "ISV Partner program" [ref=e341] [cursor=pointer]:
+              - /url: https://www.ringcentral.com/partner/isv.html
+            - link "RingCentral Ventures" [ref=e343] [cursor=pointer]:
+              - /url: https://www.ringcentral.com/ventures.html
+            - link "App Gallery" [ref=e345] [cursor=pointer]:
+              - /url: https://www.ringcentral.com/apps
+        - generic [ref=e346]:
+          - generic [ref=e347]: COMMUNITY
+          - generic [ref=e348]:
+            - link "Game Changers" [ref=e350] [cursor=pointer]:
+              - /url: /gamechangers
+            - link "Developer Forum" [ref=e352] [cursor=pointer]:
+              - /url: /go-to-community.html
+            - link "StackOverflow" [ref=e354] [cursor=pointer]:
+              - /url: https://stackoverflow.com/questions/tagged/ringcentral
+            - link "Events" [ref=e356] [cursor=pointer]:
+              - /url: /community/developer-events
+            - link "Blog" [ref=e358] [cursor=pointer]:
+              - /url: https://medium.com/ringcentral-developers
+        - generic [ref=e359]:
+          - generic [ref=e360]: RESOURCES
+          - generic [ref=e361]:
+            - link "eBooks" [ref=e363] [cursor=pointer]:
+              - /url: /resources
+            - link "Videos" [ref=e365] [cursor=pointer]:
+              - /url: /resources
+            - link "Data sheets" [ref=e367] [cursor=pointer]:
+              - /url: /resources
+            - link "Whitepapers" [ref=e369] [cursor=pointer]:
+              - /url: /resources
+        - generic [ref=e370]:
+          - generic [ref=e371]: SUPPORT
+          - generic [ref=e372]:
+            - link "API status" [ref=e374] [cursor=pointer]:
+              - /url: /status
+            - link "Create a ticket" [ref=e376] [cursor=pointer]:
+              - /url: /support/create-case
+      - generic [ref=e377]:
+        - generic [ref=e379]:
+          - link "Facebook" [ref=e380] [cursor=pointer]:
+            - /url: https://www.facebook.com/ringcentral
+            - img "Facebook" [ref=e381]
+          - link "Twitter" [ref=e382] [cursor=pointer]:
+            - /url: https://twitter.com/ringcentraldevs
+            - img "Twitter" [ref=e383]
+          - link "LinkedIn" [ref=e384] [cursor=pointer]:
+            - /url: https://www.linkedin.com/company/ringcentral
+            - img "LinkedIn" [ref=e385]
+          - link "YouTube" [ref=e386] [cursor=pointer]:
+            - /url: https://www.youtube.com/ringcentral
+            - img "YouTube" [ref=e387]
+          - link "Instagram" [ref=e388] [cursor=pointer]:
+            - /url: https://www.instagram.com/ringcentral
+            - img "Instagram" [ref=e389]
+          - link "Tiktok" [ref=e390] [cursor=pointer]:
+            - /url: https://www.tiktok.com/@ringcentral
+            - img "Tiktok" [ref=e391]
+        - generic [ref=e392]:
+          - generic [ref=e393]:
+            - link "Legal" [ref=e394] [cursor=pointer]:
+              - /url: https://www.ringcentral.com/legal.html
+            - link "Privacy" [ref=e395] [cursor=pointer]:
+              - /url: https://www.ringcentral.com/legal/privacy-notice.html
+            - link "Cookie Notice" [ref=e396] [cursor=pointer]:
+              - /url: https://www.ringcentral.com/legal/cookie-notice.html
+            - link "Site Map" [ref=e397] [cursor=pointer]:
+              - /url: https://www.ringcentral.com/sitemap.html
+            - link "Accessibility" [ref=e398] [cursor=pointer]:
+              - /url: https://www.ringcentral.com/accessibility.html
+            - link "Contact Us" [ref=e399] [cursor=pointer]:
+              - /url: https://www.ringcentral.com/whyringcentral/contactus.html
+            - link "Cookie Preferences" [ref=e400] [cursor=pointer]:
+              - /url: ""
+            - link "Do not sell or share my personal data" [ref=e401] [cursor=pointer]:
+              - /url: ""
+          - generic [ref=e402]: © 2026 RingCentral, Inc. All rights reserved.
