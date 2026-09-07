@@ -17,7 +17,14 @@ test.describe('Quote button (staff/wholesale gating)', () => {
   async function gotoFirstProduct(page: import('@playwright/test').Page) {
     const res = await page.goto('/collections/tires', { waitUntil: 'domcontentloaded' });
     expect(res?.status(), '/collections/tires should exist').toBeLessThan(400);
-    const firstProduct = page.locator('a[href*="/products/"]').first();
+    // Target a VISIBLE product card: the collection grid renders cards as
+    // <a class="ptg__card">. A bare a[href*="/products/"] first-match can grab a
+    // hidden prefetch/menu link (e.g. <a as="document">), whose never-visible
+    // state made this flake. Fall back to any visible product link if the grid
+    // card class ever changes.
+    const firstProduct = page
+      .locator('a.ptg__card:visible, a[href*="/products/"]:visible')
+      .first();
     await expect(firstProduct, 'a product link should be present').toBeVisible();
     const href = await firstProduct.getAttribute('href');
     expect(href, 'product link should have an href').toBeTruthy();
