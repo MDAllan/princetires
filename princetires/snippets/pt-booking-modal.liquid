@@ -297,6 +297,7 @@
 .bk-addon input{accent-color:#dc2626;flex-shrink:0;width:19px;height:19px;cursor:pointer}
 .bk-addon-name{flex:1;font-size: 1.05rem;font-weight:500;color:#374151}
 .bk-addon--active .bk-addon-name{color:#111}
+.bk-addon-info{font-size:.9rem;font-weight:500;color:#dc2626;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
 .bk-addon-price{flex-shrink:0;color:#9ca3af;font-size: 1rem;font-weight:500}
 .bk-addon--active .bk-addon-price{color:#dc2626}
 
@@ -520,6 +521,27 @@
     });
   }
 
+  // Optional "what's covered" links for specific add-ons → their info page.
+  var BK_ADDON_LINKS = { addon_road_hazard: '/pages/road-hazard-protection' };
+
+  // Per-tire dollar amount for a custom add-on. Flat add-ons return their fixed
+  // amount; percent add-ons (e.g. road hazard) return `percent`% of the current
+  // tire price, clamped to [min, max]. Returns 0 when a percent add-on has no
+  // tire price to quote against (e.g. an unpriced product) so it never adds a
+  // bare floor charge to a $0 tire.
+  function bkAddonUnitPrice(a) {
+    if (!a) return 0;
+    if (typeof a.amount === 'number') return a.amount;
+    if (typeof a.percent === 'number') {
+      if (!(st.tirePrice > 0)) return 0;
+      var v = st.tirePrice * a.percent / 100;
+      if (typeof a.min === 'number' && v < a.min) v = a.min;
+      if (typeof a.max === 'number' && v > a.max) v = a.max;
+      return v;
+    }
+    return 0;
+  }
+
   function calcPrice() {
     var tp = st.tirePrice > 0 ? st.tirePrice * st.qty : 0;
     // Tires-only flow strips out every install-related line and turns the
@@ -534,8 +556,8 @@
     if (installable && Array.isArray(st.customAddons)) {
       for (var k = 0; k < st.customAddons.length; k++) {
         var a = st.customAddons[k];
-        if (a && a.selected && typeof a.amount === 'number') {
-          ca += a.amount * st.qty;
+        if (a && a.selected) {
+          ca += bkAddonUnitPrice(a) * st.qty;
         }
       }
     }
@@ -564,15 +586,31 @@
         bkTpmsPrice = svc.prices.amount;
       } else if (svc.slug === 'addon_disposal' && typeof svc.prices.amount === 'number') {
         bkDisposalPrice = svc.prices.amount;
-      } else if (svc.kind === 'addon' && typeof svc.prices.amount === 'number') {
-        extras.push({
-          slug: svc.slug,
-          name: svc.name || svc.slug,
-          description: svc.description || '',
-          amount: svc.prices.amount,
-          unit: svc.unit || 'tire',
-          selected: false
-        });
+      } else if (svc.kind === 'addon') {
+        var p = svc.prices || {};
+        if (typeof p.amount === 'number') {
+          extras.push({
+            slug: svc.slug,
+            name: svc.name || svc.slug,
+            description: svc.description || '',
+            amount: p.amount,
+            unit: svc.unit || 'tire',
+            selected: false
+          });
+        } else if (typeof p.percent === 'number') {
+          // Percent-of-tire-price add-on (e.g. road hazard). The per-tire dollar
+          // amount is computed live from st.tirePrice by bkAddonUnitPrice().
+          extras.push({
+            slug: svc.slug,
+            name: svc.name || svc.slug,
+            description: svc.description || '',
+            percent: p.percent,
+            min: (typeof p.min === 'number') ? p.min : null,
+            max: (typeof p.max === 'number') ? p.max : null,
+            unit: svc.unit || 'tire',
+            selected: false
+          });
+        }
       }
     });
     bkCustomAddonCatalog = extras;
@@ -607,12 +645,24 @@
     });
     var h = '';
     st.customAddons.forEach(function (a, idx) {
+      // Percent add-ons need a tire price to quote against; if we don't have one
+      // (e.g. an unpriced product) skip the row rather than show a bare floor.
+      // Skipping doesn't misalign anything — the checkbox binds by array index.
+      if (typeof a.percent === 'number' && !(st.tirePrice > 0)) return;
       var id = 'bk-addon-custom-' + idx;
       var unit = a.unit ? '/' + a.unit : '';
+      var amt = bkAddonUnitPrice(a);
+      var amtStr = (amt % 1 === 0) ? amt.toFixed(0) : amt.toFixed(2);
+      // Optional info link → the add-on's details page. Click handling is bound
+      // below (preventDefault stops the label's checkbox toggle; we open the
+      // page in a new tab ourselves).
+      var link = BK_ADDON_LINKS[a.slug]
+        ? ' <a class="bk-addon-info" href="' + BK_ADDON_LINKS[a.slug] + '" target="_blank" rel="noopener">What’s covered?</a>'
+        : '';
       h += '<label class="bk-addon' + (a.selected ? ' bk-addon--active' : '') + '" data-custom-slug="' + a.slug + '">'
         + '<input type="checkbox" data-custom-idx="' + idx + '" id="' + id + '"' + (a.selected ? ' checked' : '') + '>'
-        + '<span class="bk-addon-name">' + a.name + '</span>'
-        + '<span class="bk-addon-price">+$' + a.amount + unit + '</span>'
+        + '<span class="bk-addon-name">' + a.name + link + '</span>'
+        + '<span class="bk-addon-price">+$' + amtStr + unit + '</span>'
         + '</label>';
     });
     host.innerHTML = h;
@@ -624,6 +674,15 @@
         var lbl = this.closest('.bk-addon');
         if (lbl) lbl.classList.toggle('bk-addon--active', this.checked);
         renderPrice();
+      });
+    });
+    // Info link opens the add-on's details page without toggling the checkbox
+    // (the link sits inside the <label>, so we cancel the label's default).
+    host.querySelectorAll('a.bk-addon-info').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.open(this.href, '_blank', 'noopener');
       });
     });
   }
@@ -674,7 +733,7 @@
       if (st.disposal) h += '<div class="bk-order-row"><span>Tire disposal × ' + st.qty + '</span><span>+$' + c.disposal.toFixed(2) + '</span></div>';
       (st.customAddons || []).forEach(function (a) {
         if (a && a.selected) {
-          h += '<div class="bk-order-row"><span>' + a.name + ' × ' + st.qty + '</span><span>+$' + (a.amount * st.qty).toFixed(2) + '</span></div>';
+          h += '<div class="bk-order-row"><span>' + a.name + ' × ' + st.qty + '</span><span>+$' + (bkAddonUnitPrice(a) * st.qty).toFixed(2) + '</span></div>';
         }
       });
     }
@@ -979,6 +1038,7 @@
     var addons = [];
     if (st.tpms) addons.push('TPMS sensors');
     if (st.disposal) addons.push('Tire disposal');
+    (st.customAddons || []).forEach(function (a) { if (a && a.selected) addons.push(a.name); });
     var vehLabel = buildVehicleLabel(v);
     var h = '';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
@@ -994,6 +1054,9 @@
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Installation</span><span class="bk-summary-val">$' + c.install.toFixed(2) + '</span></div>';
     if (st.tpms) h += '<div class="bk-summary-row"><span class="bk-summary-label">TPMS sensors</span><span class="bk-summary-val">$' + c.tpms.toFixed(2) + '</span></div>';
     if (st.disposal) h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire disposal</span><span class="bk-summary-val">$' + c.disposal.toFixed(2) + '</span></div>';
+    (st.customAddons || []).forEach(function (a) {
+      if (a && a.selected) h += '<div class="bk-summary-row"><span class="bk-summary-label">' + a.name + '</span><span class="bk-summary-val">$' + (bkAddonUnitPrice(a) * st.qty).toFixed(2) + '</span></div>';
+    });
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Subtotal</span><span class="bk-summary-val">$' + c.subtotal.toFixed(2) + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">GST (5%)</span><span class="bk-summary-val">$' + c.gst.toFixed(2) + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label" style="font-weight:700;color:#111">Total (incl. GST)</span><span class="bk-summary-val bk-summary-val--green">$' + c.total.toFixed(2) + '</span></div>';
@@ -1254,7 +1317,10 @@
       var customAddonsForApi = (st.customAddons || [])
         .filter(function (a) { return a && a.selected; })
         .map(function (a) {
-          return { slug: a.slug, name: a.name, qty: st.qty, amount: a.amount };
+          // amount = the effective per-tire dollar charge (percent add-ons are
+          // resolved against the tire price here), so the booking record is
+          // accurate even if the catalog row is later repriced.
+          return { slug: a.slug, name: a.name, qty: st.qty, amount: bkAddonUnitPrice(a) };
         });
 
       var payload = {
