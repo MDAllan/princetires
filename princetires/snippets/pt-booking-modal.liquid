@@ -292,12 +292,15 @@
 
 /* ── Addons ── */
 .bk-addons{display:flex;flex-direction:column}
-.bk-addon{display:flex;align-items:center;gap:.5rem;padding:.65rem 0;border-bottom:1px solid #f3f4f6;cursor:pointer;font-size: 1.05rem;color:#374151;transition:color .15s}
+.bk-addon{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:.65rem 0;border-bottom:1px solid #f3f4f6;cursor:pointer;font-size: 1.05rem;color:#374151;transition:color .15s}
+.bk-addon-note{flex-basis:100%;order:9;margin:0;padding-left:27px;font-size:.9rem;line-height:1.35;color:#6b7280;font-weight:400}
 .bk-addon:last-child{border-bottom:none}
 .bk-addon input{accent-color:#dc2626;flex-shrink:0;width:19px;height:19px;cursor:pointer}
 .bk-addon-name{flex:1;font-size: 1.05rem;font-weight:500;color:#374151}
 .bk-addon--active .bk-addon-name{color:#111}
 .bk-addon-info{font-size:.9rem;font-weight:500;color:#dc2626;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+.bk-addon-term{flex-shrink:0;margin:0 .5rem;padding:.25rem .45rem;border:1px solid #d1d5db;border-radius:6px;background:#fff;font-size:.95rem;font-weight:500;color:#374151;cursor:pointer;font-family:inherit}
+.bk-addon-term:focus{outline:none;border-color:#dc2626}
 .bk-addon-price{flex-shrink:0;color:#9ca3af;font-size: 1rem;font-weight:500}
 .bk-addon--active .bk-addon-price{color:#dc2626}
 
@@ -523,6 +526,22 @@
 
   // Optional "what's covered" links for specific add-ons → their info page.
   var BK_ADDON_LINKS = { addon_road_hazard: '/pages/road-hazard-protection' };
+  // Optional one-line benefit shown under an add-on to lift take-rate.
+  var BK_ADDON_NOTES = { addon_road_hazard: 'Covers potholes, nails and sidewall damage — the stuff a standard tire warranty won’t.' };
+
+  // The active {percent,min,max} for a percent add-on. Termed add-ons (e.g. road
+  // hazard sold as 1/2/3-year plans) resolve to the tier matching the customer's
+  // selected term (a.selectedMonths); untermed ones use the flat top-level rate.
+  function bkAddonRate(a) {
+    if (a && Array.isArray(a.terms) && a.terms.length) {
+      var months = a.selectedMonths;
+      for (var i = 0; i < a.terms.length; i++) {
+        if (a.terms[i] && a.terms[i].months === months) return a.terms[i];
+      }
+      return a.terms[a.terms.length - 1]; // fall back to the last (longest) tier
+    }
+    return a; // flat percent add-on: top-level percent/min/max
+  }
 
   // Per-tire dollar amount for a custom add-on. Flat add-ons return their fixed
   // amount; percent add-ons (e.g. road hazard) return `percent`% of the current
@@ -534,12 +553,29 @@
     if (typeof a.amount === 'number') return a.amount;
     if (typeof a.percent === 'number') {
       if (!(st.tirePrice > 0)) return 0;
-      var v = st.tirePrice * a.percent / 100;
-      if (typeof a.min === 'number' && v < a.min) v = a.min;
-      if (typeof a.max === 'number' && v > a.max) v = a.max;
+      var r = bkAddonRate(a);
+      var v = st.tirePrice * r.percent / 100;
+      if (typeof r.min === 'number' && v < r.min) v = r.min;
+      if (typeof r.max === 'number' && v > r.max) v = r.max;
       return v;
     }
     return 0;
+  }
+
+  // "1 year" / "2 years" from a month count — mirrors termLabel() in the app.
+  function bkTermLabel(months) {
+    var years = months / 12;
+    if (years === Math.floor(years)) return years + (years === 1 ? ' year' : ' years');
+    return months + ' months';
+  }
+
+  // Add-on name with its coverage term appended, e.g. "Road Hazard Protection
+  // (3 years)" — used in the price breakdown, review summary, and booking record.
+  function bkAddonDisplayName(a) {
+    if (a && Array.isArray(a.terms) && a.terms.length && typeof a.selectedMonths === 'number') {
+      return a.name + ' (' + bkTermLabel(a.selectedMonths) + ')';
+    }
+    return a ? a.name : '';
   }
 
   function calcPrice() {
@@ -600,6 +636,13 @@
         } else if (typeof p.percent === 'number') {
           // Percent-of-tire-price add-on (e.g. road hazard). The per-tire dollar
           // amount is computed live from st.tirePrice by bkAddonUnitPrice().
+          // Optionally termed: `terms` holds selectable 1/2/3-year tiers, and
+          // selectedMonths tracks the customer's pick (default = defaultMonths).
+          var terms = Array.isArray(p.terms)
+            ? p.terms.filter(function (t) { return t && typeof t.months === 'number' && typeof t.percent === 'number'; })
+            : null;
+          var defMonths = (typeof p.defaultMonths === 'number') ? p.defaultMonths
+            : (terms && terms.length ? terms[terms.length - 1].months : null);
           extras.push({
             slug: svc.slug,
             name: svc.name || svc.slug,
@@ -607,6 +650,8 @@
             percent: p.percent,
             min: (typeof p.min === 'number') ? p.min : null,
             max: (typeof p.max === 'number') ? p.max : null,
+            terms: (terms && terms.length) ? terms : null,
+            selectedMonths: defMonths,
             unit: svc.unit || 'tire',
             selected: false
           });
@@ -637,11 +682,18 @@
       st.customAddons = [];
       return;
     }
-    // Seed st.customAddons from the catalog while preserving any prior ticks.
+    // Seed st.customAddons from the catalog while preserving any prior ticks
+    // and the customer's selected coverage term.
     var prior = {};
-    (st.customAddons || []).forEach(function (a) { if (a && a.slug) prior[a.slug] = !!a.selected; });
+    (st.customAddons || []).forEach(function (a) {
+      if (a && a.slug) prior[a.slug] = { selected: !!a.selected, selectedMonths: a.selectedMonths };
+    });
     st.customAddons = bkCustomAddonCatalog.map(function (a) {
-      return Object.assign({}, a, { selected: !!prior[a.slug] });
+      var pr = prior[a.slug] || {};
+      return Object.assign({}, a, {
+        selected: !!pr.selected,
+        selectedMonths: (typeof pr.selectedMonths === 'number') ? pr.selectedMonths : a.selectedMonths
+      });
     });
     var h = '';
     st.customAddons.forEach(function (a, idx) {
@@ -659,10 +711,25 @@
       var link = BK_ADDON_LINKS[a.slug]
         ? ' <a class="bk-addon-info" href="' + BK_ADDON_LINKS[a.slug] + '" target="_blank" rel="noopener">What’s covered?</a>'
         : '';
+      // Coverage-term dropdown for termed add-ons (e.g. road hazard 1/2/3-year).
+      var termSel = '';
+      if (Array.isArray(a.terms) && a.terms.length) {
+        var opts = '';
+        for (var ti = 0; ti < a.terms.length; ti++) {
+          var m = a.terms[ti].months;
+          opts += '<option value="' + m + '"' + (m === a.selectedMonths ? ' selected' : '') + '>' + bkTermLabel(m) + '</option>';
+        }
+        termSel = '<select class="bk-addon-term" data-custom-idx="' + idx + '" aria-label="Coverage term">' + opts + '</select>';
+      }
+      var note = BK_ADDON_NOTES[a.slug]
+        ? '<span class="bk-addon-note">' + BK_ADDON_NOTES[a.slug] + '</span>'
+        : '';
       h += '<label class="bk-addon' + (a.selected ? ' bk-addon--active' : '') + '" data-custom-slug="' + a.slug + '">'
         + '<input type="checkbox" data-custom-idx="' + idx + '" id="' + id + '"' + (a.selected ? ' checked' : '') + '>'
         + '<span class="bk-addon-name">' + a.name + link + '</span>'
+        + termSel
         + '<span class="bk-addon-price">+$' + amtStr + unit + '</span>'
+        + note
         + '</label>';
     });
     host.innerHTML = h;
@@ -673,6 +740,25 @@
         st.customAddons[i].selected = this.checked;
         var lbl = this.closest('.bk-addon');
         if (lbl) lbl.classList.toggle('bk-addon--active', this.checked);
+        renderPrice();
+      });
+    });
+    // Coverage-term dropdown: update the tier, repaint this row's price label,
+    // and re-total. stopPropagation keeps clicks off the label's checkbox.
+    host.querySelectorAll('select.bk-addon-term[data-custom-idx]').forEach(function (sel) {
+      sel.addEventListener('click', function (e) { e.stopPropagation(); });
+      sel.addEventListener('change', function (e) {
+        e.stopPropagation();
+        var i = parseInt(this.dataset.customIdx);
+        if (!st.customAddons[i]) return;
+        st.customAddons[i].selectedMonths = parseInt(this.value, 10);
+        var lbl = this.closest('.bk-addon');
+        var priceEl = lbl && lbl.querySelector('.bk-addon-price');
+        if (priceEl) {
+          var amt2 = bkAddonUnitPrice(st.customAddons[i]);
+          var unit2 = st.customAddons[i].unit ? '/' + st.customAddons[i].unit : '';
+          priceEl.textContent = '+$' + ((amt2 % 1 === 0) ? amt2.toFixed(0) : amt2.toFixed(2)) + unit2;
+        }
         renderPrice();
       });
     });
@@ -733,7 +819,7 @@
       if (st.disposal) h += '<div class="bk-order-row"><span>Tire disposal × ' + st.qty + '</span><span>+$' + c.disposal.toFixed(2) + '</span></div>';
       (st.customAddons || []).forEach(function (a) {
         if (a && a.selected) {
-          h += '<div class="bk-order-row"><span>' + a.name + ' × ' + st.qty + '</span><span>+$' + (bkAddonUnitPrice(a) * st.qty).toFixed(2) + '</span></div>';
+          h += '<div class="bk-order-row"><span>' + bkAddonDisplayName(a) + ' × ' + st.qty + '</span><span>+$' + (bkAddonUnitPrice(a) * st.qty).toFixed(2) + '</span></div>';
         }
       });
     }
@@ -1038,7 +1124,7 @@
     var addons = [];
     if (st.tpms) addons.push('TPMS sensors');
     if (st.disposal) addons.push('Tire disposal');
-    (st.customAddons || []).forEach(function (a) { if (a && a.selected) addons.push(a.name); });
+    (st.customAddons || []).forEach(function (a) { if (a && a.selected) addons.push(bkAddonDisplayName(a)); });
     var vehLabel = buildVehicleLabel(v);
     var h = '';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
@@ -1055,7 +1141,7 @@
     if (st.tpms) h += '<div class="bk-summary-row"><span class="bk-summary-label">TPMS sensors</span><span class="bk-summary-val">$' + c.tpms.toFixed(2) + '</span></div>';
     if (st.disposal) h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire disposal</span><span class="bk-summary-val">$' + c.disposal.toFixed(2) + '</span></div>';
     (st.customAddons || []).forEach(function (a) {
-      if (a && a.selected) h += '<div class="bk-summary-row"><span class="bk-summary-label">' + a.name + '</span><span class="bk-summary-val">$' + (bkAddonUnitPrice(a) * st.qty).toFixed(2) + '</span></div>';
+      if (a && a.selected) h += '<div class="bk-summary-row"><span class="bk-summary-label">' + bkAddonDisplayName(a) + '</span><span class="bk-summary-val">$' + (bkAddonUnitPrice(a) * st.qty).toFixed(2) + '</span></div>';
     });
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Subtotal</span><span class="bk-summary-val">$' + c.subtotal.toFixed(2) + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">GST (5%)</span><span class="bk-summary-val">$' + c.gst.toFixed(2) + '</span></div>';
@@ -1319,8 +1405,17 @@
         .map(function (a) {
           // amount = the effective per-tire dollar charge (percent add-ons are
           // resolved against the tire price here), so the booking record is
-          // accurate even if the catalog row is later repriced.
-          return { slug: a.slug, name: a.name, qty: st.qty, amount: bkAddonUnitPrice(a) };
+          // accurate even if the catalog row is later repriced. Termed add-ons
+          // also carry the chosen coverage length.
+          // Bake the term into `name` so it lands in the booking record + notes
+          // without a server-schema change (extra keys are stripped by Zod, so
+          // termMonths/termLabel below are future-proofing only).
+          var o = { slug: a.slug, name: bkAddonDisplayName(a), qty: st.qty, amount: bkAddonUnitPrice(a) };
+          if (Array.isArray(a.terms) && a.terms.length && typeof a.selectedMonths === 'number') {
+            o.termMonths = a.selectedMonths;
+            o.termLabel = bkTermLabel(a.selectedMonths);
+          }
+          return o;
         });
 
       var payload = {

@@ -5,21 +5,28 @@ import { test, expect, Page } from '@playwright/test';
  *
  * When a customer books a tire, the product booking modal
  * (snippets/pt-booking-modal.liquid) offers "Road Hazard Protection" — a
- * per-tire add-on priced at 15% of the tire price, floored at $15 and capped
- * at $60. It rolls into the order total and links to the details page.
+ * per-tire add-on sold as 1/2/3-year plans, each priced as a % of the tire
+ * price with a per-tire floor/cap. A coverage-term dropdown lets the customer
+ * pick; the price + order line update to the chosen term, and it rolls into the
+ * total.
  *
- * These assertions are price-agnostic: we read the tire's own price off the
- * booking trigger and compute the expected add-on charge, so the test keeps
- * passing when catalog prices change. If the % / floor / cap themselves change,
- * update ROAD_HAZARD below to match db/035-road-hazard-addon.sql.
+ * Assertions are tire-price-agnostic: we read the tire's own price off the
+ * booking trigger and compute the expected charge per term. If the rates change,
+ * update TERMS below to match db/036-road-hazard-terms.sql.
  */
 
-const ROAD_HAZARD = { percent: 15, min: 15, max: 60 } as const;
+const TERMS: Record<number, { percent: number; min: number; max: number }> = {
+  12: { percent: 10, min: 12, max: 50 },
+  24: { percent: 15, min: 15, max: 70 },
+  36: { percent: 20, min: 20, max: 90 },
+};
+const DEFAULT_MONTHS = 36;
 
 /** Mirror the theme's per-tire price + label formatting exactly. */
-function expectedUnit(tirePrice: number): number {
-  const raw = (tirePrice * ROAD_HAZARD.percent) / 100;
-  return Math.min(ROAD_HAZARD.max, Math.max(ROAD_HAZARD.min, raw));
+function expectedUnit(tirePrice: number, months: number): number {
+  const t = TERMS[months];
+  const raw = (tirePrice * t.percent) / 100;
+  return Math.min(t.max, Math.max(t.min, raw));
 }
 function fmtUnit(amt: number): string {
   // bkRenderCustomAddons: whole numbers drop the decimals, else 2dp.
@@ -59,12 +66,11 @@ async function findBookableTire(
 }
 
 test.describe('Road Hazard Protection add-on', () => {
-  test('appears in the tire booking modal, priced at 15% (floor $15 / cap $60), and rolls into the total', async ({
+  test('offers 1/2/3-year terms, reprices on term change, and rolls into the total', async ({
     page,
   }) => {
     const { priceCents } = await findBookableTire(page);
     const tirePrice = priceCents / 100;
-    const unit = expectedUnit(tirePrice);
 
     // Open the booking modal from the PDP.
     const bookBtn = page.locator('[onclick*="openBookingModal"][data-tire-price]').first();
@@ -77,8 +83,12 @@ test.describe('Road Hazard Protection add-on', () => {
       .filter({ hasText: 'Road Hazard Protection' });
     await expect(row).toBeVisible({ timeout: 15_000 });
 
-    // Price label matches the computed per-tire charge.
-    await expect(row.locator('.bk-addon-price')).toHaveText(`+$${fmtUnit(unit)}/tire`);
+    const priceLabel = row.locator('.bk-addon-price');
+    const termSelect = row.locator('select.bk-addon-term');
+
+    // Default term (3-year) price is shown, and all three terms are selectable.
+    await expect(priceLabel).toHaveText(`+$${fmtUnit(expectedUnit(tirePrice, DEFAULT_MONTHS))}/tire`);
+    await expect(termSelect.locator('option')).toHaveCount(3);
 
     // "What's covered?" links to the details page.
     await expect(row.locator('a.bk-addon-info')).toHaveAttribute(
@@ -86,24 +96,26 @@ test.describe('Road Hazard Protection add-on', () => {
       '/pages/road-hazard-protection',
     );
 
-    // Ticking it adds a matching line to the order breakdown and lifts the total.
+    // Switching to the 1-year term reprices the row live.
+    await termSelect.selectOption('12');
+    await expect(priceLabel).toHaveText(`+$${fmtUnit(expectedUnit(tirePrice, 12))}/tire`);
+
+    // Ticking it (at the 1-year term) adds a matching, term-labelled order line
+    // and lifts the total.
     const totalRow = page.locator('#bk-order-total-row');
-    const totalBefore = await totalRow.innerText();
+    const num = (s: string) => parseFloat(s.replace(/[^\d.]/g, ''));
+    const totalBefore = num(await totalRow.innerText());
 
     await row.locator('input[type="checkbox"]').check();
 
-    // The order line reads "Road Hazard Protection × <qty>  +$<unit*qty>".
     const orderLines = page.locator('#bk-order-lines');
-    await expect(orderLines).toContainText('Road Hazard Protection');
+    await expect(orderLines).toContainText('Road Hazard Protection (1 year)');
     const lineText = await orderLines.innerText();
-    const m = lineText.match(/Road Hazard Protection × (\d+)\s*\+\$([\d.]+)/);
+    const m = lineText.match(/Road Hazard Protection \(1 year\) × (\d+)\s*\+\$([\d.]+)/);
     expect(m, `road-hazard order line not found in:\n${lineText}`).toBeTruthy();
     const qty = parseInt(m![1], 10);
-    expect(m![2]).toBe((unit * qty).toFixed(2));
+    expect(m![2]).toBe((expectedUnit(tirePrice, 12) * qty).toFixed(2));
 
-    // Total must strictly increase after adding the paid add-on.
-    const totalAfter = await totalRow.innerText();
-    const num = (s: string) => parseFloat(s.replace(/[^\d.]/g, ''));
-    expect(num(totalAfter)).toBeGreaterThan(num(totalBefore));
+    expect(num(await totalRow.innerText())).toBeGreaterThan(totalBefore);
   });
 });
