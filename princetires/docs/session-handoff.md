@@ -30,10 +30,11 @@
 
 ## Open loose ends (update every session)
 
+- **Road Hazard upsell cron is OFF (2026-09-08)** — owner flips it on in **Admin → Agent Console → "Road Hazard upsell reminder"** when ready (`agent_config.road_hazard_upsell_enabled`). Reply-"YES" is MVP (flows to SMS console, staff add at the counter) — a fully-automated yes→add flow is the next upgrade. All Road Hazard pricing (per-term % + floor/cap) is retunable in **Admin → Services** with no migration.
 - **GBP: ~32 pending review replies (2026-06-03)** — clear via `/admin/gbp` → "Reply to pending reviews now" (25/run) or let the daily cron finish. Most of the 580 were already replied to manually.
 - **GBP: Edmonton Trail location not automated** — `locations/61550430212629158` (9 reviews). To automate it too: add multi-location support, or set `GBP_V4_PARENT` env to switch the single target.
 - **GBP: stock the photo library + queue (2026-06-03)** — upload real shop photos at `/admin/gbp/posts` (Photo library) so posts stop using AI images; load Aug–Oct seasonal posts (winter-tire run-up) into the queue.
-- **About-page theme fixes still pending (2026-06-03)** — the About template ("Pages / about") section settings still show **"10+ Years in Calgary"** (false — est. 2022 ≈ 4 yrs), an **"optional road hazard coverage"** claim (not an offered service), and **"300+" reviews** in one block (vs 562 elsewhere). Fix in the theme customizer — live-theme API writes are blocked. The SEO meta title was already fixed via API.
+- **About-page theme fixes still pending (2026-06-03; updated 2026-09-08)** — the About template ("Pages / about") section settings still show **"10+ Years in Calgary"** (false — est. 2022 ≈ 4 yrs) and **"300+" reviews** in one block (vs 562 elsewhere). Fix in the theme customizer — live-theme API writes are blocked. (The old "optional road hazard coverage" flag here is RESOLVED — road hazard is now a real, sellable add-on as of 2026-09-08.) The SEO meta title was already fixed via API.
 - **Citation fixes (owner action, 2026-06-03)** — YellowPages postal `1Y2`→`0A4` + add website link; BBB website `prince.tires`→`princetires.ca`; Facebook name "Prince Tires LTD"→"Prince Tires". Then work the directory checklist in `docs/local-citations-tracker.md` (Yelp/Bing/Apple + Tier-2 Canadian directories).
 - **Code-review backlog (2026-05-15)** — `docs/code-review-2026-05-15.md`. SEC-1 + SEC-2 both **RESOLVED**. Still open: 7 critical / 16 high issues (collection sidebar Stud filter never renders, AJAX cart badge wrong target, 3 conflicting Product JSON-LD blocks, competing LocalBusiness schemas, contradictory hours, review-count mismatch).
 - **Roadmap Phases 4–6 not started** — Phase 4 wholesale portal data, Phase 5 staff B2B cockpit (`orders-create` webhook is still an HMAC-only stub), Phase 6 inventory & containers. Phases 0–3 + 3.5 all built + live. See `docs/PROJECT-STATE.md`.
@@ -88,10 +89,33 @@
 - **GBP automation on the droplet (2026-06-03)** — first designed as a standalone Node service for the tools droplet (a `gbp-automation/` folder exists at the workspace root). Abandoned: this Mac has no SSH to the droplet, and the app was already on Vercel Pro with a cron convention. The **Vercel version in `princetires-app` is the live one**; the `gbp-automation/` folder is only an optional laptop-run backfill tool. Don't deploy the droplet version.
 - **Google Drive folder sync for post photos (2026-06-03)** — considered a Drive drop-folder → auto-sync for real photos; skipped because it needs another Google API + auth. Used the in-app **Shopify-CDN photo library** instead.
 - **Temporary GBP diagnostic endpoints (2026-06-03)** — `/api/gbp-env-check` and `/api/gbp-reply-test` were added to debug env vars + the 2-location issue, then **removed**. Don't expect them to exist.
+- **Road Hazard single-plan / 15% pricing (2026-09-08)** — first shipped as a single 36-month plan at 15% ($15–$60/tire), then re-scoped to a **1/2/3-year term picker** at 10/15/20% ($12–$90) after the owner said 15% felt cheap. Don't revert to a single plan or the 15% rate. The details page was briefly collapsed to one plan then re-expanded to 3 terms — the 3-term version is current. Pricing is catalog-driven (Admin → Services / `db/036`), so change rates there, not in code.
 
 ---
 
 # Session Log
+
+## 2026-09-08 — Road Hazard Protection add-on: booking-modal term picker, details page, PDP + modal cross-sells, upsell cron · new `per_unit_percent` pricing mode
+
+Full build shipping Road Hazard Protection as a sellable, self-serve add-on. All verified live (Playwright + real-UA curl). Theme pushed via REST PUT to `#186307215635` and committed to `phase-4-wholesale-portal` (`39b6115`). App changes merged to `main` via 3 clean PRs, each staged in a worktree off `origin/main` so the app's in-progress `phase-0-ci` branch stayed untouched: **#26** (percent mode), **#30** (term tiers), **#33** (upsell cron). DB migrations `db/035`–`db/037` applied to live Neon.
+
+**Booking modal add-on** (`snippets/pt-booking-modal.liquid`) — Road Hazard renders in the custom-addons area (`bkRenderCustomAddons`) with a **1/2/3-year term dropdown** that reprices live (`bkAddonRate`/`bkAddonUnitPrice`/`bkTermLabel`), a grey benefit note under the row (`BK_ADDON_NOTES`), and a "What's covered?" link (`BK_ADDON_LINKS`). Pricing = **% of tire price, per tire, clamped $min/$max, by term** — read from the catalog, never hardcoded. Term baked into the addon `name` in the payload (`bkAddonDisplayName`) so it lands in `bookings.notes` with no `route.ts` change. Also fixed a pre-existing gap: custom add-ons were missing from the step-4 review summary (`renderSummary`).
+
+**New pricing mode `per_unit_percent`** (4th mode, end-to-end) — `princetires-app/src/lib/services/catalog.ts` (`ServicePrices.percent/min/max` + optional `terms[]`/`defaultMonths`, `PriceTerm`, `termLabel()`); parsed/saved in `services/actions.ts`; edited in `services/service-editor.tsx` (single %/floor/cap fields + a per-term table + default-term picker); quoted by the SMS agent in `lib/sms/config.ts` (`fmtPrice`). `/api/services` passes `prices` verbatim (no route change). **Owner retunes all rates in Admin → Services with NO migration.**
+
+**Pricing (final):** 1yr 10% ($12–$50) · 2yr 15% ($15–$70) · 3yr 20% ($20–$90), default 3yr. Seeded by `db/035` (initial single-plan) + `db/036` (term tiers + final pricing). Evolution: 15% single-plan → owner felt cheap → 3-term 10/15/20% (see Don't rebuild).
+
+**Details page** `/pages/road-hazard-protection` (Page id `109663944979`, Admin API `body_html`) — bespoke dark HTML page (`.rhp`); the 3 plan cards now show 1/2/3-year with real per-term %/floor/cap + $200-tire examples; hero/stats/FAQ/disclaimer updated. (Briefly collapsed to a single 36-mo plan, then re-expanded to 3 terms — 3-term is current.)
+
+**PDP cross-sell** (`sections/pt-product.liquid`, Warranty tab) — new item immediately after the "standard warranty does not cover road hazards" line, linking to the page. Turns a dead hook into a warm lead.
+
+**Upsell reminder cron (OFF by default)** — daily `/api/cron/road-hazard-upsell` (16:00 UTC ≈ 10am Edmonton) texts customers who booked a tire install *yesterday* without road hazard, appointment still upcoming, once each, opt-outs skipped. Mirrors the review-request lifecycle. `lib/sms/lifecycle.ts sendRoadHazardUpsell()`; GSM-7-safe copy in NEW `lib/sms/messages.ts` (unit-tested); gated by `agent_config.road_hazard_upsell_enabled` (default false) via a new Agent Console toggle (`agent/road-hazard-upsell-toggle.tsx` + `setRoadHazardUpsell`); `db/037` adds `bookings.rh_upsell_sent_at` + the flag; `vercel.json` cron added. Reply "YES" flows to the SMS console (staff add at counter) — no auto-flow yet.
+
+**Detection of "didn't add it":** booking has `tire_name` set + `notes not ilike '%road hazard%'` + `scheduled_date >= today` + created yesterday (Edmonton). Add-ons live in `bookings.notes` (no structured column), so notes-text is the signal.
+
+**Tests** — `princetires/tests/road-hazard-addon.spec.ts` (live Playwright: term dropdown + reprice + term-labelled order line); `princetires-app/tests/unit/road-hazard-upsell.test.ts` (GSM-7 + copy). Fixed a flaky pre-existing test: `tests/quote-button.spec.ts` `gotoFirstProduct` grabbed a hidden prefetch `<a>` via `a[href*="/products/"].first()` → now `a.ptg__card:visible` (verified 3× green). App: typecheck ✓, lint 0 errors, unit **59/59**. Theme JS node-checked. Latest prod deploy (#33) confirmed `READY`.
+
+**Also:** MCP setup question (Perplexity `claude mcp add`) at session start — not actioned into config.
 
 ## 2026-06-03 — Google Business Profile automation + admin dashboard (in princetires-app) · local-SEO citation audit
 
