@@ -19,6 +19,21 @@
 </script>
 
 <div class="bk-overlay" id="bk-overlay" hidden>
+
+  <!-- Last-chance protection nudge: shown once if the customer continues past
+       the add-ons step without the (brand-eligible) Protection Plan ticked. -->
+  <div id="bk-upsell-nudge" class="bk-nudge" hidden>
+    <div class="bk-nudge-card" role="dialog" aria-modal="true" aria-label="Add protection">
+      <div class="bk-nudge-shield">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3.5v5.5c0 5-3.4 9.3-8 11-4.6-1.7-8-6-8-11V5.5L12 2z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+      </div>
+      <h3 class="bk-nudge-title">Protect your new tires?</h3>
+      <p class="bk-nudge-body">Add <b id="bk-nudge-name">the Protection Plan</b> for <b id="bk-nudge-price">+$0/tire</b> — it covers potholes, nails and sidewall damage the standard warranty won&rsquo;t. It can only be added now, with your install.</p>
+      <button class="bk-next-btn" id="bk-nudge-add">Yes, add protection</button>
+      <button type="button" class="bk-nudge-skip" id="bk-nudge-skip">No thanks, continue booking</button>
+    </div>
+  </div>
+
   <div class="bk-modal" id="bk-modal" role="dialog" aria-modal="true" aria-label="Book tire installation">
 
     <div class="bk-header">
@@ -326,6 +341,15 @@
 .bk-order-note{font-size: 0.8rem;color:#9ca3af;text-align:center;margin:.45rem 0 0;padding-top:.4rem;border-top:1px solid #ececec}
 
 /* ── Buttons ── */
+/* Last-chance protection nudge */
+.bk-nudge{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(17,17,17,.55);padding:20px;font-family:'Outfit',sans-serif}
+.bk-nudge-card{background:#fff;border-radius:14px;max-width:380px;width:100%;padding:28px 26px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);animation:bk-up .22s ease-out}
+.bk-nudge-shield{width:56px;height:56px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.28)}
+.bk-nudge-title{margin:0 0 8px;font-size:1.35rem;font-weight:700;color:#111}
+.bk-nudge-body{margin:0 0 20px;font-size:1.02rem;line-height:1.5;color:#4b5563}
+.bk-nudge-body b{color:#111;font-weight:600}
+.bk-nudge-skip{display:block;width:100%;margin-top:10px;padding:11px;background:transparent;border:none;color:#6b7280;font-family:inherit;font-size:1rem;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.bk-nudge-skip:hover{color:#374151}
 .bk-next-btn{display:block;width:100%;padding:13px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size: 1.1rem;font-weight:600;cursor:pointer;margin-top:1rem;transition:background .15s;text-align:center}
 .bk-next-btn:hover{background:#b91c1c}
 .bk-next-btn:disabled{opacity:.4;cursor:not-allowed}
@@ -425,6 +449,9 @@
   // Loaded from GET /api/services on first openBookingModal — populated by bkRenderCustomAddons().
   // Each entry: { slug, name, description, amount, unit, selected }.
   var bkCustomAddonCatalog = [];
+  // Whether the last-chance protection nudge has already fired this session
+  // (reset on each modal open) — so we ask at most once per booking.
+  var bkUpsellNudged = false;
 
   // Vehicle type drives appointment DURATION + the calendar event only — not price.
   // Install price is per tire, set on each product via the custom.install_price
@@ -726,9 +753,10 @@
       var link = BK_ADDON_LINKS[a.slug]
         ? ' <a class="bk-addon-info" href="' + BK_ADDON_LINKS[a.slug] + '" target="_blank" rel="noopener">What’s covered?</a>'
         : '';
-      // Coverage-term dropdown for termed add-ons (e.g. road hazard 1/2/3-year).
+      // Coverage-term dropdown for termed add-ons (only when there's a real
+      // choice — a single-term plan just shows its price, labelled "(1 year)").
       var termSel = '';
-      if (Array.isArray(a.terms) && a.terms.length) {
+      if (Array.isArray(a.terms) && a.terms.length > 1) {
         var opts = '';
         for (var ti = 0; ti < a.terms.length; ti++) {
           var m = a.terms[ti].months;
@@ -870,10 +898,40 @@
   window.bkStep1Continue = function () {
     if (st.flow === 'tires_only') {
       bkAddToCartOnly();
-    } else {
-      bkGoTo(2);
+      return;
     }
+    // Last-chance upsell: if a brand-eligible protection add-on is shown but
+    // left unticked, ask once before advancing to date/time.
+    if (!bkUpsellNudged) {
+      var cb = document.querySelector('#bk-custom-addons .bk-addon input[type="checkbox"]:not(:checked)');
+      if (cb) { bkUpsellNudged = true; bkShowUpsellNudge(cb); return; }
+    }
+    bkGoTo(2);
   };
+
+  // Show the protection nudge for an unticked add-on row. "Yes" ticks it (which
+  // recomputes the price) and advances; "No thanks" just advances.
+  function bkShowUpsellNudge(cb) {
+    var row = cb.closest('.bk-addon');
+    var nudge = document.getElementById('bk-upsell-nudge');
+    if (!row || !nudge) { bkGoTo(2); return; }
+    var nameEl = row.querySelector('.bk-addon-name');
+    var priceEl = row.querySelector('.bk-addon-price');
+    var nm = nameEl && nameEl.childNodes[0] ? nameEl.childNodes[0].nodeValue : (nameEl ? nameEl.textContent : '');
+    document.getElementById('bk-nudge-name').textContent = (nm || 'the Protection Plan').trim();
+    document.getElementById('bk-nudge-price').textContent = priceEl ? priceEl.textContent : '';
+    nudge.hidden = false;
+    document.getElementById('bk-nudge-add').onclick = function () {
+      cb.checked = true;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+      nudge.hidden = true;
+      bkGoTo(2);
+    };
+    document.getElementById('bk-nudge-skip').onclick = function () {
+      nudge.hidden = true;
+      bkGoTo(2);
+    };
+  }
 
   // POST to Shopify's /cart/add.js with the PDP variant + qty, then redirect
   // to /cart. Falls back to /cart link if variantId is missing for any reason.
@@ -1194,6 +1252,7 @@
     // don't pass it (e.g. some search results) fall back to the standard 1–8.
     st.maxQty = parseInt(btn.dataset.maxQty) || 0;
     // Reset opt-out add-on state for every open.
+    bkUpsellNudged = false;
     st.tpms = false;
     st.disposal = true;
     st.flow = 'install';
