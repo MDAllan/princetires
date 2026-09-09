@@ -416,7 +416,7 @@
   var AVAILABILITY_API = 'https://app.princetires.ca/api/availability';
   var SERVICES_API = 'https://app.princetires.ca/api/services';
 
-  var st = { tireName: '', tireSize: '', tirePrice: 0, installPrice: 30, vehicle: 'passenger', qty: 4, maxQty: 0, tpms: false, disposal: true, date: null, time: null, savedVehicle: null, inventorySource: 'store', supplierTier: 'B', productHandle: '', variantId: '', flow: 'install', customAddons: [], location: null };
+  var st = { tireName: '', tireSize: '', tireVendor: '', tirePrice: 0, installPrice: 30, vehicle: 'passenger', qty: 4, maxQty: 0, tpms: false, disposal: true, date: null, time: null, savedVehicle: null, inventorySource: 'store', supplierTier: 'B', productHandle: '', variantId: '', flow: 'install', customAddons: [], location: null };
   var wk = 0;
   // Bookable locations (bookable === true) from the #pt-locations-data island.
   // When fewer than 2 are bookable there is NO picker UI — the single bookable
@@ -624,6 +624,9 @@
         bkDisposalPrice = svc.prices.amount;
       } else if (svc.kind === 'addon') {
         var p = svc.prices || {};
+        // Brand allowlist: when non-empty, the add-on shows only on products
+        // whose vendor is in the list (matched case-insensitively in the render).
+        var allowedVendors = Array.isArray(svc.allowedVendors) ? svc.allowedVendors : [];
         if (typeof p.amount === 'number') {
           extras.push({
             slug: svc.slug,
@@ -631,6 +634,7 @@
             description: svc.description || '',
             amount: p.amount,
             unit: svc.unit || 'tire',
+            allowedVendors: allowedVendors,
             selected: false
           });
         } else if (typeof p.percent === 'number') {
@@ -653,6 +657,7 @@
             terms: (terms && terms.length) ? terms : null,
             selectedMonths: defMonths,
             unit: svc.unit || 'tire',
+            allowedVendors: allowedVendors,
             selected: false
           });
         }
@@ -697,6 +702,16 @@
     });
     var h = '';
     st.customAddons.forEach(function (a, idx) {
+      // Brand allowlist: when set, the add-on shows only on tires whose brand
+      // (vendor) is listed. Unknown/missing vendor with a list set → hide, so we
+      // never offer a brand-gated plan on a product we can't match.
+      if (Array.isArray(a.allowedVendors) && a.allowedVendors.length) {
+        var v = (st.tireVendor || '').trim().toLowerCase();
+        var vendorOk = v && a.allowedVendors.some(function (av) {
+          return String(av).trim().toLowerCase() === v;
+        });
+        if (!vendorOk) return;
+      }
       // Percent add-ons need a tire price to quote against; if we don't have one
       // (e.g. an unpriced product) skip the row rather than show a bare floor.
       // Skipping doesn't misalign anything — the checkbox binds by array index.
@@ -1161,6 +1176,7 @@
   // ── Open modal ───────────────────────────────────────────────────────────
   window.openBookingModal = function (btn) {
     st.tireName = btn.dataset.tireName || 'Tire';
+    st.tireVendor = btn.dataset.vendor || '';
     st.tireSize = btn.dataset.tireSize || '';
     st.tirePrice = parseInt(btn.dataset.tirePrice || '0') / 100;
     st.installPrice = parseFloat(btn.dataset.installPrice) || 30;
