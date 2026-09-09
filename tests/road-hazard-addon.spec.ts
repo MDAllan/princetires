@@ -109,10 +109,14 @@ test.describe('Protection Plan add-on (brand-gated, 1-year)', () => {
     ).toBeVisible({ timeout: 15_000 });
     await page.waitForTimeout(1200); // let the modal settle before clicking Continue
 
-    // Continue without ticking → the nudge appears.
-    await page.locator('#bk-step1-cta').click({ force: true });
+    // The nudge must NOT be showing yet — only after the customer tries to continue.
     const nudge = page.locator('#bk-upsell-nudge');
+    await expect(nudge).toBeHidden();
+
+    // Continue without ticking → the nudge appears with the real price.
+    await page.locator('#bk-step1-cta').click({ force: true });
     await expect(nudge).toBeVisible();
+    await expect(nudge.locator('#bk-nudge-price')).not.toHaveText('+$0/tire');
     await expect(nudge).toContainText('Protection Plan');
     await expect(nudge.locator('#bk-nudge-add')).toBeVisible();
   });
