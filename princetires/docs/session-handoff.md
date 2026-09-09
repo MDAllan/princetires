@@ -30,7 +30,9 @@
 
 ## Open loose ends (update every session)
 
-- **Road Hazard upsell cron is OFF (2026-09-08)** — owner flips it on in **Admin → Agent Console → "Road Hazard upsell reminder"** when ready (`agent_config.road_hazard_upsell_enabled`). Reply-"YES" is MVP (flows to SMS console, staff add at the counter) — a fully-automated yes→add flow is the next upgrade. All Road Hazard pricing (per-term % + floor/cap) is retunable in **Admin → Services** with no migration.
+- **`princetires-app/.env.local` is fragile — gitignored, can vanish (2026-09-08)** — it got wiped mid-session (almost certainly a `git clean -fdx` from parallel work; NOT recoverable from git). Rebuild from `.env.local.example` + copy real values from **Vercel → princetires-app → Settings → Environment Variables** (`SHOPIFY_ADMIN_ACCESS_TOKEN`, `DATABASE_URL`) or the Neon console (pooled string). Working Shopify admin token is a `shpca_…` (38 chars). Verify with a read-only check. Avoid `git clean -x` on that repo (use `git clean -fd`). Same interference also reverts UNCOMMITTED working-tree edits — commit immediately.
+- **Protection Plan (was "Road Hazard") — now 1-year, brand-gated (2026-09-08)** — paid add-on shows only on an admin brand allowlist (currently **Kumho / Rotalla / Radar / Haida**), single **1-year** term (10% of tire, $12–$50). Tune brands + Active toggle in **Admin → Services** (no code). Term count is NOT admin-editable — changing 1↔3 terms needs a `db/NNN` prices update. The upsell cron copy still says the old name but is unaffected.
+- **Road Hazard upsell cron is OFF (2026-09-08)** — owner flips it on in **Admin → Agent Console → "Road Hazard upsell reminder"** when ready (`agent_config.road_hazard_upsell_enabled`). Reply-"YES" is MVP (flows to SMS console, staff add at the counter) — a fully-automated yes→add flow is the next upgrade.
 - **GBP: ~32 pending review replies (2026-06-03)** — clear via `/admin/gbp` → "Reply to pending reviews now" (25/run) or let the daily cron finish. Most of the 580 were already replied to manually.
 - **GBP: Edmonton Trail location not automated** — `locations/61550430212629158` (9 reviews). To automate it too: add multi-location support, or set `GBP_V4_PARENT` env to switch the single target.
 - **GBP: stock the photo library + queue (2026-06-03)** — upload real shop photos at `/admin/gbp/posts` (Photo library) so posts stop using AI images; load Aug–Oct seasonal posts (winter-tire run-up) into the queue.
@@ -116,6 +118,19 @@ Full build shipping Road Hazard Protection as a sellable, self-serve add-on. All
 **Tests** — `princetires/tests/road-hazard-addon.spec.ts` (live Playwright: term dropdown + reprice + term-labelled order line); `princetires-app/tests/unit/road-hazard-upsell.test.ts` (GSM-7 + copy). Fixed a flaky pre-existing test: `tests/quote-button.spec.ts` `gotoFirstProduct` grabbed a hidden prefetch `<a>` via `a[href*="/products/"].first()` → now `a.ptg__card:visible` (verified 3× green). App: typecheck ✓, lint 0 errors, unit **59/59**. Theme JS node-checked. Latest prod deploy (#33) confirmed `READY`.
 
 **Also:** MCP setup question (Perplexity `claude mcp add`) at session start — not actioned into config.
+
+### 2026-09-08/09 (same session, continued) — Protection Plan: brand-gating, rename, 1-year, "add protection?" nudge
+
+**Rename + brand-gating** — "Road Hazard Protection" add-on renamed to **Protection Plan** (catalog `name` → modal + SMS agent; PDP cross-sell + details-page hero/lead/CTA/disclaimer updated; page URL unchanged). New **`services.allowed_vendors`** (jsonb): add-on shows only on products whose Shopify **vendor** matches (case-insensitive); null/empty = all brands. Admin editor got a **brand checklist** (add-ons only; bundled `TIRE_VENDORS` in `lib/services/catalog.ts`). Theme reads the tire's brand via `data-vendor` (added to ALL book triggers: PDP book+sticky, collection card, cart) and gates the render in `bkRenderCustomAddons`. App PR **#40**. collection-card + cart were pushed **surgically** onto live (working tree ahead of live there — theme_push_live_diff).
+
+**1-year only (for now) + Haida** — single 1-year term (10% of tire, $12–$50); modal hides the term dropdown when only one term (`terms.length > 1`), still labels "(1 year)". Allowlist now **Kumho / Rotalla / Radar / Haida**. `db/040` (applied to Neon; PR **#43**). Details page rebuilt to the single 1-year plan.
+
+**"Add protection?" nudge** — one-time popup fires when the customer clicks **"Pick a time →"** with a brand-eligible plan left unticked (`bkStep1Continue` → `bkShowUpsellNudge`); Yes ticks it, No thanks continues. Once per open (`bkUpsellNudged`).
+- **BUG fixed same session (`3729084`):** `.bk-nudge{display:flex}` overrode the `[hidden]` attribute → popup showed the instant the modal OPENED (default "+$0/tire", covering the modal — also the source of the earlier test "element not stable" flakiness). Fix = `.bk-nudge[hidden]{display:none}`. Verified live: hidden on open, real price on continue. Test asserts hidden-on-open.
+
+**Admin-tunable, term-count is NOT** — %/floor/cap/brands/Active editable in Admin → Services; adding/removing terms (1↔3) has no admin UI → needs a `db/NNN` prices update. `tests/road-hazard-addon.spec.ts` rewritten (allowed shows+reprices, non-allowed hidden, nudge hidden-on-open + fires-on-continue). 3/3 green.
+
+**⚠️ `.env.local` wiped mid-session** — see the Open loose end; rebuilt + re-verified (Shopify + Neon OK).
 
 ## 2026-06-03 — Google Business Profile automation + admin dashboard (in princetires-app) · local-SEO citation audit
 
