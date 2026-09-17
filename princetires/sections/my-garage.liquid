@@ -1,6 +1,7 @@
 {{ 'customer.css' | asset_url | stylesheet_tag }}
 
 {%- if customer -%}
+  {% render 'pt-vehicle-manifest-loader' %}
   <script src="{{ 'my-garage.js' | asset_url }}" defer="defer"></script>
 
   <script data-garage-config type="application/json">
@@ -11,6 +12,7 @@
       "minYear": {{ settings.smart_search_min_year | default: 2001 }},
       "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
       "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
+      "manifestUrl": {{ 'pt-vehicle-manifest.json' | asset_url | json }},
       "maxVehicles": 10,
       "customImage": {% if section.settings.garage_image != blank %}{{ section.settings.garage_image | image_url: width: 160 | json }}{% else %}null{% endif %},
       "customerEmail": {{ customer.email | json }},

@@ -25,6 +25,7 @@
   data-pt-rs
   data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}"
   data-asset-version="{%- assign _au = 'pt-vehicle-2025.json' | asset_url -%}{%- if _au contains '?' -%}{{ _au | split: '?' | last }}{%- endif -%}"
+  data-manifest-url="{{ 'pt-vehicle-manifest.json' | asset_url }}"
 >
   <button type="button" class="pt-rs__toggle" data-pt-rs-toggle aria-expanded="false">
     Change search
@@ -119,6 +120,7 @@
     </div>
   </div>
 </div>
+{% render 'pt-vehicle-manifest-loader' %}
 
 {% stylesheet %}
   .pt-rs {
@@ -355,6 +357,8 @@
 
     var assetBase = root.dataset.assetBase;
     var assetVersion = root.dataset.assetVersion || '';
+    var manifestUrl = root.dataset.manifestUrl || '';
+    var vehicleManifest = null;
     var STORAGE_KEY = 'pt-tire-search-vehicle';
 
     var elToggle = root.querySelector('[data-pt-rs-toggle]');
@@ -613,7 +617,9 @@
       resetSelect(elTrim, '—');
       elSubmitVeh.disabled = true;
       if (!year) return;
-      var url = assetBase + 'pt-vehicle-' + year + '.json' + (assetVersion ? '?' + assetVersion : '');
+      var url = window.PTVehicleManifest
+        ? window.PTVehicleManifest.yearUrl(assetBase, year, vehicleManifest, assetVersion)
+        : assetBase + 'pt-vehicle-' + year + '.json' + (assetVersion ? '?' + assetVersion : '');
       fetch(url, { cache: 'force-cache' })
         .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(function (data) {
@@ -708,8 +714,22 @@
       return p && { w: p.width, a: p.profile, r: p.rim };
     }
 
+    // Year list is data-driven: rebuild it from pt-vehicle-manifest.json when
+    // that loads (Liquid-rendered years stay on a 404). The saved-car pre-seed
+    // waits up to 1.5s so a newly published year finds its option.
+    var PTVM = window.PTVehicleManifest;
+    function applyVehicleManifest(m) {
+      if (!m) return;
+      vehicleManifest = m;
+      PTVM.fillYearSelect(elYear, PTVM.yearsDesc(m));
+    }
+    if (PTVM) PTVM.load(manifestUrl).then(applyVehicleManifest);
+    var manifestReady = PTVM ? PTVM.ready(manifestUrl, 1500).then(applyVehicleManifest) : Promise.resolve();
+    var yearAtInit = elYear.value;
+
     // Pre-seed the vehicle cascade from savedVeh
-    if (savedVeh) {
+    if (savedVeh) manifestReady.then(function () {
+      if (elYear.value !== yearAtInit) return; // customer picked a year while we waited
       elYear.value = savedVeh.year || '';
       if (savedVeh.year) {
         onYearChange(savedVeh.year);
@@ -736,6 +756,6 @@
         };
         waitForMakes(0);
       }
-    }
+    });
   })();
 {% endjavascript %}

@@ -1,0 +1,134 @@
+{% doc %}
+  Defines window.PTVehicleManifest, a small client for
+  assets/pt-vehicle-manifest.json (the index of published pt-vehicle-{year}.json
+  files: minYear, maxYear, years[], and optional per-year content versions).
+
+  Vehicle-search surfaces (hero smart search, collection grid, tire search,
+  research strip, My Garage) use it to widen their year range to whatever the
+  fitment pipeline has published and to cache-bust per-year fetches with
+  ?v=<version>. Every method degrades to null or the caller's fallback, so a
+  missing (404) or malformed manifest leaves each surface on its theme-setting
+  defaults.
+
+  Outputs a plain inline script tag (not a javascript tag block) so the global
+  exists before the surface scripts run. Safe to render more than once: only the
+  first copy defines the global.
+
+  API:
+    load(url)                  → Promise<manifest|null>, memoized per URL, never rejects
+    ready(url, timeoutMs=1500) → Promise<manifest|null>, null if not loaded by the timeout
+    yearUrl(base, year, manifest, fallbackQuery) → year asset URL
+    yearsDesc(manifest, fallbackMin, fallbackMax) → years, newest first
+    fillYearSelect(select, years) → rebuilds a year select, keeping its value
+
+  @example
+  {% render 'pt-vehicle-manifest-loader' %}
+{% enddoc %}
+<script>
+  (function () {
+    if (window.PTVehicleManifest) return;
+
+    var memo = {};
+
+    function isInt(n) {
+      return typeof n === 'number' && isFinite(n) && Math.floor(n) === n;
+    }
+
+    // Returns the manifest when it has a usable shape, otherwise null.
+    function validate(m) {
+      if (!m || typeof m !== 'object') return null;
+      if (!isInt(m.minYear) || !isInt(m.maxYear) || m.minYear > m.maxYear) return null;
+      if (!Array.isArray(m.years) || !m.years.length) return null;
+      for (var i = 0; i < m.years.length; i++) {
+        var y = m.years[i];
+        if (!isInt(y) || y < m.minYear || y > m.maxYear) return null;
+      }
+      if (m.versions != null && (typeof m.versions !== 'object' || Array.isArray(m.versions))) return null;
+      return m;
+    }
+
+    function load(url) {
+      if (!url || typeof url !== 'string') return Promise.resolve(null);
+      if (!memo[url]) {
+        memo[url] = new Promise(function (resolve) {
+          try {
+            fetch(url)
+              .then(function (r) { return r && r.ok ? r.json() : null; })
+              .then(function (json) { resolve(validate(json)); })
+              .catch(function () { resolve(null); });
+          } catch (e) {
+            resolve(null);
+          }
+        });
+      }
+      return memo[url];
+    }
+
+    function ready(url, timeoutMs) {
+      var ms = typeof timeoutMs === 'number' && timeoutMs >= 0 ? timeoutMs : 1500;
+      return new Promise(function (resolve) {
+        var timer = setTimeout(function () { resolve(null); }, ms);
+        load(url).then(function (m) {
+          clearTimeout(timer);
+          resolve(m);
+        });
+      });
+    }
+
+    // base + 'pt-vehicle-<year>.json', versioned from the manifest when it
+    // knows the year, else with the caller's existing query (if any).
+    function yearUrl(base, year, manifest, fallbackQuery) {
+      var url = (base || '') + 'pt-vehicle-' + year + '.json';
+      var v = manifest && manifest.versions ? manifest.versions[String(year)] : null;
+      if ((typeof v === 'string' && v) || isInt(v)) return url + '?v=' + encodeURIComponent(String(v));
+      if (fallbackQuery) return url + '?' + fallbackQuery;
+      return url;
+    }
+
+    function yearsDesc(manifest, fallbackMin, fallbackMax) {
+      var out = [];
+      if (validate(manifest)) {
+        manifest.years.slice().sort(function (a, b) { return b - a; }).forEach(function (y) {
+          if (out[out.length - 1] !== y) out.push(y);
+        });
+        return out;
+      }
+      var min = parseInt(fallbackMin, 10);
+      var max = parseInt(fallbackMax, 10);
+      if (isFinite(min) && isFinite(max)) {
+        for (var y = max; y >= min; y--) out.push(y);
+      }
+      return out;
+    }
+
+    // Replaces a year select's non-placeholder options with `years` (newest
+    // first), keeping the current selection. No-op when nothing would change.
+    function fillYearSelect(select, years) {
+      if (!select || !years || !years.length) return;
+      var current = select.value;
+      var list = years.map(String);
+      if (current && list.indexOf(current) === -1) {
+        list.push(current);
+        list.sort(function (a, b) { return Number(b) - Number(a); });
+      }
+      var existing = Array.prototype.filter.call(select.options, function (o) { return o.value !== ''; });
+      if (existing.map(function (o) { return o.value; }).join(',') === list.join(',')) return;
+      existing.forEach(function (o) { o.parentNode.removeChild(o); });
+      list.forEach(function (y) {
+        var opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        select.appendChild(opt);
+      });
+      select.value = current;
+    }
+
+    window.PTVehicleManifest = {
+      load: load,
+      ready: ready,
+      yearUrl: yearUrl,
+      yearsDesc: yearsDesc,
+      fillYearSelect: fillYearSelect
+    };
+  })();
+</script>

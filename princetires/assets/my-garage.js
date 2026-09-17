@@ -29,6 +29,7 @@ class MyGarage extends HTMLElement {
   connectedCallback() {
     this.vehicles = this.loadFromStorage();
     this.populateYearSelect();
+    this.initVehicleManifest();
     this.bindEvents();
     this.initTabs();
     this.renderSeasonalTip();
@@ -843,12 +844,36 @@ class MyGarage extends HTMLElement {
     }
   }
 
+  // Year range is data-driven: once pt-vehicle-manifest.json loads, rebuild the
+  // year list and widen the bounds loadVehicleData() checks. On a 404 the
+  // theme-setting range from populateYearSelect() stands. VIN decode awaits
+  // manifestReady (max 1.5s) so a newly published year is selectable.
+  initVehicleManifest() {
+    var M = window.PTVehicleManifest;
+    this.manifestReady = Promise.resolve(null);
+    if (!M || !this.config.manifestUrl) return;
+    var apply = this.applyVehicleManifest.bind(this);
+    M.load(this.config.manifestUrl).then(apply);
+    this.manifestReady = M.ready(this.config.manifestUrl, 1500).then(apply);
+  }
+
+  applyVehicleManifest(m) {
+    if (!m) return null;
+    this.config.minYear = m.minYear;
+    this.config.maxYear = m.maxYear;
+    this.config.manifest = m;
+    window.PTVehicleManifest.fillYearSelect(this.yearSelect, window.PTVehicleManifest.yearsDesc(m));
+    return m;
+  }
+
   async loadVehicleData(year) {
     if (this.vehicleCache[year]) return this.vehicleCache[year];
     var numYear = parseInt(year);
     if (numYear < (this.config.minYear || 2001) || numYear > (this.config.maxYear || 2026)) return null;
     try {
-      var url = this.config.assetUrlBase + 'pt-vehicle-' + year + '.json';
+      var url = window.PTVehicleManifest
+        ? window.PTVehicleManifest.yearUrl(this.config.assetUrlBase, year, this.config.manifest, '')
+        : this.config.assetUrlBase + 'pt-vehicle-' + year + '.json';
       var resp = await fetch(url);
       if (!resp.ok) return null;
       var data = await resp.json();
@@ -1386,7 +1411,8 @@ class MyGarage extends HTMLElement {
       }
       var v = data.vehicle;
 
-      // Year — must exist in our dropdown range
+      // Year — must exist in our dropdown range (widened by the manifest, if any)
+      if (this.manifestReady) await this.manifestReady;
       this.yearSelect.value = String(v.year || '');
       if (!this.yearSelect.value) {
         this.setVinStatus('err', (v.year ? v.year + ' is' : 'That year is') + ' outside our supported range.');

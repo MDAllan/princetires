@@ -784,15 +784,62 @@
               </div>
             {%- endif -%}
 
-            {%- comment -%} Compatible vehicles {%- endcomment -%}
-            {%- if product.metafields.custom.compatible_vehicles != blank -%}
-              {%- assign compat_items = product.metafields.custom.compatible_vehicles | split: ',' -%}
-              <h3 class="ptp__desc-subheading">{{ 'sections.tire_description.vehicles_heading' | t: tire_size: tire_size }}</h3>
+            {%- comment -%}
+              Compatible vehicles. custom.compatible_vehicles is a json metafield written by the
+              app's fitment refresh: { count, sample: [{ make, model, years }] } — count is the
+              distinct make+model total, sample holds up to 60 (newest year first). Blank, legacy
+              text or malformed values render nothing (`| plus: 0` coerces a missing/non-numeric
+              count to 0 so the > comparison can't raise). First 12 chips inline, the rest behind
+              a <details> (offset/limit keep each loop under Liquid's 50-iteration cap), and a
+              muted "+N more" chip when the total exceeds the sample.
+            {%- endcomment -%}
+            {%- liquid
+              assign compat = product.metafields.custom.compatible_vehicles.value
+              assign compat_count = compat.count | plus: 0
+              assign compat_sample = compat.sample
+              assign compat_first_make = compat_sample.first.make
+            -%}
+            {%- if compat_count > 0 and compat_first_make != blank -%}
+              {%- liquid
+                assign compat_sample_size = compat_sample.size
+                assign compat_rest = compat_count | minus: compat_sample_size
+                assign compat_is_wheel = false
+                if product.metafields.custom.bolt_pattern != blank and tire_size == blank
+                  assign compat_is_wheel = true
+                endif
+              -%}
+              <h3 class="ptp__desc-subheading">
+                {%- if compat_is_wheel -%}
+                  {{- 'sections.tire_description.vehicles_heading_wheel' | t -}}
+                {%- else -%}
+                  {{- 'sections.tire_description.vehicles_heading' | t: tire_size: tire_size -}}
+                {%- endif -%}
+              </h3>
               <div class="ptp__vehicle-list">
-                {%- for v in compat_items -%}
-                  <span class="ptp__vehicle-chip">{{ v | strip }}</span>
+                {%- for v in compat_sample limit: 12 -%}
+                  {%- if v.make != blank -%}
+                    <span class="ptp__vehicle-chip">{{ v.make | escape }} {{ v.model | escape }}{% if v.years != blank %} ({{ v.years | escape }}){% endif %}</span>
+                  {%- endif -%}
                 {%- endfor -%}
+                {%- if compat_sample_size <= 12 and compat_rest > 0 -%}
+                  <span class="ptp__vehicle-chip ptp__vehicle-chip--more">{{ 'sections.tire_description.vehicles_more' | t: count: compat_rest }}</span>
+                {%- endif -%}
               </div>
+              {%- if compat_sample_size > 12 -%}
+                <details class="ptp__vehicle-all">
+                  <summary class="ptp__vehicle-all-toggle">{{ 'sections.tire_description.vehicles_show_all' | t: count: compat_count }}</summary>
+                  <div class="ptp__vehicle-list">
+                    {%- for v in compat_sample offset: 12 limit: 48 -%}
+                      {%- if v.make != blank -%}
+                        <span class="ptp__vehicle-chip">{{ v.make | escape }} {{ v.model | escape }}{% if v.years != blank %} ({{ v.years | escape }}){% endif %}</span>
+                      {%- endif -%}
+                    {%- endfor -%}
+                    {%- if compat_rest > 0 -%}
+                      <span class="ptp__vehicle-chip ptp__vehicle-chip--more">{{ 'sections.tire_description.vehicles_more' | t: count: compat_rest }}</span>
+                    {%- endif -%}
+                  </div>
+                </details>
+              {%- endif -%}
             {%- endif -%}
 
             {%- comment -%} Calgary driving conditions {%- endcomment -%}
@@ -1231,6 +1278,11 @@
   /* Compatible vehicles */
   .ptp__vehicle-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .ptp__vehicle-chip { font-size: 0.85rem; font-weight: 400; color: #374151; padding: 0.35rem 0.8rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; }
+  .ptp__vehicle-chip--more { color: var(--ptp-subtle); background: transparent; border-style: dashed; }
+  .ptp__vehicle-all { margin-top: 0.6rem; }
+  .ptp__vehicle-all-toggle { display: inline-block; font-size: 0.85rem; font-weight: 600; color: var(--ptp-text); cursor: pointer; list-style: none; text-decoration: underline; text-underline-offset: 2px; }
+  .ptp__vehicle-all-toggle::-webkit-details-marker { display: none; }
+  .ptp__vehicle-all[open] .ptp__vehicle-all-toggle { margin-bottom: 0.6rem; }
 
   /* Calgary driving note */
   .ptp__local-note { font-size: 1rem; line-height: 1.75; color: #475569; padding: 1rem 1.2rem; background: #f8fafc; border-left: 3px solid #F5820B; border-radius: 0 8px 8px 0; }

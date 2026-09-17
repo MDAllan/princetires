@@ -243,11 +243,13 @@
     "minYear": {{ settings.smart_search_min_year | default: 2001 }},
     "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
     "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
+    "manifestUrl": {{ 'pt-vehicle-manifest.json' | asset_url | json }},
     "fallbackPhone": {{ settings.smart_search_fallback_phone | default: '403 452 4283' | json }},
     "missingVehicleWebhookUrl": {{ settings.missing_vehicle_webhook_url | json }},
     "brands": {{ hero_brands | split: '||' | json }}
   }
 </script>
+{% render 'pt-vehicle-manifest-loader' %}
 
 {%- if section.settings.hero_3d_scene_url != blank -%}
   <script
@@ -1721,6 +1723,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
       const configEl = document.querySelector('[data-smart-search-config]');
       this.config = configEl ? JSON.parse(configEl.textContent) : {};
+      // Year range is data-driven: once pt-vehicle-manifest.json loads, widen
+      // minYear/maxYear to the published years. Until then (or on a 404) the
+      // theme-setting bounds above stand.
+      if (window.PTVehicleManifest) {
+        window.PTVehicleManifest.load(this.config.manifestUrl).then((m) => {
+          if (!m) return;
+          this.config.minYear = m.minYear;
+          this.config.maxYear = m.maxYear;
+          this.config.manifest = m;
+        });
+      }
 
       this.awaitingTrim = false;
 
@@ -2743,7 +2756,7 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal: this.abortController.signal,
-            body: JSON.stringify({ query: query, maxYear: this.config.maxYear })
+            body: JSON.stringify({ query: query, maxYear: this.defaultYear() })
           }
         );
 
@@ -2846,10 +2859,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      /* Default year to max if not provided */
-      if (!year) year = this.config.maxYear;
+      /* Default year if not provided (see defaultYear) */
+      var yearDefaulted = !year;
+      if (!year) year = this.defaultYear();
 
-      return { year: year, make: make, model: model, trim: trim };
+      return { year: year, make: make, model: model, trim: trim, yearDefaulted: yearDefaulted };
+    }
+
+    // Year assumed when the query names none. Theme-setting range: maxYear, as
+    // before. Manifest range: the newest published year can be a sparse
+    // early-release file, so cap at the calendar year — lookupVehicleTrims
+    // walks back further if the model still isn't there.
+    defaultYear() {
+      if (!this.config.manifest) return this.config.maxYear;
+      return Math.min(this.config.maxYear, Math.max(this.config.minYear, new Date().getFullYear()));
+    }
+
+    vehicleYearUrl(year) {
+      if (!window.PTVehicleManifest) return this.config.assetUrlBase + 'pt-vehicle-' + year + '.json';
+      return window.PTVehicleManifest.yearUrl(this.config.assetUrlBase, year, this.config.manifest, '');
     }
 
     capitalizeMake(make) {
@@ -2863,7 +2891,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (numYear < this.config.minYear || numYear > this.config.maxYear) return null;
 
       try {
-        const url = this.config.assetUrlBase + 'pt-vehicle-' + year + '.json';
+        const url = this.vehicleYearUrl(year);
         const resp = await fetch(url, { signal: this.abortController.signal });
         if (!resp.ok) return null;
         const data = await resp.json();
@@ -2993,11 +3021,14 @@ document.addEventListener('DOMContentLoaded', function() {
       var data = await this.loadVehicleData(vehicle.year);
       var match = this._findModelData(data, vehicle);
 
-      /* Multi-year fallback: if not found in requested year, try the previous year */
-      if (!match && vehicle.year > this.config.minYear) {
-        data = await this.loadVehicleData(vehicle.year - 1);
+      /* Multi-year fallback: if not found in requested year, try the previous
+         year — or up to 3 back when no year was typed and the range comes from
+         the manifest (the newest published year can be sparse). */
+      var maxBack = vehicle.yearDefaulted && this.config.manifest ? 3 : 1;
+      for (var back = 1; !match && back <= maxBack && vehicle.year - back >= this.config.minYear; back++) {
+        data = await this.loadVehicleData(vehicle.year - back);
         match = this._findModelData(data, vehicle);
-        if (match) vehicle.year = vehicle.year - 1;
+        if (match) vehicle.year = vehicle.year - back;
       }
 
       if (!match) return [];
@@ -3899,7 +3930,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var numYear = parseInt(year);
       if (numYear < (this.config.minYear || 1990) || numYear > (this.config.maxYear || 2030)) return null;
       try {
-        var url = this.config.assetUrlBase + 'pt-vehicle-' + year + '.json';
+        var url = this.vehicleYearUrl(year);
         var resp = await fetch(url);
         if (!resp.ok) return null;
         var data = await resp.json();

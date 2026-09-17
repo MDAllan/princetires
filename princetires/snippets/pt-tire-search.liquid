@@ -44,6 +44,7 @@
   data-collection-handle="{{ collection_handle }}"
   data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}"
   data-asset-version="{%- assign _pt_ts_au = 'pt-vehicle-2025.json' | asset_url -%}{%- if _pt_ts_au contains '?' -%}{{ _pt_ts_au | split: '?' | last }}{%- endif -%}"
+  data-manifest-url="{{ 'pt-vehicle-manifest.json' | asset_url }}"
   data-missing-webhook="{{ settings.missing_vehicle_webhook_url }}"
   data-shop-email="info@princetires.ca"
 >
@@ -526,6 +527,7 @@
 }
 {% endstylesheet %}
 
+{% render 'pt-vehicle-manifest-loader' %}
 <script>
 (function () {
   var rootList = document.querySelectorAll('[data-pt-ts]');
@@ -640,6 +642,8 @@
 
     var assetBase = root.dataset.assetBase;
     var assetVersion = root.dataset.assetVersion || '';
+    var manifestUrl = root.dataset.manifestUrl || '';
+    var vehicleManifest = null;
     var collectionHandle = root.dataset.collectionHandle || 'tires';
     var STORAGE_KEY = 'pt-tire-search-vehicle';
 
@@ -951,7 +955,9 @@
       var startedAt = performance.now();
       var fetchStatus = null;
       try {
-        var url = assetBase + 'pt-vehicle-' + year + '.json' + (assetVersion ? '?' + assetVersion : '');
+        var url = window.PTVehicleManifest
+          ? window.PTVehicleManifest.yearUrl(assetBase, year, vehicleManifest, assetVersion)
+          : assetBase + 'pt-vehicle-' + year + '.json' + (assetVersion ? '?' + assetVersion : '');
         var r = await fetch(url, { cache: 'force-cache' });
         fetchStatus = r.status;
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -1335,7 +1341,23 @@
     if (urlState.size.mode === 'flotation') applySizeMode('flotation');
     hydrateSizeFromUrl(urlState);
     readSizeForm();
-    if (urlState.tab === 'vehicle') hydrateVehicleFromUrl(urlState); // fire-and-forget async
+
+    // Year list is data-driven: rebuild it from pt-vehicle-manifest.json when
+    // that loads (Liquid-rendered years stay on a 404). URL hydration waits up
+    // to 1.5s so a deep link to a newly published year finds its option.
+    var PTVM = window.PTVehicleManifest;
+    function applyVehicleManifest(m) {
+      if (!m) return;
+      vehicleManifest = m;
+      PTVM.fillYearSelect(elYear, PTVM.yearsDesc(m));
+    }
+    if (PTVM) PTVM.load(manifestUrl).then(applyVehicleManifest);
+    var manifestReady = PTVM ? PTVM.ready(manifestUrl, 1500).then(applyVehicleManifest) : Promise.resolve();
+    if (urlState.tab === 'vehicle') {
+      manifestReady.then(function () {
+        if (!state.veh.year) hydrateVehicleFromUrl(urlState); // fire-and-forget async; skip if a year was picked meanwhile
+      });
+    }
     track('tire_search_view', { tab: state.tab });
   }
 })();

@@ -97,9 +97,11 @@
   "minYear": {{ settings.smart_search_min_year | default: 2001 }},
   "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
   "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
+  "manifestUrl": {{ 'pt-vehicle-manifest.json' | asset_url | json }},
   "brands": {{ smart_brands | split: '||' | json }}
 }
 </script>
+{% render 'pt-vehicle-manifest-loader' %}
 
 {%- paginate collection.products by section.settings.products_per_page -%}
 {%- liquid
@@ -2222,6 +2224,16 @@ document.addEventListener('DOMContentLoaded', function() {
     var list = wrap.querySelector('[data-ptg-list]');
     var configEl = document.querySelector('[data-smart-search-config]');
     var config = configEl ? JSON.parse(configEl.textContent) : {};
+    // Year range is data-driven: widen to pt-vehicle-manifest.json once it
+    // loads; until then (or on a 404) the theme-setting bounds stand.
+    if (window.PTVehicleManifest) {
+      window.PTVehicleManifest.load(config.manifestUrl).then(function (m) {
+        if (!m) return;
+        config.minYear = m.minYear;
+        config.maxYear = m.maxYear;
+        config.manifest = m;
+      });
+    }
     var tireSizeRegex = /(?:^|[\s,])([Pp]?[LlTtSs]?[Tt]?\d{3}\/?\d{2,3}[Rr]\d{2}(?:\.\d)?)/;
     var vehicleCache = {};
     var debounceTimer = null;
@@ -2488,15 +2500,43 @@ document.addEventListener('DOMContentLoaded', function() {
         else if (modelShortcuts[words[0]]) { model = modelShortcuts[words[0]]; words.splice(0, 1); trim = words.length > 0 ? words.join(' ') : null; }
         else { model = words[0]; trim = words.length > 1 ? words.slice(1).join(' ') : null; }
       }
-      if (!year) year = config.maxYear;
-      return { year: year, make: make, model: model, trim: trim };
+      var yearDefaulted = !year;
+      if (!year) year = defaultYear();
+      return { year: year, make: make, model: model, trim: trim, yearDefaulted: yearDefaulted };
+    }
+
+    // Year assumed when the query names none. Theme-setting range: maxYear, as
+    // before. Manifest range: the newest published year can be a sparse
+    // early-release file, so cap at the calendar year (lookupTrims walks back).
+    function defaultYear() {
+      if (!config.manifest) return config.maxYear;
+      return Math.min(config.maxYear, Math.max(config.minYear, new Date().getFullYear()));
     }
 
     async function lookupTrims(vehicle) {
+      var trims = await lookupTrimsInYear(vehicle);
+      // No year typed + manifest range: walk back up to 3 years before giving up.
+      if (vehicle.yearDefaulted && config.manifest) {
+        for (var back = 1; !trims.length && back <= 3 && vehicle.year - back >= config.minYear; back++) {
+          var older = { year: vehicle.year - back, make: vehicle.make, model: vehicle.model, trim: vehicle.trim };
+          trims = await lookupTrimsInYear(older);
+          if (trims.length) {
+            vehicle.year = older.year;
+            vehicle.make = older.make;
+            vehicle.model = older.model;
+          }
+        }
+      }
+      return trims;
+    }
+
+    async function lookupTrimsInYear(vehicle) {
       var year = vehicle.year;
       if (!vehicleCache[year]) {
         try {
-          var url = config.assetUrlBase + 'pt-vehicle-' + year + '.json';
+          var url = window.PTVehicleManifest
+            ? window.PTVehicleManifest.yearUrl(config.assetUrlBase, year, config.manifest, '')
+            : config.assetUrlBase + 'pt-vehicle-' + year + '.json';
           var r = await fetch(url);
           if (r.ok) vehicleCache[year] = await r.json();
         } catch(e) {}
