@@ -1459,11 +1459,39 @@
     color: #111;
   }
 
-  .ptg__card-cart:disabled { opacity: .5; cursor: not-allowed; }
+  /* Navigation progress bar — a thin bar pinned to the top of the viewport
+     that animates while a filter/sort/pagination click is in flight. Not a
+     full skeleton (the SSR grid renders with content already in the HTML);
+     just an "in-flight" signal so the customer's tap doesn't feel dropped
+     on slow networks. Auto-cleared when the reload paints. */
+  .ptg__nav-progress {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, #dc2626 40%, #F5820B 70%, transparent 100%);
+    background-size: 40% 100%;
+    background-repeat: no-repeat;
+    background-position: -40% 0;
+    z-index: 9999;
+    animation: ptg-nav-progress 1.2s cubic-bezier(.4,0,.6,1) infinite;
+    pointer-events: none;
+  }
+  @keyframes ptg-nav-progress {
+    0%   { background-position: -40% 0; }
+    100% { background-position: 140% 0; }
+  }
+
+  /* Disabled state kept low-opacity ONLY when NOT showing a status flash —
+     during --success we want the button to look active (green pill), not dimmed.
+     Same for --error (red pill). */
+  .ptg__card-cart:disabled:not(.ptg__card-cart--success):not(.ptg__card-cart--error) { opacity: .5; cursor: not-allowed; }
   .ptg__card-cart--success { background: #dcfce7 !important; color: #16a34a !important; }
+  .ptg__card-cart--error { background: #fee2e2 !important; color: #dc2626 !important; }
   .ptg__card-cart--success .ptg__cart-icon,
+  .ptg__card-cart--error .ptg__cart-icon,
   .ptg__card-cart--loading .ptg__cart-icon { display: none !important; }
   .ptg__card-cart--success .ptg__cart-check { display: inline-block !important; }
+  .ptg__card-cart--error::before { content: '!'; font-weight: 700; font-size: 1.4rem; }
   .ptg__card-cart--loading .ptg__cart-spin { display: inline-block !important; animation: ptg-cart-spin .7s linear infinite; }
   @keyframes ptg-cart-spin { to { transform: rotate(360deg); } }
 
@@ -2635,6 +2663,12 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
 
+    function readBadge() {
+      var el = document.querySelector('.pt-header__cart-count');
+      var n = el ? parseInt(el.textContent, 10) : 0;
+      return isNaN(n) ? 0 : n;
+    }
+
     document.addEventListener('click', function(e) {
       var btn = e.target.closest('.ptg__card-cart');
       if (!btn || btn.disabled) return;
@@ -2644,8 +2678,14 @@ document.addEventListener('DOMContentLoaded', function() {
       var variantId = btn.dataset.variant;
       if (!variantId) return;
 
-      btn.disabled = true;
-      btn.classList.add('ptg__card-cart--loading');
+      // Optimistic UI — flip the button to its success state IMMEDIATELY so
+      // the customer gets feedback in the same paint frame, and bump the
+      // header cart count by 1 optimistically. If the POST fails, we roll
+      // both back with an error indication.
+      var priorBadge = readBadge();
+      btn.disabled = true;                         // prevents double-add during the 2s success flash
+      btn.classList.add('ptg__card-cart--success');
+      updateBadge(priorBadge + 1);
 
       fetch('/cart/add.js', {
         method: 'POST',
@@ -2654,16 +2694,130 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        btn.classList.remove('ptg__card-cart--loading');
-        if (data.status) { btn.disabled = false; return; }
-        btn.classList.add('ptg__card-cart--success');
+        if (data.status) {
+          // Shopify returned an error payload (e.g. "product not available") —
+          // reconcile: roll back the optimistic success state + badge.
+          btn.classList.remove('ptg__card-cart--success');
+          btn.classList.add('ptg__card-cart--error');
+          updateBadge(priorBadge);
+          setTimeout(function() { btn.classList.remove('ptg__card-cart--error'); btn.disabled = false; }, 1600);
+          return;
+        }
+        // Success — reconcile the badge with the authoritative count from
+        // /cart.js in case the optimistic +1 was off (e.g. product had a
+        // quantity cap that snapped the added qty back).
         fetch('/cart.js', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
           .then(function(r) { return r.json(); })
           .then(function(cart) { updateBadge(cart.item_count); })
           .catch(function() {});
         setTimeout(function() { btn.classList.remove('ptg__card-cart--success'); btn.disabled = false; }, 2000);
       })
-      .catch(function() { btn.classList.remove('ptg__card-cart--loading'); btn.disabled = false; });
+      .catch(function() {
+        // Network error — roll back optimistic state.
+        btn.classList.remove('ptg__card-cart--success');
+        btn.classList.add('ptg__card-cart--error');
+        updateBadge(priorBadge);
+        setTimeout(function() { btn.classList.remove('ptg__card-cart--error'); btn.disabled = false; }, 1600);
+      });
+    });
+  })();
+
+  // ── Navigation progress bar ─────────────────────────────────────────────
+  // Fires when the customer clicks a filter/sort/pagination link. The bar
+  // stays visible until the next paint (i.e. the fresh HTML replaces the
+  // current DOM). Also fires on the sort-select change (that triggers a
+  // programmatic location.href change above). Small, non-blocking, and
+  // makes the "click → white flash → new page" gap feel intentional.
+  (function () {
+    function showNavProgress() {
+      if (document.querySelector('.ptg__nav-progress')) return;
+      var bar = document.createElement('div');
+      bar.className = 'ptg__nav-progress';
+      bar.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(bar);
+    }
+    // Any left-click on a link that navigates within our origin fires the bar.
+    // Skip if it's a modifier-clicked link (open in new tab) or non-primary btn.
+    document.querySelectorAll(
+      '[data-filter-key], .ptg__page-btn, .ptg__filter-link, [data-clear-filters]'
+    ).forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        showNavProgress();
+      });
+    });
+    // Sort-select programmatically sets window.location.href — hook change.
+    var sortEl = document.querySelector('[data-ptg-sort]');
+    if (sortEl) sortEl.addEventListener('change', showNavProgress);
+  })();
+
+  // ── Scroll restoration ────────────────────────────────────────────────
+  // MPA pattern (see davidtran.dev scroll-restoration-in-spas): save the
+  // scroll position + clicked product handle to sessionStorage on card click,
+  // then on the back-navigation pageshow, either scroll the clicked card into
+  // view (best UX — the customer sees exactly where they were) or fall back
+  // to the raw scrollY. history.scrollRestoration='manual' disables the
+  // browser's own guess, which is often wrong when the grid re-renders.
+  // Scoped per-pathname so /collections/tires and /collections/wheels don't
+  // stomp each other's saved positions. Keyed on URL search too, so a
+  // filter/page change doesn't restore into a stale grid.
+  (function () {
+    if (!('sessionStorage' in window)) return;
+    var KEY = 'ptg_scroll:' + (window.location.pathname || '/');
+    var TTL_MS = 30 * 60 * 1000;
+    try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) {}
+
+    function saveScroll(handle) {
+      try {
+        sessionStorage.setItem(KEY, JSON.stringify({
+          y: window.scrollY,
+          at: Date.now(),
+          s: window.location.search,
+          h: handle || null
+        }));
+      } catch (e) {}
+    }
+    function restoreScroll() {
+      var raw;
+      try { raw = sessionStorage.getItem(KEY); } catch (e) { return; }
+      if (!raw) return;
+      try {
+        var p = JSON.parse(raw);
+        if (!p || Date.now() - (p.at || 0) > TTL_MS) return;
+        // Filter/pagination changed since save → skip; don't scroll into a
+        // grid the customer isn't actually looking at.
+        if ((p.s || '') !== (window.location.search || '')) return;
+        // Prefer the clicked-card-into-view path; falls back to raw y if
+        // the DOM has re-shuffled (or the card is no longer on this page).
+        if (p.h) {
+          var link = document.querySelector('.ptg__grid a[href*="/products/' + p.h + '"]');
+          if (link) {
+            link.scrollIntoView({ block: 'center', behavior: 'auto' });
+            return;
+          }
+        }
+        window.scrollTo({ top: p.y || 0, behavior: 'auto' });
+      } catch (e) {}
+    }
+
+    // Save on product-card clicks (grab the handle out of the href so we can
+    // scroll to that exact card on the return trip).
+    document.querySelectorAll('.ptg__grid a[href*="/products/"]').forEach(function (a) {
+      a.addEventListener('click', function () {
+        var m = a.getAttribute('href').match(/\/products\/([a-z0-9-]+)/i);
+        saveScroll(m ? m[1] : null);
+      });
+    });
+    // Save on pagination too so returning from a Prev/Next hop feels stable.
+    document.querySelectorAll('.ptg__page-btn').forEach(function (a) {
+      a.addEventListener('click', function () { saveScroll(null); });
+    });
+
+    // pageshow fires on both first paint AND bfcache restore. Small delay
+    // lets the auto-default script at the top of this section + any dynamic
+    // grid mutation settle before we scroll.
+    window.addEventListener('pageshow', function (e) {
+      setTimeout(restoreScroll, e.persisted ? 0 : 60);
     });
   })();
 });
