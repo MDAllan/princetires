@@ -2662,11 +2662,18 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
+        const requestedYear = vehicle.year;
         const trims = await this.lookupVehicleTrims(vehicle);
+        // lookupVehicleTrims walks back to an older year when the model isn't in
+        // the requested one and sets vehicle.year to the year it used — label the
+        // results with that year so it matches the sizes shown.
+        const trimsLabel = vehicle.year === requestedYear
+          ? vLabelClean
+          : vLabelClean.replace(String(requestedYear), String(vehicle.year));
 
         if (trims && trims.length === 1 && vehicle.trim) {
           /* User specified a trim and we found it — go straight to collection */
-          const trimLabel = vLabelClean + ' ' + trims[0].trim;
+          const trimLabel = trimsLabel + ' ' + trims[0].trim;
           const url = this.buildCollectionUrl({ tireSize: trims[0].size, brand: intent.brand, season: intent.season });
           this.renderResults([{
             type: 'vehicle',
@@ -2675,7 +2682,7 @@ document.addEventListener('DOMContentLoaded', function() {
             url: url,
           }]);
         } else if (trims && trims.length > 0) {
-          this.renderTrimResults(vLabelClean, trims, intent);
+          this.renderTrimResults(trimsLabel, trims, intent);
         } else {
           // We resolved a vehicle but have NO trim data — we don't know the
           // exact tire size. Per product rule: NEVER drop the customer onto

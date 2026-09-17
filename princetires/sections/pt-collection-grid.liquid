@@ -2332,8 +2332,11 @@ document.addEventListener('DOMContentLoaded', function() {
       var base = '/collections/tires';
       var urlP = new URLSearchParams();
       if (p.tireSize) {
-        var sm = p.tireSize.match(/^(\d+)\/(\d+)R(\d+(?:\.\d+)?)$/);
-        var fm = p.tireSize.match(/^(\d+)X(\d+(?:\.\d+)?)R(\d+)$/);
+        // Vehicle-data sizes can carry a P/LT/ST service prefix ("LT245/75R16");
+        // the filter metafields store only the numbers, so drop it first.
+        var ts = String(p.tireSize).replace(/^(?:P|LT|ST)(?=\d)/i, '');
+        var sm = ts.match(/^(\d+)\/(\d+)R(\d+(?:\.\d+)?)$/);
+        var fm = ts.match(/^(\d+)X(\d+(?:\.\d+)?)R(\d+)$/);
         if (sm) {
           urlP.set('filter.p.m.custom.tire_width', sm[1]);
           urlP.set('filter.p.m.custom.tire_profile', sm[2]);

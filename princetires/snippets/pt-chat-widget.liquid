@@ -13,7 +13,7 @@
   assign api_base = settings.chat_api_base | default: 'https://app.princetires.ca'
 -%}
 
-<div id="pt-chat" class="pt-chat" data-api="{{ api_base }}/api/chat" data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}"{% if page_product %} data-pt-product-handle="{{ page_product.handle }}" data-pt-product-title="{{ page_product.title | escape }}" data-pt-product-vendor="{{ page_product.vendor | escape }}" data-pt-product-size="{{ page_product.metafields.custom.tire_size | escape }}" data-pt-product-price="{{ page_product.selected_or_first_available_variant.price | money_without_currency }}"{% endif %}>
+<div id="pt-chat" class="pt-chat" data-api="{{ api_base }}/api/chat" data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}" data-manifest-url="{{ 'pt-vehicle-manifest.json' | asset_url }}"{% if page_product %} data-pt-product-handle="{{ page_product.handle }}" data-pt-product-title="{{ page_product.title | escape }}" data-pt-product-vendor="{{ page_product.vendor | escape }}" data-pt-product-size="{{ page_product.metafields.custom.tire_size | escape }}" data-pt-product-price="{{ page_product.selected_or_first_available_variant.price | money_without_currency }}"{% endif %}>
   <button class="pt-chat__launcher" type="button" aria-label="Chat with Prince Tires" data-pt-chat-open>
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
   </button>
@@ -41,6 +41,7 @@
     </form>
   </div>
 </div>
+{% render 'pt-vehicle-manifest-loader' %}
 
 {% stylesheet %}
 .pt-chat { display: block; }
@@ -198,6 +199,7 @@
 
   // Per-year vehicle dataset base (same data the homepage trim picker uses).
   var assetBase = root.getAttribute('data-asset-base') || '';
+  var manifestUrl = root.getAttribute('data-manifest-url') || '';
   var vehicleCache = {};
   var bookingFormEl = null;
 
@@ -317,7 +319,15 @@
       cb(items);
     }
     if (vehicleCache[year]) return build(vehicleCache[year]);
-    fetch(assetBase + 'pt-vehicle-' + year + '.json')
+    // Cache-bust with the manifest's per-year version when pt-vehicle-manifest.json
+    // loads (waits at most 1.5s); on a 404 the fetch stays unversioned as before.
+    var PTVM = window.PTVehicleManifest;
+    (PTVM ? PTVM.ready(manifestUrl, 1500) : Promise.resolve(null))
+      .then(function (manifest) {
+        return fetch(PTVM
+          ? PTVM.yearUrl(assetBase, year, manifest, '')
+          : assetBase + 'pt-vehicle-' + year + '.json');
+      })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) { vehicleCache[year] = data; build(data); })
       .catch(function () { cb(null); });
