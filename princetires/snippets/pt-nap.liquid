@@ -45,12 +45,16 @@
       assign lng = ''
       assign gbp_url = ''
       assign area_served = 'Northeast Calgary'
-      assign hours_mon_sat_display = '9:30 AM – 5:30 PM'
-      assign hours_sun_display = '10:00 AM – 3:30 PM'
-      assign hours_mon_sat_open = '09:30'
-      assign hours_mon_sat_close = '17:30'
-      assign hours_sun_open = '10:00'
-      assign hours_sun_close = '15:30'
+      assign hours_mon_sat_display = '9:00 AM – 6:00 PM'
+      assign hours_sun_display = '9:00 AM – 4:00 PM'
+      assign hours_mon_sat_open = '09:00'
+      assign hours_mon_sat_close = '18:00'
+      assign hours_sun_open = '09:00'
+      assign hours_sun_close = '16:00'
+      assign hours_fri_open = '09:00'
+      assign hours_fri_close = '13:00'
+      assign hours_fri_reopen = '14:30'
+      assign hours_fri_final_close = '17:00'
       assign is_primary = false
       # Online booking gate: flip to true only once the NE backend is live
       # (Phase 3 deployed + NE Google Calendar connected + NE bays configured).
@@ -76,6 +80,10 @@
       assign hours_mon_sat_close = '17:00'
       assign hours_sun_open = '09:00'
       assign hours_sun_close = '14:00'
+      assign hours_fri_open = '09:00'
+      assign hours_fri_close = '13:00'
+      assign hours_fri_reopen = '14:30'
+      assign hours_fri_final_close = '17:00'
       assign is_primary = true
       assign bookable = true
   endcase
@@ -102,6 +110,18 @@
     if sh.sun_close.value != blank
       assign hours_sun_close = sh.sun_close.value
     endif
+    if sh.fri_open.value != blank
+      assign hours_fri_open = sh.fri_open.value
+    endif
+    if sh.fri_close.value != blank
+      assign hours_fri_close = sh.fri_close.value
+    endif
+    if sh.fri_reopen.value != blank
+      assign hours_fri_reopen = sh.fri_reopen.value
+    endif
+    if sh.fri_final_close.value != blank
+      assign hours_fri_final_close = sh.fri_final_close.value
+    endif
     if sh.booking_cutoff_minutes.value != blank
       assign booking_cutoff_minutes = sh.booking_cutoff_minutes.value
     endif
@@ -118,6 +138,21 @@
     endcapture
     assign hours_sun_display = d_su | strip
   endif
+
+  # Friday runs a split shift at both shops (closed over the midday break).
+  capture d_fri
+    render 'pt-time12', t: hours_fri_open
+    echo ' – '
+    render 'pt-time12', t: hours_fri_close
+    echo ', '
+    render 'pt-time12', t: hours_fri_reopen
+    echo ' – '
+    render 'pt-time12', t: hours_fri_final_close
+  endcapture
+  assign hours_fri_display = d_fri | strip
+
+  # Mon-Sat labels mean Mon-Thu + Sat, because Friday is a split shift.
+  assign hours_weekday_label = 'Mon–Thu & Sat'
 
   # Derived display strings (match the old hardcoded forms exactly).
   assign address = street | append: ', ' | append: city
@@ -148,6 +183,12 @@
   {%- when 'hours_mon_sat_close' -%}{{ hours_mon_sat_close }}
   {%- when 'hours_sun_open' -%}{{ hours_sun_open }}
   {%- when 'hours_sun_close' -%}{{ hours_sun_close }}
+  {%- when 'hours_fri_display' -%}{{ hours_fri_display }}
+  {%- when 'hours_fri_open' -%}{{ hours_fri_open }}
+  {%- when 'hours_fri_close' -%}{{ hours_fri_close }}
+  {%- when 'hours_fri_reopen' -%}{{ hours_fri_reopen }}
+  {%- when 'hours_fri_final_close' -%}{{ hours_fri_final_close }}
+  {%- when 'hours_weekday_label' -%}{{ hours_weekday_label }}
   {%- when 'booking_cutoff_minutes' -%}{{ booking_cutoff_minutes }}
   {%- when 'lat' -%}{{ lat }}
   {%- when 'lng' -%}{{ lng }}

@@ -1,29 +1,31 @@
 {% doc %}
-  Renders the canonical JSON-LD @graph for Prince Tires (Schema.org).
-
-  Prince Tires has TWO Calgary shops, so this emits ONE Organization (the brand)
-  plus ONE AutoPartsStore per physical location, each anchored to a distinct @id
-  and pointing back to the Organization via parentOrganization. All per-location
-  NAP is pulled from the pt-nap snippet (the single source) so the structured
-  data can never drift from the footer/contact/booking NAP.
+  Renders JSON-LD structured data for Prince Tires' TWO Calgary shops
+  (Schema.org AutoPartsStore), as a @graph with one node per location.
 
   Notes:
-  - @type AutoPartsStore is a valid Schema.org type for a tire/wheel retailer.
-    "TireShop" is NOT real; AutoRepair implies general auto repair we don't offer.
-  - NO self-serving aggregateRating: Google does not allow a business to mark up
-    its own site-wide rating. Real stars live on Google Business Profile + product
-    pages (review app metafields).
-  - "Edmonton Trail" is a Calgary NE road, NOT the city of Edmonton —
-    addressLocality is "Calgary" for both shops.
+  - @type is AutoPartsStore (a valid Schema.org type for a tire/wheel retailer).
+    "TireShop" is NOT a real Schema.org type, and AutoRepair implies general
+    auto repair (brakes/oil/engine), which Prince Tires does not offer.
+  - Every address, phone and opening hour is rendered from pt-nap, which reads
+    the 'store_hours' metaobject. This file used to hardcode 09:30-17:30 /
+    10:00-15:30 against the SW address — those are the NE shop's hours, so the
+    primary location was publishing the wrong opening times to Google.
+  - The primary node carries @id "<shop.url>/#business". The testimonials
+    section points its AggregateRating at that exact @id; before this it
+    referenced a node that did not exist, so the rating was orphaned.
+  - No self-serving aggregateRating HERE: Google does not allow a business to
+    mark up its own site-wide rating on its LocalBusiness entity. The rating is
+    emitted separately by the testimonials section and bound via @id.
+  - NE geo coordinates are intentionally omitted until confirmed against the
+    live Google Business Profile — wrong coordinates are worse than none.
 
   @example
   {% render 'schema-local-business' %}
 {% enddoc %}
 
 {%- liquid
-  assign business_name = shop.name
   assign business_url = request.origin
-  assign org_id = business_url | append: '/#organization'
+  assign business_description = shop.description | default: shop.name
 
   assign social_links = ''
   if settings.social_facebook_link != blank
@@ -34,46 +36,126 @@
   if settings.social_instagram_link != blank
     assign social_links = social_links | append: settings.social_instagram_link | append: '|'
   endif
-  if settings.social_twitter_link != blank
-    assign social_links = social_links | append: settings.social_twitter_link | append: '|'
-  endif
   if settings.social_youtube_link != blank
     assign social_links = social_links | append: settings.social_youtube_link | append: '|'
   endif
   if settings.social_tiktok_link != blank
     assign social_links = social_links | append: settings.social_tiktok_link | append: '|'
   endif
+  if settings.social_linkedin_link != blank
+    assign social_links = social_links | append: settings.social_linkedin_link | append: '|'
+  endif
   assign social_links = social_links | split: '|' | compact
-
-  # Both Calgary shops. Add a third slug here if a location is ever added.
-  assign loc_slugs = 'sw,ne' | split: ','
 -%}
 
-{%- capture org_phone -%}{% render 'pt-nap', location: 'sw', field: 'phone' %}{%- endcapture -%}
-{%- assign org_phone = org_phone | strip -%}
+{%- capture sw_name %}{% render 'pt-nap', location: 'sw', field: 'public_name' %}{% endcapture -%}
+{%- capture sw_street %}{% render 'pt-nap', location: 'sw', field: 'street' %}{% endcapture -%}
+{%- capture sw_city %}{% render 'pt-nap', location: 'sw', field: 'city' %}{% endcapture -%}
+{%- capture sw_region %}{% render 'pt-nap', location: 'sw', field: 'region' %}{% endcapture -%}
+{%- capture sw_postal %}{% render 'pt-nap', location: 'sw', field: 'postal' %}{% endcapture -%}
+{%- capture sw_country %}{% render 'pt-nap', location: 'sw', field: 'country' %}{% endcapture -%}
+{%- capture sw_phone %}{% render 'pt-nap', location: 'sw', field: 'phone' %}{% endcapture -%}
+{%- capture sw_lat %}{% render 'pt-nap', location: 'sw', field: 'lat' %}{% endcapture -%}
+{%- capture sw_lng %}{% render 'pt-nap', location: 'sw', field: 'lng' %}{% endcapture -%}
+{%- capture sw_ms_open %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{% endcapture -%}
+{%- capture sw_ms_close %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{% endcapture -%}
+{%- capture sw_su_open %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{% endcapture -%}
+{%- capture sw_su_close %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{% endcapture -%}
+{%- capture sw_fr_open %}{% render 'pt-nap', location: 'sw', field: 'hours_fri_open' %}{% endcapture -%}
+{%- capture sw_fr_close %}{% render 'pt-nap', location: 'sw', field: 'hours_fri_close' %}{% endcapture -%}
+{%- capture sw_fr_reopen %}{% render 'pt-nap', location: 'sw', field: 'hours_fri_reopen' %}{% endcapture -%}
+{%- capture sw_fr_final %}{% render 'pt-nap', location: 'sw', field: 'hours_fri_final_close' %}{% endcapture -%}
+
+{%- capture ne_name %}{% render 'pt-nap', location: 'ne', field: 'public_name' %}{% endcapture -%}
+{%- capture ne_street %}{% render 'pt-nap', location: 'ne', field: 'street' %}{% endcapture -%}
+{%- capture ne_city %}{% render 'pt-nap', location: 'ne', field: 'city' %}{% endcapture -%}
+{%- capture ne_region %}{% render 'pt-nap', location: 'ne', field: 'region' %}{% endcapture -%}
+{%- capture ne_postal %}{% render 'pt-nap', location: 'ne', field: 'postal' %}{% endcapture -%}
+{%- capture ne_country %}{% render 'pt-nap', location: 'ne', field: 'country' %}{% endcapture -%}
+{%- capture ne_phone %}{% render 'pt-nap', location: 'ne', field: 'phone' %}{% endcapture -%}
+{%- capture ne_lat %}{% render 'pt-nap', location: 'ne', field: 'lat' %}{% endcapture -%}
+{%- capture ne_lng %}{% render 'pt-nap', location: 'ne', field: 'lng' %}{% endcapture -%}
+{%- capture ne_ms_open %}{% render 'pt-nap', location: 'ne', field: 'hours_mon_sat_open' %}{% endcapture -%}
+{%- capture ne_ms_close %}{% render 'pt-nap', location: 'ne', field: 'hours_mon_sat_close' %}{% endcapture -%}
+{%- capture ne_su_open %}{% render 'pt-nap', location: 'ne', field: 'hours_sun_open' %}{% endcapture -%}
+{%- capture ne_su_close %}{% render 'pt-nap', location: 'ne', field: 'hours_sun_close' %}{% endcapture -%}
+{%- capture ne_fr_open %}{% render 'pt-nap', location: 'ne', field: 'hours_fri_open' %}{% endcapture -%}
+{%- capture ne_fr_close %}{% render 'pt-nap', location: 'ne', field: 'hours_fri_close' %}{% endcapture -%}
+{%- capture ne_fr_reopen %}{% render 'pt-nap', location: 'ne', field: 'hours_fri_reopen' %}{% endcapture -%}
+{%- capture ne_fr_final %}{% render 'pt-nap', location: 'ne', field: 'hours_fri_final_close' %}{% endcapture -%}
+
+{%- liquid
+  assign sw_lat = sw_lat | strip
+  assign sw_lng = sw_lng | strip
+  assign ne_lat = ne_lat | strip
+  assign ne_lng = ne_lng | strip
+-%}
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@graph": [
     {
-      "@type": "Organization",
-      "@id": {{ org_id | json }},
-      "name": {{ business_name | json }},
+      "@type": "AutoPartsStore",
+      "@id": {{ business_url | append: '/#business' | json }},
+      "name": {{ shop.name | json }},
+      "alternateName": {{ sw_name | strip | json }},
       "url": {{ business_url | json }},
+      "branchCode": "sw",
+      "telephone": {{ sw_phone | strip | json }},
+      "description": {{ business_description | strip_html | json }},
       {%- if shop.brand.logo -%}
         "logo": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }},
         "image": {{ shop.brand.logo | image_url: width: 1200 | prepend: 'https:' | json }},
       {%- endif -%}
-      {%- if shop.email != blank -%}
-        "email": {{ shop.email | json }},
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": {{ sw_street | strip | json }},
+        "addressLocality": {{ sw_city | strip | json }},
+        "addressRegion": {{ sw_region | strip | json }},
+        "postalCode": {{ sw_postal | strip | json }},
+        "addressCountry": {{ sw_country | strip | json }}
+      },
+      {%- if sw_lat != blank and sw_lng != blank -%}
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": {{ sw_lat | json }},
+          "longitude": {{ sw_lng | json }}
+        },
       {%- endif -%}
-      "telephone": {{ org_phone | json }},
-      "location": [
-        {%- for s in loc_slugs -%}
-          { "@id": {{ business_url | append: '/#' | append: s | append: '-location' | json }} }{% unless forloop.last %},{% endunless %}
-        {%- endfor -%}
-      ]
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Saturday"],
+          "opens": {{ sw_ms_open | strip | json }},
+          "closes": {{ sw_ms_close | strip | json }}
+        },
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": "Friday",
+          "opens": {{ sw_fr_open | strip | json }},
+          "closes": {{ sw_fr_close | strip | json }}
+        },
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": "Friday",
+          "opens": {{ sw_fr_reopen | strip | json }},
+          "closes": {{ sw_fr_final | strip | json }}
+        },
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": "Sunday",
+          "opens": {{ sw_su_open | strip | json }},
+          "closes": {{ sw_su_close | strip | json }}
+        }
+      ],
+      "areaServed": {
+        "@type": "City",
+        "name": "Calgary"
+      },
+      "priceRange": "$$",
+      "currenciesAccepted": {{ cart.currency.iso_code | json }},
+      "paymentAccepted": "Cash, Credit Card, Debit Card"
       {%- if social_links.size > 0 -%}
         ,
         "sameAs": [
@@ -83,72 +165,65 @@
         ]
       {%- endif -%}
     },
-    {%- for s in loc_slugs -%}
-      {%- capture v_name -%}{% render 'pt-nap', location: s, field: 'public_name' %}{%- endcapture -%}
-      {%- capture v_street -%}{% render 'pt-nap', location: s, field: 'street' %}{%- endcapture -%}
-      {%- capture v_city -%}{% render 'pt-nap', location: s, field: 'city' %}{%- endcapture -%}
-      {%- capture v_region -%}{% render 'pt-nap', location: s, field: 'region' %}{%- endcapture -%}
-      {%- capture v_postal -%}{% render 'pt-nap', location: s, field: 'postal' %}{%- endcapture -%}
-      {%- capture v_country -%}{% render 'pt-nap', location: s, field: 'country' %}{%- endcapture -%}
-      {%- capture v_phone -%}{% render 'pt-nap', location: s, field: 'phone' %}{%- endcapture -%}
-      {%- capture v_lat -%}{% render 'pt-nap', location: s, field: 'lat' %}{%- endcapture -%}
-      {%- capture v_lng -%}{% render 'pt-nap', location: s, field: 'lng' %}{%- endcapture -%}
-      {%- capture v_gbp -%}{% render 'pt-nap', location: s, field: 'gbp_url' %}{%- endcapture -%}
-      {%- capture v_hrs_ms_open -%}{% render 'pt-nap', location: s, field: 'hours_mon_sat_open' %}{%- endcapture -%}
-      {%- capture v_hrs_ms_close -%}{% render 'pt-nap', location: s, field: 'hours_mon_sat_close' %}{%- endcapture -%}
-      {%- capture v_hrs_su_open -%}{% render 'pt-nap', location: s, field: 'hours_sun_open' %}{%- endcapture -%}
-      {%- capture v_hrs_su_close -%}{% render 'pt-nap', location: s, field: 'hours_sun_close' %}{%- endcapture -%}
-      {%- assign v_lat = v_lat | strip -%}
-      {%- assign v_lng = v_lng | strip -%}
-      {%- assign v_gbp = v_gbp | strip -%}
-      {
-        "@type": "AutoPartsStore",
-        "@id": {{ business_url | append: '/#' | append: s | append: '-location' | json }},
-        "name": {{ v_name | strip | json }},
-        "parentOrganization": { "@id": {{ org_id | json }} },
-        {%- if s == 'sw' -%}
-          "url": {{ business_url | json }},
-        {%- endif -%}
-        "telephone": {{ v_phone | strip | json }},
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": {{ v_street | strip | json }},
-          "addressLocality": {{ v_city | strip | json }},
-          "addressRegion": {{ v_region | strip | json }},
-          "postalCode": {{ v_postal | strip | json }},
-          "addressCountry": {{ v_country | strip | json }}
+    {
+      "@type": "AutoPartsStore",
+      "@id": {{ business_url | append: '/#business-ne' | json }},
+      "name": {{ ne_name | strip | json }},
+      "parentOrganization": { "@id": {{ business_url | append: '/#business' | json }} },
+      "url": {{ business_url | append: '/pages/locations' | json }},
+      "branchCode": "ne",
+      "telephone": {{ ne_phone | strip | json }},
+      {%- if shop.brand.logo -%}
+        "image": {{ shop.brand.logo | image_url: width: 1200 | prepend: 'https:' | json }},
+      {%- endif -%}
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": {{ ne_street | strip | json }},
+        "addressLocality": {{ ne_city | strip | json }},
+        "addressRegion": {{ ne_region | strip | json }},
+        "postalCode": {{ ne_postal | strip | json }},
+        "addressCountry": {{ ne_country | strip | json }}
+      },
+      {%- if ne_lat != blank and ne_lng != blank -%}
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": {{ ne_lat | json }},
+          "longitude": {{ ne_lng | json }}
         },
-        {%- if v_lat != blank and v_lng != blank -%}
-          "geo": {
-            "@type": "GeoCoordinates",
-            "latitude": {{ v_lat | json }},
-            "longitude": {{ v_lng | json }}
-          },
-        {%- endif -%}
-        "openingHoursSpecification": [
-          {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-            "opens": {{ v_hrs_ms_open | strip | json }},
-            "closes": {{ v_hrs_ms_close | strip | json }}
-          },
-          {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": "Sunday",
-            "opens": {{ v_hrs_su_open | strip | json }},
-            "closes": {{ v_hrs_su_close | strip | json }}
-          }
-        ],
-        "areaServed": { "@type": "City", "name": "Calgary" },
-        "priceRange": "$$",
-        "currenciesAccepted": {{ cart.currency.iso_code | json }},
-        "paymentAccepted": "Cash, Credit Card, Debit Card"
-        {%- if v_gbp != blank -%}
-          ,
-          "sameAs": [{{ v_gbp | json }}]
-        {%- endif -%}
-      }{% unless forloop.last %},{% endunless %}
-    {%- endfor -%}
+      {%- endif -%}
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Saturday"],
+          "opens": {{ ne_ms_open | strip | json }},
+          "closes": {{ ne_ms_close | strip | json }}
+        },
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": "Friday",
+          "opens": {{ ne_fr_open | strip | json }},
+          "closes": {{ ne_fr_close | strip | json }}
+        },
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": "Friday",
+          "opens": {{ ne_fr_reopen | strip | json }},
+          "closes": {{ ne_fr_final | strip | json }}
+        },
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": "Sunday",
+          "opens": {{ ne_su_open | strip | json }},
+          "closes": {{ ne_su_close | strip | json }}
+        }
+      ],
+      "areaServed": {
+        "@type": "City",
+        "name": "Calgary"
+      },
+      "priceRange": "$$",
+      "paymentAccepted": "Cash, Credit Card, Debit Card"
+    }
   ]
 }
 </script>
