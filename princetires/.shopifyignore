@@ -43,4 +43,16 @@ pt-vehicle-2025.json
 # published straight to the theme by the app's fitment pipeline (Admin API).
 # Ignored files are skipped on upload AND excluded from push's remote-delete
 # pass, so a theme push never overwrites or removes the published copies.
+#
+# CONSEQUENCE: the pipeline only writes to whichever theme is MAIN when it runs.
+# A theme created from this folder (`shopify theme push --unpublished`,
+# `shopify theme dev`) gets NO vehicle data: every year fetch 404s, so vehicle
+# search is dead there (and stays dead after publishing it until the next daily
+# refresh-fitment cron). `--only` can't bring these files back. Before QA or
+# publish, either:
+#   a) duplicate the live theme in Shopify admin and push to the copy
+#      (`shopify theme push --theme <copy id>`) — the copy keeps its year files; or
+#   b) seed the new theme from princetires-app (drop the last flag for the plan):
+#      SHOPIFY_THEME_ID=<new theme id> node --env-file=.env.local \
+#        db/publish-fitment.mjs --source db --push-assets --i-understand-this-writes-live
 assets/pt-vehicle-*.json

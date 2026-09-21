@@ -102,6 +102,7 @@
 }
 </script>
 {% render 'pt-vehicle-manifest-loader' %}
+{% render 'pt-search-tracking' %}
 
 {%- paginate collection.products by section.settings.products_per_page -%}
 {%- liquid
@@ -2237,6 +2238,73 @@ document.addEventListener('DOMContentLoaded', function() {
     var tireSizeRegex = /(?:^|[\s,])([Pp]?[LlTtSs]?[Tt]?\d{3}\/?\d{2,3}[Rr]\d{2}(?:\.\d)?)/;
     var vehicleCache = {};
     var debounceTimer = null;
+
+    /* ── Cross-surface search analytics ────────────────────────────────────
+       One pt_search_submit + one pt_search_result per SEARCH, never per
+       keystroke. Schema + outcomes: snippets/pt-search-tracking.liquid.
+
+       search() runs 300 ms after typing pauses, so what it resolves is a live
+       suggestion, not a search — those outcomes are PENDED and reported only
+       when the search finishes: the customer presses Enter or clicks a
+       rendered row (ptEmit / ptFlush), or it dead-ends, in which case it
+       self-reports after PT_SETTLE_MS of no further typing. Typing again
+       cancels that, which is what stops an abandoned prefix or a corrected
+       typo from counting as its own failed search.
+
+       The raw query is never sent; query_len stands in for it. */
+    var PT_SETTLE_MS = 1200;
+    var ptPending = null;
+    var ptSettleTimer = null;
+
+    function ptClear() {
+      if (ptSettleTimer) { clearTimeout(ptSettleTimer); ptSettleTimer = null; }
+      ptPending = null;
+    }
+    function ptEmit(outcome, d) {
+      ptClear();
+      if (!window.PTTrack) return;
+      d = d || {};
+      var key = [d.year, d.make, d.model, d.size, d.query_len, outcome].join('|');
+      window.PTTrack.once('cg-s|' + key, 'pt_search_submit', {
+        surface: 'collection_grid', method: 'text',
+        year: d.year, make: d.make, model: d.model, trim: d.trim,
+        size: d.size, query_len: d.query_len
+      });
+      window.PTTrack.once('cg-r|' + key, 'pt_search_result', {
+        surface: 'collection_grid', method: 'text', outcome: outcome,
+        sizes_count: d.sizes_count || 0, trims_count: d.trims_count,
+        year: d.year, make: d.make, model: d.model, size: d.size
+      });
+    }
+    function ptPend(outcome, d) {
+      ptClear();
+      ptPending = { outcome: outcome, d: d || {} };
+      /* A dead end has nothing to click — report it once they stop typing. */
+      if (outcome === 'not_found' || outcome === 'no_sizes' || outcome === 'data_error') {
+        ptSettleTimer = setTimeout(function () { ptSettleTimer = null; ptFlush(); }, PT_SETTLE_MS);
+      }
+    }
+    function ptFlush() {
+      var p = ptPending;
+      if (!p) return;
+      ptEmit(p.outcome, p.d);
+    }
+    /* Navigate without dropping the event we just queued — see PTTrack.go. */
+    function ptGo(url) {
+      if (window.PTTrack && typeof window.PTTrack.go === 'function') window.PTTrack.go(url);
+      else window.location.href = url;
+    }
+    /* Distinct OEM sizes in a trim list — six trims sharing one size is one
+       size, not six. sizes_count and trims_count are separate for that reason. */
+    function ptDistinctSizes(trims) {
+      var seen = {}, n = 0;
+      (trims || []).forEach(function (t) {
+        var s = t && t.size;
+        if (!s || seen[s]) return;
+        seen[s] = true; n++;
+      });
+      return n;
+    }
     // Brand list — built dynamically from collection.filters (passed via the
     // smart-search-config JSON) so every stocked vendor is searchable.
     // Lowercased for case-insensitive matching; falls back to the historic
@@ -2360,6 +2428,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     input.addEventListener('input', function() {
       clearTimeout(debounceTimer);
+      // Whatever the last keystroke resolved to was a prefix, not a search.
+      ptClear();
       debounceTimer = setTimeout(function() {
         var q = input.value.trim();
         if (q.length < 2) { results.hidden = true; return; }
@@ -2376,10 +2446,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var intent = parseIntent(q);
         if (size || intent.brand || intent.season) {
           window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: q, search_type: size ? 'size' : 'vehicle', search_outcome: 'match' });
-          window.location.href = buildUrl({ tireSize: size, brand: intent.brand, season: intent.season });
+          /* Committed: Enter. Emitting here also cancels the pending copy the
+             live-suggest path left behind for this same query. */
+          if (size) ptEmit('sizes', { size: size, sizes_count: 1, query_len: q.length });
+          else ptEmit('browse', { sizes_count: 0, query_len: q.length });
+          ptGo(buildUrl({ tireSize: size, brand: intent.brand, season: intent.season }));
         } else {
           window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: q, search_type: 'none', search_outcome: 'no_match' });
-          window.location.href = '/search?q=' + encodeURIComponent(q) + '&type=product';
+          ptEmit('not_found', { sizes_count: 0, query_len: q.length });
+          ptGo('/search?q=' + encodeURIComponent(q) + '&type=product');
         }
       } else if (e.key === 'Escape') {
         results.hidden = true;
@@ -2398,6 +2473,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var meta = 'Filter collection' + (intent.season ? ' · ' + intent.season : '');
         renderResults([{ type: 'size', title: label, meta: meta, url: buildUrl({ tireSize: normalized.size, brand: intent.brand, season: intent.season }) }]);
         window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'size', search_outcome: 'match' });
+        /* Live suggestion, not a search yet. */
+        ptPend('sizes', { size: normalized.size, sizes_count: 1, query_len: String(query || '').length });
         return;
       }
       searchVehicle(query);
@@ -2417,32 +2494,56 @@ document.addEventListener('DOMContentLoaded', function() {
           if (intent.brand || intent.season) {
             var filterTitle = [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires';
             renderResults([{ type: 'search', title: filterTitle, meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+            /* No vehicle and no size — a brand/season collection is all we
+               could offer. Reported so a parser miss is never silent. */
+            ptPend('browse', { sizes_count: 0, query_len: String(query || '').length });
           } else {
             renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
             window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'none', search_outcome: 'no_match' });
+            ptPend('not_found', { sizes_count: 0, query_len: String(query || '').length });
           }
           return;
         }
 
         var trims = await lookupTrims(vehicle);
         var vLabel = (vehicle.year + ' ' + (vehicle.make || '') + ' ' + (vehicle.model || '')).replace(/\s+/g, ' ').trim();
+        var ptV = {
+          year: vehicle.year, make: vehicle.make, model: vehicle.model,
+          trim: vehicle.trim, query_len: String(query || '').length
+        };
 
         if (trims.length === 1 && vehicle.trim) {
           /* User specified a trim — go straight to collection */
           var url = buildUrl({ tireSize: trims[0].size, brand: intent.brand, season: intent.season });
           renderResults([{ type: 'vehicle', title: vLabel + ' ' + trims[0].trim, meta: trims[0].size + (intent.season ? ' · ' + intent.season : '') + (intent.brand ? ' · ' + intent.brand : ''), url: url }]);
+          ptV.size = trims[0].size;
+          ptV.sizes_count = 1;
+          ptV.trims_count = 1;
+          ptPend('sizes', ptV);
         } else if (trims.length > 0) {
           renderTrimResults(vLabel, trims, intent);
+          /* sizes_count counts SIZES, not trims — six trims that share one OEM
+             size are one size. trims_count carries the list length. */
+          ptV.sizes_count = ptDistinctSizes(trims);
+          ptV.trims_count = trims.length;
+          ptPend('sizes', ptV);
         } else {
           renderResults([{ type: 'vehicle', title: vLabel, meta: 'Browse all tires', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+          // Vehicle recognised but we can't size it — a dead end for the customer.
+          ptV.sizes_count = 0;
+          ptPend('no_sizes', ptV);
         }
         window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'vehicle', search_outcome: 'match' });
       } catch(e) {
         if (intent.brand || intent.season) {
           renderResults([{ type: 'search', title: [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires', meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+          /* The lookup threw and a brand saved us — visible as 'browse', not
+             as a silently-missing event. */
+          ptPend('browse', { sizes_count: 0, query_len: String(query || '').length });
         } else {
           renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
           window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'none', search_outcome: 'no_match' });
+          ptPend('not_found', { sizes_count: 0, query_len: String(query || '').length });
         }
       }
     }
@@ -2628,8 +2729,14 @@ document.addEventListener('DOMContentLoaded', function() {
       list.innerHTML = html;
       results.hidden = false;
       list.querySelectorAll('.ptg__search-item').forEach(function(item) {
-        item.addEventListener('click', function() { window.location.href = this.dataset.url; });
+        item.addEventListener('click', function() { ptCommitRow(this.dataset.url); });
       });
+    }
+
+    /* Picking a row is the commit for whatever the live-suggest path rendered. */
+    function ptCommitRow(url) {
+      ptFlush();
+      ptGo(url);
     }
 
     function renderResults(items) {
@@ -2642,7 +2749,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }).join('');
       results.hidden = false;
       list.querySelectorAll('.ptg__search-item').forEach(function(item) {
-        item.addEventListener('click', function() { window.location.href = this.dataset.url; });
+        item.addEventListener('click', function() { ptCommitRow(this.dataset.url); });
       });
     }
 

@@ -42,6 +42,7 @@
   </div>
 </div>
 {% render 'pt-vehicle-manifest-loader' %}
+{% render 'pt-search-tracking' %}
 
 {% stylesheet %}
 .pt-chat { display: block; }
@@ -265,7 +266,7 @@
     if (!opts) return;
     if (opts.year && opts.make && opts.model && assetBase) {
       loadTrims(opts, function (items) {
-        if (items && items.length) renderPickerButtons(items);
+        if (items && items.length) { renderPickerButtons(items); ptSearch(opts, 'sizes', items, 'trims'); }
         else renderPickerFromOpts(opts);
       });
       return;
@@ -275,12 +276,45 @@
 
   function renderPickerFromOpts(opts) {
     var items = [];
+    var kind = 'sizes';
     if (opts.trims && opts.trims.length) {
-      for (var t = 0; t < opts.trims.length; t++) items.push({ label: opts.trims[t].trim + ' - ' + opts.trims[t].size, send: opts.trims[t].size });
+      kind = 'trims';
+      for (var t = 0; t < opts.trims.length; t++) items.push({ label: opts.trims[t].trim + ' - ' + opts.trims[t].size, send: opts.trims[t].size, size: opts.trims[t].size });
     } else if (opts.sizes && opts.sizes.length) {
-      for (var s = 0; s < opts.sizes.length; s++) items.push({ label: opts.sizes[s], send: opts.sizes[s] });
+      for (var s = 0; s < opts.sizes.length; s++) items.push({ label: opts.sizes[s], send: opts.sizes[s], size: opts.sizes[s] });
     }
     if (items.length) renderPickerButtons(items);
+    ptSearch(opts, items.length ? 'sizes' : 'no_sizes', items, kind);
+  }
+
+  // Cross-surface search analytics — the agent resolved a vehicle to size
+  // choices (or couldn't). One pt_search_submit + one pt_search_result per
+  // resolution. Schema: snippets/pt-search-tracking.liquid. Chat text is never
+  // sent. Never throws.
+  function ptSearch(opts, outcome, items, kind) {
+    if (!window.PTTrack || !opts) return;
+    items = items || [];
+    var first = (opts.sizes && opts.sizes[0]) || (opts.trims && opts.trims[0] && opts.trims[0].size) || null;
+    // sizes_count counts distinct SIZES; when the picker is a trim list, the
+    // number of buttons is trims_count. Six trims sharing one OEM size is one
+    // size, not six.
+    var seen = {}, sizeCount = 0;
+    items.forEach(function (it) {
+      var sz = it && it.size;
+      if (!sz || seen[sz]) return;
+      seen[sz] = true; sizeCount++;
+    });
+    var key = [opts.year, opts.make, opts.model, outcome].join('|');
+    window.PTTrack.once('ch-s|' + key, 'pt_search_submit', {
+      surface: 'chat', method: 'text',
+      year: opts.year, make: opts.make, model: opts.model
+    });
+    window.PTTrack.once('ch-r|' + key, 'pt_search_result', {
+      surface: 'chat', method: 'text', outcome: outcome,
+      sizes_count: sizeCount, trims_count: kind === 'trims' ? items.length : null,
+      year: opts.year, make: opts.make, model: opts.model,
+      size: outcome === 'sizes' ? first : null
+    });
   }
 
   function renderPickerButtons(items) {
@@ -314,7 +348,9 @@
       Object.keys(trims).forEach(function (trim) {
         var sizes = trims[trim];
         var size = (sizes && sizes.length) ? sizes[0] : '';
-        if (size) items.push({ label: trim, send: 'My trim is ' + trim + ' (' + size + ')' });
+        // `size` rides along for analytics only — renderPickerButtons reads
+        // label/send. It lets sizes_count count sizes instead of buttons.
+        if (size) items.push({ label: trim, send: 'My trim is ' + trim + ' (' + size + ')', size: size });
       });
       cb(items);
     }

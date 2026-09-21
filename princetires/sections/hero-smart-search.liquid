@@ -250,6 +250,7 @@
   }
 </script>
 {% render 'pt-vehicle-manifest-loader' %}
+{% render 'pt-search-tracking' %}
 
 {%- if section.settings.hero_3d_scene_url != blank -%}
   <script
@@ -1720,6 +1721,11 @@ document.addEventListener('DOMContentLoaded', function() {
       this.vehicleCache = {};
       this.geminiCache = {};
       this.abortController = null;
+      /* Search analytics — see _ptPend / _ptEmit below. */
+      this._ptMethod = null;
+      this._ptPending = null;
+      this._ptSettleTimer = null;
+      this._ptMissingReported = null;
 
       const configEl = document.querySelector('[data-smart-search-config]');
       this.config = configEl ? JSON.parse(configEl.textContent) : {};
@@ -2135,6 +2141,23 @@ document.addEventListener('DOMContentLoaded', function() {
       this.input.addEventListener('input', () => this.onInput());
       this.input.addEventListener('keydown', (e) => this.onKeydown(e));
       this.submit.addEventListener('click', () => this.onSubmit());
+      /* Some things the dropdown renders are plain anchors rather than
+         data-url rows — the wheel-fitment CTAs, "Browse wheels", the fallback
+         phone link. Clicking one is still the customer committing to what they
+         were shown, and (for the ones that navigate) the event has to get out
+         before the document does. selectResult covers the data-url rows. */
+      this.list.addEventListener('click', (e) => {
+        var a = e.target && e.target.closest && e.target.closest('a[href]');
+        if (!a || !this.list.contains(a)) return;
+        this._ptFlushPending();
+        if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (a.getAttribute('target') === '_blank') return;
+        var href = a.getAttribute('href') || '';
+        if (!href || href.charAt(0) === '#' || /^(tel:|mailto:|javascript:)/i.test(href)) return;
+        if (!window.PTTrack || typeof window.PTTrack.go !== 'function') return;
+        e.preventDefault();
+        window.PTTrack.go(a.href);
+      });
       this.tabs.forEach((tab) => {
         tab.addEventListener('click', () => this.setMode(tab.getAttribute('data-search-mode')));
       });
@@ -2201,6 +2224,11 @@ document.addEventListener('DOMContentLoaded', function() {
       // the arrow while the trim list is still visible from the same query).
       this.awaitingTrim = false;
       this.awaitingSelection = false;
+      // Typing means this is a manual search again, not the ?ss= hand-off.
+      this._ptMethod = null;
+      // ...and it means whatever the last keystroke resolved to was a prefix,
+      // not a search. Drop it before it can self-report as a failure.
+      this._ptClearPending();
 
       // Ghost-text autocomplete is intentionally NOT debounced — it should
       // update on every keystroke so the suggestion stays in sync with what
@@ -2227,6 +2255,98 @@ document.addEventListener('DOMContentLoaded', function() {
       var p = window.PTTireParse && window.PTTireParse.parseSize(query);
       if (!p) return null;
       return { width: p.width, aspect: p.profile, rim: p.rim, size: p.canonical, flotation: p.flotation };
+    }
+
+    /* ── Search analytics ───────────────────────────────────────────────────
+       One pt_search_submit + one pt_search_result per SEARCH, never per
+       keystroke. Schema + outcomes: snippets/pt-search-tracking.liquid.
+
+       search() is the 300 ms debounced live-suggest path, so nothing it
+       resolves is a search yet — the customer is still typing and may well
+       type again. Those outcomes are PENDED (_ptPend) and only reported when
+       the search actually finishes:
+
+         • the customer commits — presses Enter / the arrow (onSubmit) or picks
+           a rendered row (selectResult) → _ptFlushPending / _ptEmit;
+         • or it dead-ends — 'not_found' / 'no_sizes' / 'data_error' leave
+           nothing to click, so they self-report after PT_SETTLE_MS of no
+           further typing. onInput cancels that, which is what keeps an
+           abandoned prefix or a corrected typo from counting as its own
+           failed search.
+
+       The raw query is never sent (query_len only). Never throws, never
+       blocks, and does nothing at all when PTTrack is absent. */
+    static get PT_SETTLE_MS() { return 1200; }
+
+    _ptClearPending() {
+      if (this._ptSettleTimer) { clearTimeout(this._ptSettleTimer); this._ptSettleTimer = null; }
+      this._ptPending = null;
+    }
+
+    /* Report right now — the search is over. */
+    _ptEmit(method, outcome, info) {
+      this._ptClearPending();
+      if (!window.PTTrack) return;
+      var m = this._ptMethod || method;
+      this._ptMethod = null;
+      var d = info || {};
+      var key = [m, d.year, d.make, d.model, d.trim, d.size, d.query_len, outcome].join('|');
+      window.PTTrack.once('hero-s|' + key, 'pt_search_submit', {
+        surface: 'hero', method: m,
+        year: d.year, make: d.make, model: d.model, trim: d.trim,
+        size: d.size, query_len: d.query_len
+      });
+      window.PTTrack.once('hero-r|' + key, 'pt_search_result', {
+        surface: 'hero', method: m, outcome: outcome, sizes_count: d.sizes_count || 0,
+        trims_count: d.trims_count, status: d.status,
+        year: d.year, make: d.make, model: d.model, size: d.size
+      });
+    }
+
+    /* Hold an outcome the customer is looking at but has not acted on. */
+    _ptPend(method, outcome, info) {
+      this._ptClearPending();
+      this._ptPending = { method: method, outcome: outcome, info: info || {} };
+      /* A dead end has nothing to commit to — report it once they stop typing. */
+      if (outcome === 'not_found' || outcome === 'no_sizes' || outcome === 'data_error') {
+        this._ptSettleTimer = setTimeout(() => {
+          this._ptSettleTimer = null;
+          this._ptFlushPending();
+        }, SmartTireSearch.PT_SETTLE_MS);
+      }
+    }
+
+    _ptFlushPending() {
+      var p = this._ptPending;
+      if (!p) return;
+      this._ptEmit(p.method, p.outcome, p.info);
+    }
+
+    /* Navigate without dropping the event we just queued — see PTTrack.go. */
+    _ptGo(url) {
+      if (window.PTTrack && typeof window.PTTrack.go === 'function') window.PTTrack.go(url);
+      else window.location.href = url;
+    }
+
+    /* Distinct OEM sizes in a list of trims ({trim, size}) or of bare size
+       strings — six trims sharing one size is one size, not six. sizes_count
+       and trims_count are separate fields for exactly this reason. */
+    _ptDistinctSizes(list) {
+      var seen = {};
+      var n = 0;
+      (list || []).forEach(function (t) {
+        var s = (t && t.size) || (typeof t === 'string' ? t : null);
+        if (!s || seen[s]) return;
+        seen[s] = true;
+        n++;
+      });
+      return n;
+    }
+
+    /* A pasted VIN goes down the same free-text path; report it as method vin. */
+    _ptMethodFor(query) {
+      var v = String(query || '').trim().replace(/[\s\-]+/g, '').toUpperCase();
+      return /^[A-HJ-NPR-Z0-9]{17}$/.test(v) ? 'vin' : 'text';
     }
 
     async search(query) {
@@ -2488,14 +2608,18 @@ document.addEventListener('DOMContentLoaded', function() {
           var parsed = self.normalizeTireSize(size);
           if (parsed) {
             var intent = self.parseSearchIntent(size);
-            window.location.href = self.buildCollectionUrl({
+            /* Picking a completion is the commit for a partial-size search
+               ("28540" → 285/40R20) — otherwise this whole entry path is
+               missing from the free-text volume. */
+            self._ptEmit('text', 'sizes', { size: parsed.size, sizes_count: 1, query_len: String(query || '').length });
+            self._ptGo(self.buildCollectionUrl({
               width:  parsed.width,
               aspect: parsed.aspect,
               rim:    parsed.rim,
               brand:  intent.brand,
               season: self.mode === 'wheels' ? null : intent.season,
               serviceType: self.mode === 'wheels' ? null : intent.serviceType,
-            });
+            }));
           }
         });
       });
@@ -2540,6 +2664,9 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       this.renderResults(results.slice(0, 6));
+      /* Live suggestion, not a search yet — reported if they pick a row or
+         press Enter, dropped if they keep typing. */
+      this._ptPend('text', 'sizes', { size: sizeStr, sizes_count: 1, query_len: String(query || '').length });
     }
 
     /* Parse a bolt-pattern query like "5x114.3", "5×114.3", "5x4.5" (inch).
@@ -2633,6 +2760,10 @@ document.addEventListener('DOMContentLoaded', function() {
               meta: 'Filter collection',
               url: this.buildCollectionUrl({ brand: intent.brand, season: this.mode === 'wheels' ? null : intent.season }),
             }]);
+            /* No vehicle and no size — a brand/season collection is all we
+               could offer. 'browse', so a parser outage shows up as a spike
+               here instead of vanishing from the counts entirely. */
+            this._ptPend(this._ptMethodFor(query), 'browse', { sizes_count: 0, query_len: String(query || '').length });
           } else {
             // Check for partial query before showing the "no match" fallback
             var partial = this.detectPartialQuery(query);
@@ -2653,12 +2784,20 @@ document.addEventListener('DOMContentLoaded', function() {
         // The card's CTAs link to /collections/wheels filtered by diameter.
         if (this.mode === 'wheels') {
           const fitment = await this.fetchWheelFitment(vehicle);
-          if (fitment && fitment.vehicle) {
+          const gotFitment = !!(fitment && fitment.vehicle);
+          if (gotFitment) {
             this.renderWheelFitment(fitment, vLabelClean);
           } else {
             this.showNoWheelFitment(vLabelClean, query);
           }
-          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'wheel_fitment', search_outcome: fitment && fitment.vehicle ? 'match' : 'no_match' });
+          /* The Wheels tab is a search surface too — without this, both the
+             success and the dead end of a whole tab are invisible. */
+          this._ptPend(this._ptMethodFor(query), gotFitment ? 'sizes' : 'no_sizes', {
+            year: vehicle.year, make: vehicle.make, model: vehicle.model, trim: vehicle.trim,
+            sizes_count: gotFitment ? this._ptDistinctSizes(fitment.tire_sizes) : 0,
+            query_len: String(query || '').length
+          });
+          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'wheel_fitment', search_outcome: gotFitment ? 'match' : 'no_match' });
           return;
         }
 
@@ -2671,6 +2810,11 @@ document.addEventListener('DOMContentLoaded', function() {
           ? vLabelClean
           : vLabelClean.replace(String(requestedYear), String(vehicle.year));
 
+        const ptVeh = {
+          year: vehicle.year, make: vehicle.make, model: vehicle.model,
+          trim: vehicle.trim, query_len: String(query || '').length
+        };
+
         if (trims && trims.length === 1 && vehicle.trim) {
           /* User specified a trim and we found it — go straight to collection */
           const trimLabel = trimsLabel + ' ' + trims[0].trim;
@@ -2681,15 +2825,24 @@ document.addEventListener('DOMContentLoaded', function() {
             meta: trims[0].size + (intent.season ? ' · ' + intent.season : '') + (intent.brand ? ' · ' + intent.brand : ''),
             url: url,
           }]);
+          ptVeh.size = trims[0].size;
+          ptVeh.sizes_count = 1;
+          ptVeh.trims_count = 1;
+          this._ptPend(this._ptMethodFor(query), 'sizes', ptVeh);
         } else if (trims && trims.length > 0) {
           this.renderTrimResults(trimsLabel, trims, intent);
+          /* sizes_count counts SIZES, not trims — six trims that share one OEM
+             size are one size. trims_count carries the list length. */
+          ptVeh.sizes_count = this._ptDistinctSizes(trims);
+          ptVeh.trims_count = trims.length;
+          this._ptPend(this._ptMethodFor(query), 'sizes', ptVeh);
         } else {
           // We resolved a vehicle but have NO trim data — we don't know the
           // exact tire size. Per product rule: NEVER drop the customer onto
           // a generic "Browse all tires" filter when we can't size their car.
           // Force them to give us a trim (or hand off to the missing-vehicle
           // capture so we follow up by email).
-          this.showNeedsTrimGuidance(vLabelClean, query);
+          this.showNeedsTrimGuidance(vLabelClean, query, vehicle);
         }
         window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'vehicle', search_outcome: 'match' });
       } catch (err) {
@@ -2701,6 +2854,9 @@ document.addEventListener('DOMContentLoaded', function() {
             meta: 'Filter collection',
             url: this.buildCollectionUrl({ brand: intent.brand, season: intent.season }),
           }]);
+          /* The parse endpoint threw and a brand saved us. Reported so an
+             outage is visible instead of quietly shrinking the event volume. */
+          this._ptPend(this._ptMethodFor(query), 'browse', { sizes_count: 0, query_len: String(query || '').length });
         } else {
           var partialCatch = this.detectPartialQuery(query);
           if (partialCatch) {
@@ -3271,7 +3427,7 @@ document.addEventListener('DOMContentLoaded', function() {
       this.input.setAttribute('aria-expanded', 'true');
     }
 
-    showNeedsTrimGuidance(vehicleLabel, originalQuery) {
+    showNeedsTrimGuidance(vehicleLabel, originalQuery, vehicle) {
       this.loading.hidden = true;
       this.awaitingTrim = false;
       this.awaitingSelection = false;
@@ -3300,6 +3456,24 @@ document.addEventListener('DOMContentLoaded', function() {
       // so we don't lose the lead while waiting for them to add a trim.
       const webhook = this.config.missingVehicleWebhookUrl;
       const q = (originalQuery || vehicleLabel || '').trim();
+      const ptV = vehicle || {};
+      // Vehicle recognised but unsizeable — a dead end for the customer.
+      this._ptPend(this._ptMethodFor(originalQuery), 'no_sizes', {
+        year: ptV.year, make: ptV.make, model: ptV.model,
+        sizes_count: 0, query_len: q.length
+      });
+      // The capture is measured on its own dedupe key, NOT on the webhook
+      // guard below: clearing the webhook theme setting must stop the lead
+      // POST without also silently switching the metric off.
+      if (q.length >= 3 && this._ptMissingReported !== q) {
+        this._ptMissingReported = q;
+        if (window.PTTrack) {
+          window.PTTrack.once('hero-mv|' + q, 'pt_missing_vehicle', {
+            surface: 'hero', trigger: 'auto',
+            year: ptV.year, make: ptV.make, model: ptV.model
+          });
+        }
+      }
       if (webhook && q.length >= 3 && this._lastReportedNoMatch !== q) {
         this._lastReportedNoMatch = q;
         try {
@@ -3581,7 +3755,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Persist this search in the recent-searches history so the customer
         // sees it on their next visit (or on the next empty focus).
         this.addRecentSearch(this.input.value);
-        window.location.href = url;
+        // Picking a row is the commit for everything the live-suggest path
+        // rendered — sizes, trims, brand filters, wheel fitment.
+        this._ptFlushPending();
+        this._ptGo(url);
       }
     }
 
@@ -3745,28 +3922,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (parsed) {
         this.addRecentSearch(query);
-        window.location.href = this.buildCollectionUrl({
+        /* Committed: Enter / the arrow. Emitted now, which also cancels the
+           pending copy the live-suggest path left behind for this same query. */
+        this._ptEmit('text', 'sizes', { size: parsed.size, sizes_count: 1, query_len: query.length });
+        this._ptGo(this.buildCollectionUrl({
           width: parsed.width,
           aspect: parsed.aspect,
           rim: parsed.rim,
           brand: intent.brand,
           season: intent.season,
           serviceType: intent.serviceType,
-        });
+        }));
       } else if (intent.brand || intent.season || intent.serviceType || intent.rim) {
         this.addRecentSearch(query);
-        window.location.href = this.buildCollectionUrl({
+        /* No size, but the query did resolve to a filtered collection. */
+        this._ptEmit('text', 'browse', { sizes_count: 0, query_len: query.length });
+        this._ptGo(this.buildCollectionUrl({
           brand: intent.brand,
           season: intent.season,
           serviceType: intent.serviceType,
           rim: intent.rim,
-        });
+        }));
       } else {
         var partialOnSubmit = this.detectPartialQuery(query);
         if (partialOnSubmit) {
           this.renderGuidance(partialOnSubmit);
         } else {
           this.showFallback(query);
+          /* Committed dead end — report it now rather than on the settle timer. */
+          this._ptFlushPending();
         }
       }
     }
@@ -4155,6 +4339,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     showFallback(query) {
       window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'none', search_outcome: 'no_match' });
+      this._ptPend(this._ptMethodFor(query), 'not_found', { sizes_count: 0, query_len: String(query || '').length });
       const phone = this.config.fallbackPhone || '403 452 4283';
       const phoneClean = phone.replace(/\s/g, '');
       this.loading.hidden = true;
@@ -4197,6 +4382,14 @@ document.addEventListener('DOMContentLoaded', function() {
       // Light dedup: min 3 chars + don't re-post the exact same query within this session.
       const webhook = this.config.missingVehicleWebhookUrl;
       const q = (query || '').trim();
+      // Measured on its own key so a blank webhook setting stops the lead POST
+      // without also zeroing the metric (see showNeedsTrimGuidance).
+      if (q.length >= 3 && this._ptMissingReported !== q) {
+        this._ptMissingReported = q;
+        if (window.PTTrack) {
+          window.PTTrack.once('hero-mv|' + q, 'pt_missing_vehicle', { surface: 'hero', trigger: 'auto' });
+        }
+      }
       if (webhook && q.length >= 3 && this._lastReportedNoMatch !== q) {
         this._lastReportedNoMatch = q;
         try {
@@ -4275,6 +4468,8 @@ document.addEventListener('DOMContentLoaded', function() {
     /* Auto-submit after a short delay so the page has fully painted */
     setTimeout(function() {
       if (typeof instance.onSubmit === 'function') {
+        /* Attribute this one search to the header hand-off, not to typing. */
+        instance._ptMethod = 'deep_link';
         instance.onSubmit();
       }
     }, 120);
