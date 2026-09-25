@@ -6,8 +6,14 @@
 </div>
 
 {% stylesheet %}
-  .pt-rv { border-top: 1px solid #f3f4f6; }
-  .pt-rv__inner { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem 4rem; }
+  /* The rule on the bare .pt-rv root used to live here. Shopify compiles this
+     {% stylesheet %} block into the GLOBAL compiled_assets/styles.css, and
+     something else on the storefront uses `pt-rv` as a scroll-reveal marker
+     class — so this single border painted a stray 1px line above all 14
+     revealed sections, including the one under the hero. Scoped to __inner,
+     which is unique to this section and hidden when there is nothing to show,
+     so the rule only draws where it was meant to. */
+  .pt-rv__inner { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem 4rem; border-top: 1px solid #f3f4f6; }
   .pt-rv__inner[hidden] { display: none; }
   .pt-rv__label {
     font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 500;

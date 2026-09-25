@@ -134,44 +134,28 @@
           </div>
 
           {%- comment -%}
-            Discoverability hint + clickable example chips. Solves the
-            most common UX gap: customers don't realize the search bar
-            accepts a vehicle ("2022 Toyota RAV4") in addition to a tire
-            size ("225/65R17"). Clicking a chip auto-fills the input and
-            dispatches an `input` event so the existing search handler
-            picks up the value and runs the query.
+            The "Don't know your tire size?" hint + example chips that used to
+            sit here were removed (2026-09-25): the typewriter placeholder in
+            the input already says "tire size or year make model" and cycles
+            vehicle examples, so the row below the box only repeated it.
 
-            Mobile: horizontal-scrolls the chip row, hides the helper
-            text caret arrow, shrinks padding.
+            The Year/Make/Model/Submodel picker below is NOT that row returning.
+            It is the other half of the same job: the placeholder tells someone
+            they MAY type a vehicle, this lets someone who does not know their
+            tire size pick one without typing at all. It owns no search logic —
+            choosing a value writes into the same input and dispatches `input`,
+            so the existing engine resolves trims, sizes and the results panel.
+
+            Years render from the theme-setting bounds so it works before JS,
+            then pt-vehicle-manifest-loader widens them to the published years.
+            Makes/models/trims come from the per-year pt-vehicle-<year>.json
+            assets the search already fetches — one file per selected year.
           {%- endcomment -%}
-          <div class="hero-smart-search__hint" data-smart-search-hint>
-            <p class="hero-smart-search__hint-text">
-              Quick search:
-              <span class="hero-smart-search__hint-text-mobile">tire size or vehicle</span>
-              <span class="hero-smart-search__hint-text-desktop">type your tire size or vehicle — ex: 2020 Honda</span>
-            </p>
-            <div class="hero-smart-search__chips" role="list">
-              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2022 Toyota RAV4" role="listitem">2022 Toyota RAV4</button>
-              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2024 Ford F-150" role="listitem">2024 Ford F-150</button>
-              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2020 Honda Civic" role="listitem">2020 Honda Civic</button>
-              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="225/65R17" role="listitem">225/65R17</button>
-            </div>
-
-            {%- comment -%}
-              Year / Make / Model picker. Owns no search logic: selecting a
-              model writes "YEAR MAKE MODEL" into the same input the chips
-              write to and dispatches `input`, so the existing engine resolves
-              trims and sizes and renders the results dropdown. One code path
-              for "typed it" and "picked it".
-
-              Years are rendered here from the theme-setting bounds so the
-              control works before JS; pt-vehicle-manifest-loader then widens
-              them to the published years via fillYearSelect().
-            {%- endcomment -%}
-            {%- assign yr_max = settings.smart_search_max_year | default: 2026 -%}
-            {%- assign yr_min = settings.smart_search_min_year | default: 2001 -%}
-            <div class="hero-smart-search__picker" data-vehicle-picker>
-              <span class="hero-smart-search__picker-label">or pick it:</span>
+          {%- assign yr_max = settings.smart_search_max_year | default: 2027 -%}
+          {%- assign yr_min = settings.smart_search_min_year | default: 1985 -%}
+          <div class="hero-smart-search__picker" data-vehicle-picker>
+            <span class="hero-smart-search__picker-label">Don't know your size? Pick your vehicle:</span>
+            <div class="hero-smart-search__picker-selects">
               <select class="hero-smart-search__select" data-vp-year aria-label="Vehicle year">
                 <option value="">Year</option>
                 {%- for i in (yr_min..yr_max) reversed -%}
@@ -270,6 +254,149 @@
     {%- endfor -%}
   {%- endif -%}
 {%- endfor -%}
+
+<script>
+  /* ───────────────────────────────────────────────────────────────
+     Year / Make / Model / Submodel picker.
+
+     Owns no search logic. Choosing a value writes into the same input
+     the search already listens to and dispatches `input`, so trims,
+     sizes and the results panel are all resolved by the existing
+     engine — one code path, so this cannot drift from the search.
+
+     Data: per-year pt-vehicle-<year>.json (the same assets the search
+     fetches), cached per year. Year list widens from
+     pt-vehicle-manifest.json via the loader's own fillYearSelect().
+     ─────────────────────────────────────────────────────────────── */
+  (function () {
+    // This block sits ABOVE the <script data-smart-search-config> JSON island in
+    // the document, so on first parse that element does not exist yet — reading
+    // it immediately gave an empty assetUrlBase and every year lookup silently
+    // no-opped. Defer init until the DOM is parsed rather than depending on
+    // script order.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init, { once: true });
+    } else {
+      init();
+    }
+
+    function init() {
+    var cfgEl = document.querySelector('[data-smart-search-config]');
+    var cfg = {};
+    try { cfg = JSON.parse(cfgEl ? cfgEl.textContent : '{}'); } catch (e) { cfg = {}; }
+    var base = cfg.assetUrlBase || '';
+    var cache = {};
+
+    function reset(sel, placeholder) {
+      sel.innerHTML = '';
+      var o = document.createElement('option');
+      o.value = ''; o.textContent = placeholder;
+      sel.appendChild(o);
+      sel.disabled = true;
+    }
+    function fill(sel, values, placeholder) {
+      sel.innerHTML = '';
+      var o = document.createElement('option');
+      o.value = ''; o.textContent = placeholder;
+      sel.appendChild(o);
+      values.forEach(function (v) {
+        var opt = document.createElement('option');
+        opt.value = v; opt.textContent = v;
+        sel.appendChild(opt);
+      });
+      sel.disabled = values.length === 0;
+    }
+    function loadYear(year) {
+      if (cache[year]) return Promise.resolve(cache[year]);
+      if (!base) return Promise.resolve(null);
+      return fetch(base + 'pt-vehicle-' + year + '.json')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { cache[year] = d; return d; })
+        .catch(function () { return null; });
+    }
+
+    document.querySelectorAll('[data-vehicle-picker]').forEach(function (picker) {
+      var searchEl = picker.closest('[data-smart-search]');
+      var input = searchEl && searchEl.querySelector('[data-smart-search-input]');
+      var yearSel = picker.querySelector('[data-vp-year]');
+      var makeSel = picker.querySelector('[data-vp-make]');
+      var modelSel = picker.querySelector('[data-vp-model]');
+      var trimSel = picker.querySelector('[data-vp-trim]');
+      if (!input || !yearSel || !makeSel || !modelSel || !trimSel) return;
+
+      if (window.PTVehicleManifest && cfg.manifestUrl) {
+        window.PTVehicleManifest.load(cfg.manifestUrl).then(function (m) {
+          if (!m) return;
+          window.PTVehicleManifest.fillYearSelect(
+            yearSel, window.PTVehicleManifest.yearsDesc(m, cfg.minYear, cfg.maxYear));
+        });
+      }
+
+      function push(value, action) {
+        input.value = value;
+        input.focus();
+        try { input.setSelectionRange(value.length, value.length); } catch (e) {}
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        if (window.PTTireParse && typeof window.PTTireParse.track === 'function') {
+          window.PTTireParse.track({ surface: 'homepage', action: action, query: value });
+        }
+      }
+
+      yearSel.addEventListener('change', function () {
+        reset(makeSel, 'Make'); reset(modelSel, 'Model'); reset(trimSel, 'Submodel');
+        if (!yearSel.value) return;
+        var y = yearSel.value;
+        loadYear(y).then(function (d) {
+          if (!d || !d.makes || yearSel.value !== y) return;
+          fill(makeSel, d.makes, 'Make');
+        });
+      });
+
+      makeSel.addEventListener('change', function () {
+        reset(modelSel, 'Model'); reset(trimSel, 'Submodel');
+        if (!makeSel.value || !yearSel.value) return;
+        var y = yearSel.value, mk = makeSel.value;
+        loadYear(y).then(function (d) {
+          if (!d || !d.models || yearSel.value !== y || makeSel.value !== mk) return;
+          var byMake = d.models[mk];
+          if (byMake) fill(modelSel, Object.keys(byMake).sort(), 'Model');
+        });
+      });
+
+      modelSel.addEventListener('change', function () {
+        reset(trimSel, 'Submodel');
+        if (!modelSel.value || !makeSel.value || !yearSel.value) return;
+        var y = yearSel.value, mk = makeSel.value, md = modelSel.value;
+        // The model alone is already a useful search, so fire it now and treat
+        // the submodel as optional refinement rather than a gate.
+        push(y + ' ' + mk + ' ' + md, 'vehicle_picker_select');
+        loadYear(y).then(function (d) {
+          if (!d || !d.models) return;
+          if (yearSel.value !== y || makeSel.value !== mk || modelSel.value !== md) return;
+          var byModel = (d.models[mk] || {})[md];
+          if (!byModel) return;
+          var trims = Object.keys(byModel);
+          // One trim means one fitment — nothing to disambiguate.
+          if (trims.length > 1) fill(trimSel, trims.sort(), 'Submodel');
+        });
+      });
+
+      trimSel.addEventListener('change', function () {
+        if (!trimSel.value) return;
+        var y = yearSel.value, mk = makeSel.value, md = modelSel.value, tr = trimSel.value;
+        loadYear(y).then(function (d) {
+          var sizes = (((d || {}).models || {})[mk] || {})[md];
+          sizes = sizes && sizes[tr];
+          // A trim usually pins one fitment; searching the size is unambiguous.
+          if (sizes && sizes.length === 1) push(sizes[0], 'vehicle_picker_trim');
+          else push(y + ' ' + mk + ' ' + md + ' ' + tr, 'vehicle_picker_trim');
+        });
+      });
+    });
+    }
+  })();
+</script>
+
 <script data-smart-search-config type="application/json">
   {
     "minYear": {{ settings.smart_search_min_year | default: 2001 }},
@@ -707,183 +834,73 @@
     opacity: 0.85;
   }
 
-  /* ── Hint + clickable example chips below the search ── */
-  .hero-smart-search__hint {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1.2rem;
-    margin-top: 1rem;
+  .hero-smart-search__picker {
+    margin-top: 0.9rem;
     padding: 0 0.2rem;
   }
-  .hero-smart-search__hint-text {
-    margin: 0;
+  .hero-smart-search__picker-label {
+    display: block;
+    margin-bottom: 0.45rem;
     font-family: 'Outfit', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 400;
-    color: rgba(255, 255, 255, 0.78);
-    white-space: nowrap;
-    flex-shrink: 0;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.72);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   }
-  .hero-smart-search__hint-text-mobile { display: none; }
-  .hero-smart-search__hint-text-desktop { color: rgba(255, 255, 255, 0.6); margin-left: 0.3rem; }
-
-  .hero-smart-search__chips {
-    display: flex;
-    gap: 0.5rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    flex: 1;
-    /* Without this a flex item's min size is its MIN-CONTENT, so the chip row
-       refuses to shrink and stretches the hint's flex line past the container
-       (480px inside a 366px parent on a 390px phone). That also dragged the
-       full-width picker out with it. min-width:0 lets the row shrink and
-       scroll horizontally as intended. */
-    min-width: 0;
-    padding-bottom: 0.2rem;
-  }
-  .hero-smart-search__chips::-webkit-scrollbar { display: none; }
-
-  .hero-smart-search__chip {
-    flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 999px;
-    padding: 0.5rem 1.1rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.92);
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
-    white-space: nowrap;
-  }
-  /* Own full-width line under the text + chips row. Without flex-basis:100%
-     this lands as a third item on the hint row and squeezes the chips out. */
-  .hero-smart-search__picker {
-    flex: 0 0 100%;
+  .hero-smart-search__picker-selects {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-top: 0.1rem;
     min-width: 0;
   }
-  .hero-smart-search__picker-label {
-    font-family: 'Outfit', sans-serif; font-size: 1rem;
-    color: rgba(255, 255, 255, 0.78); white-space: nowrap;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  }
   .hero-smart-search__select {
-    /* Equal shares of the leftover width so they never ladder. */
     flex: 1 1 0;
     min-width: 0;
     max-width: 13rem;
     text-overflow: ellipsis;
+    /* Dark translucent fill, not a white tint: the hero photo goes bright at
+       the horizon, which is exactly where this row sits. */
     background: rgba(10, 10, 12, 0.62);
     -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
     border: 1px solid rgba(255, 255, 255, 0.26);
     border-radius: 999px;
     padding: 0.5rem 2.1rem 0.5rem 1.1rem;
-    font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 500;
-    color: rgba(255, 255, 255, 0.95); cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
-    -webkit-appearance: none; appearance: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.95);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+    -webkit-appearance: none;
+    appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.7)' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 0.9rem center;
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
   }
   .hero-smart-search__select:hover:not(:disabled) {
-    background-color: rgba(28, 28, 32, 0.78); border-color: rgba(255, 255, 255, 0.45);
+    background-color: rgba(28, 28, 32, 0.78);
+    border-color: rgba(255, 255, 255, 0.45);
   }
-  .hero-smart-search__select:focus-visible { outline: 2px solid rgba(255,255,255,0.55); outline-offset: 2px; }
+  .hero-smart-search__select:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.55);
+    outline-offset: 2px;
+  }
   .hero-smart-search__select:disabled { opacity: 0.62; cursor: default; }
-  /* Native option lists render in the OS palette — force dark-on-light so they
-     stay readable against the hero image. */
+  /* Native option lists use the OS palette — force dark-on-light so they stay
+     readable over the hero image. */
   .hero-smart-search__select option { color: #1a1a1a; background: #fff; }
-  /* 768px, matching the hint's own breakpoint above — at 749px there was a
-     750-768px dead zone where the hint was already a COLUMN but these rules
-     had not kicked in yet. */
+
   @media (max-width: 768px) {
-    /* The hint switches to flex-direction: column here, so the main axis is
-       vertical and `flex-basis: 100%` would size HEIGHT, not width. Size the
-       width explicitly instead. */
-    .hero-smart-search__picker {
-      flex: 0 0 auto;
-      width: 100%;
-      max-width: 100%;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-      margin-top: 0.2rem;
-    }
-    .hero-smart-search__picker-label { display: none; }
-    /* Four across is unreadable on a phone — wrap to a 2x2 grid. */
+    .hero-smart-search__picker { margin-top: 0.7rem; }
+    .hero-smart-search__picker-label { font-size: 0.88rem; margin-bottom: 0.4rem; }
+    /* Four across is unreadable on a phone — 2x2 grid. */
+    .hero-smart-search__picker-selects { flex-wrap: wrap; gap: 0.4rem; }
     .hero-smart-search__select {
       flex: 1 1 calc(50% - 0.2rem);
-      min-width: 0;
-      max-width: 100%;
+      max-width: none;
       font-size: 0.95rem;
       padding: 0.45rem 1.7rem 0.45rem 0.8rem;
       background-position: right 0.7rem center;
-    }
-  }
-
-  .hero-smart-search__chip:hover {
-    background: rgba(220, 38, 38, 0.18);
-    border-color: rgba(220, 38, 38, 0.6);
-    color: #fff;
-  }
-  .hero-smart-search__chip:active {
-    transform: scale(0.96);
-  }
-  .hero-smart-search__chip:focus-visible {
-    outline: 2px solid #dc2626;
-    outline-offset: 2px;
-  }
-
-  /* Hide the prompt + example chips when the suggestions list opens so they
-     don't visually fight with it. The wrapper sets [data-results-open] in JS
-     (added below alongside the chip click handler).
-
-     The PICKER deliberately stays visible: choosing a Model fires a search,
-     which opens the panel — if the picker hid with the rest of the row the
-     Submodel select would disappear the moment it became relevant. */
-  [data-smart-search][data-results-open] .hero-smart-search__hint-text,
-  [data-smart-search][data-results-open] .hero-smart-search__chips {
-    display: none;
-  }
-  [data-smart-search][data-results-open] .hero-smart-search__hint {
-    margin-top: 0.6rem;
-  }
-
-  /* Mobile-tight: swap the desktop wording for a shorter mobile phrase,
-     reduce chip padding, allow horizontal scroll so chips don't wrap into
-     two rows. */
-  @media (max-width: 768px) {
-    .hero-smart-search__hint {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.4rem;
-      margin-top: 0.55rem;
-    }
-    .hero-smart-search__hint-text {
-      font-size: 0.88rem;
-      white-space: normal;
-      line-height: 1.25;
-    }
-    .hero-smart-search__hint-text-desktop { display: none; }
-    .hero-smart-search__hint-text-mobile {
-      display: inline;
-      color: rgba(255, 255, 255, 0.6);
-      margin-left: 0.25rem;
-    }
-    .hero-smart-search__chips {
-      gap: 0.35rem;
-    }
-    .hero-smart-search__chip {
-      font-size: 0.85rem;
-      padding: 0.4rem 0.85rem;
     }
   }
 
@@ -4635,7 +4652,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // narrow input (~254px usable space) by ~73px, so it gets visually truncated.
     function getIntroPhrase() {
       return (window.matchMedia && window.matchMedia('(max-width: 768px)').matches)
-        ? 'Tire size or vehicle — try a chip below'
+        ? 'Tire size or year, make & model'
         : 'Enter your tire size or your car year make and model';
     }
     var intro = getIntroPhrase();
@@ -4825,212 +4842,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     start();
-  })();
-
-  /* ───────────────────────────────────────────────────────────────
-     Chip click handler + dropdown-open visibility toggle for the
-     "Don't know your tire size?" discoverability hint.
-
-     Clicking a chip auto-fills the search input with the chip's value
-     and dispatches an `input` event so the existing smart-search
-     handler (which throttles + queries the API) picks it up exactly
-     as if the user had typed it. We also call .focus() and put the
-     caret at the end so the customer can immediately add to or modify
-     the prefilled text.
-
-     We also observe the results dropdown's `hidden` attribute and
-     mirror its state to `[data-results-open]` on the .data-smart-search
-     wrapper, so the hint can hide via CSS when the suggestions list
-     opens (otherwise the chips visually fight with the dropdown).
-     ─────────────────────────────────────────────────────────────── */
-  /* ───────────────────────────────────────────────────────────────
-     Year / Make / Model picker.
-
-     Deliberately owns no search logic. Selecting a model writes
-     "YEAR MAKE MODEL" into the same input the chips write to and
-     dispatches `input`, so the existing engine resolves trims, sizes
-     and the results dropdown. One code path for typed and picked.
-
-     Years come from pt-vehicle-manifest-loader (yearsDesc +
-     fillYearSelect) when the manifest is available, falling back to
-     the Liquid-rendered theme-setting bounds. Makes and models come
-     from the same per-year pt-vehicle-<year>.json the search fetches,
-     cached here so re-picking a year is free.
-     ─────────────────────────────────────────────────────────────── */
-  (function () {
-    var cfgEl = document.querySelector('[data-smart-search-config]');
-    var cfg = {};
-    try { cfg = JSON.parse(cfgEl ? cfgEl.textContent : '{}'); } catch (e) { cfg = {}; }
-    var base = cfg.assetUrlBase || '';
-    var cache = {};
-
-    function reset(sel, placeholder) {
-      sel.innerHTML = '';
-      var o = document.createElement('option');
-      o.value = ''; o.textContent = placeholder;
-      sel.appendChild(o);
-      sel.disabled = true;
-    }
-
-    function fill(sel, values, placeholder) {
-      sel.innerHTML = '';
-      var o = document.createElement('option');
-      o.value = ''; o.textContent = placeholder;
-      sel.appendChild(o);
-      values.forEach(function (v) {
-        var opt = document.createElement('option');
-        opt.value = v; opt.textContent = v;
-        sel.appendChild(opt);
-      });
-      sel.disabled = values.length === 0;
-    }
-
-    function loadYear(year) {
-      if (cache[year]) return Promise.resolve(cache[year]);
-      if (!base) return Promise.resolve(null);
-      return fetch(base + 'pt-vehicle-' + year + '.json')
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) { cache[year] = d; return d; })
-        .catch(function () { return null; });
-    }
-
-    document.querySelectorAll('[data-vehicle-picker]').forEach(function (picker) {
-      var searchEl = picker.closest('[data-smart-search]');
-      var input = searchEl && searchEl.querySelector('[data-smart-search-input]');
-      var yearSel = picker.querySelector('[data-vp-year]');
-      var makeSel = picker.querySelector('[data-vp-make]');
-      var modelSel = picker.querySelector('[data-vp-model]');
-      var trimSel = picker.querySelector('[data-vp-trim]');
-      if (!input || !yearSel || !makeSel || !modelSel || !trimSel) return;
-
-      // Widen the year list to the published years once the manifest lands.
-      // Reuses the loader's own helpers so this cannot drift from the search.
-      if (window.PTVehicleManifest && cfg.manifestUrl) {
-        window.PTVehicleManifest.load(cfg.manifestUrl).then(function (m) {
-          if (!m) return;
-          var years = window.PTVehicleManifest.yearsDesc(m, cfg.minYear, cfg.maxYear);
-          window.PTVehicleManifest.fillYearSelect(yearSel, years);
-        });
-      }
-
-      yearSel.addEventListener('change', function () {
-        reset(makeSel, 'Make');
-        reset(modelSel, 'Model');
-        reset(trimSel, 'Submodel');
-        if (!yearSel.value) return;
-        var chosen = yearSel.value;
-        loadYear(chosen).then(function (data) {
-          if (!data || !data.makes || yearSel.value !== chosen) return;
-          fill(makeSel, data.makes, 'Make');
-        });
-      });
-
-      makeSel.addEventListener('change', function () {
-        reset(modelSel, 'Model');
-        reset(trimSel, 'Submodel');
-        if (!makeSel.value || !yearSel.value) return;
-        var chosenYear = yearSel.value, chosenMake = makeSel.value;
-        loadYear(chosenYear).then(function (data) {
-          if (!data || !data.models) return;
-          if (yearSel.value !== chosenYear || makeSel.value !== chosenMake) return;
-          var byMake = data.models[chosenMake];
-          if (!byMake) return;
-          // Keys are model names; trims sit one level deeper and are left to
-          // the search engine, which already disambiguates them.
-          fill(modelSel, Object.keys(byMake).sort(), 'Model');
-        });
-      });
-
-      // Writes a value into the shared search input exactly the way a chip
-      // does, so the existing engine does the rest.
-      function push(value, action) {
-        input.value = value;
-        input.focus();
-        try { input.setSelectionRange(value.length, value.length); } catch (e) {}
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        if (window.PTTireParse && typeof window.PTTireParse.track === 'function') {
-          window.PTTireParse.track({ surface: 'homepage', action: action, query: value });
-        }
-      }
-
-      modelSel.addEventListener('change', function () {
-        reset(trimSel, 'Submodel');
-        if (!modelSel.value || !makeSel.value || !yearSel.value) return;
-        var chosenYear = yearSel.value, chosenMake = makeSel.value, chosenModel = modelSel.value;
-
-        // Searching on the model alone is already useful, so fire it now and
-        // treat the submodel as optional refinement rather than a gate.
-        push(chosenYear + ' ' + chosenMake + ' ' + chosenModel, 'vehicle_picker_select');
-
-        loadYear(chosenYear).then(function (data) {
-          if (!data || !data.models) return;
-          if (yearSel.value !== chosenYear || makeSel.value !== chosenMake || modelSel.value !== chosenModel) return;
-          var byModel = (data.models[chosenMake] || {})[chosenModel];
-          if (!byModel) return;
-          var trims = Object.keys(byModel);
-          // One trim means one fitment — nothing to disambiguate, so leave the
-          // select out of the way rather than offering a choice of one.
-          if (trims.length > 1) fill(trimSel, trims.sort(), 'Submodel');
-        });
-      });
-
-      trimSel.addEventListener('change', function () {
-        if (!trimSel.value) return;
-        var y = yearSel.value, mk = makeSel.value, md = modelSel.value, tr = trimSel.value;
-        loadYear(y).then(function (data) {
-          var sizes = (((data || {}).models || {})[mk] || {})[md];
-          sizes = sizes && sizes[tr];
-          // A trim usually pins exactly one fitment. Searching the size itself
-          // is unambiguous, so prefer it over re-searching the vehicle text.
-          if (sizes && sizes.length === 1) push(sizes[0], 'vehicle_picker_trim');
-          else push(y + ' ' + mk + ' ' + md + ' ' + tr, 'vehicle_picker_trim');
-        });
-      });
-    });
-  })();
-
-  (function () {
-    document.querySelectorAll('[data-smart-search]').forEach(function (searchEl) {
-      var input  = searchEl.querySelector('[data-smart-search-input]');
-      var results = searchEl.querySelector('[data-smart-search-results]');
-      var chips  = searchEl.querySelectorAll('[data-smart-search-chip]');
-      if (!input || chips.length === 0) return;
-
-      chips.forEach(function (chip) {
-        chip.addEventListener('click', function () {
-          var value = chip.getAttribute('data-smart-search-chip') || '';
-          if (!value) return;
-
-          input.value = value;
-          input.focus();
-          // Move caret to end so the customer can type more after the prefill
-          try { input.setSelectionRange(value.length, value.length); } catch (e) {}
-          // Trigger the existing search handler (it listens for 'input')
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-
-          // Analytics ping — matches the existing PTTireParse pattern used elsewhere
-          if (window.PTTireParse && typeof window.PTTireParse.track === 'function') {
-            window.PTTireParse.track({
-              surface: 'homepage',
-              search_query: value,
-              search_type: 'example_chip',
-              search_outcome: 'click'
-            });
-          }
-        });
-      });
-
-      // Mirror the dropdown's open state to a data attr on the wrapper so the
-      // hint can hide via CSS. Uses MutationObserver on the `hidden` attribute.
-      if (results) {
-        var sync = function () {
-          if (results.hidden) searchEl.removeAttribute('data-results-open');
-          else searchEl.setAttribute('data-results-open', '');
-        };
-        sync();
-        new MutationObserver(sync).observe(results, { attributes: true, attributeFilter: ['hidden'] });
-      }
-    });
   })();
 });
 </script>
