@@ -25,6 +25,7 @@
   data-pt-rs
   data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}"
   data-asset-version="{%- assign _au = 'pt-vehicle-2025.json' | asset_url -%}{%- if _au contains '?' -%}{{ _au | split: '?' | last }}{%- endif -%}"
+  data-manifest-url="{{ 'pt-vehicle-manifest.json' | asset_url }}"
 >
   <button type="button" class="pt-rs__toggle" data-pt-rs-toggle aria-expanded="false">
     Change search
@@ -119,6 +120,8 @@
     </div>
   </div>
 </div>
+{% render 'pt-vehicle-manifest-loader' %}
+{% render 'pt-search-tracking' %}
 
 {% stylesheet %}
   .pt-rs {
@@ -355,6 +358,8 @@
 
     var assetBase = root.dataset.assetBase;
     var assetVersion = root.dataset.assetVersion || '';
+    var manifestUrl = root.dataset.manifestUrl || '';
+    var vehicleManifest = null;
     var STORAGE_KEY = 'pt-tire-search-vehicle';
 
     var elToggle = root.querySelector('[data-pt-rs-toggle]');
@@ -380,6 +385,34 @@
 
     var yearData = null;
     var params = new URLSearchParams(window.location.search);
+
+    /* Cross-surface search analytics — one pt_search_submit + one
+       pt_search_result per SEARCH. Schema + outcomes:
+       snippets/pt-search-tracking.liquid.
+
+       Walking the cascade emits nothing; a search is reported when the
+       customer commits (a submit button or a saved-car chip) or when it
+       dead-ends. */
+    function ptSearch(method, outcome, d) {
+      if (!window.PTTrack) return;
+      d = d || {};
+      var key = [method, d.year, d.make, d.model, d.trim, d.size, outcome].join('|');
+      window.PTTrack.once('rs-s|' + key, 'pt_search_submit', {
+        surface: 'collection_strip', method: method,
+        year: d.year, make: d.make, model: d.model, trim: d.trim, size: d.size
+      });
+      window.PTTrack.once('rs-r|' + key, 'pt_search_result', {
+        surface: 'collection_strip', method: method, outcome: outcome,
+        sizes_count: d.sizes_count || 0, trims_count: d.trims_count, status: d.status,
+        year: d.year, make: d.make, model: d.model, size: d.size
+      });
+    }
+
+    /* Navigate without dropping the event we just queued — see PTTrack.go. */
+    function ptGo(url) {
+      if (window.PTTrack && typeof window.PTTrack.go === 'function') window.PTTrack.go(url);
+      else window.location.href = url;
+    }
 
     // ─── Tab switching ───────────────────────────────────────────────
     function activateTab(name) {
@@ -538,14 +571,23 @@
       elSavedList.querySelectorAll('[data-saved-i]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var v = savedVehicles[parseInt(btn.dataset.savedI, 10) || 0];
-          if (!v || !v.size) { flashStatus('No size on file for this car.'); return; }
+          if (!v || !v.size) {
+            flashStatus('No size on file for this car.');
+            ptSearch('saved_vehicle', 'no_sizes', v ? { year: v.year, make: v.make, model: v.model, trim: v.trim, sizes_count: 0 } : { sizes_count: 0 });
+            return;
+          }
           applyVehicleSize(v);
         });
       });
     }
     function applyVehicleSize(v) {
       var m = String(v.size).match(/(\d{3})\s*\/\s*(\d{2,3})\s*R\s*(\d{2})/i);
-      if (!m) { flashStatus("Couldn't parse size '" + v.size + "'."); return; }
+      if (!m) {
+        flashStatus("Couldn't parse size '" + v.size + "'.");
+        ptSearch('saved_vehicle', 'no_sizes', { year: v.year, make: v.make, model: v.model, trim: v.trim, sizes_count: 0 });
+        return;
+      }
+      ptSearch('saved_vehicle', 'sizes', { year: v.year, make: v.make, model: v.model, trim: v.trim, size: v.size, sizes_count: 1 });
       var newParams = new URLSearchParams();
       params.forEach(function (val, k) {
         if (k === 'filter.p.vendor' ||
@@ -555,7 +597,7 @@
       newParams.set('filter.p.m.custom.tire_width', m[1]);
       newParams.set('filter.p.m.custom.tire_profile', m[2]);
       newParams.set('filter.p.m.custom.rim_diameter', m[3]);
-      window.location.href = window.location.pathname + '?' + newParams.toString();
+      ptGo(window.location.pathname + '?' + newParams.toString());
     }
     renderSavedCars();
 
@@ -580,7 +622,11 @@
       newParams.set('filter.p.m.custom.tire_width', w);
       newParams.set('filter.p.m.custom.tire_profile', a);
       newParams.set('filter.p.m.custom.rim_diameter', r);
-      window.location.href = window.location.pathname + '?' + newParams.toString();
+      ptSearch('dropdown', 'sizes', {
+        size: w + (sizeMode === 'flotation' ? 'X' : '/') + a + 'R' + r,
+        sizes_count: 1
+      });
+      ptGo(window.location.pathname + '?' + newParams.toString());
     });
 
     // ─── Vehicle cascade ─────────────────────────────────────────────
@@ -613,16 +659,31 @@
       resetSelect(elTrim, '—');
       elSubmitVeh.disabled = true;
       if (!year) return;
-      var url = assetBase + 'pt-vehicle-' + year + '.json' + (assetVersion ? '?' + assetVersion : '');
+      var url = window.PTVehicleManifest
+        ? window.PTVehicleManifest.yearUrl(assetBase, year, vehicleManifest, assetVersion)
+        : assetBase + 'pt-vehicle-' + year + '.json' + (assetVersion ? '?' + assetVersion : '');
       fetch(url, { cache: 'force-cache' })
-        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (r) {
+          if (!r.ok) { var e = new Error('HTTP ' + r.status); e.ptStatus = r.status; throw e; }
+          return r.json();
+        })
         .then(function (data) {
           yearData = data;
           var makes = data.makes || Object.keys(data.models || {});
           makes.sort();
           fillSelect(elMake, '— pick make —', makes);
         })
-        .catch(function () { flashStatus("Couldn't load data for " + year + ". Try another year."); });
+        .catch(function (err) {
+          flashStatus("Couldn't load data for " + year + ". Try another year.");
+          // OUR data is missing, not the customer's car: assets/pt-vehicle-*.json
+          // is .shopifyignore'd and only published to the MAIN theme, so this
+          // fires for every year on a dev or freshly published theme.
+          // 'data_error' keeps it out of the customer-failure rate.
+          ptSearch('dropdown', 'data_error', {
+            year: year, sizes_count: 0,
+            status: (err && err.ptStatus) || 0
+          });
+        });
     }
 
     function onMakeChange(make) {
@@ -670,8 +731,11 @@
       var trim = elTrim.value;
       if (!yearData || !trim) return;
       var sizes = ((yearData.models || {})[make] || {})[model][trim];
+      var ptV = { year: elYear.value, make: make, model: model, trim: trim };
       if (!sizes || !sizes.length) {
         flashStatus("We don't have OEM size data for this trim.");
+        ptV.sizes_count = 0;
+        ptSearch('dropdown', 'no_sizes', ptV);
         return;
       }
       // Use the first size (staggered front, typically). Persist the vehicle.
@@ -679,8 +743,13 @@
       var parsed = parseSize(firstSize);
       if (!parsed) {
         flashStatus("Couldn't parse size '" + firstSize + "'. Try another trim.");
+        ptV.sizes_count = 0;
+        ptSearch('dropdown', 'no_sizes', ptV);
         return;
       }
+      ptV.size = firstSize;
+      ptV.sizes_count = sizes.length;
+      ptSearch('dropdown', 'sizes', ptV);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           year: elYear.value, make: make, model: model, trim: trim,
@@ -699,7 +768,7 @@
       newParams.set('filter.p.m.custom.tire_width', parsed.w);
       newParams.set('filter.p.m.custom.tire_profile', parsed.a);
       newParams.set('filter.p.m.custom.rim_diameter', parsed.r);
-      window.location.href = window.location.pathname + '?' + newParams.toString();
+      ptGo(window.location.pathname + '?' + newParams.toString());
     });
 
     // ─── Helpers ─────────────────────────────────────────────────────
@@ -708,8 +777,22 @@
       return p && { w: p.width, a: p.profile, r: p.rim };
     }
 
+    // Year list is data-driven: rebuild it from pt-vehicle-manifest.json when
+    // that loads (Liquid-rendered years stay on a 404). The saved-car pre-seed
+    // waits up to 1.5s so a newly published year finds its option.
+    var PTVM = window.PTVehicleManifest;
+    function applyVehicleManifest(m) {
+      if (!m) return;
+      vehicleManifest = m;
+      PTVM.fillYearSelect(elYear, PTVM.yearsDesc(m));
+    }
+    if (PTVM) PTVM.load(manifestUrl).then(applyVehicleManifest);
+    var manifestReady = PTVM ? PTVM.ready(manifestUrl, 1500).then(applyVehicleManifest) : Promise.resolve();
+    var yearAtInit = elYear.value;
+
     // Pre-seed the vehicle cascade from savedVeh
-    if (savedVeh) {
+    if (savedVeh) manifestReady.then(function () {
+      if (elYear.value !== yearAtInit) return; // customer picked a year while we waited
       elYear.value = savedVeh.year || '';
       if (savedVeh.year) {
         onYearChange(savedVeh.year);
@@ -736,6 +819,6 @@
         };
         waitForMakes(0);
       }
-    }
+    });
   })();
 {% endjavascript %}

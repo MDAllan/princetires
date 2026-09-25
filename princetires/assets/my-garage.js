@@ -29,6 +29,7 @@ class MyGarage extends HTMLElement {
   connectedCallback() {
     this.vehicles = this.loadFromStorage();
     this.populateYearSelect();
+    this.initVehicleManifest();
     this.bindEvents();
     this.initTabs();
     this.renderSeasonalTip();
@@ -843,18 +844,50 @@ class MyGarage extends HTMLElement {
     }
   }
 
+  // Year range is data-driven: once pt-vehicle-manifest.json loads, rebuild the
+  // year list and widen the bounds loadVehicleData() checks. On a 404 the
+  // theme-setting range from populateYearSelect() stands. VIN decode awaits
+  // manifestReady (max 1.5s) so a newly published year is selectable.
+  initVehicleManifest() {
+    var M = window.PTVehicleManifest;
+    this.manifestReady = Promise.resolve(null);
+    if (!M || !this.config.manifestUrl) return;
+    var apply = this.applyVehicleManifest.bind(this);
+    M.load(this.config.manifestUrl).then(apply);
+    this.manifestReady = M.ready(this.config.manifestUrl, 1500).then(apply);
+  }
+
+  applyVehicleManifest(m) {
+    if (!m) return null;
+    this.config.minYear = m.minYear;
+    this.config.maxYear = m.maxYear;
+    this.config.manifest = m;
+    window.PTVehicleManifest.fillYearSelect(this.yearSelect, window.PTVehicleManifest.yearsDesc(m));
+    return m;
+  }
+
+  // Returns the year's vehicle data, or null. Why it failed is recorded on
+  // this._lastYearLoad so the caller can tell "we don't cover that year" apart
+  // from "our own JSON didn't load" — see onYearChange.
   async loadVehicleData(year) {
-    if (this.vehicleCache[year]) return this.vehicleCache[year];
+    if (this.vehicleCache[year]) { this._lastYearLoad = { ok: true, status: 200 }; return this.vehicleCache[year]; }
     var numYear = parseInt(year);
-    if (numYear < (this.config.minYear || 2001) || numYear > (this.config.maxYear || 2026)) return null;
+    if (numYear < (this.config.minYear || 2001) || numYear > (this.config.maxYear || 2026)) {
+      this._lastYearLoad = { ok: false, outOfRange: true, status: 0 };
+      return null;
+    }
     try {
-      var url = this.config.assetUrlBase + 'pt-vehicle-' + year + '.json';
+      var url = window.PTVehicleManifest
+        ? window.PTVehicleManifest.yearUrl(this.config.assetUrlBase, year, this.config.manifest, '')
+        : this.config.assetUrlBase + 'pt-vehicle-' + year + '.json';
       var resp = await fetch(url);
-      if (!resp.ok) return null;
+      if (!resp.ok) { this._lastYearLoad = { ok: false, status: resp.status }; return null; }
       var data = await resp.json();
       this.vehicleCache[year] = data;
+      this._lastYearLoad = { ok: true, status: resp.status };
       return data;
     } catch (e) {
+      this._lastYearLoad = { ok: false, status: 0 };
       return null;
     }
   }
@@ -879,7 +912,19 @@ class MyGarage extends HTMLElement {
     if (!year) return;
 
     var data = await this.loadVehicleData(year);
-    if (!data || !data.makes) return;
+    if (!data || !data.makes) {
+      // The make dropdown stays empty and the customer is stuck. Report it —
+      // the same 404 is already instrumented on /pages/tire-search and the
+      // collection strip, and the garage was the one surface blind to it.
+      // 'data_error' (our JSON missing) is kept apart from 'not_found' (a year
+      // we genuinely do not cover), so a dev/unseeded theme cannot masquerade
+      // as customers failing.
+      var load = this._lastYearLoad || {};
+      this.ptSearch(load.outOfRange ? 'not_found' : 'data_error', {
+        year: year, sizes_count: 0, status: load.status || 0
+      });
+      return;
+    }
 
     data.makes.forEach(function(make) {
       var opt = document.createElement('option');
@@ -947,13 +992,20 @@ class MyGarage extends HTMLElement {
     if (!trim) return;
 
     var data = this.vehicleCache[year];
-    if (!data || !data.models[make] || !data.models[make][model] || !data.models[make][model][trim]) return;
+    if (!data || !data.models[make] || !data.models[make][model] || !data.models[make][model][trim]) {
+      // Trim is listed but we have no OEM sizes for it — a dead end.
+      this.ptSearch('no_sizes', { year: year, make: make, model: model, trim: trim, sizes_count: 0 });
+      return;
+    }
 
     var sizes = data.models[make][model][trim];
     this.currentTireSize = sizes[0];
+    this.currentTireSizeCount = this.ptDistinctSizes(sizes);
     this.sizePreview.textContent = 'Tire size: ' + this.currentTireSize;
     this.sizePreview.hidden = false;
     this.saveBtn.disabled = false;
+    // Picking a trim is the customer filling in a form, not running a search —
+    // Save is the commit that gets reported (onSaveVehicle).
   }
 
   /* ---- Form Controls ---- */
@@ -973,6 +1025,8 @@ class MyGarage extends HTMLElement {
     this.sizePreview.hidden = true;
     this.saveBtn.disabled = true;
     this.currentTireSize = null;
+    this.currentTireSizeCount = 0;
+    this.ptMethod = null;
   }
 
   onSaveVehicle() {
@@ -982,7 +1036,24 @@ class MyGarage extends HTMLElement {
     var trim = this.trimSelect.value;
     var tireSize = this.currentTireSize;
     if (!year || !make || !model || !trim || !tireSize) return;
+    // The commit for the add-vehicle form — one search however many trims the
+    // customer tried on the way here. method is 'vin' when a VIN decode filled
+    // the cascade in, otherwise 'dropdown'.
+    this.ptSearch('sizes', {
+      year: year, make: make, model: model, trim: trim,
+      size: tireSize, sizes_count: this.currentTireSizeCount || 1
+    });
     this.addVehicle({ year: parseInt(year), make: make, model: model, trim: trim, tireSize: tireSize });
+  }
+
+  /* sizes_count counts distinct SIZES, never trims or list positions. */
+  ptDistinctSizes(sizes) {
+    var seen = {}, n = 0;
+    (sizes || []).forEach(function(s) {
+      if (!s || seen[s]) return;
+      seen[s] = true; n++;
+    });
+    return n;
   }
 
   /* ---- Vehicle Icon ---- */
@@ -1297,6 +1368,34 @@ class MyGarage extends HTMLElement {
 
   bindCardEvents() {
     var self = this;
+
+    // "Shop tires" on a saved car — a search by saved vehicle. The link keeps
+    // navigating exactly as before; this only reports the outcome.
+    this.vehicleList.querySelectorAll('a[href^="/collections/tires"]').forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        var card = link.closest('[data-vehicle-id]');
+        var v = card && self.vehicles.filter(function(x) { return String(x.id) === card.dataset.vehicleId; })[0];
+        if (!v) return;
+        // Report from the vehicle on file, NOT from the href: buildShopTiresUrl
+        // falls back to ?filter…tire_size= for flotation sizes (35X12.50R20),
+        // which have no 'tire_width' in them — sniffing the URL logged every
+        // truck and off-road customer as a dead end.
+        self.ptSearch(v.tireSize ? 'sizes' : 'no_sizes', {
+          method: 'saved_vehicle',
+          year: v.year, make: v.make, model: v.model, trim: v.trim,
+          size: v.tireSize || null,
+          sizes_count: v.tireSize ? 1 : 0
+        });
+        // Let the event out before the document goes away (see PTTrack.go).
+        // Plain left-clicks only — modified clicks and any handler that already
+        // called preventDefault keep the browser's own behavior.
+        if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (!window.PTTrack || typeof window.PTTrack.go !== 'function') return;
+        e.preventDefault();
+        window.PTTrack.go(link.href);
+      });
+    });
+
     this.vehicleList.querySelectorAll('[data-action]').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var action = btn.dataset.action;
@@ -1335,7 +1434,12 @@ class MyGarage extends HTMLElement {
     this.querySelectorAll('[data-garage-toggle-add]').forEach(function(btn) {
       btn.addEventListener('click', function() { self.toggleAddForm(undefined); });
     });
-    this.yearSelect.addEventListener('change', this.onYearChange.bind(this));
+    this.yearSelect.addEventListener('change', function() {
+      // The customer is driving the cascade by hand now, so a Save after this
+      // is a 'dropdown' search even if a VIN decode filled the form earlier.
+      self.ptMethod = null;
+      self.onYearChange();
+    });
     this.makeSelect.addEventListener('change', this.onMakeChange.bind(this));
     this.modelSelect.addEventListener('change', this.onModelChange.bind(this));
     this.trimSelect.addEventListener('change', this.onTrimChange.bind(this));
@@ -1372,24 +1476,34 @@ class MyGarage extends HTMLElement {
     }
     this.setVinBusy(true);
     this.setVinStatus(null);
+    // Everything the cascade reports until this decode finishes is a VIN search.
+    // The VIN itself is never sent to analytics.
+    this.ptMethod = 'vin';
 
     try {
       var res = await fetch('https://app.princetires.ca/api/decode-vin?vin=' + encodeURIComponent(raw));
       if (!res.ok) {
         this.setVinStatus('err', 'Couldn\'t reach the decoder — try again, or fill the form manually.');
+        this.ptSearch('not_found', { sizes_count: 0 });
+        this.ptMethod = null;
         return;
       }
       var data = await res.json();
       if (!data || !data.vehicle) {
         this.setVinStatus('err', 'NHTSA didn\'t recognize that VIN. Double-check the characters or fill the form manually.');
+        this.ptSearch('not_found', { sizes_count: 0 });
+        this.ptMethod = null;
         return;
       }
       var v = data.vehicle;
 
-      // Year — must exist in our dropdown range
+      // Year — must exist in our dropdown range (widened by the manifest, if any)
+      if (this.manifestReady) await this.manifestReady;
       this.yearSelect.value = String(v.year || '');
       if (!this.yearSelect.value) {
         this.setVinStatus('err', (v.year ? v.year + ' is' : 'That year is') + ' outside our supported range.');
+        this.ptSearch('not_found', { year: v.year, make: v.make, model: v.model, sizes_count: 0 });
+        this.ptMethod = null;
         return;
       }
       await this.onYearChange();
@@ -1397,6 +1511,13 @@ class MyGarage extends HTMLElement {
       // Make — case-insensitive option match
       if (!this.selectByText(this.makeSelect, v.make)) {
         this.setVinStatus('err', 'We don\'t have ' + (v.make || 'that make') + ' in our list yet — fill it manually.');
+        // If the make list is empty because the year's JSON failed to load,
+        // onYearChange already reported that as 'data_error' — don't also file
+        // it as the customer's make being unknown.
+        if (!this._lastYearLoad || this._lastYearLoad.ok) {
+          this.ptSearch('not_found', { year: v.year, make: v.make, model: v.model, sizes_count: 0 });
+        }
+        this.ptMethod = null;
         return;
       }
       await this.onMakeChange();
@@ -1404,6 +1525,8 @@ class MyGarage extends HTMLElement {
       // Model — same
       if (!this.selectByText(this.modelSelect, v.model)) {
         this.setVinStatus('err', 'We don\'t have ' + (v.model || 'that model') + ' for ' + v.year + ' ' + v.make + '. Pick a similar trim below.');
+        this.ptSearch('not_found', { year: v.year, make: v.make, model: v.model, sizes_count: 0 });
+        this.ptMethod = null;
         return;
       }
       await this.onModelChange();
@@ -1413,6 +1536,11 @@ class MyGarage extends HTMLElement {
       var trimMatched = v.trim ? this.selectByText(this.trimSelect, v.trim) : false;
       if (trimMatched) this.onTrimChange();
 
+      // A decode with no exact trim match is NOT a dead end — the form is
+      // filled in and the customer picks the closest trim, then saves. Save is
+      // the commit, and it still reports method 'vin' because ptMethod is left
+      // set (cleared only by resetForm or by the customer touching Year).
+
       var summary = v.year + ' ' + v.make + ' ' + v.model + (v.trim ? ' ' + v.trim : '');
       this.setVinStatus('ok',
         trimMatched
@@ -1421,9 +1549,43 @@ class MyGarage extends HTMLElement {
       );
     } catch (err) {
       this.setVinStatus('err', 'VIN decode failed — fill the form manually, or call us.');
+      this.ptSearch('not_found', { sizes_count: 0 });
+      this.ptMethod = null;
     } finally {
       this.setVinBusy(false);
     }
+  }
+
+  /* Cross-surface search analytics — one pt_search_submit + one
+     pt_search_result per SEARCH. Schema + outcomes:
+     snippets/pt-search-tracking.liquid. Never throws, never blocks the garage.
+
+     Walking the add-vehicle cascade emits nothing; a search is reported when
+     the customer commits (Save, or "Shop tires" on a saved car) or when it
+     dead-ends.
+
+     PRIVACY: this surface renders only for a signed-in customer, so the
+     payload is deliberately thinner than every other surface's — trim and
+     exact OEM size are dropped, because year/make/model/trim/size is a strong
+     quasi-identifier and the container may well be joining these hits to a
+     known customer (GA4 User-ID). They are still used, in this closure only,
+     as part of the de-dupe key, and never pushed. surface + outcome +
+     sizes_count answers "does the garage dead-end people", which is the
+     question this event exists for. */
+  ptSearch(outcome, d) {
+    if (!window.PTTrack) return;
+    d = d || {};
+    var method = d.method || this.ptMethod || 'dropdown';
+    var key = [method, d.year, d.make, d.model, d.trim, d.size, outcome].join('|');
+    window.PTTrack.once('g-s|' + key, 'pt_search_submit', {
+      surface: 'garage', method: method,
+      year: d.year, make: d.make, model: d.model
+    });
+    window.PTTrack.once('g-r|' + key, 'pt_search_result', {
+      surface: 'garage', method: method, outcome: outcome,
+      sizes_count: d.sizes_count || 0, status: d.status,
+      year: d.year, make: d.make, model: d.model
+    });
   }
 
   setVinBusy(busy) {

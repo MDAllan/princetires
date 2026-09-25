@@ -18,6 +18,7 @@
   assign fv_rd = product.metafields.custom.rim_diameter | default: ''
   assign fv_rw = product.metafields.custom.rim_width | default: ''
   assign fv_ro = product.metafields.custom.rim_offset | default: ''
+  assign fv_cb = product.metafields.custom.center_bore | default: ''
 -%}
 
 {%- if fv_size != blank or fv_bolt != blank -%}
@@ -30,6 +31,7 @@
     data-rd="{{ fv_rd | escape }}"
     data-rw="{{ fv_rw | escape }}"
     data-ro="{{ fv_ro | escape }}"
+    data-cb="{{ fv_cb | escape }}"
     data-vendor="{{ product.vendor | escape }}"
     data-model="{{ fv_model | escape }}"
     hidden
@@ -47,12 +49,14 @@
     var api = el.getAttribute('data-api');
     var size = el.getAttribute('data-size');
     var bolt = el.getAttribute('data-bolt');
-    var rd = el.getAttribute('data-rd'), rw = el.getAttribute('data-rw'), ro = el.getAttribute('data-ro');
+    var rd = el.getAttribute('data-rd'), rw = el.getAttribute('data-rw'), ro = el.getAttribute('data-ro'), cb = el.getAttribute('data-cb');
     var qs = '';
     if (size) {
       qs = 'size=' + encodeURIComponent(size);
     } else if (bolt && rd && rw && ro) {
       qs = 'bolt_pattern=' + encodeURIComponent(bolt) + '&rim_diameter=' + encodeURIComponent(rd) + '&rim_width=' + encodeURIComponent(rw) + '&rim_offset=' + encodeURIComponent(ro);
+      // Without a center bore the API claims no vehicles (same rule as custom.compatible_vehicles).
+      if (cb) qs += '&center_bore=' + encodeURIComponent(cb);
     } else {
       return;
     }

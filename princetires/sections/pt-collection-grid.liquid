@@ -97,9 +97,12 @@
   "minYear": {{ settings.smart_search_min_year | default: 2001 }},
   "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
   "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
+  "manifestUrl": {{ 'pt-vehicle-manifest.json' | asset_url | json }},
   "brands": {{ smart_brands | split: '||' | json }}
 }
 </script>
+{% render 'pt-vehicle-manifest-loader' %}
+{% render 'pt-search-tracking' %}
 
 {%- paginate collection.products by section.settings.products_per_page -%}
 {%- liquid
@@ -1459,11 +1462,39 @@
     color: #111;
   }
 
-  .ptg__card-cart:disabled { opacity: .5; cursor: not-allowed; }
+  /* Navigation progress bar — a thin bar pinned to the top of the viewport
+     that animates while a filter/sort/pagination click is in flight. Not a
+     full skeleton (the SSR grid renders with content already in the HTML);
+     just an "in-flight" signal so the customer's tap doesn't feel dropped
+     on slow networks. Auto-cleared when the reload paints. */
+  .ptg__nav-progress {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, #dc2626 40%, #F5820B 70%, transparent 100%);
+    background-size: 40% 100%;
+    background-repeat: no-repeat;
+    background-position: -40% 0;
+    z-index: 9999;
+    animation: ptg-nav-progress 1.2s cubic-bezier(.4,0,.6,1) infinite;
+    pointer-events: none;
+  }
+  @keyframes ptg-nav-progress {
+    0%   { background-position: -40% 0; }
+    100% { background-position: 140% 0; }
+  }
+
+  /* Disabled state kept low-opacity ONLY when NOT showing a status flash —
+     during --success we want the button to look active (green pill), not dimmed.
+     Same for --error (red pill). */
+  .ptg__card-cart:disabled:not(.ptg__card-cart--success):not(.ptg__card-cart--error) { opacity: .5; cursor: not-allowed; }
   .ptg__card-cart--success { background: #dcfce7 !important; color: #16a34a !important; }
+  .ptg__card-cart--error { background: #fee2e2 !important; color: #dc2626 !important; }
   .ptg__card-cart--success .ptg__cart-icon,
+  .ptg__card-cart--error .ptg__cart-icon,
   .ptg__card-cart--loading .ptg__cart-icon { display: none !important; }
   .ptg__card-cart--success .ptg__cart-check { display: inline-block !important; }
+  .ptg__card-cart--error::before { content: '!'; font-weight: 700; font-size: 1.4rem; }
   .ptg__card-cart--loading .ptg__cart-spin { display: inline-block !important; animation: ptg-cart-spin .7s linear infinite; }
   @keyframes ptg-cart-spin { to { transform: rotate(360deg); } }
 
@@ -2194,9 +2225,86 @@ document.addEventListener('DOMContentLoaded', function() {
     var list = wrap.querySelector('[data-ptg-list]');
     var configEl = document.querySelector('[data-smart-search-config]');
     var config = configEl ? JSON.parse(configEl.textContent) : {};
+    // Year range is data-driven: widen to pt-vehicle-manifest.json once it
+    // loads; until then (or on a 404) the theme-setting bounds stand.
+    if (window.PTVehicleManifest) {
+      window.PTVehicleManifest.load(config.manifestUrl).then(function (m) {
+        if (!m) return;
+        config.minYear = m.minYear;
+        config.maxYear = m.maxYear;
+        config.manifest = m;
+      });
+    }
     var tireSizeRegex = /(?:^|[\s,])([Pp]?[LlTtSs]?[Tt]?\d{3}\/?\d{2,3}[Rr]\d{2}(?:\.\d)?)/;
     var vehicleCache = {};
     var debounceTimer = null;
+
+    /* ── Cross-surface search analytics ────────────────────────────────────
+       One pt_search_submit + one pt_search_result per SEARCH, never per
+       keystroke. Schema + outcomes: snippets/pt-search-tracking.liquid.
+
+       search() runs 300 ms after typing pauses, so what it resolves is a live
+       suggestion, not a search — those outcomes are PENDED and reported only
+       when the search finishes: the customer presses Enter or clicks a
+       rendered row (ptEmit / ptFlush), or it dead-ends, in which case it
+       self-reports after PT_SETTLE_MS of no further typing. Typing again
+       cancels that, which is what stops an abandoned prefix or a corrected
+       typo from counting as its own failed search.
+
+       The raw query is never sent; query_len stands in for it. */
+    var PT_SETTLE_MS = 1200;
+    var ptPending = null;
+    var ptSettleTimer = null;
+
+    function ptClear() {
+      if (ptSettleTimer) { clearTimeout(ptSettleTimer); ptSettleTimer = null; }
+      ptPending = null;
+    }
+    function ptEmit(outcome, d) {
+      ptClear();
+      if (!window.PTTrack) return;
+      d = d || {};
+      var key = [d.year, d.make, d.model, d.size, d.query_len, outcome].join('|');
+      window.PTTrack.once('cg-s|' + key, 'pt_search_submit', {
+        surface: 'collection_grid', method: 'text',
+        year: d.year, make: d.make, model: d.model, trim: d.trim,
+        size: d.size, query_len: d.query_len
+      });
+      window.PTTrack.once('cg-r|' + key, 'pt_search_result', {
+        surface: 'collection_grid', method: 'text', outcome: outcome,
+        sizes_count: d.sizes_count || 0, trims_count: d.trims_count,
+        year: d.year, make: d.make, model: d.model, size: d.size
+      });
+    }
+    function ptPend(outcome, d) {
+      ptClear();
+      ptPending = { outcome: outcome, d: d || {} };
+      /* A dead end has nothing to click — report it once they stop typing. */
+      if (outcome === 'not_found' || outcome === 'no_sizes' || outcome === 'data_error') {
+        ptSettleTimer = setTimeout(function () { ptSettleTimer = null; ptFlush(); }, PT_SETTLE_MS);
+      }
+    }
+    function ptFlush() {
+      var p = ptPending;
+      if (!p) return;
+      ptEmit(p.outcome, p.d);
+    }
+    /* Navigate without dropping the event we just queued — see PTTrack.go. */
+    function ptGo(url) {
+      if (window.PTTrack && typeof window.PTTrack.go === 'function') window.PTTrack.go(url);
+      else window.location.href = url;
+    }
+    /* Distinct OEM sizes in a trim list — six trims sharing one size is one
+       size, not six. sizes_count and trims_count are separate for that reason. */
+    function ptDistinctSizes(trims) {
+      var seen = {}, n = 0;
+      (trims || []).forEach(function (t) {
+        var s = t && t.size;
+        if (!s || seen[s]) return;
+        seen[s] = true; n++;
+      });
+      return n;
+    }
     // Brand list — built dynamically from collection.filters (passed via the
     // smart-search-config JSON) so every stocked vendor is searchable.
     // Lowercased for case-insensitive matching; falls back to the historic
@@ -2292,8 +2400,11 @@ document.addEventListener('DOMContentLoaded', function() {
       var base = '/collections/tires';
       var urlP = new URLSearchParams();
       if (p.tireSize) {
-        var sm = p.tireSize.match(/^(\d+)\/(\d+)R(\d+(?:\.\d+)?)$/);
-        var fm = p.tireSize.match(/^(\d+)X(\d+(?:\.\d+)?)R(\d+)$/);
+        // Vehicle-data sizes can carry a P/LT/ST service prefix ("LT245/75R16");
+        // the filter metafields store only the numbers, so drop it first.
+        var ts = String(p.tireSize).replace(/^(?:P|LT|ST)(?=\d)/i, '');
+        var sm = ts.match(/^(\d+)\/(\d+)R(\d+(?:\.\d+)?)$/);
+        var fm = ts.match(/^(\d+)X(\d+(?:\.\d+)?)R(\d+)$/);
         if (sm) {
           urlP.set('filter.p.m.custom.tire_width', sm[1]);
           urlP.set('filter.p.m.custom.tire_profile', sm[2]);
@@ -2317,6 +2428,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     input.addEventListener('input', function() {
       clearTimeout(debounceTimer);
+      // Whatever the last keystroke resolved to was a prefix, not a search.
+      ptClear();
       debounceTimer = setTimeout(function() {
         var q = input.value.trim();
         if (q.length < 2) { results.hidden = true; return; }
@@ -2333,10 +2446,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var intent = parseIntent(q);
         if (size || intent.brand || intent.season) {
           window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: q, search_type: size ? 'size' : 'vehicle', search_outcome: 'match' });
-          window.location.href = buildUrl({ tireSize: size, brand: intent.brand, season: intent.season });
+          /* Committed: Enter. Emitting here also cancels the pending copy the
+             live-suggest path left behind for this same query. */
+          if (size) ptEmit('sizes', { size: size, sizes_count: 1, query_len: q.length });
+          else ptEmit('browse', { sizes_count: 0, query_len: q.length });
+          ptGo(buildUrl({ tireSize: size, brand: intent.brand, season: intent.season }));
         } else {
           window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: q, search_type: 'none', search_outcome: 'no_match' });
-          window.location.href = '/search?q=' + encodeURIComponent(q) + '&type=product';
+          ptEmit('not_found', { sizes_count: 0, query_len: q.length });
+          ptGo('/search?q=' + encodeURIComponent(q) + '&type=product');
         }
       } else if (e.key === 'Escape') {
         results.hidden = true;
@@ -2355,6 +2473,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var meta = 'Filter collection' + (intent.season ? ' · ' + intent.season : '');
         renderResults([{ type: 'size', title: label, meta: meta, url: buildUrl({ tireSize: normalized.size, brand: intent.brand, season: intent.season }) }]);
         window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'size', search_outcome: 'match' });
+        /* Live suggestion, not a search yet. */
+        ptPend('sizes', { size: normalized.size, sizes_count: 1, query_len: String(query || '').length });
         return;
       }
       searchVehicle(query);
@@ -2374,32 +2494,56 @@ document.addEventListener('DOMContentLoaded', function() {
           if (intent.brand || intent.season) {
             var filterTitle = [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires';
             renderResults([{ type: 'search', title: filterTitle, meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+            /* No vehicle and no size — a brand/season collection is all we
+               could offer. Reported so a parser miss is never silent. */
+            ptPend('browse', { sizes_count: 0, query_len: String(query || '').length });
           } else {
             renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
             window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'none', search_outcome: 'no_match' });
+            ptPend('not_found', { sizes_count: 0, query_len: String(query || '').length });
           }
           return;
         }
 
         var trims = await lookupTrims(vehicle);
         var vLabel = (vehicle.year + ' ' + (vehicle.make || '') + ' ' + (vehicle.model || '')).replace(/\s+/g, ' ').trim();
+        var ptV = {
+          year: vehicle.year, make: vehicle.make, model: vehicle.model,
+          trim: vehicle.trim, query_len: String(query || '').length
+        };
 
         if (trims.length === 1 && vehicle.trim) {
           /* User specified a trim — go straight to collection */
           var url = buildUrl({ tireSize: trims[0].size, brand: intent.brand, season: intent.season });
           renderResults([{ type: 'vehicle', title: vLabel + ' ' + trims[0].trim, meta: trims[0].size + (intent.season ? ' · ' + intent.season : '') + (intent.brand ? ' · ' + intent.brand : ''), url: url }]);
+          ptV.size = trims[0].size;
+          ptV.sizes_count = 1;
+          ptV.trims_count = 1;
+          ptPend('sizes', ptV);
         } else if (trims.length > 0) {
           renderTrimResults(vLabel, trims, intent);
+          /* sizes_count counts SIZES, not trims — six trims that share one OEM
+             size are one size. trims_count carries the list length. */
+          ptV.sizes_count = ptDistinctSizes(trims);
+          ptV.trims_count = trims.length;
+          ptPend('sizes', ptV);
         } else {
           renderResults([{ type: 'vehicle', title: vLabel, meta: 'Browse all tires', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+          // Vehicle recognised but we can't size it — a dead end for the customer.
+          ptV.sizes_count = 0;
+          ptPend('no_sizes', ptV);
         }
         window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'vehicle', search_outcome: 'match' });
       } catch(e) {
         if (intent.brand || intent.season) {
           renderResults([{ type: 'search', title: [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires', meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
+          /* The lookup threw and a brand saved us — visible as 'browse', not
+             as a silently-missing event. */
+          ptPend('browse', { sizes_count: 0, query_len: String(query || '').length });
         } else {
           renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
           window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'none', search_outcome: 'no_match' });
+          ptPend('not_found', { sizes_count: 0, query_len: String(query || '').length });
         }
       }
     }
@@ -2460,15 +2604,43 @@ document.addEventListener('DOMContentLoaded', function() {
         else if (modelShortcuts[words[0]]) { model = modelShortcuts[words[0]]; words.splice(0, 1); trim = words.length > 0 ? words.join(' ') : null; }
         else { model = words[0]; trim = words.length > 1 ? words.slice(1).join(' ') : null; }
       }
-      if (!year) year = config.maxYear;
-      return { year: year, make: make, model: model, trim: trim };
+      var yearDefaulted = !year;
+      if (!year) year = defaultYear();
+      return { year: year, make: make, model: model, trim: trim, yearDefaulted: yearDefaulted };
+    }
+
+    // Year assumed when the query names none. Theme-setting range: maxYear, as
+    // before. Manifest range: the newest published year can be a sparse
+    // early-release file, so cap at the calendar year (lookupTrims walks back).
+    function defaultYear() {
+      if (!config.manifest) return config.maxYear;
+      return Math.min(config.maxYear, Math.max(config.minYear, new Date().getFullYear()));
     }
 
     async function lookupTrims(vehicle) {
+      var trims = await lookupTrimsInYear(vehicle);
+      // No year typed + manifest range: walk back up to 3 years before giving up.
+      if (vehicle.yearDefaulted && config.manifest) {
+        for (var back = 1; !trims.length && back <= 3 && vehicle.year - back >= config.minYear; back++) {
+          var older = { year: vehicle.year - back, make: vehicle.make, model: vehicle.model, trim: vehicle.trim };
+          trims = await lookupTrimsInYear(older);
+          if (trims.length) {
+            vehicle.year = older.year;
+            vehicle.make = older.make;
+            vehicle.model = older.model;
+          }
+        }
+      }
+      return trims;
+    }
+
+    async function lookupTrimsInYear(vehicle) {
       var year = vehicle.year;
       if (!vehicleCache[year]) {
         try {
-          var url = config.assetUrlBase + 'pt-vehicle-' + year + '.json';
+          var url = window.PTVehicleManifest
+            ? window.PTVehicleManifest.yearUrl(config.assetUrlBase, year, config.manifest, '')
+            : config.assetUrlBase + 'pt-vehicle-' + year + '.json';
           var r = await fetch(url);
           if (r.ok) vehicleCache[year] = await r.json();
         } catch(e) {}
@@ -2557,8 +2729,14 @@ document.addEventListener('DOMContentLoaded', function() {
       list.innerHTML = html;
       results.hidden = false;
       list.querySelectorAll('.ptg__search-item').forEach(function(item) {
-        item.addEventListener('click', function() { window.location.href = this.dataset.url; });
+        item.addEventListener('click', function() { ptCommitRow(this.dataset.url); });
       });
+    }
+
+    /* Picking a row is the commit for whatever the live-suggest path rendered. */
+    function ptCommitRow(url) {
+      ptFlush();
+      ptGo(url);
     }
 
     function renderResults(items) {
@@ -2571,7 +2749,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }).join('');
       results.hidden = false;
       list.querySelectorAll('.ptg__search-item').forEach(function(item) {
-        item.addEventListener('click', function() { window.location.href = this.dataset.url; });
+        item.addEventListener('click', function() { ptCommitRow(this.dataset.url); });
       });
     }
 
@@ -2635,6 +2813,12 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
 
+    function readBadge() {
+      var el = document.querySelector('.pt-header__cart-count');
+      var n = el ? parseInt(el.textContent, 10) : 0;
+      return isNaN(n) ? 0 : n;
+    }
+
     document.addEventListener('click', function(e) {
       var btn = e.target.closest('.ptg__card-cart');
       if (!btn || btn.disabled) return;
@@ -2644,8 +2828,14 @@ document.addEventListener('DOMContentLoaded', function() {
       var variantId = btn.dataset.variant;
       if (!variantId) return;
 
-      btn.disabled = true;
-      btn.classList.add('ptg__card-cart--loading');
+      // Optimistic UI — flip the button to its success state IMMEDIATELY so
+      // the customer gets feedback in the same paint frame, and bump the
+      // header cart count by 1 optimistically. If the POST fails, we roll
+      // both back with an error indication.
+      var priorBadge = readBadge();
+      btn.disabled = true;                         // prevents double-add during the 2s success flash
+      btn.classList.add('ptg__card-cart--success');
+      updateBadge(priorBadge + 1);
 
       fetch('/cart/add.js', {
         method: 'POST',
@@ -2654,16 +2844,130 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        btn.classList.remove('ptg__card-cart--loading');
-        if (data.status) { btn.disabled = false; return; }
-        btn.classList.add('ptg__card-cart--success');
+        if (data.status) {
+          // Shopify returned an error payload (e.g. "product not available") —
+          // reconcile: roll back the optimistic success state + badge.
+          btn.classList.remove('ptg__card-cart--success');
+          btn.classList.add('ptg__card-cart--error');
+          updateBadge(priorBadge);
+          setTimeout(function() { btn.classList.remove('ptg__card-cart--error'); btn.disabled = false; }, 1600);
+          return;
+        }
+        // Success — reconcile the badge with the authoritative count from
+        // /cart.js in case the optimistic +1 was off (e.g. product had a
+        // quantity cap that snapped the added qty back).
         fetch('/cart.js', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
           .then(function(r) { return r.json(); })
           .then(function(cart) { updateBadge(cart.item_count); })
           .catch(function() {});
         setTimeout(function() { btn.classList.remove('ptg__card-cart--success'); btn.disabled = false; }, 2000);
       })
-      .catch(function() { btn.classList.remove('ptg__card-cart--loading'); btn.disabled = false; });
+      .catch(function() {
+        // Network error — roll back optimistic state.
+        btn.classList.remove('ptg__card-cart--success');
+        btn.classList.add('ptg__card-cart--error');
+        updateBadge(priorBadge);
+        setTimeout(function() { btn.classList.remove('ptg__card-cart--error'); btn.disabled = false; }, 1600);
+      });
+    });
+  })();
+
+  // ── Navigation progress bar ─────────────────────────────────────────────
+  // Fires when the customer clicks a filter/sort/pagination link. The bar
+  // stays visible until the next paint (i.e. the fresh HTML replaces the
+  // current DOM). Also fires on the sort-select change (that triggers a
+  // programmatic location.href change above). Small, non-blocking, and
+  // makes the "click → white flash → new page" gap feel intentional.
+  (function () {
+    function showNavProgress() {
+      if (document.querySelector('.ptg__nav-progress')) return;
+      var bar = document.createElement('div');
+      bar.className = 'ptg__nav-progress';
+      bar.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(bar);
+    }
+    // Any left-click on a link that navigates within our origin fires the bar.
+    // Skip if it's a modifier-clicked link (open in new tab) or non-primary btn.
+    document.querySelectorAll(
+      '[data-filter-key], .ptg__page-btn, .ptg__filter-link, [data-clear-filters]'
+    ).forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        showNavProgress();
+      });
+    });
+    // Sort-select programmatically sets window.location.href — hook change.
+    var sortEl = document.querySelector('[data-ptg-sort]');
+    if (sortEl) sortEl.addEventListener('change', showNavProgress);
+  })();
+
+  // ── Scroll restoration ────────────────────────────────────────────────
+  // MPA pattern (see davidtran.dev scroll-restoration-in-spas): save the
+  // scroll position + clicked product handle to sessionStorage on card click,
+  // then on the back-navigation pageshow, either scroll the clicked card into
+  // view (best UX — the customer sees exactly where they were) or fall back
+  // to the raw scrollY. history.scrollRestoration='manual' disables the
+  // browser's own guess, which is often wrong when the grid re-renders.
+  // Scoped per-pathname so /collections/tires and /collections/wheels don't
+  // stomp each other's saved positions. Keyed on URL search too, so a
+  // filter/page change doesn't restore into a stale grid.
+  (function () {
+    if (!('sessionStorage' in window)) return;
+    var KEY = 'ptg_scroll:' + (window.location.pathname || '/');
+    var TTL_MS = 30 * 60 * 1000;
+    try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) {}
+
+    function saveScroll(handle) {
+      try {
+        sessionStorage.setItem(KEY, JSON.stringify({
+          y: window.scrollY,
+          at: Date.now(),
+          s: window.location.search,
+          h: handle || null
+        }));
+      } catch (e) {}
+    }
+    function restoreScroll() {
+      var raw;
+      try { raw = sessionStorage.getItem(KEY); } catch (e) { return; }
+      if (!raw) return;
+      try {
+        var p = JSON.parse(raw);
+        if (!p || Date.now() - (p.at || 0) > TTL_MS) return;
+        // Filter/pagination changed since save → skip; don't scroll into a
+        // grid the customer isn't actually looking at.
+        if ((p.s || '') !== (window.location.search || '')) return;
+        // Prefer the clicked-card-into-view path; falls back to raw y if
+        // the DOM has re-shuffled (or the card is no longer on this page).
+        if (p.h) {
+          var link = document.querySelector('.ptg__grid a[href*="/products/' + p.h + '"]');
+          if (link) {
+            link.scrollIntoView({ block: 'center', behavior: 'auto' });
+            return;
+          }
+        }
+        window.scrollTo({ top: p.y || 0, behavior: 'auto' });
+      } catch (e) {}
+    }
+
+    // Save on product-card clicks (grab the handle out of the href so we can
+    // scroll to that exact card on the return trip).
+    document.querySelectorAll('.ptg__grid a[href*="/products/"]').forEach(function (a) {
+      a.addEventListener('click', function () {
+        var m = a.getAttribute('href').match(/\/products\/([a-z0-9-]+)/i);
+        saveScroll(m ? m[1] : null);
+      });
+    });
+    // Save on pagination too so returning from a Prev/Next hop feels stable.
+    document.querySelectorAll('.ptg__page-btn').forEach(function (a) {
+      a.addEventListener('click', function () { saveScroll(null); });
+    });
+
+    // pageshow fires on both first paint AND bfcache restore. Small delay
+    // lets the auto-default script at the top of this section + any dynamic
+    // grid mutation settle before we scroll.
+    window.addEventListener('pageshow', function (e) {
+      setTimeout(restoreScroll, e.persisted ? 0 : 60);
     });
   })();
 });

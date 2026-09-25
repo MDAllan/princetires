@@ -13,7 +13,7 @@
   assign api_base = settings.chat_api_base | default: 'https://app.princetires.ca'
 -%}
 
-<div id="pt-chat" class="pt-chat" data-api="{{ api_base }}/api/chat" data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}"{% if page_product %} data-pt-product-handle="{{ page_product.handle }}" data-pt-product-title="{{ page_product.title | escape }}" data-pt-product-vendor="{{ page_product.vendor | escape }}" data-pt-product-size="{{ page_product.metafields.custom.tire_size | escape }}" data-pt-product-price="{{ page_product.selected_or_first_available_variant.price | money_without_currency }}"{% endif %}>
+<div id="pt-chat" class="pt-chat" data-api="{{ api_base }}/api/chat" data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}" data-manifest-url="{{ 'pt-vehicle-manifest.json' | asset_url }}"{% if page_product %} data-pt-product-handle="{{ page_product.handle }}" data-pt-product-title="{{ page_product.title | escape }}" data-pt-product-vendor="{{ page_product.vendor | escape }}" data-pt-product-size="{{ page_product.metafields.custom.tire_size | escape }}" data-pt-product-price="{{ page_product.selected_or_first_available_variant.price | money_without_currency }}"{% endif %}>
   <button class="pt-chat__launcher" type="button" aria-label="Chat with Prince Tires" data-pt-chat-open>
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
   </button>
@@ -41,6 +41,8 @@
     </form>
   </div>
 </div>
+{% render 'pt-vehicle-manifest-loader' %}
+{% render 'pt-search-tracking' %}
 
 {% stylesheet %}
 .pt-chat { display: block; }
@@ -198,6 +200,7 @@
 
   // Per-year vehicle dataset base (same data the homepage trim picker uses).
   var assetBase = root.getAttribute('data-asset-base') || '';
+  var manifestUrl = root.getAttribute('data-manifest-url') || '';
   var vehicleCache = {};
   var bookingFormEl = null;
 
@@ -263,7 +266,7 @@
     if (!opts) return;
     if (opts.year && opts.make && opts.model && assetBase) {
       loadTrims(opts, function (items) {
-        if (items && items.length) renderPickerButtons(items);
+        if (items && items.length) { renderPickerButtons(items); ptSearch(opts, 'sizes', items, 'trims'); }
         else renderPickerFromOpts(opts);
       });
       return;
@@ -273,12 +276,45 @@
 
   function renderPickerFromOpts(opts) {
     var items = [];
+    var kind = 'sizes';
     if (opts.trims && opts.trims.length) {
-      for (var t = 0; t < opts.trims.length; t++) items.push({ label: opts.trims[t].trim + ' - ' + opts.trims[t].size, send: opts.trims[t].size });
+      kind = 'trims';
+      for (var t = 0; t < opts.trims.length; t++) items.push({ label: opts.trims[t].trim + ' - ' + opts.trims[t].size, send: opts.trims[t].size, size: opts.trims[t].size });
     } else if (opts.sizes && opts.sizes.length) {
-      for (var s = 0; s < opts.sizes.length; s++) items.push({ label: opts.sizes[s], send: opts.sizes[s] });
+      for (var s = 0; s < opts.sizes.length; s++) items.push({ label: opts.sizes[s], send: opts.sizes[s], size: opts.sizes[s] });
     }
     if (items.length) renderPickerButtons(items);
+    ptSearch(opts, items.length ? 'sizes' : 'no_sizes', items, kind);
+  }
+
+  // Cross-surface search analytics — the agent resolved a vehicle to size
+  // choices (or couldn't). One pt_search_submit + one pt_search_result per
+  // resolution. Schema: snippets/pt-search-tracking.liquid. Chat text is never
+  // sent. Never throws.
+  function ptSearch(opts, outcome, items, kind) {
+    if (!window.PTTrack || !opts) return;
+    items = items || [];
+    var first = (opts.sizes && opts.sizes[0]) || (opts.trims && opts.trims[0] && opts.trims[0].size) || null;
+    // sizes_count counts distinct SIZES; when the picker is a trim list, the
+    // number of buttons is trims_count. Six trims sharing one OEM size is one
+    // size, not six.
+    var seen = {}, sizeCount = 0;
+    items.forEach(function (it) {
+      var sz = it && it.size;
+      if (!sz || seen[sz]) return;
+      seen[sz] = true; sizeCount++;
+    });
+    var key = [opts.year, opts.make, opts.model, outcome].join('|');
+    window.PTTrack.once('ch-s|' + key, 'pt_search_submit', {
+      surface: 'chat', method: 'text',
+      year: opts.year, make: opts.make, model: opts.model
+    });
+    window.PTTrack.once('ch-r|' + key, 'pt_search_result', {
+      surface: 'chat', method: 'text', outcome: outcome,
+      sizes_count: sizeCount, trims_count: kind === 'trims' ? items.length : null,
+      year: opts.year, make: opts.make, model: opts.model,
+      size: outcome === 'sizes' ? first : null
+    });
   }
 
   function renderPickerButtons(items) {
@@ -312,12 +348,22 @@
       Object.keys(trims).forEach(function (trim) {
         var sizes = trims[trim];
         var size = (sizes && sizes.length) ? sizes[0] : '';
-        if (size) items.push({ label: trim, send: 'My trim is ' + trim + ' (' + size + ')' });
+        // `size` rides along for analytics only — renderPickerButtons reads
+        // label/send. It lets sizes_count count sizes instead of buttons.
+        if (size) items.push({ label: trim, send: 'My trim is ' + trim + ' (' + size + ')', size: size });
       });
       cb(items);
     }
     if (vehicleCache[year]) return build(vehicleCache[year]);
-    fetch(assetBase + 'pt-vehicle-' + year + '.json')
+    // Cache-bust with the manifest's per-year version when pt-vehicle-manifest.json
+    // loads (waits at most 1.5s); on a 404 the fetch stays unversioned as before.
+    var PTVM = window.PTVehicleManifest;
+    (PTVM ? PTVM.ready(manifestUrl, 1500) : Promise.resolve(null))
+      .then(function (manifest) {
+        return fetch(PTVM
+          ? PTVM.yearUrl(assetBase, year, manifest, '')
+          : assetBase + 'pt-vehicle-' + year + '.json');
+      })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) { vehicleCache[year] = data; build(data); })
       .catch(function () { cb(null); });
