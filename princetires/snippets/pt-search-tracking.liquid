@@ -1,0 +1,243 @@
+{% doc %}
+  Defines window.PTTrack, the shared search-analytics helper every tire/wheel
+  search surface uses to push a consistent event set onto GTM's dataLayer.
+
+  GTM is the only analytics transport on this store (see snippets/pt-analytics)
+  — there is no gtag / PostHog call anywhere — so this pushes plain objects onto
+  window.dataLayer and does nothing else. No network request of its own.
+
+  Outputs a plain inline script tag (not a javascript tag block) so the global
+  exists before the surface scripts run. Safe to render more than once: only the
+  first copy defines the global.
+
+  API:
+    PTTrack.push(event, params)       → dataLayer.push({event, ...params}), never throws
+    PTTrack.once(key, event, params)  → same, but drops a repeat of the same key
+                                        within 1.5s. This is a re-entrancy guard
+                                        for a double-bound handler or a re-render,
+                                        NOT the de-duplication mechanism — see
+                                        "WHAT COUNTS AS A SEARCH" below.
+    PTTrack.go(url)                   → navigate, but give the (lazy-loaded) GTM
+                                        container a bounded chance to drain the
+                                        queue first, so an event pushed on the
+                                        way out is not thrown away with the page.
+
+  Params are normalised on the way out so every surface reports the same shapes:
+  make/model/trim lowercased + trimmed, size upper-cased without spaces, year and
+  the *_count / *_len / status fields numeric, and empty values dropped.
+
+  ───────────────────────────────────────────────────────────────────────────
+  WHAT COUNTS AS A SEARCH
+
+  Exactly one pt_search_submit + one pt_search_result per search, emitted when
+  the search FINISHES. A search finishes when either:
+
+    • the customer commits — presses Enter or the search arrow, clicks a
+      rendered result row, or clicks a "Shop tires" / submit button; or
+    • it dead-ends — we found nothing, or we know the vehicle but cannot size
+      it, so there is nothing for the customer to commit to.
+
+  Steps on the way to a commit emit NOTHING: keystrokes, the 300 ms live-suggest
+  render, and walking a year → make → model → trim cascade are not searches.
+  This is what makes surface volumes comparable — otherwise a dropdown surface
+  would score one "search" per click while a free-text surface scored one per
+  committed query.
+
+  Two consequences worth knowing when reading the data:
+    • A dead end reached while the customer is still typing is held briefly and
+      cancelled if they keep typing, so an abandoned prefix ("2024 hond") or a
+      corrected typo is not counted as its own failed search.
+    • Re-playing a saved search from the URL (the ?ts_* deep link that
+      pt-tire-search rebuilds on load, and every reload / back-navigation of
+      such a page) emits nothing at all — the customer did not search.
+      The hero's ?ss= hand-off DOES emit, with method 'deep_link', because a
+      customer really did search on the previous page.
+  ───────────────────────────────────────────────────────────────────────────
+
+  EVENT SCHEMA (snake_case, stable; vehicle + size only, never a customer
+  identifier, and never the raw free-text query):
+
+    pt_search_submit  { surface, method, year?, make?, model?, trim?, size?, query_len? }
+      A customer committed a search, or ran into a dead end.
+
+    pt_search_result  { surface, method, outcome, sizes_count, trims_count?,
+                        status?, year?, make?, model?, size? }
+      What that search produced. Always paired 1:1 with a pt_search_submit.
+      outcome: 'sizes'      → we resolved usable tire size(s); sizes_count > 0
+               'browse'     → no size, but the query did resolve to a filtered
+                              collection (a brand and/or a season). Neither a
+                              sized success nor a dead end. A parser outage
+                              shows up here as a spike, because a query with a
+                              brand in it falls back to a brand filter.
+               'no_sizes'   → we know the vehicle but cannot size it (no OEM data
+                              for the trim, trim still missing, size unparseable)
+               'not_found'  → we could not resolve the input to a vehicle or a
+                              size (parser miss, vehicle absent from the data,
+                              VIN unrecognised)
+               'data_error' → OUR fault, not the customer's: the per-year vehicle
+                              file could not be loaded (404 / network / bad JSON).
+                              assets/pt-vehicle-*.json is .shopifyignore'd and is
+                              published only to the MAIN theme by the fitment
+                              pipeline, so every year pick on a dev or freshly
+                              published theme lands here. Keep this OUT of any
+                              customer-failure rate.
+
+      sizes_count  distinct OEM tire sizes the search resolved (1 for a tire-size
+                   search, 0 on every outcome other than 'sizes').
+      trims_count  how many trims were offered, when we showed a trim list. Six
+                   trims that share one OEM size are trims_count 6, sizes_count 1.
+      status       HTTP status, on 'data_error' where we have one (0 = no response).
+
+      NOTE: outcome 'sizes' means "we resolved a size the customer can shop",
+      NOT "the collection behind that size has stock". A perfectly parseable
+      size with nothing in inventory is still 'sizes' here. Measure the
+      empty-collection rate on the collection page, not from this event.
+
+    pt_missing_vehicle { surface, trigger, year?, make?, model? }
+      The "tell us your vehicle" capture ran.
+      trigger: 'auto'     → the surface POSTed the lead on the customer's behalf
+                            after a failed search; they did nothing. Fires at
+                            roughly the rate of unrecognised queries.
+               'customer' → the customer filled the form and pressed send.
+      Never sum the two triggers into one number: they are different acts.
+
+    surface: hero | tire_search | collection_strip | collection_grid | garage | chat
+    method:  text | dropdown | vin | saved_vehicle | deep_link
+
+  Reading the events: a search is "by vehicle" when year/make/model are present,
+  "by tire size" when only size is. query_len stands in for the free-text query
+  (privacy + noise); the query itself is never sent.
+
+  PRIVACY / CONSENT
+  The payloads carry no direct identifier and never the raw query, the raw VIN,
+  or the free-text vehicle the customer typed into the capture form (those
+  appear only as in-closure de-dupe keys, never in a pushed object). But
+  surface 'garage' is served ONLY to a signed-in customer (sections/my-garage
+  renders inside a customer guard), so a year/make/model tuple from there is a
+  quasi-identifier attached to a session the store has already identified. For
+  that reason the garage deliberately omits `trim` and `size` from its payloads
+  — surface + outcome + sizes_count is enough to answer "does the garage dead-
+  end people". PTTrack performs no consent check of its own: it assumes GTM
+  Consent Mode is configured correctly in the container, which lives outside
+  this theme. If a consent tool is ever added, gate these pushes on Shopify's
+  Customer Privacy API before trusting the container's defaults.
+
+  Note: this layer is additive. The older, surface-specific `pt_search` (via
+  PTTireParse.track) and `tire_search_*` (via pt.track) events still fire and are
+  unchanged; only these three events are comparable across all surfaces.
+
+  @example
+  {% render 'pt-search-tracking' %}
+{% enddoc %}
+<script>
+  (function () {
+    if (window.PTTrack) return;
+
+    var LOWER = ['make', 'model', 'trim'];
+    var NUM = ['year', 'sizes_count', 'trims_count', 'query_len', 'status'];
+    var seen = {};
+
+    function clean(params) {
+      var out = {};
+      if (!params) return out;
+      for (var k in params) {
+        if (!Object.prototype.hasOwnProperty.call(params, k)) continue;
+        var v = params[k];
+        if (v === null || v === undefined || v === '') continue;
+        if (LOWER.indexOf(k) !== -1) v = String(v).trim().toLowerCase();
+        else if (k === 'size') v = String(v).trim().toUpperCase().replace(/\s+/g, '');
+        else if (NUM.indexOf(k) !== -1) { v = parseInt(v, 10); if (isNaN(v)) continue; }
+        if (v === '') continue;
+        out[k] = v;
+      }
+      return out;
+    }
+
+    function push(event, params) {
+      try {
+        if (!event) return;
+        var payload = clean(params);
+        payload.event = event;
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push(payload);
+      } catch (e) { /* analytics must never break a search */ }
+    }
+
+    // Re-entrancy guard only: drops a repeat of the same logical action (a
+    // re-render, a double-bound handler) fired within 1.5s of the first. The
+    // surfaces are responsible for emitting once per search in the first place.
+    function once(key, event, params) {
+      try {
+        var id = event + '|' + key;
+        var now = +new Date();
+        if (seen[id] && now - seen[id] < 1500) return;
+        seen[id] = now;
+      } catch (e) { /* fall through and push */ }
+      push(event, params);
+    }
+
+    /* ── Navigating away without losing the event ──────────────────────────
+       gtm.js is ~1.7MB, so snippets/pt-analytics deliberately defers it: the
+       container only starts downloading on the first pointerdown / keydown /
+       touchstart / scroll (or a 3.5s idle fallback), and until it has run,
+       window.dataLayer is nothing but an array in this page's memory. A
+       surface that pushes and then sets window.location in the same tick
+       throws that array away with the document — and the loss is biased,
+       because the searches that succeed are exactly the ones that navigate,
+       while the ones that dead-end sit on the page long enough to be recorded.
+
+       go() hands the container a bounded chance to take over first. It costs
+       nothing in the common case (the customer already typed or tapped, so the
+       container is running) and is skipped entirely when no container is
+       configured, so a customer is never held on the page waiting for GTM. */
+    var GO_MAX_WAIT = 400; // ms — hard cap on the wait before we navigate anyway
+    var GO_POLL = 25;      // ms
+    var kicked = false;
+
+    // gtm.js defines this once it has executed and taken over dataLayer.
+    function containerRunning() {
+      try { return !!window.google_tag_manager; } catch (e) { return false; }
+    }
+    // pt-analytics pushes {'gtm.start': …, event: 'gtm.js'} at the top of the
+    // page when — and only when — a container ID is configured.
+    function containerExpected() {
+      try {
+        var dl = window.dataLayer;
+        if (!dl || typeof dl.length !== 'number') return false;
+        for (var i = 0; i < dl.length; i++) if (dl[i] && dl[i].event === 'gtm.js') return true;
+      } catch (e) { /* hostile dataLayer — assume no container */ }
+      return false;
+    }
+    function kickContainer() {
+      if (kicked) return;
+      kicked = true;
+      try {
+        // pt-analytics starts gtm.js on the first of its four listeners. A
+        // non-bubbling 'scroll' dispatched at the document reaches that one
+        // and nothing on window.
+        document.dispatchEvent(new Event('scroll'));
+      } catch (e) { /* synthetic events unsupported — the cap covers us */ }
+    }
+
+    function go(url) {
+      var navigated = false;
+      function nav() {
+        if (navigated) return;
+        navigated = true;
+        try { window.location.href = url; } catch (e) { /* nothing left to do */ }
+      }
+      if (!url) return;
+      try {
+        if (containerRunning() || !containerExpected()) { nav(); return; }
+        kickContainer();
+        var waited = 0;
+        var timer = setInterval(function () {
+          waited += GO_POLL;
+          if (containerRunning() || waited >= GO_MAX_WAIT) { clearInterval(timer); nav(); }
+        }, GO_POLL);
+      } catch (e) { nav(); }
+    }
+
+    window.PTTrack = { push: push, once: once, go: go };
+  })();
+</script>

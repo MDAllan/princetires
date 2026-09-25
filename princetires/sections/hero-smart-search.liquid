@@ -146,9 +146,9 @@
           {%- endcomment -%}
           <div class="hero-smart-search__hint" data-smart-search-hint>
             <p class="hero-smart-search__hint-text">
-              Don't know your tire size?
-              <span class="hero-smart-search__hint-text-mobile">Try your vehicle:</span>
-              <span class="hero-smart-search__hint-text-desktop">Just type your vehicle — try one of these ↓</span>
+              Quick search:
+              <span class="hero-smart-search__hint-text-mobile">tire size or vehicle</span>
+              <span class="hero-smart-search__hint-text-desktop">type your tire size or vehicle — ex: 2020 Honda</span>
             </p>
             <div class="hero-smart-search__chips" role="list">
               <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2022 Toyota RAV4" role="listitem">2022 Toyota RAV4</button>
@@ -183,6 +183,9 @@
               </select>
               <select class="hero-smart-search__select" data-vp-model aria-label="Vehicle model" disabled>
                 <option value="">Model</option>
+              </select>
+              <select class="hero-smart-search__select" data-vp-trim aria-label="Vehicle submodel or trim" disabled>
+                <option value="">Submodel</option>
               </select>
             </div>
           </div>
@@ -708,6 +711,7 @@
   .hero-smart-search__hint {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 1.2rem;
     margin-top: 1rem;
     padding: 0 0.2rem;
@@ -732,6 +736,12 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
     flex: 1;
+    /* Without this a flex item's min size is its MIN-CONTENT, so the chip row
+       refuses to shrink and stretches the hint's flex line past the container
+       (480px inside a 366px parent on a 390px phone). That also dragged the
+       full-width picker out with it. min-width:0 lets the row shrink and
+       scroll horizontally as intended. */
+    min-width: 0;
     padding-bottom: 0.2rem;
   }
   .hero-smart-search__chips::-webkit-scrollbar { display: none; }
@@ -750,39 +760,72 @@
     transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
     white-space: nowrap;
   }
+  /* Own full-width line under the text + chips row. Without flex-basis:100%
+     this lands as a third item on the hint row and squeezes the chips out. */
   .hero-smart-search__picker {
-    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.9rem;
+    flex: 0 0 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.1rem;
+    min-width: 0;
   }
   .hero-smart-search__picker-label {
     font-family: 'Outfit', sans-serif; font-size: 1rem;
-    color: rgba(255, 255, 255, 0.62); white-space: nowrap;
+    color: rgba(255, 255, 255, 0.78); white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   }
   .hero-smart-search__select {
-    flex: 0 1 auto; min-width: 0;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    /* Equal shares of the leftover width so they never ladder. */
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 13rem;
+    text-overflow: ellipsis;
+    background: rgba(10, 10, 12, 0.62);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.26);
     border-radius: 999px;
     padding: 0.5rem 2.1rem 0.5rem 1.1rem;
     font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 500;
-    color: rgba(255, 255, 255, 0.92); cursor: pointer;
+    color: rgba(255, 255, 255, 0.95); cursor: pointer;
     transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
     -webkit-appearance: none; appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.7)' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 0.9rem center;
   }
   .hero-smart-search__select:hover:not(:disabled) {
-    background-color: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.3);
+    background-color: rgba(28, 28, 32, 0.78); border-color: rgba(255, 255, 255, 0.45);
   }
   .hero-smart-search__select:focus-visible { outline: 2px solid rgba(255,255,255,0.55); outline-offset: 2px; }
-  .hero-smart-search__select:disabled { opacity: 0.45; cursor: default; }
+  .hero-smart-search__select:disabled { opacity: 0.62; cursor: default; }
   /* Native option lists render in the OS palette — force dark-on-light so they
      stay readable against the hero image. */
   .hero-smart-search__select option { color: #1a1a1a; background: #fff; }
-  @media (max-width: 749px) {
-    .hero-smart-search__picker { gap: 0.4rem; margin-top: 0.75rem; }
+  /* 768px, matching the hint's own breakpoint above — at 749px there was a
+     750-768px dead zone where the hint was already a COLUMN but these rules
+     had not kicked in yet. */
+  @media (max-width: 768px) {
+    /* The hint switches to flex-direction: column here, so the main axis is
+       vertical and `flex-basis: 100%` would size HEIGHT, not width. Size the
+       width explicitly instead. */
+    .hero-smart-search__picker {
+      flex: 0 0 auto;
+      width: 100%;
+      max-width: 100%;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.2rem;
+    }
     .hero-smart-search__picker-label { display: none; }
+    /* Four across is unreadable on a phone — wrap to a 2x2 grid. */
     .hero-smart-search__select {
-      flex: 1 1 0; font-size: 0.95rem; padding: 0.45rem 1.8rem 0.45rem 0.85rem; text-overflow: ellipsis;
+      flex: 1 1 calc(50% - 0.2rem);
+      min-width: 0;
+      max-width: 100%;
+      font-size: 0.95rem;
+      padding: 0.45rem 1.7rem 0.45rem 0.8rem;
+      background-position: right 0.7rem center;
     }
   }
 
@@ -799,11 +842,19 @@
     outline-offset: 2px;
   }
 
-  /* Hide the entire hint when the search dropdown is open so the chips don't
-     visually fight with the suggestions list. The wrapper sets [data-results-open]
-     in JS (added below alongside the chip click handler). */
-  [data-smart-search][data-results-open] .hero-smart-search__hint {
+  /* Hide the prompt + example chips when the suggestions list opens so they
+     don't visually fight with it. The wrapper sets [data-results-open] in JS
+     (added below alongside the chip click handler).
+
+     The PICKER deliberately stays visible: choosing a Model fires a search,
+     which opens the panel — if the picker hid with the rest of the row the
+     Submodel select would disappear the moment it became relevant. */
+  [data-smart-search][data-results-open] .hero-smart-search__hint-text,
+  [data-smart-search][data-results-open] .hero-smart-search__chips {
     display: none;
+  }
+  [data-smart-search][data-results-open] .hero-smart-search__hint {
+    margin-top: 0.6rem;
   }
 
   /* Mobile-tight: swap the desktop wording for a shorter mobile phrase,
@@ -4849,7 +4900,8 @@ document.addEventListener('DOMContentLoaded', function() {
       var yearSel = picker.querySelector('[data-vp-year]');
       var makeSel = picker.querySelector('[data-vp-make]');
       var modelSel = picker.querySelector('[data-vp-model]');
-      if (!input || !yearSel || !makeSel || !modelSel) return;
+      var trimSel = picker.querySelector('[data-vp-trim]');
+      if (!input || !yearSel || !makeSel || !modelSel || !trimSel) return;
 
       // Widen the year list to the published years once the manifest lands.
       // Reuses the loader's own helpers so this cannot drift from the search.
@@ -4864,6 +4916,7 @@ document.addEventListener('DOMContentLoaded', function() {
       yearSel.addEventListener('change', function () {
         reset(makeSel, 'Make');
         reset(modelSel, 'Model');
+        reset(trimSel, 'Submodel');
         if (!yearSel.value) return;
         var chosen = yearSel.value;
         loadYear(chosen).then(function (data) {
@@ -4874,6 +4927,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       makeSel.addEventListener('change', function () {
         reset(modelSel, 'Model');
+        reset(trimSel, 'Submodel');
         if (!makeSel.value || !yearSel.value) return;
         var chosenYear = yearSel.value, chosenMake = makeSel.value;
         loadYear(chosenYear).then(function (data) {
@@ -4887,17 +4941,50 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       });
 
-      modelSel.addEventListener('change', function () {
-        if (!modelSel.value || !makeSel.value || !yearSel.value) return;
-        var value = yearSel.value + ' ' + makeSel.value + ' ' + modelSel.value;
+      // Writes a value into the shared search input exactly the way a chip
+      // does, so the existing engine does the rest.
+      function push(value, action) {
         input.value = value;
         input.focus();
         try { input.setSelectionRange(value.length, value.length); } catch (e) {}
         input.dispatchEvent(new Event('input', { bubbles: true }));
-
         if (window.PTTireParse && typeof window.PTTireParse.track === 'function') {
-          window.PTTireParse.track({ surface: 'homepage', action: 'vehicle_picker_select', query: value });
+          window.PTTireParse.track({ surface: 'homepage', action: action, query: value });
         }
+      }
+
+      modelSel.addEventListener('change', function () {
+        reset(trimSel, 'Submodel');
+        if (!modelSel.value || !makeSel.value || !yearSel.value) return;
+        var chosenYear = yearSel.value, chosenMake = makeSel.value, chosenModel = modelSel.value;
+
+        // Searching on the model alone is already useful, so fire it now and
+        // treat the submodel as optional refinement rather than a gate.
+        push(chosenYear + ' ' + chosenMake + ' ' + chosenModel, 'vehicle_picker_select');
+
+        loadYear(chosenYear).then(function (data) {
+          if (!data || !data.models) return;
+          if (yearSel.value !== chosenYear || makeSel.value !== chosenMake || modelSel.value !== chosenModel) return;
+          var byModel = (data.models[chosenMake] || {})[chosenModel];
+          if (!byModel) return;
+          var trims = Object.keys(byModel);
+          // One trim means one fitment — nothing to disambiguate, so leave the
+          // select out of the way rather than offering a choice of one.
+          if (trims.length > 1) fill(trimSel, trims.sort(), 'Submodel');
+        });
+      });
+
+      trimSel.addEventListener('change', function () {
+        if (!trimSel.value) return;
+        var y = yearSel.value, mk = makeSel.value, md = modelSel.value, tr = trimSel.value;
+        loadYear(y).then(function (data) {
+          var sizes = (((data || {}).models || {})[mk] || {})[md];
+          sizes = sizes && sizes[tr];
+          // A trim usually pins exactly one fitment. Searching the size itself
+          // is unambiguous, so prefer it over re-searching the vehicle text.
+          if (sizes && sizes.length === 1) push(sizes[0], 'vehicle_picker_trim');
+          else push(y + ' ' + mk + ' ' + md + ' ' + tr, 'vehicle_picker_trim');
+        });
       });
     });
   })();
