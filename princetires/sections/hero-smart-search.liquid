@@ -134,29 +134,11 @@
           </div>
 
           {%- comment -%}
-            Discoverability hint + clickable example chips. Solves the
-            most common UX gap: customers don't realize the search bar
-            accepts a vehicle ("2022 Toyota RAV4") in addition to a tire
-            size ("225/65R17"). Clicking a chip auto-fills the input and
-            dispatches an `input` event so the existing search handler
-            picks up the value and runs the query.
-
-            Mobile: horizontal-scrolls the chip row, hides the helper
-            text caret arrow, shrinks padding.
+            The "Don't know your tire size?" hint + example chips that used to
+            sit here were removed (2026-09-25): the typewriter placeholder in
+            the input already says "tire size or year make model" and cycles
+            vehicle examples, so the row below the box only repeated it.
           {%- endcomment -%}
-          <div class="hero-smart-search__hint" data-smart-search-hint>
-            <p class="hero-smart-search__hint-text">
-              Don't know your tire size?
-              <span class="hero-smart-search__hint-text-mobile">Try your vehicle:</span>
-              <span class="hero-smart-search__hint-text-desktop">Just type your vehicle — try one of these ↓</span>
-            </p>
-            <div class="hero-smart-search__chips" role="list">
-              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2022 Toyota RAV4" role="listitem">2022 Toyota RAV4</button>
-              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2024 Ford F-150" role="listitem">2024 Ford F-150</button>
-              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2020 Honda Civic" role="listitem">2020 Honda Civic</button>
-              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="225/65R17" role="listitem">225/65R17</button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -673,102 +655,6 @@
 
   .hero-smart-search__submit:hover {
     opacity: 0.85;
-  }
-
-  /* ── Hint + clickable example chips below the search ── */
-  .hero-smart-search__hint {
-    display: flex;
-    align-items: center;
-    gap: 1.2rem;
-    margin-top: 1rem;
-    padding: 0 0.2rem;
-  }
-  .hero-smart-search__hint-text {
-    margin: 0;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 400;
-    color: rgba(255, 255, 255, 0.78);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .hero-smart-search__hint-text-mobile { display: none; }
-  .hero-smart-search__hint-text-desktop { color: rgba(255, 255, 255, 0.6); margin-left: 0.3rem; }
-
-  .hero-smart-search__chips {
-    display: flex;
-    gap: 0.5rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    flex: 1;
-    padding-bottom: 0.2rem;
-  }
-  .hero-smart-search__chips::-webkit-scrollbar { display: none; }
-
-  .hero-smart-search__chip {
-    flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 999px;
-    padding: 0.5rem 1.1rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.92);
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
-    white-space: nowrap;
-  }
-  .hero-smart-search__chip:hover {
-    background: rgba(220, 38, 38, 0.18);
-    border-color: rgba(220, 38, 38, 0.6);
-    color: #fff;
-  }
-  .hero-smart-search__chip:active {
-    transform: scale(0.96);
-  }
-  .hero-smart-search__chip:focus-visible {
-    outline: 2px solid #dc2626;
-    outline-offset: 2px;
-  }
-
-  /* Hide the entire hint when the search dropdown is open so the chips don't
-     visually fight with the suggestions list. The wrapper sets [data-results-open]
-     in JS (added below alongside the chip click handler). */
-  [data-smart-search][data-results-open] .hero-smart-search__hint {
-    display: none;
-  }
-
-  /* Mobile-tight: swap the desktop wording for a shorter mobile phrase,
-     reduce chip padding, allow horizontal scroll so chips don't wrap into
-     two rows. */
-  @media (max-width: 768px) {
-    .hero-smart-search__hint {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.4rem;
-      margin-top: 0.55rem;
-    }
-    .hero-smart-search__hint-text {
-      font-size: 0.88rem;
-      white-space: normal;
-      line-height: 1.25;
-    }
-    .hero-smart-search__hint-text-desktop { display: none; }
-    .hero-smart-search__hint-text-mobile {
-      display: inline;
-      color: rgba(255, 255, 255, 0.6);
-      margin-left: 0.25rem;
-    }
-    .hero-smart-search__chips {
-      gap: 0.35rem;
-    }
-    .hero-smart-search__chip {
-      font-size: 0.85rem;
-      padding: 0.4rem 0.85rem;
-    }
   }
 
   .hero-smart-search__results {
@@ -4519,7 +4405,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // narrow input (~254px usable space) by ~73px, so it gets visually truncated.
     function getIntroPhrase() {
       return (window.matchMedia && window.matchMedia('(max-width: 768px)').matches)
-        ? 'Tire size or vehicle — try a chip below'
+        ? 'Tire size or year, make & model'
         : 'Enter your tire size or your car year make and model';
     }
     var intro = getIntroPhrase();
@@ -4709,66 +4595,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     start();
-  })();
-
-  /* ───────────────────────────────────────────────────────────────
-     Chip click handler + dropdown-open visibility toggle for the
-     "Don't know your tire size?" discoverability hint.
-
-     Clicking a chip auto-fills the search input with the chip's value
-     and dispatches an `input` event so the existing smart-search
-     handler (which throttles + queries the API) picks it up exactly
-     as if the user had typed it. We also call .focus() and put the
-     caret at the end so the customer can immediately add to or modify
-     the prefilled text.
-
-     We also observe the results dropdown's `hidden` attribute and
-     mirror its state to `[data-results-open]` on the .data-smart-search
-     wrapper, so the hint can hide via CSS when the suggestions list
-     opens (otherwise the chips visually fight with the dropdown).
-     ─────────────────────────────────────────────────────────────── */
-  (function () {
-    document.querySelectorAll('[data-smart-search]').forEach(function (searchEl) {
-      var input  = searchEl.querySelector('[data-smart-search-input]');
-      var results = searchEl.querySelector('[data-smart-search-results]');
-      var chips  = searchEl.querySelectorAll('[data-smart-search-chip]');
-      if (!input || chips.length === 0) return;
-
-      chips.forEach(function (chip) {
-        chip.addEventListener('click', function () {
-          var value = chip.getAttribute('data-smart-search-chip') || '';
-          if (!value) return;
-
-          input.value = value;
-          input.focus();
-          // Move caret to end so the customer can type more after the prefill
-          try { input.setSelectionRange(value.length, value.length); } catch (e) {}
-          // Trigger the existing search handler (it listens for 'input')
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-
-          // Analytics ping — matches the existing PTTireParse pattern used elsewhere
-          if (window.PTTireParse && typeof window.PTTireParse.track === 'function') {
-            window.PTTireParse.track({
-              surface: 'homepage',
-              search_query: value,
-              search_type: 'example_chip',
-              search_outcome: 'click'
-            });
-          }
-        });
-      });
-
-      // Mirror the dropdown's open state to a data attr on the wrapper so the
-      // hint can hide via CSS. Uses MutationObserver on the `hidden` attribute.
-      if (results) {
-        var sync = function () {
-          if (results.hidden) searchEl.removeAttribute('data-results-open');
-          else searchEl.setAttribute('data-results-open', '');
-        };
-        sync();
-        new MutationObserver(sync).observe(results, { attributes: true, attributeFilter: ['hidden'] });
-      }
-    });
   })();
 });
 </script>
