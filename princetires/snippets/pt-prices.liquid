@@ -1,0 +1,61 @@
+{% doc %}
+  Single source of truth for Prince Tires service prices.
+
+  Prices were typed into the copy in a lot of places — the flat-repair price
+  alone appears in nine files — so changing one meant finding every copy and
+  missing some. This reads them from the `service_prices` metaobject (Shopify
+  admin > Content > Metaobjects > Service prices), the same pattern pt-nap uses
+  for hours, so a price changes in ONE place and every consumer follows.
+
+  Every field falls back to the value that was live when this snippet was
+  written, so a missing metaobject or a missing field never renders a blank
+  price on a customer-facing page.
+
+  @param {string} field - Which price to output. One of:
+      install_per_tire | flat_repair | balancing_per_wheel | balancing_set |
+      rotation | rotation_hd | changeover |
+      winter_from | winter_premium_from | winter_premium_to
+
+  @example
+  {% render 'pt-prices', field: 'flat_repair' %}            {# "$50" #}
+  {%- capture p %}{% render 'pt-prices', field: 'rotation' %}{% endcapture -%}
+{% enddoc %}
+
+{%- liquid
+  assign sp = metaobjects['service_prices']['current']
+
+  case field
+    when 'install_per_tire'     
+      assign fallback = '$25'
+    when 'flat_repair'          
+      assign fallback = '$50'
+    when 'balancing_per_wheel'  
+      assign fallback = '$20'
+    when 'balancing_set'        
+      assign fallback = '$80'
+    when 'rotation'             
+      assign fallback = '$60'
+    when 'rotation_hd'          
+      assign fallback = '$100'
+    when 'changeover'           
+      assign fallback = '$60'
+    when 'winter_from'          
+      assign fallback = '$130'
+    when 'winter_premium_from'  
+      assign fallback = '$240'
+    when 'winter_premium_to'    
+      assign fallback = '$380'
+    else
+      assign fallback = ''
+  endcase
+
+  assign value = ''
+  if sp != blank
+    assign value = sp[field].value | default: '' | strip
+  endif
+  if value == blank
+    assign value = fallback
+  endif
+
+  echo value
+-%}

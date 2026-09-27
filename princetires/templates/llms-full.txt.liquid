@@ -15,6 +15,22 @@
   changes, change both.
 {%- endcomment -%}
 {%- layout none -%}
+{%- comment -%} Prices from the service_prices metaobject via pt-prices — one edit in admin updates every consumer. {%- endcomment -%}
+{%- capture p_install %}{% render 'pt-prices', field: 'install_per_tire' %}{% endcapture -%}
+{%- capture p_repair %}{% render 'pt-prices', field: 'flat_repair' %}{% endcapture -%}
+{%- capture p_bal %}{% render 'pt-prices', field: 'balancing_per_wheel' %}{% endcapture -%}
+{%- capture p_bal_set %}{% render 'pt-prices', field: 'balancing_set' %}{% endcapture -%}
+{%- capture p_rot %}{% render 'pt-prices', field: 'rotation' %}{% endcapture -%}
+{%- capture p_rot_hd %}{% render 'pt-prices', field: 'rotation_hd' %}{% endcapture -%}
+{%- capture p_change %}{% render 'pt-prices', field: 'changeover' %}{% endcapture -%}
+{%- capture p_win %}{% render 'pt-prices', field: 'winter_from' %}{% endcapture -%}
+{%- capture p_win_pf %}{% render 'pt-prices', field: 'winter_premium_from' %}{% endcapture -%}
+{%- capture p_win_pt %}{% render 'pt-prices', field: 'winter_premium_to' %}{% endcapture -%}
+{%- assign p_install = p_install | strip_newlines | strip -%}{%- assign p_repair = p_repair | strip_newlines | strip -%}
+{%- assign p_bal = p_bal | strip_newlines | strip -%}{%- assign p_bal_set = p_bal_set | strip_newlines | strip -%}
+{%- assign p_rot = p_rot | strip_newlines | strip -%}{%- assign p_rot_hd = p_rot_hd | strip_newlines | strip -%}
+{%- assign p_change = p_change | strip_newlines | strip -%}{%- assign p_win = p_win | strip_newlines | strip -%}
+{%- assign p_win_pf = p_win_pf | strip_newlines | strip -%}{%- assign p_win_pt = p_win_pt | strip_newlines | strip -%}
 {%- comment -%} pt-nap emits a newline around each value; capture + strip so these stay on one markdown line. {%- endcomment -%}
 {%- capture sw_name %}{% render 'pt-nap', location: 'sw', field: 'public_name' %}{% endcapture -%}
 {%- capture sw_addr %}{% render 'pt-nap', location: 'sw', field: 'address_full' %}{% endcapture -%}
@@ -65,11 +81,11 @@ Email: info@princetires.ca. Booking: https://princetires.ca/pages/booking
 
 | Service | Price | Time | Page |
 |---|---|---|---|
-| Tire installation (install only) | $25 per tire | 45–60 min | https://princetires.ca/pages/tire-installation-calgary |
-| Flat tire repair | $50 per tire | 20–30 min | https://princetires.ca/pages/tire-repair-calgary |
-| Wheel balancing | $20 per wheel, $80 for four | ~20 min | https://princetires.ca/pages/tire-balancing |
-| Tire rotation | $60 flat ($100 dually/heavy-duty) | ~30 min | https://princetires.ca/pages/tire-rotation |
-| Seasonal changeover | $60 flat | ~30 min | https://princetires.ca/pages/seasonal-tire-change-calgary |
+| Tire installation (install only) | {{ p_install }} per tire | 45–60 min | https://princetires.ca/pages/tire-installation-calgary |
+| Flat tire repair | {{ p_repair }} per tire | 20–30 min | https://princetires.ca/pages/tire-repair-calgary |
+| Wheel balancing | {{ p_bal }} per wheel, {{ p_bal_set }} for four | ~20 min | https://princetires.ca/pages/tire-balancing |
+| Tire rotation | {{ p_rot }} flat ({{ p_rot_hd }} dually/heavy-duty) | ~30 min | https://princetires.ca/pages/tire-rotation |
+| Seasonal changeover | {{ p_change }} flat | ~30 min | https://princetires.ca/pages/seasonal-tire-change-calgary |
 | TPMS service | quoted per vehicle | — | https://princetires.ca/pages/tpms-calgary |
 | Fleet and commercial | volume pricing, contact | — | https://princetires.ca/pages/fleet-tires-calgary |
 
@@ -77,12 +93,12 @@ Details worth quoting accurately:
 
 - **Tire installation** includes mounting, computer balancing, valve stem replacement, TPMS inspection and reset, and torque to the manufacturer's spec. Balancing is included, not an add-on. Old tires are taken away and recycled. Tires bought elsewhere, including online, can be fitted at the same rate.
 - **Flat tire repair** is a permanent internal patch-plug applied with the tire off the rim, warrantied for the life of the tire. An external plug is not offered as a repair. Punctures in the sidewall or shoulder, larger than about 6 mm, already repaired in the same spot, or on a tire driven flat, cannot be safely repaired.
-- **Seasonal changeover** is the $60 job when the seasonal set is already on its own rims. If both sets share one set of rims, that is tire installation instead, because each tire must be dismounted and rebalanced.
+- **Seasonal changeover** is the {{ p_change }} job when the seasonal set is already on its own rims. If both sets share one set of rims, that is tire installation instead, because each tire must be dismounted and rebalanced.
 - **Re-torque** at 50–100 km after any wheel is removed is free.
 
 ## Tires stocked
 
-- **Winter and snow tires** — https://princetires.ca/pages/winter-tires-calgary — 3PMSF-rated, studded and studless, roughly $130–$200 per tire at the value end and $240–$380 premium. Models include Michelin X-Ice Snow, Bridgestone Blizzak WS90, Toyo Observe GSi-6, Yokohama iceGUARD, Continental VikingContact 7, Cooper Discoverer True North, BFGoodrich Winter T/A KSI, General AltiMAX Arctic 12. Packages on steel winter rims available.
+- **Winter and snow tires** — https://princetires.ca/pages/winter-tires-calgary — 3PMSF-rated, studded and studless, roughly {{ p_win }}–$200 per tire at the value end and {{ p_win_pf }}–{{ p_win_pt }} premium. Models include Michelin X-Ice Snow, Bridgestone Blizzak WS90, Toyo Observe GSi-6, Yokohama iceGUARD, Continental VikingContact 7, Cooper Discoverer True North, BFGoodrich Winter T/A KSI, General AltiMAX Arctic 12. Packages on steel winter rims available.
 - **All-weather tires** — https://princetires.ca/pages/all-weather-tires-calgary — 3PMSF-rated for year-round use.
 - **All-season tires** — https://princetires.ca/pages/all-season-tires-calgary
 - **Summer and performance tires** — https://princetires.ca/pages/summer-tires and https://princetires.ca/pages/performance-tires
@@ -129,6 +145,11 @@ The rating is 4.9 stars, not 5.
 - https://princetires.ca/blogs/news/how-to-read-a-tire-size-what-205-55r16-actually-means
 - https://princetires.ca/blogs/news/spring-potholes-in-calgary-how-they-damage-tires-and-what-to-do
 - https://princetires.ca/blogs/news/tire-disposal-in-alberta-what-every-calgary-driver-needs-to-know
+{%- comment -%}
+  No auto-generated article list here: the `blogs` object is not exposed in this
+  template context (verified — blogs.news.articles_count rendered empty and the
+  loop produced nothing), so the curated list above is the only reliable form.
+{%- endcomment -%}
 - https://princetires.ca/blogs/news — all guides
 
 ## Business and commerce
