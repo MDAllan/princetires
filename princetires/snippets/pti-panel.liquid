@@ -21,9 +21,24 @@
 >
   <div class="pti__marquee">
     <div class="pti__track">
+      {%- comment -%}
+        Show only what a customer can actually buy and see. The section is
+        headed "In stock now", but this loop used to take the collection's
+        first N products in sort order regardless — so sold-out items rendered
+        greyed out, and supplier-synced products with no image rendered as a
+        placeholder wheel outline. On the wheel collections that is 35-37%
+        out of stock and 19-66% imageless, which filled the strip with
+        neither-buyable-nor-lookable cards.
+
+        `where` on `available` and on `featured_image` (single-argument form =
+        truthy test) filters before the limit is applied, so the strip fills
+        with N real products instead of N slots partly wasted.
+      {%- endcomment -%}
+      {%- assign sellable = source.products | where: 'available', true | where: 'featured_image' -%}
+
       {%- comment -%} Render the products twice for a seamless infinite loop {%- endcomment -%}
       {%- for loop_pass in (1..2) -%}
-        {%- for product in source.products limit: limit -%}
+        {%- for product in sellable limit: limit -%}
           {%- liquid
             assign tire_size = product.metafields.custom.tire_size | default: ''
             assign clean_title = product.title
