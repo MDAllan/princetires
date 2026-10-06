@@ -868,6 +868,100 @@
   var AVAILABILITY_API = 'https://app.princetires.ca/api/availability';
   var SERVICES_API = 'https://app.princetires.ca/api/services';
 
+  // ── Draft autosave ──────────────────────────────────────────────────────
+  // Persist the in-progress booking to sessionStorage on every step change +
+  // debounced text edits. Cleared on successful booking. TTL 24h so a stale
+  // draft from a previous session doesn't hijack a fresh visit. Tab-scoped
+  // (sessionStorage) so opening a second tab doesn't inherit a half-finished
+  // booking from another tab. Best-practice pattern per Reform's multi-step
+  // form guide: single JSON checkpoint on step change, restore last step.
+  var BP_DRAFT_KEY = 'pt-booking-draft-v1';
+  var BP_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+
+  function bpReadContactFields() {
+    function v(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+    return { name: v('bp-name'), phone: v('bp-phone'), email: v('bp-email'),
+             vehInfo: v('bp-vehicle-info'), notes: v('bp-notes') };
+  }
+  function bpWriteContactFields(c) {
+    if (!c) return;
+    [['bp-name',c.name],['bp-phone',c.phone],['bp-email',c.email],
+     ['bp-vehicle-info',c.vehInfo],['bp-notes',c.notes]].forEach(function(p) {
+      var el = document.getElementById(p[0]);
+      // Only fill blank fields — never clobber whatever the customer just typed
+      // (this matters when logged-in prefill or garage-vehicle prefill has
+      // already filled a value before restore runs).
+      if (el && !el.value && p[1]) el.value = p[1];
+    });
+  }
+  function bpCurrentStep() {
+    for (var s = 1; s <= 4; s++) {
+      var el = document.getElementById('bp-page-' + s);
+      if (el && !el.hidden) return s;
+    }
+    return 1;
+  }
+  function bpSaveDraft() {
+    try {
+      // Skip empty-state saves — a fresh page 1 load with no pathway / no
+      // contact input has nothing worth restoring, and writing an empty
+      // draft would clobber a legitimate draft that happens to be in
+      // sessionStorage (e.g. during a fast back→reload sequence, the
+      // beforeunload of the empty state would wipe the good state).
+      var c = bpReadContactFields();
+      var hasState   = !!(st.pathway || st.service || st.date || st.time);
+      var hasContact = !!(c.name || c.phone || c.email || c.vehInfo || c.notes);
+      if (!hasState && !hasContact) return;
+      var p = {
+        v: 1,
+        savedAt: Date.now(),
+        step: bpCurrentStep(),
+        state: {
+          pathway: st.pathway, service: st.service, vehicle: st.vehicle,
+          qty: st.qty, addons: st.addons,
+          date: st.date ? st.date.toISOString() : null,
+          time: st.time, locationId: st.locationId
+        },
+        contact: c
+      };
+      sessionStorage.setItem(BP_DRAFT_KEY, JSON.stringify(p));
+    } catch (e) { /* private mode / quota — silently skip */ }
+  }
+  function bpClearDraft() {
+    try { sessionStorage.removeItem(BP_DRAFT_KEY); } catch (e) {}
+  }
+  function bpRestoreDraft() {
+    var raw;
+    try { raw = sessionStorage.getItem(BP_DRAFT_KEY); } catch (e) { return null; }
+    if (!raw) return null;
+    try {
+      var p = JSON.parse(raw);
+      if (!p || p.v !== 1) return null;
+      if (Date.now() - (p.savedAt || 0) > BP_DRAFT_TTL_MS) { bpClearDraft(); return null; }
+      return p;
+    } catch (e) { return null; }
+  }
+  function bpApplyDraft(draft) {
+    if (!draft || !draft.state) return 1;
+    var s = draft.state;
+    if (s.pathway) st.pathway = s.pathway;
+    if (s.service) st.service = s.service;
+    if (s.vehicle) st.vehicle = s.vehicle;
+    if (typeof s.qty === 'number' && s.qty >= 1 && s.qty <= 8) st.qty = s.qty;
+    if (s.addons) st.addons = Object.assign({}, st.addons, s.addons);
+    if (s.date) { var d = new Date(s.date); if (!isNaN(d.getTime())) st.date = d; }
+    if (s.time) st.time = s.time;
+    if (s.locationId) st.locationId = s.locationId;
+    bpWriteContactFields(draft.contact);
+    return Math.max(1, Math.min(4, draft.step || 1));
+  }
+  // Debounced text-input save so we don't hammer sessionStorage on every keystroke.
+  var bpSaveTimer = null;
+  function bpSaveDraftDebounced() {
+    if (bpSaveTimer) clearTimeout(bpSaveTimer);
+    bpSaveTimer = setTimeout(bpSaveDraft, 500);
+  }
+
   // ── Locations (Phase 4 picker) ──────────────────────────────────────────
   // Read the global #pt-locations-data island (rendered site-wide in the
   // layout from pt-nap), keep only the shops that accept online bookings.
@@ -1232,9 +1326,12 @@
       else { ci.textContent = s; }
     });
     if (step === 2) { renderVehicles(); renderAutoPickHint(); }
-    if (step === 3) { if (!st.date) { var t = new Date(); t.setHours(0,0,0,0); st.date = t; } renderWeek(); renderTimes(); }
+    if (step === 3) { if (!st.date) { st.date = bpEarliestDate(); wk = bpWeekOffset(st.date); } renderWeek(); renderTimes(); }
     if (step === 4) renderSummary();
     try { window.scrollTo({ top: document.querySelector('.pt-bp__card').offsetTop - 20, behavior: 'smooth' }); } catch (e) {}
+    // Autosave checkpoint — every step change is the canonical "commit" point
+    // for the draft (per Reform's multi-step form guide).
+    bpSaveDraft();
   }
 
   function pickPathway(path) {
@@ -1432,6 +1529,47 @@
     });
   }
 
+  {%- comment -%}
+    These three captures must stay ABOVE the JS comment block below, and the
+    last one must NOT trim its closing newline. A left-trimming Liquid tag
+    placed directly after a double-slash JS comment eats the newline that ends
+    that comment, so the next line of JavaScript gets swallowed into it. That
+    is exactly what commented out the function declaration below and took the
+    entire booking script down with a SyntaxError, which killed every booking.
+    Do not move them back down and do not add a trim to the last one.
+  {%- endcomment -%}
+  {%- capture _bp_suc %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{% endcapture -%}
+  {%- capture _bp_msc %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{% endcapture -%}
+  {%- capture _bp_cut %}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{% endcapture %}
+  // ── Helper: first day a service booking can actually start ──────────────
+  // Services need 2 hr lead (mirrors renderTimes() below). Once the day's last
+  // slot is inside that window there is nothing left today, so opening the
+  // calendar on today just shows a wall of greyed slots. Hours come from the
+  // same store_hours metaobject renderTimes() reads.
+  function bpLastSlotMins(d) {
+    var isSun = d.getDay() === 0;
+    var c = (isSun ? '{{ _bp_suc | strip }}' : '{{ _bp_msc | strip }}').split(':');
+    var cut = parseInt('{{ _bp_cut | strip }}', 10) || 30;
+    var v = (parseInt(c[0], 10) * 60 + (parseInt(c[1], 10) || 0)) - cut;
+    return isNaN(v) ? (isSun ? 810 : 990) : v;
+  }
+  function bpEarliestDate() {
+    var now = new Date();
+    var d = new Date(now); d.setHours(0, 0, 0, 0);
+    var nowMins = now.getHours() * 60 + now.getMinutes();
+    if (nowMins + 120 > bpLastSlotMins(d)) d.setDate(d.getDate() + 1);
+    return d;
+  }
+  function bpWeekOffset(d) {
+    function monday(x) {
+      var m = new Date(x); m.setHours(0, 0, 0, 0);
+      m.setDate(m.getDate() - m.getDay() + 1);
+      return m;
+    }
+    var t = new Date(); t.setHours(0, 0, 0, 0);
+    return Math.round((monday(d).getTime() - monday(t).getTime()) / 604800000);
+  }
+
   async function renderTimes() {
     var grid = document.getElementById('bp-time-grid');
     if (!st.date) { grid.innerHTML = '<p style="color:#9ca3af;font-size:0.92rem;grid-column:1/-1;text-align:center">Pick a day above.</p>'; return; }
@@ -1605,6 +1743,8 @@
       [1,2,3,4].forEach(function (s) { document.getElementById('bp-page-' + s).hidden = true; });
       document.getElementById('bp-page-done').hidden = false;
       document.getElementById('bp-stepper').style.opacity = '0';
+      // Booking succeeded — clear the draft so a fresh visit starts empty.
+      bpClearDraft();
     } catch (err) {
       btn.disabled = false; btn.textContent = 'Confirm booking';
       errEl.textContent = err.message || 'Something went wrong. Please try again or call (403) 452-4283.';
@@ -1666,10 +1806,12 @@
   renderLocations();
 
   // Deep-link via ?service=installation_off / ?service=balancing / etc.
+  var __bpUrlSvc = null;
   try {
     var qs = new URLSearchParams(window.location.search);
     var pre = qs.get('service');
     if (pre && SERVICES[pre]) {
+      __bpUrlSvc = pre;
       st.service = pre;
       if (pre === 'installation_off' || pre === 'installation_on') {
         pickPathway('own');
@@ -1682,6 +1824,50 @@
       updateNextBtn();
     }
   } catch (e) {}
+
+  // ── Draft restore ──────────────────────────────────────────────────────
+  // Rehydrate the sessionStorage draft AFTER the URL ?service= handler:
+  //   - If URL specifies a service, that's a fresh intent → skip restore.
+  //   - Otherwise, replay the saved state (pathway + service + vehicle +
+  //     qty + addons + date + time + location + contact fields) and jump
+  //     the customer straight to the step they left off on.
+  (function restoreBookingDraft() {
+    if (__bpUrlSvc) return;
+    var draft = bpRestoreDraft();
+    if (!draft) return;
+    var landStep = bpApplyDraft(draft);
+    // Re-sync the parts of the UI that mirror state (active pill / card / chip).
+    // pickPathway() zeroes st.service as a side-effect (it's designed as a fresh
+    // pathway switch), so we cache-and-restore around the call.
+    var svc = st.service;
+    if (st.pathway) pickPathway(st.pathway);
+    st.service = svc;
+    if (st.service) {
+      var mountCard = document.querySelector('.bp-mount-card[data-bp-svc="' + st.service + '"]');
+      if (mountCard) mountCard.classList.add('bp-mount-card--active');
+      // 'Other' service picker uses a chip grid rendered on demand — re-render
+      // so the previously-picked chip lights up.
+      if (st.pathway === 'other') renderOtherGrid();
+    }
+    if (st.locationId) renderLocations();
+    updateNextBtn();
+    if (landStep > 1) goTo(landStep);
+  })();
+
+  // Autosave debounced input on the contact fields (step 4) — the primary
+  // step-change checkpoint above catches everything else, but text fields
+  // need per-keystroke saves so a mid-typing tab-close doesn't lose the input.
+  ['bp-name','bp-phone','bp-email','bp-vehicle-info','bp-notes'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', bpSaveDraftDebounced);
+  });
+  // Safety-net backup fires — save on tab-hide + before unload so an
+  // in-flight text edit is still captured if the browser tears down before
+  // the debounce fires.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') bpSaveDraft();
+  });
+  window.addEventListener('beforeunload', bpSaveDraft);
 
   // Saved-vehicle banner — surfaces if customer just came from the tire search
   // and the saved record is recent (24 h). Doesn't auto-fill the vehicle tier
