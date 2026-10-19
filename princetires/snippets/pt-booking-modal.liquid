@@ -399,6 +399,10 @@
 .bk-time-slot{padding:.55rem;border:1.5px solid #f3f4f6;border-radius:7px;text-align:center;font-size: 1rem;color:#374151;cursor:pointer;transition:all .15s;background:#fff}
 .bk-time-slot:hover{border-color:#dc2626;color:#dc2626}
 .bk-time-slot--active{border-color:#dc2626;background:#fef2f2;color:#dc2626;font-weight:600}
+.bk-time-slot--other{border-style:dashed;border-color:#d1d5db}
+.bk-time-slot--other:hover{border-color:#dc2626}
+.bk-time-slot__at{display:block;font-size:.7rem;line-height:1.2;margin-top:.1rem;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-time-slot--other.bk-time-slot--active .bk-time-slot__at{color:#dc2626}
 .bk-time-slot--booked{background:#fafafa;color:#d1d5db;text-decoration:line-through;cursor:not-allowed;border-color:#f3f4f6}
 
 /* ── Step 3 summary ── */
@@ -1387,7 +1391,24 @@
     // reasons live in hover titles reads as "broken", and a phone never shows
     // a title at all.
     var bkOpen = slots.filter(function (s) { return booked.indexOf(s) < 0 && !blockReason[s]; });
-    if (!bkOpen.length) {
+
+    // The union. The selected shop's grid keeps every rule and every reason
+    // exactly as it was; the OTHER shop's open times are merged in so a slot
+    // this shop cannot do is still offered when the other one can. Measured
+    // over ten days: 102 slots exist that only Edmonton Trail can serve, and
+    // 58 of them fall on days 42 Ave is PARTLY open — invisible to anything
+    // that only reacts to a completely full day.
+    var bkAlt = await bkOtherShopOpen(st.date);
+    if (seq !== bkAvailSeq) return;                 // a later day was clicked
+    var bkAltSet = bkAlt ? bkAlt.times : null;
+    var bkAltHas = function (t) { return !!bkAltSet && bkAltSet.indexOf(t) > -1; };
+    var bkAltName = bkAlt ? bkShortShopName(bkAlt.shop) : '';
+    // Times only the other shop can do — including ones outside THIS shop's
+    // hours, which is how Edmonton Trail's 5:00 and 5:30 PM become reachable.
+    var bkAltExtra = bkAltSet ? bkAltSet.filter(function (t) { return slots.indexOf(t) < 0; }) : [];
+    var bkAllSlots = slots.concat(bkAltExtra).sort(function (a, b) { return slotToMins(a) - slotToMins(b); });
+
+    if (!bkOpen.length && !(bkAltSet && bkAltSet.length)) {
       var bkNow = new Date(), bkNowMins = bkNow.getHours() * 60 + bkNow.getMinutes();
       var bkIsToday = st.date.toDateString() === bkNow.toDateString();
       var bkPhone = (st.location && st.location.phone) ? st.location.phone : '';
@@ -1403,45 +1424,47 @@
       else bkMsg = 'Fully booked this day — please pick another day.';
       document.getElementById('bk-time-grid').innerHTML = '<p style="color:#b91c1c;font-size: 0.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:.5rem .25rem">' + bkMsg + '</p>';
       document.getElementById('bk-next-2').disabled = true;
-      // ...but before sending them away, check the other shop for the SAME day.
-      // Painted first and amended after, so a slow answer never delays the
-      // message, and a stale one never lands on a later click (bkAvailSeq).
-      bkOtherShopOpen(st.date).then(function (alt) {
-        if (!alt || seq !== bkAvailSeq) return;
-        var grid = document.getElementById('bk-time-grid');
-        if (!grid) return;
-        var nm = bkShortShopName(alt.shop);
-        var n = alt.times.length;
-        grid.innerHTML = '<p style="color:#b91c1c;font-size: 0.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:.5rem .25rem">' + bkMsg + '</p>'
-          + '<p style="font-size:0.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:0 .25rem .5rem">'
-          + '<strong>' + nm + '</strong> has ' + n + (n === 1 ? ' time' : ' times') + ' open this day'
-          + (alt.shop.address ? ' — ' + alt.shop.address : '')
-          + '. <button type="button" class="bk-loc-nudge__btn" id="bk-switch-shop">Show ' + nm + ' times →</button></p>';
-        var sw = document.getElementById('bk-switch-shop');
-        if (sw) sw.addEventListener('click', function () {
-          bkPickLocation(alt.shop, document.getElementById('bk-loc-grid'));
-        });
-      });
       return;
     }
 
-    document.getElementById('bk-time-grid').innerHTML = slots.map(function (s) {
+    document.getElementById('bk-time-grid').innerHTML = bkAllSlots.map(function (s) {
+      var here = slots.indexOf(s) > -1 && booked.indexOf(s) < 0 && !blockReason[s];
+      var there = bkAltHas(s);
+      // Bookable HERE keeps today's look. Bookable only at the other shop is
+      // offered and labelled, so choosing it is a decision, never a surprise.
+      if (here) {
+        return '<div class="bk-time-slot' + (st.time === s ? ' bk-time-slot--active' : '') +
+          '" data-time="' + s + '">' + s + '</div>';
+      }
+      if (there) {
+        return '<div class="bk-time-slot bk-time-slot--other' +
+          (st.time === s ? ' bk-time-slot--active' : '') +
+          '" data-time="' + s + '" data-alt="1" title="Available at ' + bkAltName + '">' +
+          s + '<span class="bk-time-slot__at">' + bkAltName + '</span></div>';
+      }
       var isCalBooked = booked.indexOf(s) > -1;
-      var isBlocked = isCalBooked || !!blockReason[s];
-      var titleAttr = isCalBooked ? 'Already booked' : (blockReason[s] || '');
-      return '<div class="bk-time-slot' +
-        (st.time === s ? ' bk-time-slot--active' : '') +
-        (isBlocked ? ' bk-time-slot--booked' : '') +
-        '" data-time="' + s + '"' +
-        (isBlocked ? ' title="' + titleAttr + '"' : '') +
-        '>' + s + '</div>';
+      return '<div class="bk-time-slot bk-time-slot--booked" data-time="' + s + '" title="' +
+        (isCalBooked ? 'Already booked' : (blockReason[s] || '')) + '">' + s + '</div>';
     }).join('');
+
+    // Step 2 can proceed when the chosen time is bookable at the chosen shop.
+    // Derived from state rather than set in the click handler, because a shop
+    // switch re-renders without one.
+    var bkNext = document.getElementById('bk-next-2');
+    if (bkNext) {
+      bkNext.disabled = !(st.time && slots.indexOf(st.time) > -1 &&
+        booked.indexOf(st.time) < 0 && !blockReason[st.time]);
+    }
 
     document.querySelectorAll('.bk-time-slot:not(.bk-time-slot--booked)').forEach(function (el) {
       el.addEventListener('click', function () {
         st.time = this.dataset.time;
+        if (this.dataset.alt && bkAlt) {
+          // Picking a time only the other shop has IS choosing that shop.
+          bkPickLocation(bkAlt.shop, document.getElementById('bk-loc-grid'));
+          return;                                   // bkPickLocation re-renders
+        }
         renderTimes();
-        document.getElementById('bk-next-2').disabled = false;
       });
     });
   }
