@@ -93,19 +93,38 @@
 
     // GET availability. `apiBase` is the surface's AVAILABILITY_API constant;
     // `locationSlug` is the selected shop's slug (or falsy for single-location).
-    // Always resolves to { booked: string[], allDayBlocked: boolean } — never rejects.
-    fetchAvailability: function (apiBase, dateISO, locationSlug) {
+    // `extra` (optional) names the product being booked — product_handle,
+    // variant_id, qty, book_type — so the server can answer that product's
+    // EARLIEST bookable slot with the same rules /api/book refuses with. The
+    // storefront cannot know a tire is coming from the supplier's Edmonton
+    // warehouse; only the feed does. Without this, a customer was offered a day
+    // the POST then refused at the last step of the form.
+    //
+    // Always resolves, never rejects:
+    //   { booked: string[], allDayBlocked: boolean,
+    //     blockedReason: string|null,            // why, when allDayBlocked
+    //     earliest: {date,time,label,reason}|null } // this product's floor
+    fetchAvailability: function (apiBase, dateISO, locationSlug, extra) {
       var url = apiBase + "?date=" + encodeURIComponent(dateISO);
       if (locationSlug) url += "&location_id=" + encodeURIComponent(locationSlug);
+      if (extra) {
+        Object.keys(extra).forEach(function (k) {
+          var v = extra[k];
+          if (v !== undefined && v !== null && v !== "") url += "&" + encodeURIComponent(k) + "=" + encodeURIComponent(v);
+        });
+      }
       return fetch(url)
         .then(function (r) { return r.json(); })
         .then(function (d) {
+          var e = d && d.earliest && d.earliest.date ? d.earliest : null;
           return {
             booked: Array.isArray(d && d.booked) ? d.booked : [],
             allDayBlocked: !!(d && d.allDayBlocked),
+            blockedReason: (d && typeof d.blockedReason === "string" && d.blockedReason) || null,
+            earliest: e ? { date: String(e.date), time: String(e.time || ""), label: String(e.label || ""), reason: String(e.reason || "") } : null,
           };
         })
-        .catch(function () { return { booked: [], allDayBlocked: false }; });
+        .catch(function () { return { booked: [], allDayBlocked: false, blockedReason: null, earliest: null }; });
     },
 
     // POST a booking. The SURFACE builds the payload (shapes differ per surface);

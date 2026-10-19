@@ -37,7 +37,7 @@
   <div class="bk-modal" id="bk-modal" role="dialog" aria-modal="true" aria-label="Book tire installation">
 
     <div class="bk-header">
-      <span class="bk-header-title">Book installation</span>
+      <span class="bk-header-title">Request installation</span>
       <div class="bk-stepper" id="bk-stepper">
         <div class="bk-step" data-step="1"><div class="bk-step-circle bk-step-circle--active">1</div></div>
         <div class="bk-step-line" data-line="1"></div>
@@ -78,6 +78,8 @@
       <div id="bk-location-section" hidden>
         <p class="bk-label">Location</p>
         <div class="bk-loc-grid" id="bk-loc-grid"></div>
+        {%- comment -%} "Also open" line, filled by JS only while the PRIMARY shop is selected. {%- endcomment -%}
+        <p class="bk-loc-nudge" id="bk-loc-nudge" hidden></p>
       </div>
 
       {%- comment -%} Hidden elements kept for JS compatibility {%- endcomment -%}
@@ -197,7 +199,7 @@
 
       <div class="bk-nav-row">
         <button class="bk-back-btn" onclick="bkGoTo(2)">&larr; Back</button>
-        <button class="bk-confirm-btn" id="bk-confirm-btn" onclick="bkSubmit()">Confirm booking</button>
+        <button class="bk-confirm-btn" id="bk-confirm-btn" onclick="bkSubmit()">Send request</button>
       </div>
     </div>
 
@@ -206,8 +208,8 @@
       <div class="bk-done-icon">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
       </div>
-      <h2 class="bk-done-title">You're booked!</h2>
-      <p class="bk-done-sub" id="bk-done-sub">See you at Prince Tires — 111 42 Ave SW, Calgary.</p>
+      <h2 class="bk-done-title">Request sent</h2>
+      <p class="bk-done-sub" id="bk-done-sub">We'll confirm by email, usually within the day — your appointment isn't final until you hear from us.</p>
       <div class="bk-done-card" id="bk-done-card"></div>
       <div class="bk-done-actions">
         <button class="bk-cal-btn" onclick="bkDownloadICS()">Add to calendar</button>
@@ -300,6 +302,12 @@
 .bk-loc-name{font-weight:700;color:#111;font-size: 1rem}
 .bk-loc-card--active .bk-loc-name{color:#dc2626}
 .bk-loc-addr{color:#6b7280;font-size: 0.85rem;line-height:1.3}
+/* "Also open" nudge — only while the PRIMARY shop is selected and another is bookable */
+.bk-loc-nudge[hidden]{display:none!important}
+.bk-loc-nudge{margin:.5rem 0 0;font-size:.9rem;line-height:1.45;color:#4b5563}
+.bk-loc-nudge strong{color:#111;font-weight:600}
+.bk-loc-nudge__btn{background:none;border:0;padding:0;margin-left:.2rem;font:inherit;font-weight:600;color:#dc2626;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.bk-loc-nudge__btn:hover{color:#b91c1c}
 
 /* When tires-only is selected, hide install-only sections + chrome */
 .bk-flow-tires-only .bk-install-only{display:none !important}
@@ -518,6 +526,50 @@
     return PTBookingCore.pickLocation(locs, slug);
   }
 
+  // "Prince Tires — Edmonton Trail NE" -> "Edmonton Trail NE", for copy that
+  // already says Prince Tires.
+  function bkShortShopName(l) {
+    var n = l.public_name || l.name || 'Prince Tires';
+    return n.replace(/^Prince Tires\s*[—–-]\s*/i, '');
+  }
+
+  // Select a shop: state, card highlight, its radio, the nudge, and a re-query
+  // of the grid if a day is already picked (availability is per-location).
+  function bkPickLocation(next, grid) {
+    if (!next) return;
+    st.location = next;
+    grid.querySelectorAll('.bk-loc-card').forEach(function (card) {
+      card.classList.toggle('bk-loc-card--active', card.dataset.locSlug === next.slug);
+    });
+    var radio = grid.querySelector('input[name="bk-location"][value="' + next.slug + '"]');
+    if (radio) radio.checked = true;
+    bkRenderLocNudge(grid);
+    if (st.date) renderTimes();
+  }
+
+  // "Also open" line under the picker. Shown only while the PRIMARY shop is
+  // selected and another shop is bookable: a customer who lands on the default
+  // shop and finds it busy should learn there is a second one before giving up,
+  // and a customer who already chose the other shop needs no nudge back. Name
+  // and address come from the island, so a third shop needs no edit here.
+  function bkRenderLocNudge(grid) {
+    var el = document.getElementById('bk-loc-nudge');
+    if (!el) return;
+    var cur = st.location;
+    var other = cur ? bkLocations.find(function (l) { return l.slug !== cur.slug; }) : null;
+    if (!cur || !cur.is_primary || !other) { el.hidden = true; el.innerHTML = ''; return; }
+    var name = bkShortShopName(other);
+    var addr = other.address || other.address_full || '';
+    el.innerHTML = 'Also open for bookings: <strong>' + name + '</strong>' + (addr ? ', ' + addr : '') + '.'
+      + ' <button type="button" class="bk-loc-nudge__btn" data-loc-switch="' + other.slug + '">'
+      + 'Check out our ' + name + ' location →</button>';
+    el.hidden = false;
+    var btn = el.querySelector('[data-loc-switch]');
+    if (btn) btn.addEventListener('click', function () {
+      bkPickLocation(bkLocations.find(function (l) { return l.slug === btn.dataset.locSwitch; }), grid);
+    });
+  }
+
   // Render the radio/segmented picker into #bk-loc-grid — only when 2+ bookable.
   // Fewer than 2 → keep the section hidden (single-location behavior unchanged).
   function renderLocationPicker() {
@@ -539,17 +591,10 @@
     grid.querySelectorAll('input[name="bk-location"]').forEach(function (radio) {
       radio.addEventListener('change', function () {
         if (!this.checked) return;
-        var next = bkLocations.find(function (l) { return l.slug === radio.value; });
-        if (!next) return;
-        st.location = next;
-        grid.querySelectorAll('.bk-loc-card').forEach(function (card) {
-          card.classList.toggle('bk-loc-card--active', card.dataset.locSlug === next.slug);
-        });
-        // Availability is per-location → re-query if we're already on the
-        // calendar step with a day selected.
-        if (st.date) renderTimes();
+        bkPickLocation(bkLocations.find(function (l) { return l.slug === radio.value; }), grid);
       });
     });
+    bkRenderLocNudge(grid);
   }
 
   // Optional "what's covered" links for specific add-ons → their info page.
@@ -1011,23 +1056,32 @@
     document.getElementById('bk-week-label').textContent = start.getDate() + ' ' + mn[start.getMonth()] + ' – ' + end.getDate() + ' ' + mn[end.getMonth()];
     document.getElementById('bk-prev-week').disabled = wk <= 0;
 
+    // Days before THIS product's earliest bookable slot — as the server
+    // computed it from the real tier and the supplier branch — are greyed like
+    // past days, with the reason on hover. Known only after the first
+    // availability answer (st.serverEarliest), so the first paint is plain and
+    // renderTimes re-renders the strip once it arrives.
+    var earliestISO = st.serverEarliest && st.serverEarliest.date ? st.serverEarliest.date : null;
     var h = '';
     for (var i = 0; i < 7; i++) {
       var d = new Date(start); d.setDate(d.getDate() + i);
       var isPast = d < today;
+      var isTooEarly = !isPast && earliestISO && bkLocalISO(d) < earliestISO;
       var isToday = d.getTime() === today.getTime();
       var isActive = st.date && d.toDateString() === st.date.toDateString();
       var cls = 'bk-day-card';
-      if (isPast) cls += ' bk-day-card--past';
+      if (isPast || isTooEarly) cls += ' bk-day-card--past';
       if (isToday) cls += ' bk-day-card--today';
       if (isActive) cls += ' bk-day-card--active';
-      h += '<div class="' + cls + '" data-date="' + bkLocalISO(d) + '"><div class="bk-day-name">' + dn[i] + '</div><div class="bk-day-num">' + d.getDate() + '</div></div>';
+      var titleAttr = isTooEarly ? ' title="' + String(st.serverEarliest.reason || '').replace(/"/g, '&quot;') + '"' : '';
+      h += '<div class="' + cls + '" data-date="' + bkLocalISO(d) + '"' + titleAttr + '><div class="bk-day-name">' + dn[i] + '</div><div class="bk-day-num">' + d.getDate() + '</div></div>';
     }
     document.getElementById('bk-day-strip').innerHTML = h;
 
     document.querySelectorAll('.bk-day-card:not(.bk-day-card--past)').forEach(function (el) {
       el.addEventListener('click', function () {
         st.date = new Date(this.dataset.date + 'T12:00:00');
+        st.userPickedDate = true;
         st.time = null;
         document.getElementById('bk-next-2').disabled = true;
         renderWeek();
@@ -1036,7 +1090,91 @@
     });
   }
 
+  // ── Helper: first day this order can actually be booked ─────────────────
+  // Mirrors the per-tier floor renderTimes() enforces below: Tier A can go
+  // today (2 hr lead), Tier B is the next business day at 12:30 PM (Sundays
+  // skipped), and the Oct 15 - Nov 15 winter rush adds a 24 hr floor. Opening
+  // the calendar on today when every slot is blocked is what made this step
+  // look broken on the ~94% of products that are Tier B.
+  function bkEarliestDate() {
+    var now = new Date();
+    if (st.supplierTier === 'A') {
+      var t = new Date(now); t.setHours(0, 0, 0, 0); return t;
+    }
+    var e = new Date(now);
+    e.setDate(e.getDate() + 1);
+    if (e.getDay() === 0) e.setDate(e.getDate() + 1);
+    e.setHours(12, 30, 0, 0);
+    var m = now.getMonth(), d = now.getDate();
+    if ((m === 9 && d >= 15) || (m === 10 && d <= 15)) {
+      var rush24 = new Date(now.getTime() + 24 * 3600 * 1000);
+      if (rush24.getTime() > e.getTime()) e = rush24;
+    }
+    e.setHours(0, 0, 0, 0);
+    return e;
+  }
+
+  // Week offset that contains `d`. Uses renderWeek()'s own Monday formula so
+  // the highlighted day is guaranteed to be on the strip that renders.
+  function bkWeekOffset(d) {
+    function monday(x) {
+      var m = new Date(x); m.setHours(0, 0, 0, 0);
+      m.setDate(m.getDate() - m.getDay() + 1);
+      return m;
+    }
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    return Math.round((monday(d).getTime() - monday(today).getTime()) / 604800000);
+  }
+
   // ── Helper: convert "9:30 AM" → minutes from midnight ───────────────────
+  {% comment %}
+    Hours PER SHOP, rendered once from the store_hours metaobject pt-nap reads.
+    This modal used to read SW's hours for every shop, so a customer who picked
+    Edmonton Trail NE was shown SW's window (NE closes at 6 PM Mon–Thu/Sat and
+    4 PM Sun) and the Friday split (closed 1:00–2:30, final close 5:00 at both
+    shops) was ignored. Same block as sections/pt-booking-page.liquid. Opens
+    with a NON-trimming tag and ends in plain JS so it can never swallow the
+    line before it; a third shop is one slug added to _bk_slugs.
+  {% endcomment %}
+  {%- assign _bk_slugs = 'sw,ne' | split: ',' -%}
+  {%- assign _bk_fields = 'hours_mon_sat_open,hours_mon_sat_close,hours_sun_open,hours_sun_close,hours_fri_open,hours_fri_close,hours_fri_reopen,hours_fri_final_close,booking_cutoff_minutes' | split: ',' -%}
+  var BK_HOURS = {
+  {%- for _s in _bk_slugs %}
+    {{ _s | json }}: {
+    {%- for _f in _bk_fields -%}
+      {%- capture _v %}{% render 'pt-nap', location: _s, field: _f %}{% endcapture %}
+      {{ _f | json }}: {{ _v | strip | json }},
+    {%- endfor %}
+    },
+  {%- endfor %}
+  };
+  // The appointment window for a day at the SELECTED shop: first slot, last
+  // slot (close − cutoff) and, on Fridays, the lunch gap. Falls back to SW.
+  function bkHoursFor(d) {
+    var slug = (st.location && st.location.slug) ? st.location.slug : 'sw';
+    var H = BK_HOURS[slug] || BK_HOURS.sw || {};
+    var toMin = function (s) { var p = String(s || '').split(':'); var v = parseInt(p[0], 10) * 60 + (parseInt(p[1], 10) || 0); return isNaN(v) ? null : v; };
+    var dow = d.getDay(), open, close, gap = null;
+    if (dow === 0) { open = toMin(H.hours_sun_open); close = toMin(H.hours_sun_close); }
+    else if (dow === 5 && toMin(H.hours_fri_final_close) !== null) {
+      open = toMin(H.hours_fri_open); close = toMin(H.hours_fri_final_close);
+      var gc = toMin(H.hours_fri_close), gr = toMin(H.hours_fri_reopen);
+      if (gc !== null && gr !== null && gr > gc) gap = [gc, gr];
+    }
+    else { open = toMin(H.hours_mon_sat_open); close = toMin(H.hours_mon_sat_close); }
+    if (open === null) open = dow === 0 ? 600 : 540;
+    if (close === null) close = dow === 0 ? 840 : 1020;
+    return { open: open, last: close - (parseInt(H.booking_cutoff_minutes, 10) || 30), gap: gap };
+  }
+  // Minutes → the label shape the availability API uses ("9:00 AM", "12:30 PM").
+  function bkMinsToSlot(mins) {
+    var h = Math.floor(mins / 60), m = mins % 60, hr = h > 12 ? h - 12 : h;
+    return hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM');
+  }
+  // Monotonic render counter: a slow availability answer for an EARLIER day
+  // click must never paint over a later one.
+  var bkAvailSeq = 0;
+
   function slotToMins(slot) {
     var m = slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
     if (!m) return 0;
@@ -1052,31 +1190,13 @@
       document.getElementById('bk-time-grid').innerHTML = '<p style="color:#9ca3af;font-size: 0.9rem;grid-column:1/-1">Select a day above</p>';
       return;
     }
-    var isSun = st.date.getDay() === 0;
-    // Appointment window from the store_hours metaobject (via pt-nap, SW shop):
-    // first slot = open; last slot = close − cutoff. Fallback = the known SW window.
-    {% capture _suo %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{% endcapture %}
-    {% capture _mso %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{% endcapture %}
-    {% capture _suc %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{% endcapture %}
-    {% capture _msc %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{% endcapture %}
-    {% capture _cutv %}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{% endcapture %}
-    var _bo = isSun ? '{{ _suo | strip }}' : '{{ _mso | strip }}';
-    var _bc = isSun ? '{{ _suc | strip }}' : '{{ _msc | strip }}';
-    var _bcut = parseInt('{{ _cutv | strip }}', 10) || 30;
-    var _boa = _bo.split(':'), _bca = _bc.split(':');
-    var startH = parseInt(_boa[0], 10), startM = parseInt(_boa[1], 10) || 0;
-    if (isNaN(startH)) { startH = 9; startM = 0; }
-    var _blast = (parseInt(_bca[0], 10) * 60 + (parseInt(_bca[1], 10) || 0)) - _bcut;
-    if (isNaN(_blast)) { _blast = isSun ? 810 : 990; }
-    var endH = Math.floor(_blast / 60), endM = _blast % 60;
+    // Take a ticket for THIS render: a slow availability answer for an earlier
+    // click must never paint over a later one. The window comes from the
+    // SELECTED shop's hours (bkHoursFor), not SW's for everyone.
+    var seq = ++bkAvailSeq;
+    var H = bkHoursFor(st.date);
     var slots = [];
-    for (var h = startH; h <= endH; h++) {
-      for (var m = (h === startH ? startM : 0); m < 60; m += 30) {
-        if (h === endH && m > endM) break;
-        var hr = h > 12 ? h - 12 : h;
-        slots.push(hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM'));
-      }
-    }
+    for (var mins = H.open; mins <= H.last; mins += 30) slots.push(bkMinsToSlot(mins));
 
     document.getElementById('bk-time-grid').innerHTML = '<p style="color:#9ca3af;font-size: 0.9rem;grid-column:1/-1">Checking availability…</p>';
     var booked = [];
@@ -1084,16 +1204,44 @@
     // Per-location availability via the shared PTBookingCore.fetchAvailability
     // (deduped GET+parse; never rejects). The chosen location slug is sent only
     // when set so the backend resolves slug→shop (defaults SW when omitted).
+    // The product goes with the request so the server can answer THIS tire's
+    // earliest bookable slot — the same rules /api/book refuses with, fed by
+    // the real tier and the supplier branch (Calgary next day, Edmonton two
+    // weekdays, winter rush 24 h). Only the server knows where the tire sits.
+    var hadEarliest = !!st.serverEarliest;
     var availRes = await PTBookingCore.fetchAvailability(
       AVAILABILITY_API,
       bkLocalISO(st.date),
-      (st.location && st.location.slug) ? st.location.slug : null
+      (st.location && st.location.slug) ? st.location.slug : null,
+      { product_handle: st.productHandle, variant_id: st.variantId, qty: st.qty, book_type: 'tire_install' }
     );
+    if (seq !== bkAvailSeq) return; // a newer click owns the grid now
     booked = availRes.booked;
     allDayBlocked = availRes.allDayBlocked;
+    if (availRes.earliest) st.serverEarliest = availRes.earliest;
+
+    // If the date on screen was auto-picked (not clicked) and is before the
+    // floor, land the customer on the first day they can actually book instead
+    // of a closed one. Checked on EVERY answer, not only the first: a stray
+    // re-render of an earlier auto-picked day was once seen leaving the
+    // customer parked on a greyed Monday with Tuesday one click away, and a
+    // gate on "first answer" cannot correct that. No loop: the floor date is
+    // stable, and the render it triggers lands ON the floor, which no longer
+    // compares as earlier. The strip is re-greyed once, when the floor arrives.
+    if (availRes.earliest) {
+      if (!st.userPickedDate && bkLocalISO(st.date) < availRes.earliest.date) {
+        st.date = new Date(availRes.earliest.date + 'T12:00:00');
+        wk = bkWeekOffset(st.date);
+        renderWeek();
+        renderTimes();
+        return;
+      }
+      if (!hadEarliest) renderWeek();
+    }
 
     if (allDayBlocked) {
-      document.getElementById('bk-time-grid').innerHTML = '<p style="color:#dc2626;font-size: 0.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">Not available this day — please pick another date.</p>';
+      var closedMsg = availRes.blockedReason || 'Not available this day — please pick another date.';
+      document.getElementById('bk-time-grid').innerHTML = '<p style="color:#dc2626;font-size: 0.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">' + closedMsg + '</p>';
       var noteEl = document.getElementById('bk-trial-note');
       if (noteEl) noteEl.hidden = true;
       return;
@@ -1108,7 +1256,10 @@
     try {
       var now = new Date();
       var today = new Date(); today.setHours(0, 0, 0, 0);
-      var isToday = st.date.getTime() === today.getTime();
+      // By calendar day, not by instant: a clicked day is stored at NOON
+      // (renderWeek) while `today` is midnight, so the old getTime() compare
+      // was false for every clicked today and never greyed its past slots.
+      var isToday = st.date.toDateString() === today.toDateString();
       var nowMins = now.getHours() * 60 + now.getMinutes();
       var tier = (st.supplierTier === 'A') ? 'A' : 'B';
 
@@ -1116,6 +1267,14 @@
       if (isToday) {
         slots.forEach(function (s) {
           if (slotToMins(s) <= nowMins) blockReason[s] = 'Time has passed';
+        });
+      }
+
+      // Friday lunch gap (both shops close 1:00–2:30): nothing inside it.
+      if (H.gap) {
+        slots.forEach(function (s) {
+          var sm = slotToMins(s);
+          if (!blockReason[s] && sm >= H.gap[0] && sm < H.gap[1]) blockReason[s] = 'Closed ' + bkMinsToSlot(H.gap[0]) + ' – ' + bkMinsToSlot(H.gap[1]);
         });
       }
 
@@ -1142,6 +1301,16 @@
           if (rush24.getTime() > earliest.getTime()) earliest = rush24;
         }
 
+        // The server's floor, when it answered, replaces the local guess above:
+        // it knows the supplier branch (Edmonton is two weekdays, not one) and
+        // it is what the POST will enforce.
+        if (st.serverEarliest && st.serverEarliest.date) {
+          var se = new Date(st.serverEarliest.date + 'T12:00:00');
+          var seMins = slotToMins(st.serverEarliest.time || '12:30 PM');
+          se.setHours(Math.floor(seMins / 60), seMins % 60, 0, 0);
+          earliest = se;
+        }
+
         var earliestDay = earliest.toLocaleDateString('en-US', { weekday: 'long' });
         var earliestLabel = earliestDay + ' ' + earliest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         var blockMsg = 'Earliest available: ' + earliestLabel + ' (warehouse delivery)';
@@ -1151,7 +1320,7 @@
         var earliestDateOnly = new Date(earliest); earliestDateOnly.setHours(0,0,0,0);
         if (dateOnly.getTime() < earliestDateOnly.getTime()) {
           slots.forEach(function (s) { if (!blockReason[s]) blockReason[s] = blockMsg; });
-          trialNote = blockMsg;
+          trialNote = (st.serverEarliest && st.serverEarliest.reason) || blockMsg;
         } else if (dateOnly.getTime() === earliestDateOnly.getTime()) {
           // Same day as earliest → block any slot before earliest's time
           var earliestMins = earliest.getHours() * 60 + earliest.getMinutes();
@@ -1159,7 +1328,7 @@
             if (blockReason[s]) return;
             if (slotToMins(s) < earliestMins) blockReason[s] = blockMsg;
           });
-          trialNote = isWinterRush ? 'Winter rush: tires from our supplier need 24 hr lead time.' : '';
+          trialNote = (st.serverEarliest && st.serverEarliest.reason) || (isWinterRush ? 'Winter rush: tires from our supplier need 24 hr lead time.' : '');
         }
       }
     } catch (ruleErr) {
@@ -1168,6 +1337,29 @@
 
     var noteEl = document.getElementById('bk-trial-note');
     if (noteEl) { noteEl.textContent = trialNote; noteEl.hidden = !trialNote; }
+
+    // Nothing bookable: say why in a sentence. A wall of greyed buttons whose
+    // reasons live in hover titles reads as "broken", and a phone never shows
+    // a title at all.
+    var bkOpen = slots.filter(function (s) { return booked.indexOf(s) < 0 && !blockReason[s]; });
+    if (!bkOpen.length) {
+      var bkNow = new Date(), bkNowMins = bkNow.getHours() * 60 + bkNow.getMinutes();
+      var bkIsToday = st.date.toDateString() === bkNow.toDateString();
+      var bkPhone = (st.location && st.location.phone) ? st.location.phone : '';
+      // The lead-time note is the reason only when it blocked the WHOLE day
+      // (a day before the floor). On the floor day itself, slots before 12:30
+      // are lead-blocked and the rest may simply be taken — that is "fully
+      // booked", and the note under the grid already carries the lead-time
+      // reason on its own.
+      var bkLeadBlockedAll = slots.every(function (s) { return blockReason[s] && !/passed|ahead|Closed/.test(blockReason[s]); });
+      var bkMsg;
+      if (bkLeadBlockedAll && trialNote) bkMsg = trialNote;
+      else if (bkIsToday && bkNowMins + 120 > H.last) bkMsg = 'Same-day appointments need 2 hours’ notice, and the last one today is ' + bkMinsToSlot(H.last) + ' — today can’t be booked online any more. Pick another day' + (bkPhone ? ', or call ' + bkPhone + ' to ask about a walk-in.' : '.');
+      else bkMsg = 'Fully booked this day — please pick another day.';
+      document.getElementById('bk-time-grid').innerHTML = '<p style="color:#b91c1c;font-size: 0.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:.5rem .25rem">' + bkMsg + '</p>';
+      document.getElementById('bk-next-2').disabled = true;
+      return;
+    }
 
     document.getElementById('bk-time-grid').innerHTML = slots.map(function (s) {
       var isCalBooked = booked.indexOf(s) > -1;
@@ -1252,6 +1444,14 @@
     // so a customer can never book more tires than are in stock; surfaces that
     // don't pass it (e.g. some search results) fall back to the standard 1–8.
     st.maxQty = parseInt(btn.dataset.maxQty) || 0;
+    // Belt and braces. The PDP already disables its button, but this modal is
+    // opened from collection cards and search results too, and a disabled
+    // attribute is a suggestion to anyone with dev tools. Refuse here as well,
+    // so there is no path that books an appointment for a tire we do not have.
+    if (btn.dataset.soldOut === 'true') {
+      alert('This one is sold out, so there is nothing to book yet.\n\nCall us on (403) 452-4283 and we will tell you what we can get in.');
+      return;
+    }
     // Reset opt-out add-on state for every open.
     bkUpsellNudged = false;
     st.tpms = false;
@@ -1433,8 +1633,8 @@
     });
 
     if (step === 2) {
-      // Auto-select today when entering the schedule step
-      if (!st.date) { var today = new Date(); today.setHours(0, 0, 0, 0); st.date = today; }
+      // Open on the first day that actually has slots, not unconditionally today.
+      if (!st.date) { st.date = bkEarliestDate(); wk = bkWeekOffset(st.date); }
       renderWeek(); renderTimes();
     }
     if (step === 3) { renderSummary(); }
@@ -1572,7 +1772,7 @@
       var locAddr = nap.addressFull;
       var locPhone = nap.phone;
       var subEl = document.getElementById('bk-done-sub');
-      if (subEl) subEl.textContent = 'See you at Prince Tires — ' + nap.address + '.';
+      if (subEl) subEl.textContent = 'Requested at Prince Tires — ' + nap.address + '. We’ll confirm by email, usually within the day — your appointment isn’t final until you hear from us.';
       var ds = st.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + st.time;
       var vehLabel = buildVehicleLabel(v);
       var doneH = '';
@@ -1597,7 +1797,7 @@
     } catch (err) {
       console.error('[booking] submit failed:', err);
       btn.disabled = false;
-      btn.textContent = 'Confirm booking';
+      btn.textContent = 'Send request';
       // Show full error message even when long — network errors need full guidance
       errEl.textContent = err.message || 'Something went wrong. Please try again or call (403) 452-4283.';
       errEl.hidden = false;
