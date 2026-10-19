@@ -1150,8 +1150,8 @@
   };
   // The appointment window for a day at the SELECTED shop: first slot, last
   // slot (close − cutoff) and, on Fridays, the lunch gap. Falls back to SW.
-  function bkHoursFor(d) {
-    var slug = (st.location && st.location.slug) ? st.location.slug : 'sw';
+  function bkHoursFor(d, slugArg) {
+    var slug = slugArg || ((st.location && st.location.slug) ? st.location.slug : 'sw');
     var H = BK_HOURS[slug] || BK_HOURS.sw || {};
     var toMin = function (s) { var p = String(s || '').split(':'); var v = parseInt(p[0], 10) * 60 + (parseInt(p[1], 10) || 0); return isNaN(v) ? null : v; };
     var dow = d.getDay(), open, close, gap = null;
@@ -1171,6 +1171,51 @@
     var h = Math.floor(mins / 60), m = mins % 60, hr = h > 12 ? h - 12 : h;
     return hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM');
   }
+  // Is the OTHER shop open on this day, and roughly how many times?
+  //
+  // The day the chosen shop is full is the moment a customer gives up, and on a
+  // normal week 42 Ave is full on days Edmonton Trail is wide open. Saying so,
+  // with a real number, is worth more than "pick another day".
+  //
+  // Deliberately CONSERVATIVE: hours + what the server says is booked + the
+  // server's own earliest-slot floor for that shop, and nothing else. It can
+  // undercount; it must never offer a time that is not there. Switching re-runs
+  // renderTimes, which is the authority.
+  async function bkOtherShopOpen(dateObj) {
+    try {
+      var cur = st.location;
+      var other = cur ? bkLocations.find(function (l) { return l.slug !== cur.slug; }) : null;
+      if (!other) return null;
+      var iso = bkLocalISO(dateObj);
+      var res = await PTBookingCore.fetchAvailability(AVAILABILITY_API, iso, other.slug,
+        { product_handle: st.productHandle, variant_id: st.variantId, qty: st.qty, book_type: 'tire_install' });
+      if (!res || res.allDayBlocked) return null;
+      var oh = bkHoursFor(dateObj, other.slug);
+      var taken = Array.isArray(res.booked) ? res.booked : [];
+      var now = new Date();
+      var isToday = dateObj.toDateString() === now.toDateString();
+      var nowMins = now.getHours() * 60 + now.getMinutes();
+      // The server's floor for THAT shop — where its stock is, and its tier.
+      var floorMins = null;
+      if (res.earliest && res.earliest.date) {
+        if (res.earliest.date > iso) return null;          // not bookable that early anywhere
+        if (res.earliest.date === iso) floorMins = slotToMins(res.earliest.time || '') || null;
+      }
+      var open = [];
+      for (var m = oh.open; m <= oh.last; m += 30) {
+        if (oh.gap && m >= oh.gap[0] && m < oh.gap[1]) continue;
+        if (isToday && m <= nowMins) continue;
+        if (floorMins !== null && m < floorMins) continue;
+        var label = bkMinsToSlot(m);
+        if (taken.indexOf(label) > -1) continue;
+        open.push(label);
+      }
+      return open.length ? { shop: other, times: open } : null;
+    } catch (e) {
+      return null; // never let this break the grid
+    }
+  }
+
   // Monotonic render counter: a slow availability answer for an EARLIER day
   // click must never paint over a later one.
   var bkAvailSeq = 0;
@@ -1358,6 +1403,25 @@
       else bkMsg = 'Fully booked this day — please pick another day.';
       document.getElementById('bk-time-grid').innerHTML = '<p style="color:#b91c1c;font-size: 0.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:.5rem .25rem">' + bkMsg + '</p>';
       document.getElementById('bk-next-2').disabled = true;
+      // ...but before sending them away, check the other shop for the SAME day.
+      // Painted first and amended after, so a slow answer never delays the
+      // message, and a stale one never lands on a later click (bkAvailSeq).
+      bkOtherShopOpen(st.date).then(function (alt) {
+        if (!alt || seq !== bkAvailSeq) return;
+        var grid = document.getElementById('bk-time-grid');
+        if (!grid) return;
+        var nm = bkShortShopName(alt.shop);
+        var n = alt.times.length;
+        grid.innerHTML = '<p style="color:#b91c1c;font-size: 0.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:.5rem .25rem">' + bkMsg + '</p>'
+          + '<p style="font-size:0.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:0 .25rem .5rem">'
+          + '<strong>' + nm + '</strong> has ' + n + (n === 1 ? ' time' : ' times') + ' open this day'
+          + (alt.shop.address ? ' — ' + alt.shop.address : '')
+          + '. <button type="button" class="bk-loc-nudge__btn" id="bk-switch-shop">Show ' + nm + ' times →</button></p>';
+        var sw = document.getElementById('bk-switch-shop');
+        if (sw) sw.addEventListener('click', function () {
+          bkPickLocation(alt.shop, document.getElementById('bk-loc-grid'));
+        });
+      });
       return;
     }
 
