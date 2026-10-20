@@ -11,7 +11,7 @@
   @param {string} [location] - Which shop: 'sw' (default, primary 42 Ave SW) or 'ne' (Edmonton Trail NE).
   @param {string} [field] - Output one raw field instead of the default HTML block.
       One of: slug | name | public_name | street | city | region | postal | country |
-      phone | phone_href | address | address_full | area_served | is_primary | lat | lng |
+      phone | phone_href | address | address_full | area_served | is_primary | booking_default | lat | lng |
       maps_url | gbp_url | json |
       hours_mon_sat_display | hours_sun_display |
       hours_mon_sat_open | hours_mon_sat_close | hours_sun_open | hours_sun_close
@@ -20,7 +20,7 @@
   @example
   {% render 'pt-nap' %}                                   {# SW NAP block #}
   {% render 'pt-nap', location: 'ne' %}                   {# NE NAP block #}
-  {% render 'pt-nap', location: 'ne', field: 'phone' %}   {# "(403) 953-4283" #}
+  {% render 'pt-nap', location: 'ne', field: 'phone' %}   {# "(825) 395-4024" #}
   {% render 'pt-nap', location: 'ne', field: 'json' %}    {# JSON object for the data island #}
 {% enddoc %}
 
@@ -38,8 +38,8 @@
       assign region = 'AB'
       assign postal = 'T2E 3P6'
       assign country = 'CA'
-      assign phone = '(403) 953-4283'
-      assign phone_href = '+14039534283'
+      assign phone = '(825) 395-4024'
+      assign phone_href = '+18253954024'
       # TODO: confirm NE geo + GBP url before schema go-live (NAP must match the live listing).
       assign lat = ''
       assign lng = ''
@@ -56,9 +56,15 @@
       assign hours_fri_reopen = '14:30'
       assign hours_fri_final_close = '17:00'
       assign is_primary = false
+      # Which shop the booking surfaces start on. Deliberately separate from
+      # is_primary: that one means "the main business", and it feeds the NAP and
+      # the structured data. Edmonton Trail opens an hour later and has the room,
+      # so it is where a booking should START — without telling Google the
+      # business moved.
+      assign booking_default = true
       # Online booking gate: flip to true only once the NE backend is live
       # (Phase 3 deployed + NE Google Calendar connected + NE bays configured).
-      assign bookable = false
+      assign bookable = true
     else
       assign slug = 'sw'
       assign name = '42 Ave SW'
@@ -85,6 +91,7 @@
       assign hours_fri_reopen = '14:30'
       assign hours_fri_final_close = '17:00'
       assign is_primary = true
+      assign booking_default = false
       assign bookable = true
   endcase
 
@@ -193,6 +200,7 @@
   {%- when 'lat' -%}{{ lat }}
   {%- when 'lng' -%}{{ lng }}
   {%- when 'is_primary' -%}{% if is_primary %}true{% else %}false{% endif %}
+  {%- when 'booking_default' -%}{% if booking_default %}true{% else %}false{% endif %}
   {%- when 'bookable' -%}{% if bookable %}true{% else %}false{% endif %}
   {%- when 'json' -%}
     {
@@ -211,6 +219,7 @@
       "maps_url": {{ maps_url | json }},
       "area_served": {{ area_served | json }},
       "is_primary": {% if is_primary %}true{% else %}false{% endif %},
+      "booking_default": {% if booking_default %}true{% else %}false{% endif %},
       "bookable": {% if bookable %}true{% else %}false{% endif %},
       "lat": {% if lat != blank %}{{ lat | json }}{% else %}null{% endif %},
       "lng": {% if lng != blank %}{{ lng | json }}{% else %}null{% endif %},

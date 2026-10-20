@@ -551,17 +551,20 @@
     if (st.date) renderTimes();
   }
 
-  // "Also open" line under the picker. Shown only while the PRIMARY shop is
-  // selected and another shop is bookable: a customer who lands on the default
-  // shop and finds it busy should learn there is a second one before giving up,
-  // and a customer who already chose the other shop needs no nudge back. Name
-  // and address come from the island, so a third shop needs no edit here.
+  // "Also open" line under the picker. Shown whenever another shop is bookable.
+  //
+  // It used to appear only while the PRIMARY shop was selected, on the reasoning
+  // that someone who had CHOSEN the other shop needed no nudge back. That stops
+  // holding the moment a shop becomes the default: landing somewhere is not
+  // choosing it, and a customer who starts on Edmonton Trail should still learn
+  // 42 Ave exists. Name and address come from the island, so a third shop needs
+  // no edit here.
   function bkRenderLocNudge(grid) {
     var el = document.getElementById('bk-loc-nudge');
     if (!el) return;
     var cur = st.location;
     var other = cur ? bkLocations.find(function (l) { return l.slug !== cur.slug; }) : null;
-    if (!cur || !cur.is_primary || !other) { el.hidden = true; el.innerHTML = ''; return; }
+    if (!cur || !other) { el.hidden = true; el.innerHTML = ''; return; }
     var name = bkShortShopName(other);
     var addr = other.address || other.address_full || '';
     el.innerHTML = 'Also open for bookings: <strong>' + name + '</strong>' + (addr ? ', ' + addr : '') + '.'

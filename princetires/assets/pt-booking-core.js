@@ -64,8 +64,14 @@
         var hit = Core.bySlug(bookable, slug);
         if (hit) return hit;
       }
+      // The shop a booking STARTS on, which is not the same question as which
+      // shop is the main business. booking_default wins; is_primary is the
+      // fallback so a theme that never sets one behaves exactly as before.
       for (var i = 0; i < bookable.length; i++) {
-        if (bookable[i] && bookable[i].is_primary) return bookable[i];
+        if (bookable[i] && bookable[i].booking_default) return bookable[i];
+      }
+      for (var j = 0; j < bookable.length; j++) {
+        if (bookable[j] && bookable[j].is_primary) return bookable[j];
       }
       return bookable[0] || null;
     },
