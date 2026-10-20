@@ -551,14 +551,11 @@
     if (st.date) renderTimes();
   }
 
-  // "Also open" line under the picker. Shown whenever another shop is bookable.
-  //
-  // It used to appear only while the PRIMARY shop was selected, on the reasoning
-  // that someone who had CHOSEN the other shop needed no nudge back. That stops
-  // holding the moment a shop becomes the default: landing somewhere is not
-  // choosing it, and a customer who starts on Edmonton Trail should still learn
-  // 42 Ave exists. Name and address come from the island, so a third shop needs
-  // no edit here.
+  // "Also open" line under the picker. Shown only while the PRIMARY shop is
+  // selected and another shop is bookable: a customer who lands on the default
+  // shop and finds it busy should learn there is a second one before giving up,
+  // and a customer who already chose the other shop needs no nudge back. Name
+  // and address come from the island, so a third shop needs no edit here.
   function bkRenderLocNudge(grid) {
     var el = document.getElementById('bk-loc-nudge');
     if (!el) return;
@@ -1178,16 +1175,15 @@
     var h = Math.floor(mins / 60), m = mins % 60, hr = h > 12 ? h - 12 : h;
     return hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM');
   }
-  // Is the OTHER shop open on this day, and roughly how many times?
+  // Is the OTHER shop open on this day, and how many times?
   //
   // The day the chosen shop is full is the moment a customer gives up, and on a
-  // normal week 42 Ave is full on days Edmonton Trail is wide open. Saying so,
-  // with a real number, is worth more than "pick another day".
+  // normal week 42 Ave is full on days Edmonton Trail is wide open.
   //
-  // Deliberately CONSERVATIVE: hours + what the server says is booked + the
-  // server's own earliest-slot floor for that shop, and nothing else. It can
-  // undercount; it must never offer a time that is not there. Switching re-runs
-  // renderTimes, which is the authority.
+  // Deliberately CONSERVATIVE: that shop's hours, what the server says is booked
+  // there, and the server's own earliest-slot floor for it. It may undercount;
+  // it must never offer a time that is not there. Switching re-runs renderTimes,
+  // which stays the authority.
   async function bkOtherShopOpen(dateObj) {
     try {
       var cur = st.location;
@@ -1196,30 +1192,32 @@
       var iso = bkLocalISO(dateObj);
       var res = await PTBookingCore.fetchAvailability(AVAILABILITY_API, iso, other.slug,
         { product_handle: st.productHandle, variant_id: st.variantId, qty: st.qty, book_type: 'tire_install' });
-      if (!res || res.allDayBlocked) return null;
+      // A refusal returns an EMPTY booked list, which naively reads as "wide
+      // open". Offering a full day off the back of a 402 is the same mistake
+      // the main grid made for an hour on 2026-10-19 — refuse to guess.
+      if (!res || res.unavailable || res.allDayBlocked) return null;
       var oh = bkHoursFor(dateObj, other.slug);
       var taken = Array.isArray(res.booked) ? res.booked : [];
       var now = new Date();
       var isToday = dateObj.toDateString() === now.toDateString();
       var nowMins = now.getHours() * 60 + now.getMinutes();
-      // The server's floor for THAT shop — where its stock is, and its tier.
       var floorMins = null;
       if (res.earliest && res.earliest.date) {
-        if (res.earliest.date > iso) return null;          // not bookable that early anywhere
+        if (res.earliest.date > iso) return null;
         if (res.earliest.date === iso) floorMins = slotToMins(res.earliest.time || '') || null;
       }
       var open = [];
-      for (var m = oh.open; m <= oh.last; m += 30) {
-        if (oh.gap && m >= oh.gap[0] && m < oh.gap[1]) continue;
-        if (isToday && m <= nowMins) continue;
-        if (floorMins !== null && m < floorMins) continue;
-        var label = bkMinsToSlot(m);
-        if (taken.indexOf(label) > -1) continue;
-        open.push(label);
+      for (var mm = oh.open; mm <= oh.last; mm += 30) {
+        if (oh.gap && mm >= oh.gap[0] && mm < oh.gap[1]) continue;
+        if (isToday && mm <= nowMins) continue;
+        if (floorMins !== null && mm < floorMins) continue;
+        var lb = bkMinsToSlot(mm);
+        if (taken.indexOf(lb) > -1) continue;
+        open.push(lb);
       }
       return open.length ? { shop: other, times: open } : null;
     } catch (e) {
-      return null; // never let this break the grid
+      return null;
     }
   }
 
@@ -1268,6 +1266,15 @@
       { product_handle: st.productHandle, variant_id: st.variantId, qty: st.qty, book_type: 'tire_install' }
     );
     if (seq !== bkAvailSeq) return; // a newer click owns the grid now
+    // The platform refused or could not be reached. Say so, with the number
+    // of the shop they picked — never an open grid that fails at the end.
+    if (availRes.unavailable) {
+      var downPhone = (st.location && st.location.phone) ? st.location.phone : '';
+      document.getElementById('bk-time-grid').innerHTML = '<p style="color:#b91c1c;font-size: 0.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:.5rem .25rem">Online booking is temporarily unavailable. Please call ' + (downPhone || 'the shop') + ' to book, or try again in a few minutes.</p>';
+      var noteDown = document.getElementById('bk-trial-note'); if (noteDown) noteDown.hidden = true;
+      document.getElementById('bk-next-2').disabled = true;
+      return;
+    }
     booked = availRes.booked;
     allDayBlocked = availRes.allDayBlocked;
     if (availRes.earliest) st.serverEarliest = availRes.earliest;
@@ -1395,19 +1402,15 @@
     // a title at all.
     var bkOpen = slots.filter(function (s) { return booked.indexOf(s) < 0 && !blockReason[s]; });
 
-    // The union. The selected shop's grid keeps every rule and every reason
-    // exactly as it was; the OTHER shop's open times are merged in so a slot
-    // this shop cannot do is still offered when the other one can. Measured
-    // over ten days: 102 slots exist that only Edmonton Trail can serve, and
-    // 58 of them fall on days 42 Ave is PARTLY open — invisible to anything
-    // that only reacts to a completely full day.
+    // The union. This shop keeps every rule and every reason; the other shop's
+    // open times are merged in so a slot this shop cannot do is still offered
+    // when the other one can. 102 slots over ten days are Edmonton-Trail-only,
+    // and 58 fall on days 42 Ave is PARTLY open.
     var bkAlt = await bkOtherShopOpen(st.date);
-    if (seq !== bkAvailSeq) return;                 // a later day was clicked
+    if (seq !== bkAvailSeq) return;
     var bkAltSet = bkAlt ? bkAlt.times : null;
     var bkAltHas = function (t) { return !!bkAltSet && bkAltSet.indexOf(t) > -1; };
     var bkAltName = bkAlt ? bkShortShopName(bkAlt.shop) : '';
-    // Times only the other shop can do — including ones outside THIS shop's
-    // hours, which is how Edmonton Trail's 5:00 and 5:30 PM become reachable.
     var bkAltExtra = bkAltSet ? bkAltSet.filter(function (t) { return slots.indexOf(t) < 0; }) : [];
     var bkAllSlots = slots.concat(bkAltExtra).sort(function (a, b) { return slotToMins(a) - slotToMins(b); });
 
@@ -1433,15 +1436,12 @@
     document.getElementById('bk-time-grid').innerHTML = bkAllSlots.map(function (s) {
       var here = slots.indexOf(s) > -1 && booked.indexOf(s) < 0 && !blockReason[s];
       var there = bkAltHas(s);
-      // Bookable HERE keeps today's look. Bookable only at the other shop is
-      // offered and labelled, so choosing it is a decision, never a surprise.
       if (here) {
         return '<div class="bk-time-slot' + (st.time === s ? ' bk-time-slot--active' : '') +
           '" data-time="' + s + '">' + s + '</div>';
       }
       if (there) {
-        return '<div class="bk-time-slot bk-time-slot--other' +
-          (st.time === s ? ' bk-time-slot--active' : '') +
+        return '<div class="bk-time-slot bk-time-slot--other' + (st.time === s ? ' bk-time-slot--active' : '') +
           '" data-time="' + s + '" data-alt="1" title="Available at ' + bkAltName + '">' +
           s + '<span class="bk-time-slot__at">' + bkAltName + '</span></div>';
       }
@@ -1450,9 +1450,7 @@
         (isCalBooked ? 'Already booked' : (blockReason[s] || '')) + '">' + s + '</div>';
     }).join('');
 
-    // Step 2 can proceed when the chosen time is bookable at the chosen shop.
-    // Derived from state rather than set in the click handler, because a shop
-    // switch re-renders without one.
+    // Next follows STATE, not the click: a shop switch re-renders without one.
     var bkNext = document.getElementById('bk-next-2');
     if (bkNext) {
       bkNext.disabled = !(st.time && slots.indexOf(st.time) > -1 &&
@@ -1463,9 +1461,8 @@
       el.addEventListener('click', function () {
         st.time = this.dataset.time;
         if (this.dataset.alt && bkAlt) {
-          // Picking a time only the other shop has IS choosing that shop.
           bkPickLocation(bkAlt.shop, document.getElementById('bk-loc-grid'));
-          return;                                   // bkPickLocation re-renders
+          return;
         }
         renderTimes();
       });
@@ -1824,21 +1821,27 @@
         });
       } catch (netErr) {
         console.error('[booking] network failure:', netErr);
-        var diagErr = new Error("Couldn't reach the booking server. This is usually a browser extension (ad-blocker, privacy tool) blocking the request, or an unstable network. Try: (1) disable extensions for this site, (2) open in a private window, (3) use a different browser, or call (403) 452-4283.");
+        // The shop they picked — never SW's number for an NE customer.
+        var shopPhone = (st.location && st.location.phone) || '(403) 452-4283';
+        var diagErr = new Error("Couldn't reach the booking server. This is usually a browser extension (ad-blocker, privacy tool) blocking the request, or an unstable network. Try: (1) disable extensions for this site, (2) open in a private window, (3) use a different browser, or call " + shopPhone + ".");
         diagErr.isNetworkError = true;
         throw diagErr;
       }
 
       if (!res.ok) {
         var errData = await res.json().catch(function () { return {}; });
+        var shopPhone = (st.location && st.location.phone) || '(403) 452-4283';
         if (res.status === 429) {
           throw new Error("Too many bookings from this device — please wait a minute and try again.");
         }
         if (res.status === 409) {
           throw new Error("That time slot was just booked. Please pick another time.");
         }
-        if (res.status >= 500) {
-          throw new Error("Our booking server hit a snag (HTTP " + res.status + "). Please try again or call (403) 452-4283.");
+        // 402 is the platform switched off (a billing stop took the whole app
+        // down for an hour on 2026-10-19); 5xx is it falling over. Neither is
+        // fixed by retrying — give them the phone.
+        if (res.status === 402 || res.status >= 500) {
+          throw new Error("Online booking is temporarily unavailable. Please call " + shopPhone + " to book — sorry for the trouble.");
         }
         throw new Error(errData.error || ("Booking failed (HTTP " + res.status + ")"));
       }
@@ -1889,7 +1892,7 @@
       btn.disabled = false;
       btn.textContent = 'Send request';
       // Show full error message even when long — network errors need full guidance
-      errEl.textContent = err.message || 'Something went wrong. Please try again or call (403) 452-4283.';
+      errEl.textContent = err.message || ('Something went wrong. Please try again or call ' + ((st.location && st.location.phone) || '(403) 452-4283') + '.');
       errEl.hidden = false;
       // Scroll error into view so user sees it on mobile
       try { errEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}

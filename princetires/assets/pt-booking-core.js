@@ -12,6 +12,10 @@
  *
  * Loaded synchronously in the <head> (layout/theme.liquid) so window.PTBookingCore
  * exists before any inline booking script runs.
+ *
+ * Shopify serves this file MINIFIED from its CDN (comments stripped, whitespace
+ * collapsed — about 45% of this source). Verify a push by behaviour in a real
+ * browser or by tokens/string literals, never by exact formatting or by size.
  */
 (function () {
   "use strict";
@@ -64,9 +68,8 @@
         var hit = Core.bySlug(bookable, slug);
         if (hit) return hit;
       }
-      // The shop a booking STARTS on, which is not the same question as which
-      // shop is the main business. booking_default wins; is_primary is the
-      // fallback so a theme that never sets one behaves exactly as before.
+      // Where a booking STARTS, which is not the same question as which shop is
+      // the main business. booking_default wins; is_primary stays the fallback.
       for (var i = 0; i < bookable.length; i++) {
         if (bookable[i] && bookable[i].booking_default) return bookable[i];
       }
@@ -120,7 +123,16 @@
         });
       }
       return fetch(url)
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          // A non-2xx is the platform refusing — a billing stop (402), a crash
+          // (5xx), a rate limit (429) — not "nothing is booked today". For a
+          // whole hour on 2026-10-19 every request came back 402 and this
+          // function, swallowing it, drew a wide-open grid that then failed at
+          // the last step. Refusals are reported as `unavailable` so the
+          // surfaces can say so and point at the phone.
+          if (!r.ok) throw new Error("availability HTTP " + r.status);
+          return r.json();
+        })
         .then(function (d) {
           var e = d && d.earliest && d.earliest.date ? d.earliest : null;
           return {
@@ -128,9 +140,10 @@
             allDayBlocked: !!(d && d.allDayBlocked),
             blockedReason: (d && typeof d.blockedReason === "string" && d.blockedReason) || null,
             earliest: e ? { date: String(e.date), time: String(e.time || ""), label: String(e.label || ""), reason: String(e.reason || "") } : null,
+            unavailable: false,
           };
         })
-        .catch(function () { return { booked: [], allDayBlocked: false, blockedReason: null, earliest: null }; });
+        .catch(function () { return { booked: [], allDayBlocked: false, blockedReason: null, earliest: null, unavailable: true }; });
     },
 
     // POST a booking. The SURFACE builds the payload (shapes differ per surface);
