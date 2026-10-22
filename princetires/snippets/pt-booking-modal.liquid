@@ -80,6 +80,8 @@
         <div class="bk-loc-grid" id="bk-loc-grid"></div>
         {%- comment -%} "Also open" line, filled by JS only while the PRIMARY shop is selected. {%- endcomment -%}
         <p class="bk-loc-nudge" id="bk-loc-nudge" hidden></p>
+        {%- comment -%} Filled by JS when a ticked add-on is offered at some shops only (road force upgrade → Edmonton Trail). {%- endcomment -%}
+        <p class="bk-loc-note" id="bk-loc-note" hidden></p>
       </div>
 
       {%- comment -%} Hidden elements kept for JS compatibility {%- endcomment -%}
@@ -308,6 +310,10 @@
 .bk-loc-nudge strong{color:#111;font-weight:600}
 .bk-loc-nudge__btn{background:none;border:0;padding:0;margin-left:.2rem;font:inherit;font-weight:600;color:#dc2626;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .bk-loc-nudge__btn:hover{color:#b91c1c}
+/* "Only at Edmonton Trail" line under the picker when a ticked add-on restricts the shop */
+.bk-loc-note[hidden]{display:none!important}
+.bk-loc-note{margin:.5rem 0 0;font-size:.9rem;line-height:1.45;color:#4b5563}
+.bk-loc-note strong{color:#111;font-weight:600}
 
 /* When tires-only is selected, hide install-only sections + chrome */
 .bk-flow-tires-only .bk-install-only{display:none !important}
@@ -551,6 +557,38 @@
     if (st.date) renderTimes();
   }
 
+  // ── Add-ons offered at some shops only ───────────────────────────────────
+  // A catalog add-on carries `locations` from /api/services ([] = every shop);
+  // the road force upgrade is at Edmonton Trail NE. While such an add-on is
+  // ticked the picker offers only the shops that satisfy every ticked one and
+  // says why underneath. /api/book refuses the others, so this is the courtesy.
+  function bkRestrictions() {
+    var lists = [], named = [];
+    (st.customAddons || []).forEach(function (a) {
+      if (a && a.selected && Array.isArray(a.locations) && a.locations.length) {
+        lists.push(a.locations);
+        named.push({ name: a.name, shops: a.locations });
+      }
+    });
+    return { lists: lists, named: named };
+  }
+  function bkAllowedLocations() {
+    return PTBookingCore.allowedLocations(bkLocations, bkRestrictions().lists);
+  }
+  // Move the selection onto an allowed shop, then repaint the picker.
+  function bkSyncLocation() {
+    var allowed = bkAllowedLocations();
+    if (allowed.length && st.location && !PTBookingCore.bySlug(allowed, st.location.slug)) {
+      st.location = allowed[0];
+      st.time = null;
+      if (st.date) renderTimes();
+    }
+    renderLocationPicker();
+  }
+  function bkOnlyAt(slugs) {
+    return PTBookingCore.onlyAtLabel(slugs, PTBookingCore.loadLocations().all);
+  }
+
   // "Also open" line under the picker. Shown only while the PRIMARY shop is
   // selected and another shop is bookable: a customer who lands on the default
   // shop and finds it busy should learn there is a second one before giving up,
@@ -579,11 +617,25 @@
   function renderLocationPicker() {
     var section = document.getElementById('bk-location-section');
     var grid = document.getElementById('bk-loc-grid');
+    var note = document.getElementById('bk-loc-note');
     if (!section || !grid) return;
-    if (!bkLocations || bkLocations.length < 2) { section.hidden = true; return; }
+    // A ticked restricted add-on narrows the cards and explains why; with one
+    // bookable shop that cannot do it, the note alone is shown.
+    var r = bkRestrictions();
+    var shown = PTBookingCore.allowedLocations(bkLocations || [], r.lists);
+    var all = PTBookingCore.loadLocations().all;
+    var noteHtml = r.named.map(function (n) {
+      return '<strong>' + n.name + '</strong> is only available at our ' + bkOnlyAt(n.shops).replace(/ only$/, '') + ' shop.';
+    }).join(' ');
+    if (noteHtml && !shown.length) {
+      var only = PTBookingCore.bySlug(all, r.named[0].shops[0]);
+      noteHtml += only && only.phone ? ' Call ' + only.phone + ' to book it.' : '';
+    }
+    if (note) { note.innerHTML = noteHtml; note.hidden = !noteHtml; }
+    if ((!bkLocations || bkLocations.length < 2) && !noteHtml) { section.hidden = true; return; }
     section.hidden = false;
     var h = '';
-    bkLocations.forEach(function (l, idx) {
+    shown.forEach(function (l, idx) {
       var active = st.location && st.location.slug === l.slug;
       h += '<label class="bk-loc-card' + (active ? ' bk-loc-card--active' : '') + '" data-loc-slug="' + l.slug + '">'
         + '<input type="radio" name="bk-location" value="' + l.slug + '"' + (active ? ' checked' : '') + '>'
@@ -598,7 +650,14 @@
         bkPickLocation(bkLocations.find(function (l) { return l.slug === radio.value; }), grid);
       });
     });
-    bkRenderLocNudge(grid);
+    // No "also open" nudge while an add-on has pinned the shop — the other
+    // shop cannot take this booking.
+    if (r.lists.length) {
+      var nudge = document.getElementById('bk-loc-nudge');
+      if (nudge) { nudge.hidden = true; nudge.innerHTML = ''; }
+    } else {
+      bkRenderLocNudge(grid);
+    }
   }
 
   // Optional "what's covered" links for specific add-ons → their info page.
@@ -704,6 +763,9 @@
         // Brand allowlist: when non-empty, the add-on shows only on products
         // whose vendor is in the list (matched case-insensitively in the render).
         var allowedVendors = Array.isArray(svc.allowedVendors) ? svc.allowedVendors : [];
+        // Shops that offer it ([] = every shop) — e.g. the road force upgrade
+        // at Edmonton Trail only. Drives the picker via bkRestrictions().
+        var shops = PTBookingCore.serviceShops(svc);
         if (typeof p.amount === 'number') {
           extras.push({
             slug: svc.slug,
@@ -712,6 +774,7 @@
             amount: p.amount,
             unit: svc.unit || 'tire',
             allowedVendors: allowedVendors,
+            locations: shops,
             selected: false
           });
         } else if (typeof p.percent === 'number') {
@@ -735,6 +798,7 @@
             selectedMonths: defMonths,
             unit: svc.unit || 'tire',
             allowedVendors: allowedVendors,
+            locations: shops,
             selected: false
           });
         }
@@ -793,6 +857,9 @@
       // (e.g. an unpriced product) skip the row rather than show a bare floor.
       // Skipping doesn't misalign anything — the checkbox binds by array index.
       if (typeof a.percent === 'number' && !(st.tirePrice > 0)) return;
+      // An add-on no bookable shop offers cannot be booked here — leave it out
+      // rather than tick it into a refusal.
+      if (Array.isArray(a.locations) && a.locations.length && !PTBookingCore.allowedLocations(bkLoadLocations(), [a.locations]).length) return;
       var id = 'bk-addon-custom-' + idx;
       var unit = a.unit ? '/' + a.unit : '';
       var amt = bkAddonUnitPrice(a);
@@ -814,9 +881,10 @@
         }
         termSel = '<select class="bk-addon-term" data-custom-idx="' + idx + '" aria-label="Coverage term">' + opts + '</select>';
       }
-      var note = BK_ADDON_NOTES[a.slug]
-        ? '<span class="bk-addon-note">' + BK_ADDON_NOTES[a.slug] + '</span>'
-        : '';
+      // The static benefit line, else the shop badge for a restricted add-on.
+      var noteText = BK_ADDON_NOTES[a.slug]
+        || ((Array.isArray(a.locations) && a.locations.length) ? bkOnlyAt(a.locations) : '');
+      var note = noteText ? '<span class="bk-addon-note">' + noteText + '</span>' : '';
       h += '<label class="bk-addon' + (a.selected ? ' bk-addon--active' : '') + '" data-custom-slug="' + a.slug + '">'
         + '<input type="checkbox" data-custom-idx="' + idx + '" id="' + id + '"' + (a.selected ? ' checked' : '') + '>'
         + '<span class="bk-addon-name">' + a.name + link + '</span>'
@@ -834,6 +902,8 @@
         var lbl = this.closest('.bk-addon');
         if (lbl) lbl.classList.toggle('bk-addon--active', this.checked);
         renderPrice();
+        // A ticked restricted add-on (road force) pins the shop; unticking frees it.
+        if (Array.isArray(st.customAddons[i].locations) && st.customAddons[i].locations.length) bkSyncLocation();
       });
     });
     // Coverage-term dropdown: update the tier, repaint this row's price label,

@@ -8,10 +8,10 @@
 {% enddoc %}
 
 <div class="bk-overlay" id="sb-overlay" hidden>
-  <div class="bk-modal" role="dialog" aria-modal="true" aria-label="Book a service">
+  <div class="bk-modal" role="dialog" aria-modal="true" aria-label="Request a service">
 
     <div class="bk-header">
-      <span class="bk-header-title">Book a service</span>
+      <span class="bk-header-title">Request a service</span>
       <div class="bk-stepper" id="sb-stepper">
         <div class="bk-step" data-sb-step="1"><div class="bk-step-circle bk-step-circle--active">1</div></div>
         <div class="bk-step-line" data-sb-line="1"></div>
@@ -31,6 +31,10 @@
       <div id="sb-location-section" hidden>
         <p class="bk-label">Which location?</p>
         <div class="sb-loc-grid" id="sb-location-grid"></div>
+        {%- comment -%} "Also open" line, filled by JS only while the PRIMARY shop is selected. {%- endcomment -%}
+        <p class="sb-loc-nudge" id="sb-loc-nudge" hidden></p>
+        {%- comment -%} Filled by JS when the chosen service is offered at some shops only (road force balancing → Edmonton Trail). {%- endcomment -%}
+        <p class="sb-loc-note" id="sb-location-note" hidden></p>
       </div>
 
       <p class="bk-label">What service do you need?</p>
@@ -140,7 +144,7 @@
 
       <div class="bk-nav-row">
         <button class="bk-back-btn" onclick="sbGoTo(2)">&larr; Back</button>
-        <button class="bk-confirm-btn" id="sb-confirm-btn" onclick="sbSubmit()">Confirm booking</button>
+        <button class="bk-confirm-btn" id="sb-confirm-btn" onclick="sbSubmit()">Send request</button>
       </div>
     </div>
 
@@ -149,8 +153,8 @@
       <div class="bk-done-icon">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
       </div>
-      <h2 class="bk-done-title">You're booked!</h2>
-      <p class="bk-done-sub" id="sb-done-sub">See you at Prince Tires — 111 42 Ave SW, Calgary.</p>
+      <h2 class="bk-done-title">Request sent</h2>
+      <p class="bk-done-sub" id="sb-done-sub">We'll confirm by email, usually within the day — your appointment isn't final until you hear from us.</p>
       <div class="bk-done-card" id="sb-done-card"></div>
       <div class="bk-done-actions">
         <button class="bk-cal-btn" onclick="sbDownloadICS()">Add to calendar</button>
@@ -197,6 +201,22 @@
   color: #9ca3af;
   line-height: 1.3;
 }
+/* "Also open" nudge — only while the PRIMARY shop is selected and another is bookable */
+.sb-loc-nudge[hidden] { display: none !important; }
+.sb-loc-nudge { margin: .5rem 0 0; font-size: .9rem; line-height: 1.45; color: #4b5563; }
+.sb-loc-nudge strong { color: #111; font-weight: 600; }
+.sb-loc-nudge__btn {
+  background: none; border: 0; padding: 0; margin-left: .2rem;
+  font: inherit; font-weight: 600; color: #dc2626; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.sb-loc-nudge__btn:hover { color: #b91c1c; }
+/* "Only at Edmonton Trail" line under the picker when the service restricts the shop */
+.sb-loc-note { margin: .5rem 0 0; font-size: .85rem; line-height: 1.45; color: #4b5563; }
+.sb-loc-note strong { color: #111; font-weight: 600; }
+.sb-loc-note[hidden] { display: none !important; }
+/* Shop badge on a service chip offered at one location only */
+.sb-chip-badge { display: inline-block; margin-top: .2rem; align-self: flex-start; padding: .1rem .45rem; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: .7rem; font-weight: 600; }
 
 /* ── Service chip grid ── */
 .sb-service-grid {
@@ -440,7 +460,7 @@
     repairType: 'patch', // only option remaining for flat_repair
     looseRims: false,
     qty: 4,
-    addons: { disposal: false, tpms: false, lowProfile: false },
+    addons: { disposal: false, tpms: false, lowProfile: false, roadForce: false },
     location: '', // slug of the chosen shop; '' until sbInitLocations() resolves
     date: null,
     time: null
@@ -483,11 +503,63 @@
     return picked ? picked.slug : '';
   }
 
+  // ── Services offered at some shops only ───────────────────────────────────
+  // Which shops offer a catalog row ([] = every shop). The road force balancer
+  // is at Edmonton Trail NE; sbApplyCatalog() overlays this from /api/services
+  // (`locations`). The picker offers only the shops that satisfy the chosen
+  // service and every ticked catalog add-on, and says why underneath. The
+  // server refuses the others, so this is the courtesy and /api/book the fence.
+  var sbServiceShops = {
+    road_force_balancing: ['ne'],
+    addon_road_force: ['ne']
+  };
+  // Catalog add-ons this modal can offer beyond TPMS / disposal, by slug. Only
+  // filled from /api/services — an add-on the server does not know is dropped
+  // from the booking, so it is never offered from a fallback.
+  var sbAddonCatalog = {};
+  var sbAddonKeys = { addon_road_force: 'roadForce' };
+
+  function sbRestrictions() {
+    var lists = [], named = [];
+    var svcShops = sbSt.service && sbServiceShops[sbSt.service];
+    if (svcShops && svcShops.length) {
+      var svc = sbServices.find(function (s) { return s.id === sbSt.service; });
+      lists.push(svcShops);
+      named.push({ name: svc ? svc.name : 'This service', shops: svcShops });
+    }
+    Object.keys(sbAddonKeys).forEach(function (slug) {
+      if (sbSt.addons[sbAddonKeys[slug]] && sbAddonCatalog[slug] && sbServiceShops[slug] && sbServiceShops[slug].length) {
+        lists.push(sbServiceShops[slug]);
+        named.push({ name: sbAddonCatalog[slug].name, shops: sbServiceShops[slug] });
+      }
+    });
+    return { lists: lists, named: named };
+  }
+  function sbAllowedLocations() {
+    return PTBookingCore.allowedLocations(sbLocBookable, sbRestrictions().lists);
+  }
+  // Move the selection onto an allowed shop (dropping a picked time, since
+  // availability is per shop), then repaint the picker.
+  function sbSyncLocation() {
+    var allowed = sbAllowedLocations();
+    if (allowed.length && !PTBookingCore.bySlug(allowed, sbSt.location)) {
+      sbSt.location = allowed[0].slug;
+      if (sbSt.date) { sbSt.time = null; var n2 = document.getElementById('sb-next-2'); if (n2) n2.disabled = true; sbRenderTimes(); }
+    }
+    sbRenderLocations();
+  }
+  function sbOnlyAt(slug) {
+    var shops = sbServiceShops[slug];
+    if (!shops || !shops.length) return '';
+    return PTBookingCore.onlyAtLabel(shops, sbLocAll);
+  }
+
   // ── Service icons (presentation only — not part of the catalog API) ───────
   var sbIcons = {
     installation_off: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>',
     installation_on: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>',
     balancing: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+    road_force_balancing: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><circle cx="12" cy="13" r="2.5"/><path d="M12 2v3M4 13H2M22 13h-2M6.3 7.3L4.9 5.9M17.7 7.3l1.4-1.4"/></svg>',
     rotation: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1 .25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>',
     flat_repair: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>',
     tpms: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="7"/><path d="M12 8V6M8 13H6M18 13h-1M9.5 10.5l-1-1M15.5 10.5l1-1"/><circle cx="12" cy="13" r="2" fill="currentColor" stroke="none"/></svg>',
@@ -512,6 +584,9 @@
     { id: 'balancing', name: 'Wheel Balancing', priceLabel: 'from $20 / wheel',
       desc: 'We spin each wheel on a balancer, detect heavy spots, and add weights so there\'s no vibration at highway speed.',
       icon: sbIcons.balancing },
+    { id: 'road_force_balancing', name: 'Road Force Balancing', priceLabel: '$35 / wheel',
+      desc: 'A load roller presses against the spinning tire to find stiff spots and runout a standard balance can\'t see, then we match tire to wheel so a stubborn vibration finally goes away. Edmonton Trail NE only.',
+      icon: sbIcons.road_force_balancing },
     { id: 'rotation', name: 'Tire Rotation', priceLabel: 'from $60 / car',
       desc: 'We move your tires to different positions so they wear evenly, extending their life and keeping handling balanced.',
       icon: sbIcons.rotation },
@@ -549,12 +624,14 @@
     installation_on: { mode: 'flat_by_vehicle', unit: 'car',
       byVehicle: { passenger: 60, suv: 60, van: 60, electric: 60, truck: 80, largetruck: 80, dually: 90, trailer: 120 } },
     balancing: { mode: 'per_unit_flat', unit: 'wheel', amount: 20 },
+    road_force_balancing: { mode: 'per_unit_flat', unit: 'wheel', amount: 35 },
     rotation: { mode: 'flat_by_vehicle', unit: 'car',
       byVehicle: { passenger: 60, suv: 60, van: 60, electric: 60, truck: 60, largetruck: 100, dually: 100, trailer: 60 } },
     flat_repair: { mode: 'per_unit_flat', unit: 'tire', amount: 50 },
     tpms: { mode: 'per_unit_flat', unit: 'sensor', amount: 75 },
     addon_tpms: { mode: 'per_unit_flat', unit: 'sensor', amount: 75 },
-    addon_disposal: { mode: 'per_unit_flat', unit: 'tire', amount: 5 }
+    addon_disposal: { mode: 'per_unit_flat', unit: 'tire', amount: 5 },
+    addon_road_force: { mode: 'per_unit_flat', unit: 'tire', amount: 15 }
   };
 
   // Generic, catalog-driven price calc. Reads sbPricing (overlaid by
@@ -601,6 +678,11 @@
         subtotal += (sbPricing.addon_disposal.amount || 0) * q;
         parts.push('disposal');
       }
+    }
+    // Road force upgrade on either install (per tire, from the catalog).
+    if ((s === 'installation_off' || s === 'installation_on') && sbSt.addons.roadForce && sbAddonCatalog.addon_road_force) {
+      subtotal += (sbAddonCatalog.addon_road_force.amount || 0) * q;
+      parts.push('road force ×' + q);
     }
 
     var gst   = subtotal * 0.05;
@@ -649,6 +731,8 @@
         lowProfileFloor: pr.lowProfileFloor,
         flatOverride: pr.flatOverride || null
       };
+      // Which shops offer it — the live answer replaces the fallback entry.
+      sbServiceShops[svc.slug] = PTBookingCore.serviceShops(svc);
       if (svc.kind === 'service') {
         list.push({
           id: svc.slug,
@@ -657,6 +741,8 @@
           priceLabel: sbPriceLabel(svc),
           icon: sbIcons[svc.slug] || sbIcons._default
         });
+      } else if (svc.kind === 'addon' && sbAddonKeys[svc.slug] && typeof pr.amount === 'number') {
+        sbAddonCatalog[svc.slug] = { name: svc.name, amount: pr.amount, unit: svc.unit || 'tire' };
       }
     });
     if (list.length) sbServices = list;
@@ -665,19 +751,76 @@
     if (ov && !ov.hidden) {
       sbRenderServices();
       if (sbSt.service) { sbShowDetails(); sbUpdatePrice(); }
+      sbSyncLocation();
     }
   }
 
   // ── Render: location picker ───────────────────────────────────────────────
   // Gated: only shows when 2+ shops are bookable. With <2 bookable, the section
   // stays hidden and behavior is identical to the prior SW-only flow.
+  // "Prince Tires — Edmonton Trail NE" -> "Edmonton Trail NE", for copy that
+  // already says Prince Tires.
+  function sbShortShopName(l) {
+    var n = l.public_name || l.name || 'Prince Tires';
+    return n.replace(/^Prince Tires\s*[—–-]\s*/i, '');
+  }
+
+  function sbPickLocation(slug) {
+    if (!slug || sbSt.location === slug) return;
+    sbSt.location = slug;
+    try { localStorage.setItem('pt-booking-location', sbSt.location); } catch (e) {}
+    sbRenderLocations();
+    // Availability is location-specific — re-query if the user is on / has
+    // reached the time step.
+    if (sbSt.date) { sbSt.time = null; var n2 = document.getElementById('sb-next-2'); if (n2) n2.disabled = true; sbRenderTimes(); }
+  }
+
+  // "Also open" line under the picker. Shown only while the PRIMARY shop is
+  // selected and another shop is bookable: a customer who lands on the default
+  // shop and finds it busy should learn there is a second one before giving up,
+  // and a customer who already chose the other shop needs no nudge back. Name
+  // and address come from the island, so a third shop needs no edit here.
+  function sbRenderLocNudge() {
+    var el = document.getElementById('sb-loc-nudge');
+    if (!el) return;
+    var cur = sbLocBySlug(sbSt.location);
+    var other = sbLocBookable.find(function (l) { return l.slug !== sbSt.location; });
+    if (!cur || !cur.is_primary || !other) { el.hidden = true; el.innerHTML = ''; return; }
+    var name = sbShortShopName(other);
+    var addr = other.address || other.address_full || '';
+    el.innerHTML = 'Also open for bookings: <strong>' + name + '</strong>' + (addr ? ', ' + addr : '') + '.' +
+      ' <button type="button" class="sb-loc-nudge__btn" data-loc-switch="' + other.slug + '">' +
+      'Check out our ' + name + ' location →</button>';
+    el.hidden = false;
+    var btn = el.querySelector('[data-loc-switch]');
+    if (btn) btn.addEventListener('click', function () { sbPickLocation(this.dataset.locSwitch); });
+  }
+
+  // A restricted service narrows the chips to the shops that offer it and
+  // explains why underneath; with one bookable shop that cannot do the job the
+  // note alone is shown, so the customer learns where to go.
   function sbRenderLocations() {
     var section = document.getElementById('sb-location-section');
     var grid = document.getElementById('sb-location-grid');
+    var note = document.getElementById('sb-location-note');
     if (!section || !grid) return;
-    if (sbLocBookable.length < 2) { section.hidden = true; return; }
+    var r = sbRestrictions();
+    var allowed = PTBookingCore.allowedLocations(sbLocBookable, r.lists);
+    var noteHtml = '';
+    if (r.named.length) {
+      noteHtml = r.named.map(function (n) {
+        var label = PTBookingCore.onlyAtLabel(n.shops, sbLocAll).replace(/ only$/, '');
+        return '<strong>' + n.name + '</strong> is only available at our ' + label + ' shop.';
+      }).join(' ');
+      if (!allowed.length) {
+        var only = PTBookingCore.bySlug(sbLocAll, r.named[0].shops[0]);
+        noteHtml += only && only.phone ? ' Call ' + only.phone + ' to book it.' : '';
+      }
+    }
+    if (note) { note.innerHTML = noteHtml; note.hidden = !noteHtml; }
+    if (sbLocBookable.length < 2 && !noteHtml) { section.hidden = true; return; }
     section.hidden = false;
-    grid.innerHTML = sbLocBookable.map(function (l) {
+    grid.innerHTML = allowed.map(function (l) {
       var active = sbSt.location === l.slug ? ' sb-loc-chip--active' : '';
       var label = l.name || l.public_name || l.slug;
       var addr = l.address || l.address_full || '';
@@ -687,16 +830,16 @@
         '</button>';
     }).join('');
     grid.querySelectorAll('.sb-loc-chip').forEach(function (el) {
-      el.addEventListener('click', function () {
-        if (sbSt.location === this.dataset.loc) return;
-        sbSt.location = this.dataset.loc;
-        try { localStorage.setItem('pt-booking-location', sbSt.location); } catch (e) {}
-        sbRenderLocations();
-        // Availability is location-specific — re-query if the user is on / has
-        // reached the time step.
-        if (sbSt.date) { sbSt.time = null; var n2 = document.getElementById('sb-next-2'); if (n2) n2.disabled = true; sbRenderTimes(); }
-      });
+      el.addEventListener('click', function () { sbPickLocation(this.dataset.loc); });
     });
+    // No "also open" nudge while a service has pinned the shop — the other
+    // shop cannot take this booking.
+    if (r.lists.length) {
+      var nudge = document.getElementById('sb-loc-nudge');
+      if (nudge) { nudge.hidden = true; nudge.innerHTML = ''; }
+    } else {
+      sbRenderLocNudge();
+    }
   }
 
   // ── Render: service chips ─────────────────────────────────────────────────
@@ -705,10 +848,13 @@
     if (!grid) return;
     grid.innerHTML = sbServices.map(function (s) {
       var active = sbSt.service === s.id ? ' sb-service-chip--active' : '';
+      var only = sbOnlyAt(s.id);
       return '<div class="sb-chip-wrap">' +
         '<button class="sb-service-chip' + active + '" data-svc="' + s.id + '">' +
           s.icon +
-          '<span class="sb-chip-text"><span>' + s.name + '</span><span class="sb-chip-price">' + s.priceLabel + '</span></span>' +
+          '<span class="sb-chip-text"><span>' + s.name + '</span><span class="sb-chip-price">' + s.priceLabel + '</span>' +
+            (only ? '<span class="sb-chip-badge">' + only + '</span>' : '') +
+          '</span>' +
         '</button>' +
         '<button class="sb-info-btn" data-info="' + s.id + '" aria-label="What\'s included" tabindex="0">' +
           '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>' +
@@ -721,11 +867,12 @@
       el.addEventListener('click', function () {
         sbSt.service = this.dataset.svc;
         sbSt.repairType = '';
-        sbSt.addons = { disposal: false, tpms: false };
+        sbSt.addons = { disposal: false, tpms: false, lowProfile: false, roadForce: false };
         sbRenderServices();
         sbShowDetails();
         sbUpdatePrice();
         sbUpdateNextBtn();
+        sbSyncLocation();
       });
     });
 
@@ -759,7 +906,7 @@
     section.hidden = false;
 
     // Trailer not valid for balancing or rotation — reset to passenger
-    var sbNoTrailer = ['balancing', 'rotation'];
+    var sbNoTrailer = ['balancing', 'road_force_balancing', 'rotation'];
     if (sbNoTrailer.indexOf(sbSt.service) > -1 && sbSt.vehicle === 'trailer') {
       sbSt.vehicle = 'passenger';
     }
@@ -790,7 +937,7 @@
     var grid = document.getElementById('sb-vehicles');
     if (!grid) return;
     // Trailers don't apply to balancing or rotation
-    var sbNoTrailerSvcs = ['balancing', 'rotation'];
+    var sbNoTrailerSvcs = ['balancing', 'road_force_balancing', 'rotation'];
     var vehs = sbNoTrailerSvcs.indexOf(sbSt.service) > -1
       ? sbVehs.filter(function (v) { return v.id !== 'trailer'; })
       : sbVehs;
@@ -827,6 +974,14 @@
       rows.push({ id: 'disposal', name: 'Tire disposal', price: (sbPricing.addon_disposal.amount || 5), unit: '/tire' });
       rows.push({ id: 'lowProfile', name: 'Low-profile or run-flat tires', priceLabel: '$' + (sbPricing.installation_off.lowProfileFloor || 40) + '/tire min' });
     }
+    // Road force upgrade on either install — from the catalog, and only when a
+    // bookable shop offers it (the picker would otherwise have nothing to show).
+    if ((isOff || isOn) && sbAddonCatalog.addon_road_force) {
+      var rf = sbAddonCatalog.addon_road_force;
+      if (PTBookingCore.allowedLocations(sbLocBookable, [sbServiceShops.addon_road_force || []]).length) {
+        rows.push({ id: 'roadForce', name: rf.name, price: rf.amount, unit: '/' + rf.unit, note: sbOnlyAt('addon_road_force') });
+      }
+    }
 
     container.innerHTML = rows.map(function (a) {
       var active = sbSt.addons[a.id] ? ' bk-addon--active' : '';
@@ -838,6 +993,7 @@
         '<input type="checkbox" data-addon="' + a.id + '"' + checked + '>' +
         '<span class="bk-addon-name">' + a.name + '</span>' +
         priceTag +
+        (a.note ? '<span class="bk-addon-note">' + a.note + '</span>' : '') +
         '</label>';
     }).join('');
     container.querySelectorAll('input[data-addon]').forEach(function (el) {
@@ -846,8 +1002,22 @@
         var lbl = this.closest('.bk-addon');
         lbl.classList.toggle('bk-addon--active', this.checked);
         sbUpdatePrice();
+        // A ticked road force upgrade narrows the shop to Edmonton Trail.
+        if (this.dataset.addon === 'roadForce') sbSyncLocation();
       });
     });
+  }
+
+  // The catalog add-ons ticked on this booking, in the shape /api/book takes
+  // (customAddons). Only on the two installs, where they are offered.
+  function sbSelectedCatalogAddons() {
+    var out = [];
+    if (sbSt.service !== 'installation_off' && sbSt.service !== 'installation_on') return out;
+    Object.keys(sbAddonKeys).forEach(function (slug) {
+      var a = sbAddonCatalog[slug];
+      if (a && sbSt.addons[sbAddonKeys[slug]]) out.push({ slug: slug, name: a.name, qty: sbSt.qty, amount: a.amount });
+    });
+    return out;
   }
 
   // ── Render: qty selector ──────────────────────────────────────────────────
@@ -857,7 +1027,7 @@
     if (!sel) return;
     var s = sbSt.service;
     var isTpms = s === 'tpms';
-    var isBalancing = s === 'balancing';
+    var isBalancing = s === 'balancing' || s === 'road_force_balancing';
     var isRepair = s === 'flat_repair';
     var max = (isTpms || isBalancing || isRepair) ? 4 : 8;
     lbl.textContent = isTpms ? 'How many sensors?'
@@ -901,6 +1071,53 @@
     var ok = !!sbSt.service;
     document.getElementById('sb-next-1').disabled = !ok;
   }
+
+  {% comment %}
+    Hours PER SHOP, rendered once from the store_hours metaobject pt-nap reads.
+    This modal used to read SW's hours for every shop, so a customer who picked
+    Edmonton Trail NE was shown SW's window (NE closes at 6 PM Mon–Thu/Sat and
+    4 PM Sun) and the Friday split (closed 1:00–2:30, final close 5:00 at both
+    shops) was ignored. Same block as sections/pt-booking-page.liquid. Opens
+    with a NON-trimming tag and ends in plain JS so it can never swallow the
+    line before it; a third shop is one slug added to _sb_slugs.
+  {% endcomment %}
+  {%- assign _sb_slugs = 'sw,ne' | split: ',' -%}
+  {%- assign _sb_fields = 'hours_mon_sat_open,hours_mon_sat_close,hours_sun_open,hours_sun_close,hours_fri_open,hours_fri_close,hours_fri_reopen,hours_fri_final_close,booking_cutoff_minutes' | split: ',' -%}
+  var SB_HOURS = {
+  {%- for _s in _sb_slugs %}
+    {{ _s | json }}: {
+    {%- for _f in _sb_fields -%}
+      {%- capture _v %}{% render 'pt-nap', location: _s, field: _f %}{% endcapture %}
+      {{ _f | json }}: {{ _v | strip | json }},
+    {%- endfor %}
+    },
+  {%- endfor %}
+  };
+  // The appointment window for a day at the SELECTED shop: first slot, last
+  // slot (close − cutoff) and, on Fridays, the lunch gap. Falls back to SW.
+  function sbHoursFor(d) {
+    var H = SB_HOURS[sbSt.location] || SB_HOURS.sw || {};
+    var toMin = function (s) { var p = String(s || '').split(':'); var v = parseInt(p[0], 10) * 60 + (parseInt(p[1], 10) || 0); return isNaN(v) ? null : v; };
+    var dow = d.getDay(), open, close, gap = null;
+    if (dow === 0) { open = toMin(H.hours_sun_open); close = toMin(H.hours_sun_close); }
+    else if (dow === 5 && toMin(H.hours_fri_final_close) !== null) {
+      open = toMin(H.hours_fri_open); close = toMin(H.hours_fri_final_close);
+      var gc = toMin(H.hours_fri_close), gr = toMin(H.hours_fri_reopen);
+      if (gc !== null && gr !== null && gr > gc) gap = [gc, gr];
+    }
+    else { open = toMin(H.hours_mon_sat_open); close = toMin(H.hours_mon_sat_close); }
+    if (open === null) open = dow === 0 ? 600 : 540;
+    if (close === null) close = dow === 0 ? 840 : 1020;
+    return { open: open, last: close - (parseInt(H.booking_cutoff_minutes, 10) || 30), gap: gap };
+  }
+  // Minutes → the label shape the availability API uses ("9:00 AM", "12:30 PM").
+  function sbMinsToSlot(mins) {
+    var h = Math.floor(mins / 60), m = mins % 60, hr = h > 12 ? h - 12 : h;
+    return hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM');
+  }
+  // Monotonic render counter: a slow availability answer for an EARLIER day
+  // click must never paint over a later one.
+  var sbAvailSeq = 0;
 
   // ── Helper: "9:30 AM" → minutes from midnight ─────────────────────────────
   function sbSlotToMins(slot) {
@@ -952,36 +1169,28 @@
       document.getElementById('sb-time-grid').innerHTML = '<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Select a day above</p>';
       return;
     }
-    var isSun = sbSt.date.getDay() === 0;
-    // Appointment window from the store_hours metaobject (via pt-nap, SW shop):
-    // first slot = open; last slot = close − cutoff. Fallback = the known SW window.
-    {% capture _suo %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{% endcapture %}
-    {% capture _mso %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{% endcapture %}
-    {% capture _suc %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{% endcapture %}
-    {% capture _msc %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{% endcapture %}
-    {% capture _cutv %}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{% endcapture %}
-    var _bo = isSun ? '{{ _suo | strip }}' : '{{ _mso | strip }}';
-    var _bc = isSun ? '{{ _suc | strip }}' : '{{ _msc | strip }}';
-    var _bcut = parseInt('{{ _cutv | strip }}', 10) || 30;
-    var _boa = _bo.split(':'), _bca = _bc.split(':');
-    var startH = parseInt(_boa[0], 10), startM = parseInt(_boa[1], 10) || 0;
-    if (isNaN(startH)) { startH = 9; startM = 0; }
-    var _blast = (parseInt(_bca[0], 10) * 60 + (parseInt(_bca[1], 10) || 0)) - _bcut;
-    if (isNaN(_blast)) { _blast = isSun ? 810 : 990; }
-    var endH = Math.floor(_blast / 60), endM = _blast % 60;
+    // Take a ticket for THIS render: a slow availability answer for an earlier
+    // click must never paint over a later one. The window comes from the
+    // SELECTED shop's hours (sbHoursFor), not SW's for everyone.
+    var seq = ++sbAvailSeq;
+    var H = sbHoursFor(sbSt.date);
     var slots = [];
-    for (var h = startH; h <= endH; h++) {
-      for (var m = (h === startH ? startM : 0); m < 60; m += 30) {
-        if (h === endH && m > endM) break;
-        var hr = h > 12 ? h - 12 : h;
-        slots.push(hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM'));
-      }
-    }
+    for (var mins = H.open; mins <= H.last; mins += 30) slots.push(sbMinsToSlot(mins));
     document.getElementById('sb-time-grid').innerHTML = '<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Checking availability…</p>';
     var _avail = await PTBookingCore.fetchAvailability(AVAILABILITY_API, PTBookingCore.localISO(sbSt.date), sbSt.location);
+    if (seq !== sbAvailSeq) return; // a newer click owns the grid now
+    // The platform refused or could not be reached. Say so, with the number
+    // of the shop they picked — never an open grid that fails at the end.
+    if (_avail.unavailable) {
+      var downLoc = sbCurrentLoc();
+      var downPhone = (downLoc && downLoc.phone) ? downLoc.phone : '';
+      document.getElementById('sb-time-grid').innerHTML = '<p style="color:#b91c1c;font-size:.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:.5rem .25rem">Online booking is temporarily unavailable. Please call ' + (downPhone || 'the shop') + ' to book, or try again in a few minutes.</p>';
+      document.getElementById('sb-next-2').disabled = true;
+      return;
+    }
     var booked = _avail.booked, allDayBlocked = _avail.allDayBlocked;
     if (allDayBlocked) {
-      document.getElementById('sb-time-grid').innerHTML = '<p style="color:#dc2626;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">Not available this day — please pick another date.</p>';
+      document.getElementById('sb-time-grid').innerHTML = '<p style="color:#dc2626;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.5rem 0">' + (_avail.blockedReason || 'Not available this day — please pick another date.') + '</p>';
       return;
     }
 
@@ -1002,16 +1211,27 @@
       });
     }
 
+    // Friday lunch gap (both shops close 1:00–2:30): nothing inside it.
+    if (H.gap) {
+      slots.forEach(function (s) {
+        var sm = sbSlotToMins(s);
+        if (!blockReason[s] && sm >= H.gap[0] && sm < H.gap[1]) blockReason[s] = 'Closed ' + sbMinsToSlot(H.gap[0]) + ' – ' + sbMinsToSlot(H.gap[1]);
+      });
+    }
+
     // If every slot ends up blocked (past, lead-time, or booked), don't show
-    // a wall of red — give one clear message and steer them to another day.
+    // a wall of red — give one clear message that says WHY, and the shop's
+    // number when a phone call could still get them in today.
     var pickable = 0;
     slots.forEach(function (s) {
       if (booked.indexOf(s) === -1 && !blockReason[s]) pickable++;
     });
     if (pickable === 0) {
-      var msg = isToday
-        ? 'No times left today — please pick a future day above.'
-        : 'No openings this day — please pick another date above.';
+      var sbLoc = sbCurrentLoc();
+      var sbPhone = (sbLoc && sbLoc.phone) ? sbLoc.phone : '';
+      var msg = (isToday && nowMins + 120 > H.last)
+        ? 'Same-day appointments need 2 hours’ notice, and the last one today is ' + sbMinsToSlot(H.last) + ' — today can’t be booked online any more. Pick another day' + (sbPhone ? ', or call ' + sbPhone + ' to ask about a walk-in.' : '.')
+        : 'Fully booked this day — please pick another day.';
       document.getElementById('sb-time-grid').innerHTML =
         '<p style="color:#9ca3af;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.6rem 0;line-height:1.4">' + msg + '</p>';
       document.getElementById('sb-next-2').disabled = true;
@@ -1052,6 +1272,13 @@
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Service</span><span class="bk-summary-val">' + (svc ? svc.name : '—') + '</span></div>';
     if (sbSt.service === 'installation_off' && sbSt.addons.lowProfile) {
       h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire type</span><span class="bk-summary-val">Low-profile / run-flat</span></div>';
+    }
+    var picked = sbSelectedCatalogAddons();
+    if (picked.length) {
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">Add-on</span><span class="bk-summary-val">' + picked.map(function (a) { return a.name; }).join(', ') + '</span></div>';
+    }
+    if (sbLocBookable.length > 1) {
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">Location</span><span class="bk-summary-val">' + PTBookingCore.shortShopName(sbCurrentLoc()) + '</span></div>';
     }
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Date &amp; time</span><span class="bk-summary-val">' + ds + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
@@ -1113,6 +1340,7 @@
       var keywordMap = [
         ['installation_on',  ['season', 'changeover', 'swap', 'on rim', 'on-rim']],
         ['installation_off', ['install', 'mount', 'changeover-off', 'off rim', 'off-rim']],
+        ['road_force_balancing', ['road force', 'road-force', 'roadforce']],
         ['balancing',        ['balanc']],
         ['rotation',         ['rotat']],
         ['flat_repair',      ['flat', 'patch', 'repair', 'puncture', 'leak']],
@@ -1127,7 +1355,7 @@
     sbSt.repairType = 'patch';
     sbSt.qty = 4;
     sbSt.vehicle = 'passenger';
-    sbSt.addons = { disposal: false, tpms: false, lowProfile: false };
+    sbSt.addons = { disposal: false, tpms: false, lowProfile: false, roadForce: false };
     sbSt.savedVehicle = null;
     sbSt.date = null;
     sbSt.time = null;
@@ -1159,6 +1387,8 @@
     sbRenderServices();
     if (sbSt.service) { sbShowDetails(); sbUpdatePrice(); }
     sbUpdateNextBtn();
+    // A pre-selected restricted service (road force) narrows the picker now.
+    sbSyncLocation();
 
     sbGoTo(1);
     document.getElementById('sb-overlay').hidden = false;
@@ -1220,6 +1450,7 @@
         tpms: sbSt.addons.tpms || false,
         disposal: sbSt.addons.disposal || false,
         lowProfile: sbSt.addons.lowProfile || false,
+        customAddons: sbSelectedCatalogAddons(),
         name: name, phone: phone, email: email, notes: notes,
         vehicleType: sbSt.vehicle,
         vehicleYear: sbSt.savedVehicle ? (sbSt.savedVehicle.year || '') : '',
@@ -1238,14 +1469,20 @@
         res = await fetch(BOOKING_API, { method: 'POST', mode: 'cors', credentials: 'omit', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       } catch (netErr) {
         console.error('[service booking] network failure:', netErr);
-        var diagErr = new Error("Couldn't reach the booking server. This is usually a browser extension (ad-blocker, privacy tool) blocking the request, or an unstable network. Try: (1) disable extensions for this site, (2) open in a private window, (3) use a different browser, or call (403) 452-4283.");
+        // The shop they picked — never SW's number for an NE customer.
+        var shopPhone = ((sbCurrentLoc() || {}).phone) || '(403) 452-4283';
+        var diagErr = new Error("Couldn't reach the booking server. This is usually a browser extension (ad-blocker, privacy tool) blocking the request, or an unstable network. Try: (1) disable extensions for this site, (2) open in a private window, (3) use a different browser, or call " + shopPhone + ".");
         diagErr.isNetworkError = true; throw diagErr;
       }
       if (!res.ok) {
         var ed = await res.json().catch(function () { return {}; });
+        var shopPhone = ((sbCurrentLoc() || {}).phone) || '(403) 452-4283';
         if (res.status === 429) throw new Error("Too many bookings from this device — please wait a minute and try again.");
         if (res.status === 409) throw new Error("That time slot was just booked. Please pick another time.");
-        if (res.status >= 500) throw new Error("Our booking server hit a snag (HTTP " + res.status + "). Please try again or call (403) 452-4283.");
+        // 402 is the platform switched off (a billing stop took the whole app
+        // down for an hour on 2026-10-19); 5xx is it falling over. Neither is
+        // fixed by retrying — give them the phone.
+        if (res.status === 402 || res.status >= 500) throw new Error("Online booking is temporarily unavailable. Please call " + shopPhone + " to book — sorry for the trouble.");
         throw new Error(ed.error || ("Booking failed (HTTP " + res.status + ")"));
       }
 
@@ -1267,7 +1504,7 @@
       var ds = sbSt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + sbSt.time;
       var vehLabel = sbSt.savedVehicle ? (sbSt.savedVehicle.year + ' ' + sbSt.savedVehicle.make + ' ' + sbSt.savedVehicle.model) : (veh ? veh.name : '');
       var subEl = document.getElementById('sb-done-sub');
-      if (subEl) subEl.textContent = 'See you at Prince Tires — ' + nap.address + '.';
+      if (subEl) subEl.textContent = 'Requested at Prince Tires — ' + nap.address + '. We’ll confirm by email, usually within the day — your appointment isn’t final until you hear from us.';
       var doneH = '';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Service</span><span class="bk-summary-val">' + (svc ? svc.name : '—') + '</span></div>';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
@@ -1289,8 +1526,8 @@
       }
     } catch (err) {
       console.error('[service booking] submit failed:', err);
-      btn.disabled = false; btn.textContent = 'Confirm booking';
-      errEl.textContent = err.message || 'Something went wrong. Please try again or call (403) 452-4283.';
+      btn.disabled = false; btn.textContent = 'Send request';
+      errEl.textContent = err.message || ('Something went wrong. Please try again or call ' + (((sbCurrentLoc() || {}).phone) || '(403) 452-4283') + '.');
       errEl.hidden = false;
       try { errEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
     }

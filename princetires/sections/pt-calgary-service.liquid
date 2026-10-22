@@ -1,3 +1,17 @@
+{%- comment -%}
+  Which shop this page is about. Every service page was written for SW; a page
+  for a service one shop offers (road force balancing at Edmonton Trail NE)
+  sets `location` and the address, map link and shop name follow from pt-nap.
+{%- endcomment -%}
+{%- assign cgs_loc = section.settings.location | default: 'sw' -%}
+{%- capture cgs_shop_name %}{% render 'pt-nap', location: cgs_loc, field: 'public_name' %}{% endcapture -%}
+{%- capture cgs_address %}{% render 'pt-nap', location: cgs_loc, field: 'address_full' %}{% endcapture -%}
+{%- capture cgs_maps %}{% render 'pt-nap', location: cgs_loc, field: 'maps_url' %}{% endcapture -%}
+{%- assign cgs_shop_name = cgs_shop_name | strip -%}
+{%- assign cgs_address = cgs_address | strip -%}
+{%- assign cgs_maps = cgs_maps | strip -%}
+{%- assign cgs_short_name = cgs_shop_name | remove_first: 'Prince Tires — ' | remove_first: 'Prince Tires - ' -%}
+
 <div class="cgs" itemscope itemtype="https://schema.org/Service">
 
   {%- comment -%} ── Hero ──────────────────────────────────────────────────── {%- endcomment -%}
@@ -12,7 +26,7 @@
         <div class="cgs__trust-strip">
           <span>⭐ 4.9 / 5 on Google</span>
           <span>✓ Same-day available</span>
-          <span>📍 Calgary, AB</span>
+          <span>📍 {% if cgs_loc == 'sw' %}Calgary, AB{% else %}{{ cgs_short_name }}, Calgary{% endif %}</span>
         </div>
         <h1 class="cgs__title" itemprop="name">{{ section.settings.heading }}</h1>
         <p class="cgs__subtitle">{{ section.settings.subheading }}</p>
@@ -45,7 +59,7 @@
         <div class="cgs__step">
           <div class="cgs__step-num">2</div>
           <h3>Drop off your vehicle</h3>
-          <p>Arrive at our Calgary shop. We'll take care of everything.</p>
+          <p>Arrive at our {% if cgs_loc == 'sw' %}Calgary shop{% else %}{{ cgs_short_name }} shop{% endif %}. We'll take care of everything.</p>
         </div>
         <div class="cgs__step">
           <div class="cgs__step-num">3</div>
@@ -79,9 +93,10 @@
       </div>
       <p class="cgs__address" itemprop="areaServed">
         <strong>Shop location:</strong>
-        <a href="https://maps.google.com/?q=111+42+Ave+SW+Calgary+AB" target="_blank" rel="noopener">
-          111 42 Ave SW, Calgary, AB T2G 0A4
+        <a href="{{ cgs_maps | default: 'https://maps.google.com/?q=111+42+Ave+SW+Calgary+AB' }}" target="_blank" rel="noopener">
+          {{ cgs_address | default: '111 42 Ave SW, Calgary, AB T2G 0A4' }}
         </a>
+        {%- if cgs_loc != 'sw' %} <span class="cgs__address-only">This service is offered at {{ cgs_short_name }} only.</span>{% endif -%}
       </p>
     </div>
   </div>
@@ -167,6 +182,7 @@
 .cgs__areas-grid span { background: rgba(255,255,255,0.08); padding: 10px 16px; border-radius: 4px; font-size: 1.4rem; text-align: center; }
 .cgs__address { font-size: 1.4rem; color: rgba(255,255,255,0.7); }
 .cgs__address a { color: rgba(255,255,255,0.9); text-decoration: underline; }
+.cgs__address-only { display: block; margin-top: 6px; color: #fcd34d; font-weight: 600; }
 
 /* FAQ */
 .cgs__faq { padding: 64px 0; }
@@ -205,6 +221,17 @@
     { "type": "text",         "id": "cta_text",      "label": "CTA button text", "default": "Book installation" },
     { "type": "url",          "id": "booking_url",   "label": "Booking page URL" },
     { "type": "text",         "id": "phone",         "label": "Phone number", "default": "403 452 4283" },
+    {
+      "type": "select",
+      "id": "location",
+      "label": "Shop this page is about",
+      "info": "Sets the address and map link. Pick Edmonton Trail for a service only that shop offers.",
+      "options": [
+        { "value": "sw", "label": "42 Ave SW" },
+        { "value": "ne", "label": "Edmonton Trail NE" }
+      ],
+      "default": "sw"
+    },
     { "type": "image_picker", "id": "hero_image",    "label": "Hero background image" },
     { "type": "text",         "id": "pricing_title", "label": "Pricing section title", "default": "Pricing" },
     { "type": "textarea",     "id": "pricing_intro", "label": "Pricing description" },

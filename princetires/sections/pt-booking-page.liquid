@@ -1,5 +1,5 @@
 {%- liquid
-  assign hero_heading = section.settings.hero_heading | default: 'Book a service'
+  assign hero_heading = section.settings.hero_heading | default: 'Request a service'
   assign hero_sub     = section.settings.hero_sub     | default: 'Tell us what you need, pick a time. We confirm by email within the day.'
 -%}
 
@@ -69,6 +69,13 @@
         <div class="bp-loc" id="bp-loc" hidden>
           <p class="bk-label">Which location?</p>
           <div class="bp-loc-grid" id="bp-loc-grid"></div>
+          {%- comment -%}
+            "Also open" line, filled by JS only while the PRIMARY shop is
+            selected and another shop is bookable. Data-driven from the island.
+          {%- endcomment -%}
+          <p class="bp-loc-nudge" id="bp-loc-nudge" hidden></p>
+          {%- comment -%} Filled by JS when the chosen service is offered at some shops only (e.g. road force balancing at Edmonton Trail). {%- endcomment -%}
+          <p class="bp-loc-note" id="bp-loc-note" hidden></p>
         </div>
 
         <p class="bk-label">What can we help with?</p>
@@ -92,7 +99,7 @@
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
             </span>
             <span class="bp-pathway__title">Other service</span>
-            <span class="bp-pathway__sub">Rotation, balance, flat repair, TPMS</span>
+            <span class="bp-pathway__sub">Rotation, balance, road force, flat repair, TPMS</span>
           </button>
         </div>
 
@@ -221,7 +228,7 @@
 
         <div class="bk-nav-row">
           <button class="bk-back-btn" data-bp-goto="3" type="button">&larr; Back</button>
-          <button class="bk-confirm-btn" id="bp-confirm-btn" type="button">Confirm booking</button>
+          <button class="bk-confirm-btn" id="bp-confirm-btn" type="button">Send request</button>
         </div>
       </div>
 
@@ -230,8 +237,8 @@
         <div class="bk-done-icon">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
         </div>
-        <h2 class="bk-done-title">You're booked!</h2>
-        <p class="bk-done-sub">See you at Prince Tires — 111 42 Ave SW, Calgary.</p>
+        <h2 class="bk-done-title">Request sent</h2>
+        <p class="bk-done-sub">We'll confirm by email, usually within the day — your appointment isn't final until you hear from us.</p>
         <div class="bk-done-card" id="bp-done-card"></div>
         <div class="bk-done-actions">
           <button class="bk-cal-btn" id="bp-cal-btn" type="button">Add to calendar</button>
@@ -421,6 +428,22 @@
 .pt-bp .bp-loc-card__name { font-size: 1rem; font-weight: 600; color: #0a0a0a; }
 .pt-bp .bp-loc-card__addr { font-size: 0.88rem; color: #6b7280; }
 .pt-bp .bp-loc-card--active .bp-loc-card__addr { color: #b91c1c; }
+/* "Also open" nudge under the picker — only while the PRIMARY shop is selected
+   and another shop is bookable. Names and addresses come from the island, so a
+   third shop needs no edit here. */
+.pt-bp .bp-loc-nudge[hidden] { display: none !important; }
+.pt-bp .bp-loc-nudge { margin: 0.6rem 0 0; font-size: 0.9rem; line-height: 1.45; color: #4b5563; }
+.pt-bp .bp-loc-nudge strong { color: #0a0a0a; font-weight: 600; }
+.pt-bp .bp-loc-nudge__btn {
+  background: none; border: 0; padding: 0; margin-left: 0.2rem;
+  font: inherit; font-weight: 600; color: #dc2626; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.pt-bp .bp-loc-nudge__btn:hover { color: #b91c1c; }
+/* "Only at Edmonton Trail" line under the picker when the service restricts the shop */
+.pt-bp .bp-loc-note { margin: 0.55rem 0 0; font-size: 0.9rem; line-height: 1.45; color: #4b5563; }
+.pt-bp .bp-loc-note strong { color: #111; font-weight: 600; }
+.pt-bp .bp-loc-note[hidden] { display: none !important; }
 
 .pt-bp .bk-stepper {
   display: flex;
@@ -575,6 +598,8 @@
 .pt-bp .bp-other-chip__name  { font-size: 1rem; font-weight: 600; color: #0a0a0a; }
 .pt-bp .bp-other-chip__price { font-size: 0.88rem; color: #6b7280; }
 .pt-bp .bp-other-chip--active .bp-other-chip__price { color: #dc2626; }
+/* Shop badge on a service offered at one location only (road force balancing) */
+.pt-bp .bp-other-chip__badge { display: inline-block; margin-top: 0.3rem; align-self: flex-start; padding: 0.12rem 0.5rem; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.01em; }
 
 .pt-bp .bk-vehicle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
 @media (max-width: 600px) { .pt-bp .bk-vehicle-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -628,6 +653,8 @@
 .pt-bp .bk-addon--active .bk-addon-name { color: #111; }
 .pt-bp .bk-addon-price { flex-shrink: 0; color: #9ca3af; font-size: 0.95rem; font-weight: 500; }
 .pt-bp .bk-addon--active .bk-addon-price { color: #dc2626; }
+.pt-bp .bk-addon { flex-wrap: wrap; }
+.pt-bp .bk-addon-note { flex-basis: 100%; order: 9; margin: 0; padding-left: 29px; font-size: 0.88rem; line-height: 1.35; color: #6b7280; font-weight: 400; }
 
 .pt-bp .sb-price-box {
   margin-top: 1.3rem;
@@ -1063,28 +1090,45 @@
     installation_on: { mode: 'flat_by_vehicle', unit: 'car',
       byVehicle: { passenger: 60, suv: 60, van: 60, electric: 60, truck: 80, largetruck: 80, dually: 90, trailer: 120 } },
     balancing: { mode: 'per_unit_flat', unit: 'wheel', amount: 20 },
+    road_force_balancing: { mode: 'per_unit_flat', unit: 'wheel', amount: 35 },
     rotation: { mode: 'flat_by_vehicle', unit: 'car',
       byVehicle: { passenger: 60, suv: 60, van: 60, electric: 60, truck: 60, largetruck: 100, dually: 100, trailer: 60 } },
     flat_repair: { mode: 'per_unit_flat', unit: 'tire', amount: 50 },
     tpms: { mode: 'per_unit_flat', unit: 'sensor', amount: 75 },
     addon_tpms: { mode: 'per_unit_flat', unit: 'sensor', amount: 75 },
-    addon_disposal: { mode: 'per_unit_flat', unit: 'tire', amount: 5 }
+    addon_disposal: { mode: 'per_unit_flat', unit: 'tire', amount: 5 },
+    addon_road_force: { mode: 'per_unit_flat', unit: 'tire', amount: 15 }
   };
 
   var SERVICES = {
-    installation_off: { name: 'Tire Installation (off rims)' },
-    installation_on:  { name: 'Seasonal Swap (on rims)' },
-    balancing:        { name: 'Wheel Balancing' },
-    rotation:         { name: 'Tire Rotation' },
-    flat_repair:      { name: 'Flat Repair' },
-    tpms:             { name: 'TPMS Service' }
+    installation_off:     { name: 'Tire Installation (off rims)' },
+    installation_on:      { name: 'Seasonal Swap (on rims)' },
+    balancing:            { name: 'Wheel Balancing' },
+    road_force_balancing: { name: 'Road Force Balancing' },
+    rotation:             { name: 'Tire Rotation' },
+    flat_repair:          { name: 'Flat Repair' },
+    tpms:                 { name: 'TPMS Service' }
   };
   var OTHER_SERVICES = [
-    { id: 'rotation',    name: 'Tire Rotation',  priceLabel: 'from $60 / car' },
-    { id: 'balancing',   name: 'Wheel Balancing', priceLabel: '$20 / wheel' },
-    { id: 'flat_repair', name: 'Flat Repair',    priceLabel: '$50 / tire (patch)' },
-    { id: 'tpms',        name: 'TPMS Service',   priceLabel: '$75 / sensor' }
+    { id: 'rotation',             name: 'Tire Rotation',        priceLabel: 'from $60 / car' },
+    { id: 'balancing',            name: 'Wheel Balancing',      priceLabel: '$20 / wheel' },
+    { id: 'road_force_balancing', name: 'Road Force Balancing', priceLabel: '$35 / wheel' },
+    { id: 'flat_repair',          name: 'Flat Repair',          priceLabel: '$50 / tire (patch)' },
+    { id: 'tpms',                 name: 'TPMS Service',         priceLabel: '$75 / sensor' }
   ];
+  // Which shops offer a catalog row ([] = every shop). The road force balancer
+  // is at Edmonton Trail NE; bpApplyCatalog() overlays this from /api/services
+  // (`locations`), so the fallback only has to be right until the catalog lands.
+  var SERVICE_SHOPS = {
+    road_force_balancing: ['ne'],
+    addon_road_force: ['ne']
+  };
+  // Catalog add-ons this page can offer beyond TPMS / disposal, by slug. Only
+  // filled from /api/services: an add-on the server does not know is dropped
+  // from the booking, so it is never offered from a fallback.
+  var ADDON_CATALOG = {};
+  // The checkbox ids st.addons uses for catalog add-ons, by slug.
+  var ADDON_KEYS = { addon_road_force: 'roadForce' };
   var VEHICLES = [
     { id: 'passenger', name: 'Sedan' },
     { id: 'suv', name: 'SUV / CUV' },
@@ -1101,7 +1145,7 @@
     service: '',
     vehicle: 'passenger',
     qty: 4,
-    addons: { tpms: false, disposal: false, lowProfile: false },
+    addons: { tpms: false, disposal: false, lowProfile: false, roadForce: false },
     date: null,
     time: null,
     locationId: defaultLocationId()
@@ -1198,6 +1242,11 @@
         parts.push('disposal');
       }
     }
+    // Road force upgrade on either install (per tire, from the catalog).
+    if ((s === 'installation_off' || s === 'installation_on') && st.addons.roadForce && ADDON_CATALOG.addon_road_force) {
+      subtotal += (ADDON_CATALOG.addon_road_force.amount || 0) * q;
+      parts.push('road force ×' + q);
+    }
 
     var gst = subtotal * 0.05;
     return {
@@ -1244,6 +1293,8 @@
         lowProfileFloor: pr.lowProfileFloor,
         flatOverride: pr.flatOverride || null
       };
+      // Which shops offer it — the live answer replaces the fallback entry.
+      SERVICE_SHOPS[svc.slug] = PTBookingCore.serviceShops(svc);
       if (svc.kind === 'service') {
         SERVICES[svc.slug] = { name: svc.name };
         // installation_on/off are the "own tires" pathway; everything else
@@ -1251,11 +1302,15 @@
         if (svc.slug !== 'installation_off' && svc.slug !== 'installation_on') {
           others.push({ id: svc.slug, name: svc.name, priceLabel: bpPriceLabel(svc) });
         }
+      } else if (svc.kind === 'addon' && ADDON_KEYS[svc.slug] && typeof pr.amount === 'number') {
+        ADDON_CATALOG[svc.slug] = { name: svc.name, amount: pr.amount, unit: svc.unit || 'tire' };
       }
     });
     // Rebuild the other-service list from the catalog so services added or
     // removed in the admin flow through to this page.
     if (others.length) OTHER_SERVICES = others;
+    // The shop list may have just become restricted (or unrestricted).
+    bpSyncLocation();
     // Refresh the static mount-price labels (installation_on / installation_off).
     var mountLabel = function (slug) {
       var el = document.querySelector('.bp-mount-card[data-bp-svc="' + slug + '"] .bp-mount-price');
@@ -1276,16 +1331,121 @@
     if (st.service) updatePrice();
   }
 
+  // ── Services offered at some shops only ───────────────────────────────────
+  // The chosen service and every ticked catalog add-on each carry a shop list
+  // (SERVICE_SHOPS, from /api/services). The picker offers only the shops that
+  // satisfy all of them, and says why under the cards. Mirrors the server:
+  // /api/book refuses a shop that is not in the list, so this is the courtesy.
+  function bpRestrictions() {
+    var lists = [];
+    var named = [];
+    if (st.service && SERVICE_SHOPS[st.service] && SERVICE_SHOPS[st.service].length) {
+      lists.push(SERVICE_SHOPS[st.service]);
+      named.push({ name: (SERVICES[st.service] || {}).name || 'This service', shops: SERVICE_SHOPS[st.service] });
+    }
+    Object.keys(ADDON_KEYS).forEach(function (slug) {
+      var key = ADDON_KEYS[slug];
+      if (st.addons[key] && ADDON_CATALOG[slug] && SERVICE_SHOPS[slug] && SERVICE_SHOPS[slug].length) {
+        lists.push(SERVICE_SHOPS[slug]);
+        named.push({ name: ADDON_CATALOG[slug].name, shops: SERVICE_SHOPS[slug] });
+      }
+    });
+    return { lists: lists, named: named };
+  }
+  function bpAllowedLocations() {
+    return PTBookingCore.allowedLocations(LOCATIONS, bpRestrictions().lists);
+  }
+  // Move the selection onto an allowed shop (and drop a picked time, since
+  // availability is per shop), then repaint the picker.
+  function bpSyncLocation() {
+    var allowed = bpAllowedLocations();
+    if (allowed.length && !PTBookingCore.bySlug(allowed, st.locationId)) {
+      st.locationId = allowed[0].slug;
+      st.time = null;
+      var n3 = document.getElementById('bp-next-3');
+      if (n3) n3.disabled = true;
+      var timeStep = document.getElementById('bp-page-3');
+      if (timeStep && !timeStep.hidden) renderTimes();
+    }
+    renderLocations();
+  }
+  // Badge text for a restricted service chip / add-on row, e.g. "Edmonton Trail NE only".
+  function bpOnlyAt(slug) {
+    var shops = SERVICE_SHOPS[slug];
+    if (!shops || !shops.length) return '';
+    return PTBookingCore.onlyAtLabel(shops, PTBookingCore.loadLocations().all);
+  }
+
   // ── Location picker render + wiring ───────────────────────────────────────
   // Builds the chooser only when 2+ shops are bookable. With <2 it stays
   // hidden and st.locationId is simply the single bookable shop's slug (or '').
+  function pickLocation(id) {
+    if (!id || id === st.locationId) return;
+    st.locationId = id;
+    renderLocations();
+    // Availability is location-specific — invalidate the picked slot and
+    // re-query if the customer is already on (or past) the time step.
+    st.time = null;
+    var n3 = document.getElementById('bp-next-3');
+    if (n3) n3.disabled = true;
+    var timeStep = document.getElementById('bp-page-3');
+    if (timeStep && !timeStep.hidden) renderTimes();
+  }
+
+  // "Prince Tires — Edmonton Trail NE" -> "Edmonton Trail NE", for copy that
+  // already says Prince Tires.
+  function shortShopName(l) {
+    var n = l.public_name || l.name || 'Prince Tires';
+    return n.replace(/^Prince Tires\s*[—–-]\s*/i, '');
+  }
+
+  // "Also open" line under the picker. Shown only while the PRIMARY shop is
+  // selected and another shop is bookable: a customer who lands on the default
+  // shop and finds it busy should learn there is a second one before giving up,
+  // and a customer who already chose the other shop needs no nudge back. Name
+  // and address come from the island, so a third shop needs no edit here.
+  function renderLocNudge() {
+    var el = document.getElementById('bp-loc-nudge');
+    if (!el) return;
+    var cur = LOCATIONS.find(function (l) { return l.slug === st.locationId; });
+    var other = LOCATIONS.find(function (l) { return l.slug !== st.locationId; });
+    if (!cur || !cur.is_primary || !other) { el.hidden = true; el.innerHTML = ''; return; }
+    var name = shortShopName(other);
+    var addr = other.address || other.address_full || '';
+    el.innerHTML = 'Also open for bookings: <strong>' + name + '</strong>' + (addr ? ', ' + addr : '') + '.' +
+      ' <button type="button" class="bp-loc-nudge__btn" data-bp-loc-switch="' + other.slug + '">' +
+      'Check out our ' + name + ' location →</button>';
+    el.hidden = false;
+    var btn = el.querySelector('[data-bp-loc-switch]');
+    if (btn) btn.addEventListener('click', function () { pickLocation(this.dataset.bpLocSwitch); });
+  }
+
+  // A restricted service narrows the cards to the shops that offer it and
+  // explains why underneath; with one bookable shop that cannot do the job the
+  // note alone is shown, so the customer learns where to go.
   function renderLocations() {
     var wrap = document.getElementById('bp-loc');
     var grid = document.getElementById('bp-loc-grid');
+    var note = document.getElementById('bp-loc-note');
     if (!wrap || !grid) return;
-    if (LOCATIONS.length < 2) { wrap.hidden = true; return; }
+    var r = bpRestrictions();
+    var allowed = PTBookingCore.allowedLocations(LOCATIONS, r.lists);
+    var all = PTBookingCore.loadLocations().all;
+    var noteHtml = '';
+    if (r.named.length) {
+      noteHtml = r.named.map(function (n) {
+        var label = PTBookingCore.onlyAtLabel(n.shops, all).replace(/ only$/, '');
+        return '<strong>' + n.name + '</strong> is only available at our ' + label + ' shop.';
+      }).join(' ');
+      if (!allowed.length) {
+        var only = PTBookingCore.bySlug(all, r.named[0].shops[0]);
+        noteHtml += only && only.phone ? ' Call ' + only.phone + ' to book it.' : '';
+      }
+    }
+    if (note) { note.innerHTML = noteHtml; note.hidden = !noteHtml; }
+    if (LOCATIONS.length < 2 && !noteHtml) { wrap.hidden = true; return; }
     wrap.hidden = false;
-    grid.innerHTML = LOCATIONS.map(function (l) {
+    grid.innerHTML = allowed.map(function (l) {
       var active = st.locationId === l.slug ? ' bp-loc-card--active' : '';
       var name = l.public_name || l.name || 'Prince Tires';
       var addr = l.address || l.address_full || '';
@@ -1295,20 +1455,16 @@
         '</button>';
     }).join('');
     grid.querySelectorAll('.bp-loc-card').forEach(function (el) {
-      el.addEventListener('click', function () {
-        var id = this.dataset.bpLoc;
-        if (id === st.locationId) return;
-        st.locationId = id;
-        renderLocations();
-        // Availability is location-specific — invalidate the picked slot and
-        // re-query if the customer is already on (or past) the time step.
-        st.time = null;
-        var n3 = document.getElementById('bp-next-3');
-        if (n3) n3.disabled = true;
-        var timeStep = document.getElementById('bp-page-3');
-        if (timeStep && !timeStep.hidden) renderTimes();
-      });
+      el.addEventListener('click', function () { pickLocation(this.dataset.bpLoc); });
     });
+    // No "also open" nudge while a service has pinned the shop — the other
+    // shop cannot take this booking.
+    if (r.lists.length) {
+      var nudge = document.getElementById('bp-loc-nudge');
+      if (nudge) { nudge.hidden = true; nudge.innerHTML = ''; }
+    } else {
+      renderLocNudge();
+    }
   }
 
   function goTo(step) {
@@ -1346,15 +1502,18 @@
     st.service = '';
     document.querySelectorAll('.bp-mount-card').forEach(function (c) { c.classList.remove('bp-mount-card--active'); });
     updateNextBtn();
+    bpSyncLocation();
   }
 
   function renderOtherGrid() {
     var grid = document.getElementById('bp-other-grid');
     grid.innerHTML = OTHER_SERVICES.map(function (s) {
       var active = st.service === s.id ? ' bp-other-chip--active' : '';
+      var only = bpOnlyAt(s.id);
       return '<button type="button" class="bp-other-chip' + active + '" data-bp-svc="' + s.id + '">' +
         '<span class="bp-other-chip__name">' + s.name + '</span>' +
         '<span class="bp-other-chip__price">' + s.priceLabel + '</span>' +
+        (only ? '<span class="bp-other-chip__badge">' + only + '</span>' : '') +
         '</button>';
     }).join('');
     grid.querySelectorAll('.bp-other-chip').forEach(function (el) {
@@ -1362,6 +1521,7 @@
         st.service = this.dataset.bpSvc;
         renderOtherGrid();
         updateNextBtn();
+        bpSyncLocation();
       });
     });
   }
@@ -1376,7 +1536,7 @@
 
   function renderVehicles() {
     var grid = document.getElementById('bp-vehicles');
-    var noTrailer = ['balancing', 'rotation'];
+    var noTrailer = ['balancing', 'road_force_balancing', 'rotation'];
     var vehs = noTrailer.indexOf(st.service) > -1 ? VEHICLES.filter(function (v) { return v.id !== 'trailer'; }) : VEHICLES;
     grid.innerHTML = vehs.map(function (v) {
       var active = st.vehicle === v.id ? ' bk-vehicle-card--active' : '';
@@ -1426,7 +1586,7 @@
     if (!sel) return;
     var s = st.service;
     var isTpms = s === 'tpms';
-    var isBalancing = s === 'balancing';
+    var isBalancing = s === 'balancing' || s === 'road_force_balancing';
     var isRepair = s === 'flat_repair';
     var max = (isTpms || isBalancing || isRepair) ? 4 : 8;
     lbl.textContent = isTpms ? 'How many sensors?'
@@ -1459,6 +1619,14 @@
       rows.push({ id: 'disposal', name: 'Tire disposal', priceLabel: '+$' + ((bpPricing.addon_disposal && bpPricing.addon_disposal.amount) || 5) + '/tire' });
       rows.push({ id: 'lowProfile', name: 'Low-profile or run-flat tires', priceLabel: '$' + ((bpPricing.installation_off && bpPricing.installation_off.lowProfileFloor) || 40) + '/tire min' });
     }
+    // Road force upgrade on either install — from the catalog, and only when a
+    // bookable shop offers it (the picker would otherwise have nothing to show).
+    if ((isOff || isOn) && ADDON_CATALOG.addon_road_force) {
+      var rf = ADDON_CATALOG.addon_road_force;
+      if (PTBookingCore.allowedLocations(LOCATIONS, [SERVICE_SHOPS.addon_road_force || []]).length) {
+        rows.push({ id: 'roadForce', name: rf.name, priceLabel: '+$' + rf.amount + '/' + rf.unit, note: bpOnlyAt('addon_road_force') });
+      }
+    }
     container.innerHTML = rows.map(function (a) {
       var active = st.addons[a.id] ? ' bk-addon--active' : '';
       var checked = st.addons[a.id] ? ' checked' : '';
@@ -1466,6 +1634,7 @@
         '<input type="checkbox" data-bp-addon="' + a.id + '"' + checked + '>' +
         '<span class="bk-addon-name">' + a.name + '</span>' +
         '<span class="bk-addon-price">' + a.priceLabel + '</span>' +
+        (a.note ? '<span class="bk-addon-note">' + a.note + '</span>' : '') +
         '</label>';
     }).join('');
     container.querySelectorAll('input[data-bp-addon]').forEach(function (el) {
@@ -1473,6 +1642,8 @@
         st.addons[this.dataset.bpAddon] = this.checked;
         this.closest('.bk-addon').classList.toggle('bk-addon--active', this.checked);
         updatePrice();
+        // A ticked road force upgrade narrows the shop to Edmonton Trail.
+        if (this.dataset.bpAddon === 'roadForce') bpSyncLocation();
       });
     });
   }
@@ -1495,6 +1666,13 @@
     if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12;
     if (m[3].toUpperCase() === 'AM' && h === 12) h = 0;
     return h * 60 + mn;
+  }
+  // The inverse, in exactly the label shape the availability API uses ("9:00 AM",
+  // "12:30 PM"), so a built label always matches a returned one.
+  function minsToSlot(mins) {
+    var h = Math.floor(mins / 60), m = mins % 60;
+    var hr = h > 12 ? h - 12 : h;
+    return hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM');
   }
 
   function renderWeek() {
@@ -1530,29 +1708,65 @@
   }
 
   {%- comment -%}
-    These three captures must stay ABOVE the JS comment block below, and the
-    last one must NOT trim its closing newline. A left-trimming Liquid tag
-    placed directly after a double-slash JS comment eats the newline that ends
-    that comment, so the next line of JavaScript gets swallowed into it. That
-    is exactly what commented out the function declaration below and took the
-    entire booking script down with a SyntaxError, which killed every booking.
-    Do not move them back down and do not add a trim to the last one.
+    This Liquid block must stay ABOVE the JS comment block below, and no
+    left-trimming tag may sit directly after a double-slash JS comment: such a
+    tag eats the newline that ends the comment, so the next line of JavaScript
+    gets swallowed into it. That is exactly what once commented out the function
+    declaration below and took the entire booking script down with a
+    SyntaxError, which killed every booking. The block ends in plain JS ("};"),
+    never in a trimming tag.
+
+    Hours PER SHOP. Every surface used to read SW's hours for every shop, so a
+    customer who picked Edmonton Trail NE was shown SW's window: NE closes at
+    6 PM Mon–Thu and Sat (SW at 5) and at 4 PM Sundays (SW at 2), so NE's late
+    slots never existed online — which is precisely when a same-day booking is
+    still legal there. The Friday split (closed 1:00–2:30, final close 5:00 at
+    both shops) was ignored everywhere. The island cannot carry hours, so they
+    are rendered here from the same store_hours metaobject pt-nap reads. A third
+    shop is one slug added to _bp_slugs.
   {%- endcomment -%}
-  {%- capture _bp_suc %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{% endcapture -%}
-  {%- capture _bp_msc %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{% endcapture -%}
-  {%- capture _bp_cut %}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{% endcapture %}
+  {%- assign _bp_slugs = 'sw,ne' | split: ',' -%}
+  {%- assign _bp_fields = 'hours_mon_sat_open,hours_mon_sat_close,hours_sun_open,hours_sun_close,hours_fri_open,hours_fri_close,hours_fri_reopen,hours_fri_final_close,booking_cutoff_minutes' | split: ',' -%}
+  var BP_HOURS = {
+  {%- for _s in _bp_slugs %}
+    {{ _s | json }}: {
+    {%- for _f in _bp_fields -%}
+      {%- capture _v %}{% render 'pt-nap', location: _s, field: _f %}{% endcapture %}
+      {{ _f | json }}: {{ _v | strip | json }},
+    {%- endfor %}
+    },
+  {%- endfor %}
+  };
   // ── Helper: first day a service booking can actually start ──────────────
   // Services need 2 hr lead (mirrors renderTimes() below). Once the day's last
   // slot is inside that window there is nothing left today, so opening the
   // calendar on today just shows a wall of greyed slots. Hours come from the
   // same store_hours metaobject renderTimes() reads.
-  function bpLastSlotMins(d) {
-    var isSun = d.getDay() === 0;
-    var c = (isSun ? '{{ _bp_suc | strip }}' : '{{ _bp_msc | strip }}').split(':');
-    var cut = parseInt('{{ _bp_cut | strip }}', 10) || 30;
-    var v = (parseInt(c[0], 10) * 60 + (parseInt(c[1], 10) || 0)) - cut;
-    return isNaN(v) ? (isSun ? 810 : 990) : v;
+  // The appointment window for a given day AT THE SELECTED SHOP, in minutes
+  // from midnight: first slot, last slot (close − cutoff) and, on Fridays, the
+  // lunch gap during which the shop is closed. Falls back to SW's hours for an
+  // unknown slug and to the known SW window if the metaobject is unreadable.
+  function bpHoursFor(d) {
+    var H = BP_HOURS[st.locationId] || BP_HOURS.sw || {};
+    var toMin = function (s) {
+      var p = String(s || '').split(':');
+      var v = parseInt(p[0], 10) * 60 + (parseInt(p[1], 10) || 0);
+      return isNaN(v) ? null : v;
+    };
+    var dow = d.getDay(), open, close, gap = null;
+    if (dow === 0) { open = toMin(H.hours_sun_open); close = toMin(H.hours_sun_close); }
+    else if (dow === 5 && toMin(H.hours_fri_final_close) !== null) {
+      open = toMin(H.hours_fri_open); close = toMin(H.hours_fri_final_close);
+      var gc = toMin(H.hours_fri_close), gr = toMin(H.hours_fri_reopen);
+      if (gc !== null && gr !== null && gr > gc) gap = [gc, gr];
+    }
+    else { open = toMin(H.hours_mon_sat_open); close = toMin(H.hours_mon_sat_close); }
+    if (open === null) open = dow === 0 ? 600 : 540;
+    if (close === null) close = dow === 0 ? 840 : 1020;
+    var cut = parseInt(H.booking_cutoff_minutes, 10) || 30;
+    return { open: open, last: close - cut, gap: gap };
   }
+  function bpLastSlotMins(d) { return bpHoursFor(d).last; }
   function bpEarliestDate() {
     var now = new Date();
     var d = new Date(now); d.setHours(0, 0, 0, 0);
@@ -1570,41 +1784,43 @@
     return Math.round((monday(d).getTime() - monday(t).getTime()) / 604800000);
   }
 
+  // Monotonic render counter. Each day or shop click starts a new render; the
+  // availability response for an EARLIER click can arrive after a later one and
+  // must not paint over it. Without this, a slow answer for Saturday could land
+  // under Friday's label: a grid that "shows availability" that is not real.
+  var bpAvailSeq = 0;
+  var bpMsg = function (text, tone) {
+    var color = tone === 'warn' ? '#b91c1c' : '#4b5563';
+    return '<p style="color:' + color + ';font-size:0.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:0.5rem 0.25rem">' + text + '</p>';
+  };
+
   async function renderTimes() {
     var grid = document.getElementById('bp-time-grid');
-    if (!st.date) { grid.innerHTML = '<p style="color:#9ca3af;font-size:0.92rem;grid-column:1/-1;text-align:center">Pick a day above.</p>'; return; }
-    var isSun = st.date.getDay() === 0;
-    // Appointment window from the store_hours metaobject (via pt-nap, SW shop):
-    // first slot = open; last slot = close − cutoff. Fallback = the known SW window.
-    {% capture _suo %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{% endcapture %}
-    {% capture _mso %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{% endcapture %}
-    {% capture _suc %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{% endcapture %}
-    {% capture _msc %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{% endcapture %}
-    {% capture _cutv %}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{% endcapture %}
-    var _bo = isSun ? '{{ _suo | strip }}' : '{{ _mso | strip }}';
-    var _bc = isSun ? '{{ _suc | strip }}' : '{{ _msc | strip }}';
-    var _bcut = parseInt('{{ _cutv | strip }}', 10) || 30;
-    var _boa = _bo.split(':'), _bca = _bc.split(':');
-    var startH = parseInt(_boa[0], 10), startM = parseInt(_boa[1], 10) || 0;
-    if (isNaN(startH)) { startH = 9; startM = 0; }
-    var _blast = (parseInt(_bca[0], 10) * 60 + (parseInt(_bca[1], 10) || 0)) - _bcut;
-    if (isNaN(_blast)) { _blast = isSun ? 810 : 990; }
-    var endH = Math.floor(_blast / 60), endM = _blast % 60;
+    if (!st.date) { grid.innerHTML = bpMsg('Pick a day above.'); return; }
+    // Snapshot what THIS render is for. Everything below reads these, never
+    // st.* again, so a response can only ever paint the day and shop it was
+    // asked about.
+    var date = st.date, loc = st.locationId, seq = ++bpAvailSeq;
+    var H = bpHoursFor(date);
     var slots = [];
-    for (var h = startH; h <= endH; h++) {
-      for (var m = (h === startH ? startM : 0); m < 60; m += 30) {
-        if (h === endH && m > endM) break;
-        var hr = h > 12 ? h - 12 : h;
-        slots.push(hr + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM'));
-      }
-    }
-    grid.innerHTML = '<p style="color:#9ca3af;font-size:0.92rem;grid-column:1/-1;text-align:center">Checking availability...</p>';
+    for (var mins = H.open; mins <= H.last; mins += 30) slots.push(minsToSlot(mins));
+    grid.innerHTML = bpMsg('Checking availability...');
 
-    var avail = await PTBookingCore.fetchAvailability(AVAILABILITY_API, PTBookingCore.localISO(st.date), st.locationId);
+    var avail = await PTBookingCore.fetchAvailability(AVAILABILITY_API, PTBookingCore.localISO(date), loc);
+    if (seq !== bpAvailSeq) return; // a newer click owns the grid now
+    // The platform refused or could not be reached. Say so, with the number
+    // of the shop they picked — never an open grid that fails at the end.
+    if (avail.unavailable) {
+      var downShop = locById(loc);
+      var downPhone = downShop && downShop.phone ? downShop.phone : '';
+      grid.innerHTML = bpMsg('Online booking is temporarily unavailable. Please call ' + (downPhone || 'the shop') + ' to book, or try again in a few minutes.', 'warn');
+      var n3down = document.getElementById('bp-next-3'); if (n3down) n3down.disabled = true;
+      return;
+    }
     var booked = avail.booked, allDayBlocked = avail.allDayBlocked;
 
     if (allDayBlocked) {
-      grid.innerHTML = '<p style="color:#dc2626;font-size:0.95rem;grid-column:1/-1;text-align:center;padding:0.5rem 0">Not available this day — please pick another.</p>';
+      grid.innerHTML = bpMsg('Not available this day — please pick another.', 'warn');
       return;
     }
 
@@ -1612,13 +1828,39 @@
     var now = new Date();
     var nowMins = now.getHours() * 60 + now.getMinutes();
     var today = new Date(); today.setHours(0,0,0,0);
-    var isToday = st.date.toDateString() === today.toDateString();
-    if (isToday) {
-      slots.forEach(function (s) {
-        var sm = slotMins(s);
-        if (sm <= nowMins) blockReason[s] = 'Time has passed';
-        else if (sm < nowMins + 120) blockReason[s] = 'Book at least 2 hrs ahead';
-      });
+    var isToday = date.toDateString() === today.toDateString();
+    slots.forEach(function (s) {
+      var sm = slotMins(s);
+      if (H.gap && sm >= H.gap[0] && sm < H.gap[1]) blockReason[s] = 'Closed ' + minsToSlot(H.gap[0]) + ' – ' + minsToSlot(H.gap[1]);
+      else if (isToday && sm <= nowMins) blockReason[s] = 'Time has passed';
+      else if (isToday && sm < nowMins + 120) blockReason[s] = 'Book at least 2 hrs ahead';
+    });
+
+    // When nothing is bookable, say WHY in a sentence. A wall of greyed buttons
+    // with hover-only reasons reads as "the site is broken", and on a phone the
+    // reasons never show at all.
+    var openSlots = slots.filter(function (s) { return booked.indexOf(s) < 0 && !blockReason[s]; });
+    if (!openSlots.length) {
+      var shop = locById(loc);
+      var phone = shop && shop.phone ? shop.phone : '';
+      // Same-day is over exactly when the day's LAST slot is inside the notice
+      // window — the test bpEarliestDate already uses. Not "are all the blocked
+      // slots clock-blocked": on a Friday the lunch-gap slots are blocked as
+      // "Closed", and at NE (nothing booked) they made that test fail and the
+      // page said "Fully booked" to a customer at 3 PM who was simply too late.
+      // Fully booked at 9 AM stays "Fully booked"; too late at 3 PM says so even
+      // if the day is also full, because no cancellation can help them now.
+      var allTooLate = isToday && (nowMins + 120 > H.last);
+      if (allTooLate) {
+        grid.innerHTML = bpMsg(
+          'Same-day appointments need 2 hours’ notice, and the last one today is ' + minsToSlot(H.last) + ' — ' +
+          'today can’t be booked online any more. Pick another day' + (phone ? ', or call ' + phone + ' to ask about a walk-in.' : '.'),
+          'warn'
+        );
+      } else {
+        grid.innerHTML = bpMsg('Fully booked this day — please pick another day.', 'warn');
+      }
+      return;
     }
 
     grid.innerHTML = slots.map(function (s) {
@@ -1649,10 +1891,30 @@
     if (st.service === 'installation_off' && st.addons.lowProfile) {
       h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire type</span><span class="bk-summary-val">Low-profile / run-flat</span></div>';
     }
+    var picked = bpSelectedCatalogAddons();
+    if (picked.length) {
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">Add-on</span><span class="bk-summary-val">' + picked.map(function (a) { return a.name; }).join(', ') + '</span></div>';
+    }
+    var sumLoc = locById(st.locationId);
+    if (sumLoc && LOCATIONS.length > 1) {
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">Location</span><span class="bk-summary-val">' + PTBookingCore.shortShopName(sumLoc) + '</span></div>';
+    }
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Date &amp; time</span><span class="bk-summary-val">' + ds + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + (veh ? veh.name : '') + '</span></div>';
     if (pr) h += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
     document.getElementById('bp-summary').innerHTML = h;
+  }
+
+  // The catalog add-ons ticked on this booking, in the shape /api/book takes
+  // (customAddons). Only on the two installs, where they are offered.
+  function bpSelectedCatalogAddons() {
+    var out = [];
+    if (st.service !== 'installation_off' && st.service !== 'installation_on') return out;
+    Object.keys(ADDON_KEYS).forEach(function (slug) {
+      var a = ADDON_CATALOG[slug];
+      if (a && st.addons[ADDON_KEYS[slug]]) out.push({ slug: slug, name: a.name, qty: st.qty, amount: a.amount });
+    });
+    return out;
   }
 
   async function submitBooking() {
@@ -1689,6 +1951,7 @@
       tpms: st.addons.tpms || false,
       disposal: st.addons.disposal || false,
       lowProfile: st.addons.lowProfile || false,
+      customAddons: bpSelectedCatalogAddons(),
       name: name, phone: phone, email: email,
       notes: (notes ? notes + ' · ' : '') + (vehInfo || ''),
       vehicleType: st.vehicle,
@@ -1702,16 +1965,22 @@
 
     try {
       var res;
+      // The shop they picked, for every "call us" below — never SW's number
+      // for an NE customer.
+      var shopPhone = (locById(st.locationId) || {}).phone || '(403) 452-4283';
       try {
         res = await fetch(BOOKING_API, { method: 'POST', mode: 'cors', credentials: 'omit', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       } catch (netErr) {
-        throw new Error("Couldn't reach the booking server. Try a different browser or call (403) 452-4283.");
+        throw new Error("Couldn't reach the booking server. Try a different browser or call " + shopPhone + ".");
       }
       if (!res.ok) {
         var ed = await res.json().catch(function () { return {}; });
         if (res.status === 429) throw new Error('Too many bookings from this device — please wait a minute and try again.');
         if (res.status === 409) throw new Error('That time slot was just booked. Please pick another time.');
-        if (res.status >= 500) throw new Error('Our booking server hit a snag (HTTP ' + res.status + '). Please call (403) 452-4283.');
+        // 402 is the platform switched off (a billing stop took the whole app
+        // down for an hour on 2026-10-19); 5xx is it falling over. Neither is
+        // fixed by retrying — give them the phone.
+        if (res.status === 402 || res.status >= 500) throw new Error('Online booking is temporarily unavailable. Please call ' + shopPhone + ' to book — sorry for the trouble.');
         throw new Error(ed.error || ('Booking failed (HTTP ' + res.status + ')'));
       }
 
@@ -1733,11 +2002,11 @@
       if (pr) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
       doneCard.innerHTML = doneH;
 
-      // Done-page subhead — keep the "See you at Prince Tires — <address>." form,
+      // Done-page subhead — "Requested at Prince Tires — <address>. We'll confirm…" —
       // swapping in the selected shop's address (identical wording for SW-only).
       var doneSub = document.querySelector('.pt-bp .bk-done-sub');
       if (doneSub && loc) {
-        doneSub.textContent = 'See you at Prince Tires — ' + (loc.address || doneAddr) + '.';
+        doneSub.textContent = 'Requested at Prince Tires — ' + (loc.address || doneAddr) + '. We’ll confirm by email, usually within the day — your appointment isn’t final until you hear from us.';
       }
 
       [1,2,3,4].forEach(function (s) { document.getElementById('bp-page-' + s).hidden = true; });
@@ -1746,8 +2015,8 @@
       // Booking succeeded — clear the draft so a fresh visit starts empty.
       bpClearDraft();
     } catch (err) {
-      btn.disabled = false; btn.textContent = 'Confirm booking';
-      errEl.textContent = err.message || 'Something went wrong. Please try again or call (403) 452-4283.';
+      btn.disabled = false; btn.textContent = 'Send request';
+      errEl.textContent = err.message || ('Something went wrong. Please try again or call ' + ((locById(st.locationId) || {}).phone || '(403) 452-4283') + '.');
       errEl.hidden = false;
     }
   }
@@ -1778,6 +2047,7 @@
       st.service = this.dataset.bpSvc;
       document.querySelectorAll('.bp-mount-card').forEach(function (c) { c.classList.toggle('bp-mount-card--active', c === b); });
       updateNextBtn();
+      bpSyncLocation();
     });
   });
   // Buying-tires search is handled by the embedded pt-tire-search snippet (its own JS).
@@ -1821,7 +2091,13 @@
         pickPathway('other');
         renderOtherGrid();
       }
+      // pickPathway() cleared the service; put it back so the tile lights up
+      // and Next enables, then let a restricted service (road force →
+      // Edmonton Trail) narrow the picker right away.
+      st.service = pre;
+      if (pre !== 'installation_off' && pre !== 'installation_on') renderOtherGrid();
       updateNextBtn();
+      bpSyncLocation();
     }
   } catch (e) {}
 
@@ -1849,7 +2125,7 @@
       // so the previously-picked chip lights up.
       if (st.pathway === 'other') renderOtherGrid();
     }
-    if (st.locationId) renderLocations();
+    bpSyncLocation();
     updateNextBtn();
     if (landStep > 1) goTo(landStep);
   })();
@@ -1934,7 +2210,7 @@
       "type": "text",
       "id": "hero_heading",
       "label": "Hero heading",
-      "default": "Book a service"
+      "default": "Request a service"
     },
     {
       "type": "textarea",

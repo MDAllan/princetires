@@ -4,7 +4,9 @@
  *
  * These are the DOM-INDEPENDENT pieces that were duplicated across all three:
  * reading the #pt-locations-data island, picking the location, the local-date
- * helper, the availability fetch, the .ics builder, and the NAP formatter.
+ * helper, the availability fetch, the .ics builder, the NAP formatter, and the
+ * "offered at these shops only" rule a restricted service (road force
+ * balancing, Edmonton Trail NE) applies to the location picker.
  *
  * Surface-specific logic (steps, fields, payload construction, price/tier rules,
  * DOM wiring) stays in each surface. Each surface builds its own payload and owns
@@ -77,6 +79,65 @@
         if (bookable[j] && bookable[j].is_primary) return bookable[j];
       }
       return bookable[0] || null;
+    },
+
+    // ── Services that only some shops offer ──────────────────────────────
+    // GET /api/services carries `locations` per row: [] = every shop, else the
+    // slugs of the shops that offer it (the road force balancer is at Edmonton
+    // Trail NE only). The three surfaces narrow their location picker to those
+    // shops when such a service or add-on is chosen; /api/book refuses the
+    // others, so this is the courtesy and the server is the fence.
+
+    // The slugs a catalog row is offered at, normalised. [] = everywhere.
+    serviceShops: function (row) {
+      var raw = row && row.locations;
+      if (!Array.isArray(raw)) return [];
+      var out = [];
+      for (var i = 0; i < raw.length; i++) {
+        if (typeof raw[i] === "string" && raw[i].trim()) out.push(raw[i].trim().toLowerCase());
+      }
+      return out;
+    },
+
+    // The bookable shops that satisfy EVERY restriction in `lists` (an array of
+    // slug arrays; empty lists mean "no restriction" and are ignored).
+    allowedLocations: function (bookable, lists) {
+      bookable = bookable || [];
+      var active = (lists || []).filter(function (l) { return Array.isArray(l) && l.length; });
+      if (!active.length) return bookable.slice();
+      return bookable.filter(function (loc) {
+        var slug = loc && loc.slug ? String(loc.slug).toLowerCase() : "";
+        for (var i = 0; i < active.length; i++) {
+          if (active[i].indexOf(slug) === -1) return false;
+        }
+        return true;
+      });
+    },
+
+    // "Prince Tires — Edmonton Trail NE" -> "Edmonton Trail NE".
+    shortShopName: function (loc) {
+      var n = (loc && (loc.public_name || loc.name)) || "Prince Tires";
+      return n.replace(/^Prince Tires\s*[—–-]\s*/i, "");
+    },
+
+    // "Edmonton Trail NE only" — the badge for a restricted service. `all` is
+    // the full island list so a shop that is not bookable online still names
+    // itself; falls back to the upper-cased slug.
+    onlyAtLabel: function (slugs, all) {
+      var names = [];
+      for (var i = 0; i < (slugs || []).length; i++) {
+        var hit = Core.bySlug(all || [], slugs[i]);
+        names.push(hit ? Core.shortShopName(hit) : String(slugs[i]).toUpperCase());
+      }
+      if (!names.length) return "";
+      return names.join(" or ") + " only";
+    },
+
+    // The sentence under the picker, mirroring the server's refusal wording.
+    onlyAtNote: function (serviceName, slugs, all) {
+      var label = Core.onlyAtLabel(slugs, all);
+      if (!label) return "";
+      return serviceName + " is only available at our " + label.replace(/ only$/, "") + " shop.";
     },
 
     // The deep-link slug from ?location= (or null).
