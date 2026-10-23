@@ -28,7 +28,7 @@
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3.5v5.5c0 5-3.4 9.3-8 11-4.6-1.7-8-6-8-11V5.5L12 2z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
       </div>
       <h3 class="bk-nudge-title">Protect your new tires?</h3>
-      <p class="bk-nudge-body">Add <b id="bk-nudge-name">the Protection Plan</b> for <b id="bk-nudge-price">+$0/tire</b> — it covers potholes, nails and sidewall damage the standard warranty won&rsquo;t. It can only be added now, with your install.</p>
+      <p class="bk-nudge-body">Add <b id="bk-nudge-name">the Protection Plan</b> for <b id="bk-nudge-price">$0</b>. <span id="bk-nudge-benefit">It covers potholes, nails and sidewall damage the standard warranty won&rsquo;t.</span></p>
       <button class="bk-next-btn" id="bk-nudge-add">Yes, add protection</button>
       <button type="button" class="bk-nudge-skip" id="bk-nudge-skip">No thanks, continue booking</button>
     </div>
@@ -468,6 +468,14 @@
   // Loaded from GET /api/services on first openBookingModal — populated by bkRenderCustomAddons().
   // Each entry: { slug, name, description, amount, unit, selected }.
   var bkCustomAddonCatalog = [];
+  // Mandatory fees from the catalog (services.mandatory — the tire recycling
+  // fee). Never rendered as a checkbox: always in the total for a tire we sell.
+  // Each entry: { slug, name, amount }.
+  // Seeded with the live catalog value so the total is right even if the
+  // catalog fetch fails; bkApplyCatalog() replaces it (and can clear it).
+  var bkMandatoryFees = [{ slug: 'fee_environmental', name: 'Tire recycling fee', amount: 5 }];
+  // The one add-on the "Protect your new tires?" card may offer.
+  var BK_PROTECTION_SLUG = 'addon_road_hazard';
   // Whether the last-chance protection nudge has already fired this session
   // (reset on each modal open) — so we ask at most once per booking.
   var bkUpsellNudged = false;
@@ -714,6 +722,18 @@
     return a ? a.name : '';
   }
 
+  // The recycling fee is levied on tires (a bare wheel has no tire size — the
+  // PDP's is_wheel rule) and only travels on the install flow: tires-only goes
+  // to the Shopify cart, which does not charge it.
+  function bkFeesApply() {
+    return st.flow === 'install' && bkMandatoryFees.length > 0 && !!(st.tireSize || '').trim();
+  }
+  function bkFeesPerTire() {
+    var n = 0;
+    for (var i = 0; i < bkMandatoryFees.length; i++) n += bkMandatoryFees[i].amount || 0;
+    return n;
+  }
+
   function calcPrice() {
     var tp = st.tirePrice > 0 ? st.tirePrice * st.qty : 0;
     // Tires-only flow strips out every install-related line and turns the
@@ -733,13 +753,14 @@
         }
       }
     }
-    var s = tp + i + t + d + ca;
+    var f = bkFeesApply() ? bkFeesPerTire() * st.qty : 0;
+    var s = tp + i + t + d + ca + f;
     // Round GST on integer cents (half-up) so this matches the PDP's Liquid
     // "Installed total (incl. GST)" (installed_subtotal | times: 0.05 | round)
     // to the cent, and so the modal's own line items sum exactly to its total.
     var subCents = Math.round(s * 100);
     var gstCents = Math.round(subCents * 0.05);
-    return { tires: tp, install: i, tpms: t, disposal: d, customAddons: ca, subtotal: subCents / 100, gst: gstCents / 100, total: (subCents + gstCents) / 100 };
+    return { tires: tp, install: i, tpms: t, disposal: d, customAddons: ca, fees: f, subtotal: subCents / 100, gst: gstCents / 100, total: (subCents + gstCents) / 100 };
   }
 
   // ── Stage 2: overlay add-on pricing from GET /api/services ────────────────
@@ -752,12 +773,19 @@
   function bkApplyCatalog(services) {
     if (!Array.isArray(services)) return;
     var extras = [];
+    var fees = [];
     services.forEach(function (svc) {
       if (!svc || !svc.prices) return;
       if (svc.slug === 'addon_tpms' && typeof svc.prices.amount === 'number') {
         bkTpmsPrice = svc.prices.amount;
       } else if (svc.slug === 'addon_disposal' && typeof svc.prices.amount === 'number') {
         bkDisposalPrice = svc.prices.amount;
+      } else if (svc.kind === 'addon' && (svc.mandatory === true || /^fee_/.test(svc.slug))) {
+        // A required fee, not a choice. The fee_ prefix covers a cached page
+        // talking to an app that does not send `mandatory` yet.
+        if (typeof svc.prices.amount === 'number') {
+          fees.push({ slug: svc.slug, name: svc.name || svc.slug, amount: svc.prices.amount });
+        }
       } else if (svc.kind === 'addon') {
         var p = svc.prices || {};
         // Brand allowlist: when non-empty, the add-on shows only on products
@@ -805,6 +833,7 @@
       }
     });
     bkCustomAddonCatalog = extras;
+    bkMandatoryFees = fees;
     // Refresh the static add-on price labels.
     var setLabel = function (id, text) {
       var el = document.querySelector('#' + id + ' .bk-addon-price');
@@ -985,6 +1014,11 @@
           h += '<div class="bk-order-row"><span>' + bkAddonDisplayName(a) + ' × ' + st.qty + '</span><span>+$' + (bkAddonUnitPrice(a) * st.qty).toFixed(2) + '</span></div>';
         }
       });
+      if (bkFeesApply()) {
+        bkMandatoryFees.forEach(function (fee) {
+          h += '<div class="bk-order-row"><span>' + fee.name + ' × ' + st.qty + ' ($' + fee.amount + '/tire)</span><span>$' + (fee.amount * st.qty).toFixed(2) + '</span></div>';
+        });
+      }
     }
     h += '<div class="bk-order-row"><span>GST (5%)</span><span>$' + c.gst.toFixed(2) + '</span></div>';
     linesEl.innerHTML = h;
@@ -1023,7 +1057,9 @@
     // Last-chance upsell: if a brand-eligible protection add-on is shown but
     // left unticked, ask once before advancing to date/time.
     if (!bkUpsellNudged) {
-      var cb = document.querySelector('#bk-custom-addons .bk-addon input[type="checkbox"]:not(:checked)');
+      // Only the Protection Plan, and only when its row is on screen (the brand
+      // is eligible) and unticked. Any other add-on is never offered here.
+      var cb = document.querySelector('#bk-custom-addons .bk-addon[data-custom-slug="' + BK_PROTECTION_SLUG + '"] input[type="checkbox"]:not(:checked)');
       if (cb) { bkUpsellNudged = true; bkShowUpsellNudge(cb); return; }
     }
     bkGoTo(2);
@@ -1039,7 +1075,21 @@
     var priceEl = row.querySelector('.bk-addon-price');
     var nm = nameEl && nameEl.childNodes[0] ? nameEl.childNodes[0].nodeValue : (nameEl ? nameEl.textContent : '');
     document.getElementById('bk-nudge-name').textContent = (nm || 'the Protection Plan').trim();
-    document.getElementById('bk-nudge-price').textContent = priceEl ? priceEl.textContent : '';
+    // Price for THIS set: "$48 for your 4 tires (1 year)", from the same
+    // per-tire figure the row shows, so the two can never disagree.
+    var idx = parseInt(cb.dataset.customIdx);
+    var a = (st.customAddons || [])[idx];
+    var priceText = priceEl ? priceEl.textContent : '';
+    if (a) {
+      var per = bkAddonUnitPrice(a);
+      var set = per * st.qty;
+      var term = (Array.isArray(a.terms) && a.terms.length && typeof a.selectedMonths === 'number') ? ' (' + bkTermLabel(a.selectedMonths) + ')' : '';
+      priceText = '$' + (set % 1 === 0 ? set.toFixed(0) : set.toFixed(2)) + ' for your ' + st.qty + ' tire' + (st.qty === 1 ? '' : 's') + term;
+    }
+    document.getElementById('bk-nudge-price').textContent = priceText;
+    // Benefit line from the same place the add-on row reads it.
+    var benefit = document.getElementById('bk-nudge-benefit');
+    if (benefit && BK_ADDON_NOTES[BK_PROTECTION_SLUG]) benefit.textContent = BK_ADDON_NOTES[BK_PROTECTION_SLUG];
     nudge.hidden = false;
     document.getElementById('bk-nudge-add').onclick = function () {
       cb.checked = true;
@@ -1561,6 +1611,10 @@
     if (addons.length) h += '<div class="bk-summary-row"><span class="bk-summary-label">Add-ons</span><span class="bk-summary-val">' + addons.join(', ') + '</span></div>';
     if (st.tirePrice > 0) h += '<div class="bk-summary-row"><span class="bk-summary-label">Tires</span><span class="bk-summary-val">$' + c.tires.toFixed(2) + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Installation</span><span class="bk-summary-val">$' + c.install.toFixed(2) + '</span></div>';
+    if (c.fees > 0) {
+      var feeLabel = bkMandatoryFees.map(function (fee) { return fee.name; }).join(', ');
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">' + feeLabel + '</span><span class="bk-summary-val">$' + c.fees.toFixed(2) + '</span></div>';
+    }
     if (st.tpms) h += '<div class="bk-summary-row"><span class="bk-summary-label">TPMS sensors</span><span class="bk-summary-val">$' + c.tpms.toFixed(2) + '</span></div>';
     if (st.disposal) h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire disposal</span><span class="bk-summary-val">$' + c.disposal.toFixed(2) + '</span></div>';
     (st.customAddons || []).forEach(function (a) {
@@ -1850,6 +1904,13 @@
           }
           return o;
         });
+      // Mandatory fees ride along so the booking records them; /api/book also
+      // adds them itself and re-prices them from the catalog.
+      if (bkFeesApply()) {
+        bkMandatoryFees.forEach(function (fee) {
+          customAddonsForApi.push({ slug: fee.slug, name: fee.name, qty: st.qty, amount: fee.amount });
+        });
+      }
 
       var payload = {
         name: name,
