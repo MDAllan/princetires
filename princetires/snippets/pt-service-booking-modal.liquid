@@ -679,8 +679,8 @@
         parts.push('disposal');
       }
     }
-    // Road force upgrade on either install (per tire, from the catalog).
-    if ((s === 'installation_off' || s === 'installation_on') && sbSt.addons.roadForce && sbAddonCatalog.addon_road_force) {
+    // Road force upgrade on any job (per tire, from the catalog).
+    if (s !== 'road_force_balancing' && sbSt.addons.roadForce && sbAddonCatalog.addon_road_force) {
       subtotal += (sbAddonCatalog.addon_road_force.amount || 0) * q;
       parts.push('road force ×' + q);
     }
@@ -926,8 +926,9 @@
     document.getElementById('sb-qty-section').hidden = noQty;
     if (!noQty) sbRenderQty();
 
-    // Add-ons (installation_off + installation_on only)
-    var hasAddons = (sbSt.service === 'installation_off' || sbSt.service === 'installation_on');
+    // Add-ons: TPMS / disposal / low-profile ride on the two installs; the road
+    // force upgrade is offered on every job (owner's call, 2026-10-22).
+    var hasAddons = (sbSt.service === 'installation_off' || sbSt.service === 'installation_on') || sbRoadForceOffered();
     document.getElementById('sb-addons-section').hidden = !hasAddons;
     if (hasAddons) sbRenderAddons();
   }
@@ -974,13 +975,13 @@
       rows.push({ id: 'disposal', name: 'Tire disposal', price: (sbPricing.addon_disposal.amount || 5), unit: '/tire' });
       rows.push({ id: 'lowProfile', name: 'Low-profile or run-flat tires', priceLabel: '$' + (sbPricing.installation_off.lowProfileFloor || 40) + '/tire min' });
     }
-    // Road force upgrade on either install — from the catalog, and only when a
-    // bookable shop offers it (the picker would otherwise have nothing to show).
-    if ((isOff || isOn) && sbAddonCatalog.addon_road_force) {
+    // Road force upgrade on any job (except road force itself) — from the
+    // catalog, and only when a bookable shop offers it.
+    if (sbRoadForceOffered()) {
       var rf = sbAddonCatalog.addon_road_force;
-      if (PTBookingCore.allowedLocations(sbLocBookable, [sbServiceShops.addon_road_force || []]).length) {
-        rows.push({ id: 'roadForce', name: rf.name, price: rf.amount, unit: '/' + rf.unit, note: sbOnlyAt('addon_road_force') });
-      }
+      rows.push({ id: 'roadForce', name: rf.name, price: rf.amount, unit: '/' + rf.unit, note: sbOnlyAt('addon_road_force') });
+    } else {
+      sbSt.addons.roadForce = false;
     }
 
     container.innerHTML = rows.map(function (a) {
@@ -1008,11 +1009,19 @@
     });
   }
 
+  // Can the road force upgrade be offered on the chosen job? Any service but
+  // road force itself, once the catalog has it, and only while a bookable shop
+  // offers it (the picker would otherwise have nothing to show).
+  function sbRoadForceOffered() {
+    if (!sbSt.service || sbSt.service === 'road_force_balancing' || !sbAddonCatalog.addon_road_force) return false;
+    return PTBookingCore.allowedLocations(sbLocBookable, [sbServiceShops.addon_road_force || []]).length > 0;
+  }
+
   // The catalog add-ons ticked on this booking, in the shape /api/book takes
-  // (customAddons). Only on the two installs, where they are offered.
+  // (customAddons).
   function sbSelectedCatalogAddons() {
     var out = [];
-    if (sbSt.service !== 'installation_off' && sbSt.service !== 'installation_on') return out;
+    if (sbSt.service === 'road_force_balancing') return out;
     Object.keys(sbAddonKeys).forEach(function (slug) {
       var a = sbAddonCatalog[slug];
       if (a && sbSt.addons[sbAddonKeys[slug]]) out.push({ slug: slug, name: a.name, qty: sbSt.qty, amount: a.amount });

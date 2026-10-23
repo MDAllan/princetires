@@ -1242,8 +1242,8 @@
         parts.push('disposal');
       }
     }
-    // Road force upgrade on either install (per tire, from the catalog).
-    if ((s === 'installation_off' || s === 'installation_on') && st.addons.roadForce && ADDON_CATALOG.addon_road_force) {
+    // Road force upgrade on any job (per tire, from the catalog).
+    if (s !== 'road_force_balancing' && st.addons.roadForce && ADDON_CATALOG.addon_road_force) {
       subtotal += (ADDON_CATALOG.addon_road_force.amount || 0) * q;
       parts.push('road force ×' + q);
     }
@@ -1326,8 +1326,11 @@
     // Repaint anything already on screen.
     var og = document.getElementById('bp-other-grid');
     if (og && og.children.length) renderOtherGrid();
-    var as = document.getElementById('bp-addons-section');
-    if (as && !as.hidden) renderAddons();
+    // The vehicle step decides whether the add-ons section shows at all (the
+    // road force row exists only once the catalog has landed), so repaint the
+    // whole step if the customer is already on it.
+    var step2 = document.getElementById('bp-page-2');
+    if (step2 && !step2.hidden) renderVehicles();
     if (st.service) updatePrice();
   }
 
@@ -1558,7 +1561,9 @@
     document.getElementById('bp-qty-section').hidden = noQty;
     if (!noQty) renderQty();
 
-    var hasAddons = (st.service === 'installation_off' || st.service === 'installation_on');
+    // TPMS / disposal / low-profile ride on the two installs; the road force
+    // upgrade is offered on every job (owner's call, 2026-10-22).
+    var hasAddons = (st.service === 'installation_off' || st.service === 'installation_on') || bpRoadForceOffered();
     document.getElementById('bp-addons-section').hidden = !hasAddons;
     if (hasAddons) renderAddons();
 
@@ -1619,13 +1624,13 @@
       rows.push({ id: 'disposal', name: 'Tire disposal', priceLabel: '+$' + ((bpPricing.addon_disposal && bpPricing.addon_disposal.amount) || 5) + '/tire' });
       rows.push({ id: 'lowProfile', name: 'Low-profile or run-flat tires', priceLabel: '$' + ((bpPricing.installation_off && bpPricing.installation_off.lowProfileFloor) || 40) + '/tire min' });
     }
-    // Road force upgrade on either install — from the catalog, and only when a
-    // bookable shop offers it (the picker would otherwise have nothing to show).
-    if ((isOff || isOn) && ADDON_CATALOG.addon_road_force) {
+    // Road force upgrade on any job (except road force itself) — from the
+    // catalog, and only when a bookable shop offers it.
+    if (bpRoadForceOffered()) {
       var rf = ADDON_CATALOG.addon_road_force;
-      if (PTBookingCore.allowedLocations(LOCATIONS, [SERVICE_SHOPS.addon_road_force || []]).length) {
-        rows.push({ id: 'roadForce', name: rf.name, priceLabel: '+$' + rf.amount + '/' + rf.unit, note: bpOnlyAt('addon_road_force') });
-      }
+      rows.push({ id: 'roadForce', name: rf.name, priceLabel: '+$' + rf.amount + '/' + rf.unit, note: bpOnlyAt('addon_road_force') });
+    } else {
+      st.addons.roadForce = false;
     }
     container.innerHTML = rows.map(function (a) {
       var active = st.addons[a.id] ? ' bk-addon--active' : '';
@@ -1905,11 +1910,19 @@
     document.getElementById('bp-summary').innerHTML = h;
   }
 
+  // Can the road force upgrade be offered on the chosen job? Any service but
+  // road force itself, once the catalog has it, and only while a bookable shop
+  // offers it (the picker would otherwise have nothing to show).
+  function bpRoadForceOffered() {
+    if (!st.service || st.service === 'road_force_balancing' || !ADDON_CATALOG.addon_road_force) return false;
+    return PTBookingCore.allowedLocations(LOCATIONS, [SERVICE_SHOPS.addon_road_force || []]).length > 0;
+  }
+
   // The catalog add-ons ticked on this booking, in the shape /api/book takes
-  // (customAddons). Only on the two installs, where they are offered.
+  // (customAddons).
   function bpSelectedCatalogAddons() {
     var out = [];
-    if (st.service !== 'installation_off' && st.service !== 'installation_on') return out;
+    if (st.service === 'road_force_balancing') return out;
     Object.keys(ADDON_KEYS).forEach(function (slug) {
       var a = ADDON_CATALOG[slug];
       if (a && st.addons[ADDON_KEYS[slug]]) out.push({ slug: slug, name: a.name, qty: st.qty, amount: a.amount });

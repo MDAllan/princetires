@@ -57,6 +57,25 @@ test.describe('Road force balancing — NE only', () => {
     await expect(page.locator('#bp-loc-note')).toContainText(/only available at our Edmonton Trail/i);
   });
 
+  test('the road force upgrade is offered on a non-install job and pins the shop when ticked', async ({ page }) => {
+    await page.goto('/pages/booking?service=rotation', { waitUntil: 'domcontentloaded' });
+    const loc = page.locator('#bp-loc');
+    await expect(loc.locator('.bp-loc-card')).toHaveCount(2, { timeout: 15_000 });
+    await page.locator('#bp-next-1').click();
+    const row = page.locator('#bp-addons .bk-addon').filter({ hasText: /road force/i });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await expect(row.locator('.bk-addon-note')).toContainText(NE_NAME);
+    // Tick via the real change event (checkbox-in-<label> click double-toggles).
+    await row.locator('input[type="checkbox"]').evaluate((el: HTMLInputElement) => {
+      el.checked = true;
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await expect(loc.locator('.bp-loc-card')).toHaveCount(1);
+    await expect(loc.locator('.bp-loc-card').first()).toContainText(NE_NAME);
+    await expect(page.locator('#bp-loc-note')).toContainText(/only available at our Edmonton Trail/i);
+    await expect(page.locator('#bp-price-note')).toContainText(/road force/i);
+  });
+
   test('switching back to a plain service restores both shops', async ({ page }) => {
     await page.goto(BOOKING_DEEP_LINK, { waitUntil: 'domcontentloaded' });
     const loc = page.locator('#bp-loc');
