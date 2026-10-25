@@ -725,8 +725,11 @@
   // The recycling fee is levied on tires (a bare wheel has no tire size — the
   // PDP's is_wheel rule) and only travels on the install flow: tires-only goes
   // to the Shopify cart, which does not charge it.
+  // Never on a tire whose price already carries the levy (Trail Tire), and
+  // never on a button that did not say (st.levyInPrice null): /api/book makes
+  // the final call from the product's own tags either way.
   function bkFeesApply() {
-    return st.flow === 'install' && bkMandatoryFees.length > 0 && !!(st.tireSize || '').trim();
+    return st.flow === 'install' && bkMandatoryFees.length > 0 && !!(st.tireSize || '').trim() && st.levyInPrice === false;
   }
   function bkFeesPerTire() {
     var n = 0;
@@ -1641,6 +1644,9 @@
     st.tireVendor = btn.dataset.vendor || '';
     st.tireSize = btn.dataset.tireSize || '';
     st.tirePrice = parseInt(btn.dataset.tirePrice || '0') / 100;
+    // 'true' = the price already includes the tire levy (pt-levy-in-price).
+    var levyFlag = (btn.dataset.levyInPrice || '').trim();
+    st.levyInPrice = levyFlag === 'true' ? true : levyFlag === 'false' ? false : null;
     st.installPrice = parseFloat(btn.dataset.installPrice) || 30;
     st.inventorySource = btn.dataset.inventorySource === 'trial' ? 'trial' : 'store';
     // Tier 'A' = in stock at our shop (Prince Tires / imported brands) → 2 hr lead.

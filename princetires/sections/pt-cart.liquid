@@ -3,7 +3,7 @@
   assign first_tire = nil
   for item in cart.items
     assign t = item.product.type | downcase
-    if t contains 'tire' or t contains 'tyre' or item.product.tags contains 'tire'
+    if item.product.metafields.custom.tire_size != blank or t contains 'tire' or t contains 'tyre'
       assign has_tires = true
       if first_tire == nil
         assign first_tire = item
@@ -174,8 +174,8 @@
                   data-tire-size="{{ first_tire.product.metafields.custom.tire_size | default: '' | escape }}"
                   data-tire-price="{{ first_tire.price }}"
                   data-install-price="{{ first_tire.product.metafields.custom.install_price.value | default: 30 }}"
-                  data-vehicle-type=""
-                  data-max-qty="{{ first_tire.quantity }}">
+                  data-levy-in-price="{% render 'pt-levy-in-price', product: first_tire.product %}"
+                  data-vehicle-type="">
                   Book install
                 </button>
               </div>

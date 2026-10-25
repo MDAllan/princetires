@@ -1,0 +1,27 @@
+{% doc %}
+  Outputs 'true' when this product's PRICE already includes the $5 Alberta tire
+  levy, else 'false'. The droplet prices every Trail Tire product as
+  (cost + $5 levy) x markup, so adding the tire recycling fee on top would bill
+  the levy twice. Own stock and ATW (priced at ATW's list) do not include it.
+
+  Used by the product page's installed total and by every button that opens
+  the booking modal (data-levy-in-price). Add North Country Tire's tag to the
+  list when its tires are published.
+  Mirrored server-side in princetires-app src/lib/shopify/product-tier.ts
+  (LEVY_IN_PRICE_TAGS) — KEEP IN SYNC.
+
+  @param {object} product - The Shopify product object
+
+  @example
+    {%- capture levy_in_price -%}{% render 'pt-levy-in-price', product: product %}{%- endcapture -%}
+{% enddoc %}
+{%- liquid
+  assign levy_tags = 'trail-tire-supply' | split: ','
+  assign levy_in = 'false'
+  for t in product.tags
+    assign t_lower = t | strip | downcase
+    if levy_tags contains t_lower
+      assign levy_in = 'true'
+    endif
+  endfor
+-%}{{- levy_in -}}
