@@ -1,0 +1,752 @@
+{%- comment -%}
+  Which shop this page is about. Every service page was written for SW; a page
+  for a service one shop offers (road force balancing at Edmonton Trail NE)
+  sets `location` and the address, map link and shop name follow from pt-nap.
+
+  2026-10-30 additions (all OFF by default, so the 18 other templates that use
+  this section render exactly as before):
+  - panel blocks (H2 + rich text) in two slots: after "How it works" and after
+    Pricing. compare_row blocks render as one table in the first slot, placed
+    where the first compare_row sits among the panels.
+  - price_row blocks render a price table inside Pricing and, when
+    schema_enabled is on, feed the Service JSON-LD offers.
+  - link blocks render a "related" list before the FAQ.
+  - schema_enabled: emits Service + BreadcrumbList JSON-LD and drops the old
+    Service microdata so the page carries one Service entity, not two.
+  - text overrides for the trust strip, How it works steps, areas title and
+    bottom CTA. Blank = the original hardcoded copy, EXCEPT two fallbacks that
+    no change on pages that leave them blank: trust_2 and cta_bottom_text fall
+    back to the old live text, so only templates that set them (road force)
+    change. Revisit "Same-day available" / "Join hundreds…" sitewide separately.
+  - show_location_card / hide_area_grid / show_bottom_cta / phone_href.
+  FAQPage JSON-LD is still emitted once, by schema-faq, exactly as before.
+{%- endcomment -%}
+{%- assign cgs_loc = section.settings.location | default: 'sw' -%}
+{%- capture cgs_shop_name %}{% render 'pt-nap', location: cgs_loc, field: 'public_name' %}{% endcapture -%}
+{%- capture cgs_address %}{% render 'pt-nap', location: cgs_loc, field: 'address_full' %}{% endcapture -%}
+{%- capture cgs_maps %}{% render 'pt-nap', location: cgs_loc, field: 'maps_url' %}{% endcapture -%}
+{%- assign cgs_shop_name = cgs_shop_name | strip -%}
+{%- assign cgs_address = cgs_address | strip -%}
+{%- assign cgs_maps = cgs_maps | strip -%}
+{%- assign cgs_short_name = cgs_shop_name | remove_first: 'Prince Tires — ' | remove_first: 'Prince Tires - ' -%}
+{%- liquid
+  assign cgs_schema = section.settings.schema_enabled
+  assign cgs_slot1 = false
+  assign cgs_slot2 = false
+  for b in section.blocks
+    if b.type == 'compare_row'
+      assign cgs_slot1 = true
+    elsif b.type == 'panel'
+      if b.settings.slot == 'after_pricing'
+        assign cgs_slot2 = true
+      else
+        assign cgs_slot1 = true
+      endif
+    endif
+  endfor
+  assign cgs_price_rows = section.blocks | where: 'type', 'price_row'
+  assign cgs_link_blocks = section.blocks | where: 'type', 'link'
+-%}
+
+<div class="cgs"{% unless cgs_schema %} itemscope itemtype="https://schema.org/Service"{% endunless %}>
+
+  {%- comment -%} ── Hero ──────────────────────────────────────────────────── {%- endcomment -%}
+  <div class="cgs__hero">
+    {%- if section.settings.hero_image -%}
+      <div class="cgs__hero-bg" aria-hidden="true">
+        {{- section.settings.hero_image | image_url: width: 1600 | image_tag: loading: 'eager', fetchpriority: 'high', alt: '' -}}
+      </div>
+    {%- endif -%}
+    <div class="cgs__hero-inner">
+      <div class="cgs__hero-content">
+        <div class="cgs__trust-strip">
+          <span>⭐ 4.9 / 5 on Google</span>
+          <span>{% if section.settings.trust_2 != blank %}{{ section.settings.trust_2 }}{% else %}✓ Same-day available{% endif %}</span>
+          <span>📍 {% if cgs_loc == 'sw' %}Calgary, AB{% else %}{{ cgs_short_name }}, Calgary{% endif %}</span>
+        </div>
+        <h1 class="cgs__title"{% unless cgs_schema %} itemprop="name"{% endunless %}>{{ section.settings.heading }}</h1>
+        <p class="cgs__subtitle">{{ section.settings.subheading }}</p>
+        <div class="cgs__hero-ctas">
+          <a
+            href="{{ section.settings.booking_url }}"
+            class="cgs__btn cgs__btn--primary"
+            data-pt-event="book_cta"
+            data-pt-location="hero"
+            data-pt-label="{{ section.settings.cta_text | escape }}"
+          >{{ section.settings.cta_text }}</a>
+          <a href="tel:{% if section.settings.phone_href != blank %}{{ section.settings.phone_href }}{% else %}{{ section.settings.phone }}{% endif %}" class="cgs__btn cgs__btn--ghost" data-pt-event="phone_click">
+            📞 {{ section.settings.phone }}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} ── How it works ──────────────────────────────────────────── {%- endcomment -%}
+  <div class="cgs__how">
+    <div class="cgs__container">
+      <h2 class="cgs__section-title">{% if section.settings.how_title != blank %}{{ section.settings.how_title }}{% else %}How it works{% endif %}</h2>
+      <div class="cgs__steps">
+        <div class="cgs__step">
+          <div class="cgs__step-num">1</div>
+          <h3>{% if section.settings.how_1_title != blank %}{{ section.settings.how_1_title }}{% else %}Book online{% endif %}</h3>
+          <p>{% if section.settings.how_1_text != blank %}{{ section.settings.how_1_text }}{% else %}Pick a date and time that works for you — takes under 2 minutes.{% endif %}</p>
+        </div>
+        <div class="cgs__step">
+          <div class="cgs__step-num">2</div>
+          <h3>{% if section.settings.how_2_title != blank %}{{ section.settings.how_2_title }}{% else %}Drop off your vehicle{% endif %}</h3>
+          <p>{% if section.settings.how_2_text != blank %}{{ section.settings.how_2_text }}{% else %}Arrive at our {% if cgs_loc == 'sw' %}Calgary shop{% else %}{{ cgs_short_name }} shop{% endif %}. We'll take care of everything.{% endif %}</p>
+        </div>
+        <div class="cgs__step">
+          <div class="cgs__step-num">3</div>
+          <h3>{% if section.settings.how_3_title != blank %}{{ section.settings.how_3_title }}{% else %}Drive away confident{% endif %}</h3>
+          <p>{% if section.settings.how_3_text != blank %}{{ section.settings.how_3_text }}{% else %}Professional installation, torque-checked, balanced, and ready.{% endif %}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} ── Content slot 1: panels + comparison table ───────────────
+    The table renders once, in full, where the first compare_row sits in
+    block order relative to the panels.
+  {%- endcomment -%}
+  {%- if cgs_slot1 -%}
+    {%- assign cgs_cmp_rows = section.blocks | where: 'type', 'compare_row' -%}
+    {%- assign cgs_cmp_done = false -%}
+    {%- for block in section.blocks -%}
+      {%- if block.type == 'compare_row' and cgs_cmp_done == false -%}
+        {%- assign cgs_cmp_done = true -%}
+        <div class="cgs__panel cgs__panel--white cgs__compare">
+          <div class="cgs__container">
+            {%- if section.settings.compare_title != blank -%}
+              <h2 class="cgs__section-title">{{ section.settings.compare_title }}</h2>
+            {%- endif -%}
+            {%- if section.settings.compare_intro != blank -%}
+              <div class="cgs__panel-body rte">{{ section.settings.compare_intro }}</div>
+            {%- endif -%}
+            <div class="cgs__table-wrap" role="region" aria-label="{{ section.settings.compare_title | default: 'Comparison' | escape }}" tabindex="0">
+              <table class="cgs__table">
+                <thead>
+                  <tr>
+                    <th scope="col">{{ section.settings.compare_feature_label }}</th>
+                    <th scope="col">{{ section.settings.compare_col_a_label | default: 'Road force' }}</th>
+                    <th scope="col">{{ section.settings.compare_col_b_label | default: 'Standard balance' }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {%- for row in cgs_cmp_rows -%}
+                    <tr {{ row.shopify_attributes }}>
+                      <th scope="row">{{ row.settings.feature }}</th>
+                      <td>{{ row.settings.col_a }}</td>
+                      <td>{{ row.settings.col_b }}</td>
+                    </tr>
+                  {%- endfor -%}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      {%- elsif block.type == 'panel' and block.settings.slot != 'after_pricing' -%}
+        <div class="cgs__panel cgs__panel--{{ block.settings.background | default: 'white' }}" {{ block.shopify_attributes }}>
+          <div class="cgs__container">
+            {%- if block.settings.heading != blank -%}
+              <h2 class="cgs__section-title">{{ block.settings.heading }}</h2>
+            {%- endif -%}
+            <div class="cgs__panel-body rte">{{ block.settings.body }}</div>
+          </div>
+        </div>
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+
+  {%- comment -%} ── Pricing / service details ─────────────────────────────── {%- endcomment -%}
+  {%- if section.settings.pricing_intro != blank -%}
+  <div class="cgs__pricing">
+    <div class="cgs__container">
+      <h2 class="cgs__section-title">{{ section.settings.pricing_title | default: 'Pricing' }}</h2>
+      <p class="cgs__pricing-text"{% unless cgs_schema %} itemprop="description"{% endunless %}>{{ section.settings.pricing_intro }}</p>
+      {%- if cgs_price_rows.size > 0 -%}
+        <div class="cgs__table-wrap" role="region" aria-label="{{ section.settings.pricing_title | default: 'Pricing' | escape }}" tabindex="0">
+          <table class="cgs__table cgs__table--price">
+            <thead>
+              <tr>
+                <th scope="col">Service</th>
+                <th scope="col">Price</th>
+                <th scope="col">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {%- for block in cgs_price_rows -%}
+                <tr {{ block.shopify_attributes }}>
+                  <th scope="row">{{ block.settings.label }}</th>
+                  <td class="cgs__table-price">{{ block.settings.price }}{% if block.settings.unit != blank %} <span class="cgs__table-unit">{{ block.settings.unit }}</span>{% endif %}</td>
+                  <td>{{ block.settings.note }}</td>
+                </tr>
+              {%- endfor -%}
+            </tbody>
+          </table>
+        </div>
+      {%- endif -%}
+      {%- if section.settings.price_range != blank -%}
+        <div class="cgs__price-badge">Starting from {{ section.settings.price_range }}</div>
+      {%- endif -%}
+    </div>
+  </div>
+  {%- endif -%}
+
+  {%- comment -%} ── Content slot 2: panels after pricing ──────────────────── {%- endcomment -%}
+  {%- if cgs_slot2 -%}
+    {%- for block in section.blocks -%}
+      {%- if block.type == 'panel' and block.settings.slot == 'after_pricing' -%}
+        <div class="cgs__panel cgs__panel--{{ block.settings.background | default: 'white' }}" {{ block.shopify_attributes }}>
+          <div class="cgs__container">
+            {%- if block.settings.heading != blank -%}
+              <h2 class="cgs__section-title">{{ block.settings.heading }}</h2>
+            {%- endif -%}
+            <div class="cgs__panel-body rte">{{ block.settings.body }}</div>
+          </div>
+        </div>
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+
+  {%- comment -%} ── Service areas ─────────────────────────────────────────── {%- endcomment -%}
+  <div class="cgs__areas">
+    <div class="cgs__container">
+      <h2 class="cgs__section-title">{% if section.settings.areas_title != blank %}{{ section.settings.areas_title }}{% else %}Areas we serve{% endif %}</h2>
+      {%- unless section.settings.hide_area_grid -%}
+      <div class="cgs__areas-grid">
+        <span>NE Calgary</span><span>NW Calgary</span>
+        <span>SE Calgary</span><span>SW Calgary</span>
+      </div>
+      {%- endunless -%}
+      {%- if section.settings.show_location_card -%}
+        {%- capture cgs_phone %}{% render 'pt-nap', location: cgs_loc, field: 'phone' %}{% endcapture -%}
+        {%- capture cgs_phone_href %}{% render 'pt-nap', location: cgs_loc, field: 'phone_href' %}{% endcapture -%}
+        <div class="cgs__loc-card">
+          <p class="cgs__loc-name">{{ cgs_shop_name }}</p>
+          <address class="cgs__loc-address">{{ cgs_address }}</address>
+          <p class="cgs__loc-phone"><a href="tel:{{ cgs_phone_href | strip }}" data-pt-event="phone_click">{{ cgs_phone | strip }}</a></p>
+          {%- if section.settings.location_card_show_hours -%}
+            {%- capture cgs_h_label %}{% render 'pt-nap', location: cgs_loc, field: 'hours_weekday_label' %}{% endcapture -%}
+            {%- capture cgs_h_ms %}{% render 'pt-nap', location: cgs_loc, field: 'hours_mon_sat_display' %}{% endcapture -%}
+            {%- capture cgs_h_fri %}{% render 'pt-nap', location: cgs_loc, field: 'hours_fri_display' %}{% endcapture -%}
+            {%- capture cgs_h_sun %}{% render 'pt-nap', location: cgs_loc, field: 'hours_sun_display' %}{% endcapture -%}
+            <dl class="cgs__loc-hours">
+              <dt>{{ cgs_h_label | strip }}</dt><dd>{{ cgs_h_ms | strip }}</dd>
+              <dt>Fri</dt><dd>{{ cgs_h_fri | strip }}</dd>
+              <dt>Sun</dt><dd>{{ cgs_h_sun | strip }}</dd>
+            </dl>
+          {%- endif -%}
+          <div class="cgs__loc-ctas">
+            <a href="{{ cgs_maps }}" class="cgs__btn cgs__btn--ghost" target="_blank" rel="noopener" data-pt-event="directions_click">Get directions</a>
+            <a
+              href="{{ section.settings.booking_url }}"
+              class="cgs__btn cgs__btn--primary"
+              data-pt-event="book_cta"
+              data-pt-location="location_card"
+              data-pt-label="{{ section.settings.cta_text | escape }}"
+            >{{ section.settings.cta_text }}</a>
+          </div>
+        </div>
+        {%- if section.settings.location_note != blank -%}
+          <div class="cgs__loc-note rte">{{ section.settings.location_note }}</div>
+        {%- endif -%}
+      {%- else -%}
+      <p class="cgs__address"{% unless cgs_schema %} itemprop="areaServed"{% endunless %}>
+        <strong>Shop location:</strong>
+        <a href="{{ cgs_maps | default: 'https://maps.google.com/?q=111+42+Ave+SW+Calgary+AB' }}" target="_blank" rel="noopener">
+          {{ cgs_address | default: '111 42 Ave SW, Calgary, AB T2G 0A4' }}
+        </a>
+        {%- if cgs_loc != 'sw' %} <span class="cgs__address-only">This service is offered at {{ cgs_short_name }} only.</span>{% endif -%}
+      </p>
+      {%- endif -%}
+    </div>
+  </div>
+
+  {%- comment -%} ── Related links ─────────────────────────────────────────── {%- endcomment -%}
+  {%- if cgs_link_blocks.size > 0 -%}
+  <div class="cgs__links">
+    <div class="cgs__container">
+      <h2 class="cgs__section-title">{{ section.settings.links_title | default: 'Related services' }}</h2>
+      <ul class="cgs__links-list">
+        {%- for block in cgs_link_blocks -%}
+          <li {{ block.shopify_attributes }}>
+            <a href="{{ block.settings.url }}">{{ block.settings.label }}</a>
+            {%- if block.settings.text != blank %} <span>{{ block.settings.text }}</span>{% endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+    </div>
+  </div>
+  {%- endif -%}
+
+  {%- comment -%} ── FAQ ──────────────────────────────────────────────────── {%- endcomment -%}
+  {%- assign faq_blocks = section.blocks | where: 'type', 'faq' -%}
+  {%- if faq_blocks.size > 0 -%}
+  <div class="cgs__faq">
+    <div class="cgs__container">
+      <h2 class="cgs__section-title">Frequently asked questions</h2>
+      <div class="cgs__faq-list">
+        {%- for block in faq_blocks -%}
+          <details class="cgs__faq-item" {{ block.shopify_attributes }}>
+            <summary class="cgs__faq-q">{{ block.settings.question }}</summary>
+            <div class="cgs__faq-a">{{ block.settings.answer }}</div>
+          </details>
+        {%- endfor -%}
+      </div>
+    </div>
+  </div>
+  {%- render 'schema-faq', faqs: faq_blocks -%}
+  {%- endif -%}
+
+  {%- comment -%} ── Bottom CTA ────────────────────────────────────────────── {%- endcomment -%}
+  {%- if section.settings.show_bottom_cta -%}
+  <div class="cgs__cta-bottom">
+    <div class="cgs__container">
+      <h2>{% if section.settings.cta_bottom_heading != blank %}{{ section.settings.cta_bottom_heading }}{% else %}Ready to book your {{ section.settings.service_name | default: 'service' }} in Calgary?{% endif %}</h2>
+      <p>{% if section.settings.cta_bottom_text != blank %}{{ section.settings.cta_bottom_text }}{% else %}Join hundreds of Calgary drivers who trust Prince Tires.{% endif %}</p>
+      <a
+        href="{{ section.settings.booking_url }}"
+        class="cgs__btn cgs__btn--primary cgs__btn--large"
+        data-pt-event="book_cta"
+        data-pt-location="bottom_cta"
+        data-pt-label="{{ section.settings.cta_text | escape }}"
+      >{{ section.settings.cta_text }}</a>
+    </div>
+  </div>
+  {%- endif -%}
+
+</div>
+
+{%- comment -%} ── Service + BreadcrumbList JSON-LD (opt-in) ───────────────── {%- endcomment -%}
+{%- if cgs_schema -%}
+  {%- liquid
+    assign cgs_origin = request.origin
+    if cgs_loc == 'ne'
+      assign cgs_biz_id = cgs_origin | append: '/#business-ne'
+    else
+      assign cgs_biz_id = cgs_origin | append: '/#business'
+    endif
+    assign cgs_book_abs = section.settings.booking_url
+    if cgs_book_abs != blank
+      assign cgs_book_first = cgs_book_abs | slice: 0
+      if cgs_book_first == '/'
+        assign cgs_book_abs = cgs_origin | append: cgs_book_abs
+      endif
+    endif
+    assign cgs_crumb_parent = section.settings.breadcrumb_parent_url
+    if cgs_crumb_parent != blank
+      assign cgs_crumb_first = cgs_crumb_parent | slice: 0
+      if cgs_crumb_first == '/'
+        assign cgs_crumb_parent = cgs_origin | append: cgs_crumb_parent
+      endif
+    endif
+    assign cgs_service_type = section.settings.schema_service_type | default: section.settings.service_name
+    assign cgs_service_name = section.settings.schema_name | default: section.settings.heading
+    assign cgs_provider_type = section.settings.schema_provider_type | default: 'AutoPartsStore'
+    if section.settings.schema_description != blank
+      assign cgs_service_desc = section.settings.schema_description
+    else
+      assign cgs_service_desc = section.settings.pricing_intro | strip_html
+    endif
+    if page.title != blank
+      assign cgs_crumb_name = page.title
+    else
+      assign cgs_crumb_name = section.settings.heading
+    endif
+  -%}
+  {%- capture cgs_street %}{% render 'pt-nap', location: cgs_loc, field: 'street' %}{% endcapture -%}
+  {%- capture cgs_city %}{% render 'pt-nap', location: cgs_loc, field: 'city' %}{% endcapture -%}
+  {%- capture cgs_region %}{% render 'pt-nap', location: cgs_loc, field: 'region' %}{% endcapture -%}
+  {%- capture cgs_postal %}{% render 'pt-nap', location: cgs_loc, field: 'postal' %}{% endcapture -%}
+  {%- capture cgs_country %}{% render 'pt-nap', location: cgs_loc, field: 'country' %}{% endcapture -%}
+  {%- capture cgs_tel %}{% render 'pt-nap', location: cgs_loc, field: 'phone' %}{% endcapture -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Service",
+        "@id": {{ canonical_url | append: '#service' | json }},
+        "name": {{ cgs_service_name | strip_html | json }},
+        "serviceType": {{ cgs_service_type | strip_html | json }},
+        "description": {{ cgs_service_desc | strip_html | strip | json }},
+        "url": {{ canonical_url | json }},
+        "provider": {
+          "@type": {{ cgs_provider_type | json }},
+          "@id": {{ cgs_biz_id | json }},
+          "name": {{ cgs_shop_name | json }},
+          "telephone": {{ cgs_tel | strip | json }},
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": {{ cgs_street | strip | json }},
+            "addressLocality": {{ cgs_city | strip | json }},
+            "addressRegion": {{ cgs_region | strip | json }},
+            "postalCode": {{ cgs_postal | strip | json }},
+            "addressCountry": {{ cgs_country | strip | json }}
+          }
+        },
+        "areaServed": {
+          "@type": "City",
+          "name": "Calgary",
+          "containedInPlace": { "@type": "AdministrativeArea", "name": "Alberta" }
+        }
+        {%- if cgs_book_abs != blank -%}
+        ,
+        "availableChannel": {
+          "@type": "ServiceChannel",
+          "serviceUrl": {{ cgs_book_abs | json }},
+          "servicePhone": {
+            "@type": "ContactPoint",
+            "telephone": {{ cgs_tel | strip | json }},
+            "contactType": "customer service"
+          }
+        }
+        {%- endif -%}
+        {%- assign cgs_offer_count = 0 -%}
+        {%- for block in cgs_price_rows -%}
+          {%- if block.settings.in_schema and block.settings.schema_price != blank -%}
+            {%- if cgs_offer_count == 0 -%}
+        ,
+        "offers": [
+            {%- else -%}
+        ,
+            {%- endif -%}
+          {
+            "@type": "Offer",
+            "name": {{ block.settings.label | strip_html | json }},
+            "price": {{ block.settings.schema_price | strip | json }},
+            "priceCurrency": "CAD",
+            {%- if cgs_book_abs != blank %}
+            "url": {{ cgs_book_abs | json }},
+            {%- endif %}
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": {{ block.settings.schema_price | strip | json }},
+              "priceCurrency": "CAD",
+              "unitText": {{ block.settings.unit | default: 'each' | strip_html | json }},
+              "valueAddedTaxIncluded": false
+            }
+          }
+            {%- assign cgs_offer_count = cgs_offer_count | plus: 1 -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- if cgs_offer_count > 0 %}
+        ]
+        {%- endif %}
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": {{ canonical_url | append: '#breadcrumb' | json }},
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": {{ cgs_origin | append: '/' | json }}
+          },
+          {%- if section.settings.breadcrumb_parent_label != blank and cgs_crumb_parent != blank %}
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": {{ section.settings.breadcrumb_parent_label | json }},
+            "item": {{ cgs_crumb_parent | json }}
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": {{ cgs_crumb_name | json }},
+            "item": {{ canonical_url | json }}
+          }
+          {%- else %}
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": {{ cgs_crumb_name | json }},
+            "item": {{ canonical_url | json }}
+          }
+          {%- endif %}
+        ]
+      }
+    ]
+  }
+  </script>
+{%- endif -%}
+
+{% stylesheet %}
+.cgs { --red: #E8251D; --black: #111; font-family: 'Outfit', sans-serif; }
+
+/* Hero */
+.cgs__hero { position: relative; background: var(--black); color: #fff; min-height: 480px; display: flex; }
+.cgs__hero-bg { position: absolute; inset: 0; overflow: hidden; }
+.cgs__hero-bg img { width: 100%; height: 100%; object-fit: cover; opacity: 0.35; }
+.cgs__hero-inner { position: relative; z-index: 1; padding: 80px 24px 60px; max-width: 800px; margin: 0 auto; width: 100%; }
+.cgs__trust-strip { display: flex; flex-wrap: wrap; gap: 16px; font-size: 1.3rem; color: rgba(255,255,255,0.75); margin-bottom: 20px; }
+.cgs__title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(3.2rem, 6vw, 5.6rem); font-weight: 800; line-height: 1; margin: 0 0 16px; text-transform: uppercase; }
+.cgs__subtitle { font-size: 1.8rem; color: rgba(255,255,255,0.8); margin: 0 0 32px; max-width: 600px; }
+.cgs__hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* Buttons */
+.cgs__btn { display: inline-flex; align-items: center; justify-content: center; padding: 14px 28px; border-radius: 4px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1.6rem; letter-spacing: 0.05em; text-transform: uppercase; transition: all 0.2s; white-space: nowrap; }
+.cgs__btn--primary { background: var(--red); color: #fff; }
+.cgs__btn--primary:hover { background: #c41a14; }
+.cgs__btn--ghost { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,0.5); }
+.cgs__btn--ghost:hover { border-color: #fff; }
+.cgs__btn--large { padding: 18px 40px; font-size: 1.9rem; }
+
+/* Sections */
+.cgs__container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+.cgs__section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 2.8rem; font-weight: 700; text-transform: uppercase; margin: 0 0 32px; }
+
+/* How it works */
+.cgs__how { padding: 64px 0; background: #f8f8f8; }
+.cgs__steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 32px; }
+.cgs__step { text-align: center; }
+.cgs__step-num { width: 52px; height: 52px; background: var(--red); color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 2.4rem; font-weight: 800; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+.cgs__step h3 { font-size: 1.8rem; margin: 0 0 8px; }
+.cgs__step p { font-size: 1.4rem; color: #555; margin: 0; }
+
+/* Pricing */
+.cgs__pricing { padding: 64px 0; border-bottom: 1px solid #eee; }
+.cgs__pricing-text { font-size: 1.6rem; color: #444; max-width: 680px; margin: 0 0 24px; line-height: 1.7; }
+.cgs__price-badge { display: inline-block; background: var(--black); color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 700; padding: 10px 24px; border-radius: 4px; }
+
+/* Service areas */
+.cgs__areas { padding: 64px 0; background: var(--black); color: #fff; }
+.cgs__areas .cgs__section-title { color: #fff; }
+.cgs__areas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.cgs__areas-grid span { background: rgba(255,255,255,0.08); padding: 10px 16px; border-radius: 4px; font-size: 1.4rem; text-align: center; }
+.cgs__address { font-size: 1.4rem; color: rgba(255,255,255,0.7); }
+.cgs__address a { color: rgba(255,255,255,0.9); text-decoration: underline; }
+.cgs__address-only { display: block; margin-top: 6px; color: #fcd34d; font-weight: 600; }
+
+/* FAQ */
+.cgs__faq { padding: 64px 0; }
+.cgs__faq-list { display: flex; flex-direction: column; gap: 2px; }
+.cgs__faq-item { border: 1px solid #e5e5e5; border-radius: 6px; overflow: hidden; }
+.cgs__faq-q { padding: 18px 20px; font-size: 1.6rem; font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; background: #fff; }
+.cgs__faq-q::after { content: '+'; font-size: 2rem; font-weight: 300; color: var(--red); flex-shrink: 0; margin-left: 12px; }
+.cgs__faq-item[open] .cgs__faq-q::after { content: '−'; }
+.cgs__faq-a { padding: 0 20px 18px; font-size: 1.5rem; color: #555; line-height: 1.7; }
+
+/* Bottom CTA */
+.cgs__cta-bottom { padding: 80px 24px; background: var(--red); color: #fff; text-align: center; }
+.cgs__cta-bottom h2 { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(2.4rem, 4vw, 4rem); font-weight: 800; text-transform: uppercase; margin: 0 0 12px; }
+.cgs__cta-bottom p { font-size: 1.6rem; opacity: 0.9; margin: 0 0 32px; }
+.cgs__cta-bottom .cgs__btn--primary { background: #fff; color: var(--red); }
+.cgs__cta-bottom .cgs__btn--primary:hover { background: #f0f0f0; }
+
+/* Content panels (same rhythm as pt-tire-explainer) */
+.cgs__panel { padding: 64px 0; }
+.cgs__panel--white { background: #fff; }
+.cgs__panel--light { background: #f8f8f8; }
+.cgs__panel .cgs__section-title { margin-bottom: 24px; color: #111; }
+.cgs__panel-body { font-size: 1.6rem; color: #333; line-height: 1.7; }
+.cgs__panel-body p { margin: 0 0 16px; }
+.cgs__panel-body p:last-child { margin-bottom: 0; }
+.cgs__panel-body ul { padding-left: 24px; margin: 0 0 16px; }
+.cgs__panel-body li { margin-bottom: 8px; }
+.cgs__panel-body li::marker { color: var(--red); }
+.cgs__panel-body strong { color: #111; }
+.cgs__panel-body a { color: var(--red); text-decoration: underline; }
+.cgs__compare .cgs__panel-body { margin-bottom: 24px; }
+
+/* Tables (comparison + price) — scroll inside the wrapper, never the page */
+.cgs__table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 0 24px; border: 1px solid #e5e5e5; border-radius: 6px; }
+.cgs__table-wrap:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.cgs__table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 1.5rem; line-height: 1.5; color: #333; }
+.cgs__table th, .cgs__table td { padding: 12px 16px; text-align: left; vertical-align: top; border-bottom: 1px solid #eee; }
+.cgs__table thead th { background: var(--black); color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 1.6rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; }
+.cgs__table tbody th { color: #111; font-weight: 600; }
+.cgs__table tbody tr:nth-child(even) { background: #fafafa; }
+.cgs__table tbody tr:last-child th, .cgs__table tbody tr:last-child td { border-bottom: 0; }
+.cgs__table-price { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 700; color: #111; white-space: nowrap; }
+.cgs__table-unit { display: block; font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 400; color: #666; }
+
+/* Location card (inside the dark areas band) */
+.cgs__loc-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 24px; margin-bottom: 24px; }
+.cgs__loc-name { font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 700; text-transform: uppercase; margin: 0 0 8px; color: #fff; }
+.cgs__loc-address { font-style: normal; font-size: 1.6rem; color: rgba(255,255,255,0.85); margin: 0 0 8px; }
+.cgs__loc-phone { margin: 0 0 16px; font-size: 1.6rem; }
+.cgs__loc-phone a { color: #fff; text-decoration: underline; }
+.cgs__loc-hours { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 16px; font-size: 1.4rem; color: rgba(255,255,255,0.8); }
+.cgs__loc-hours dt { font-weight: 600; }
+.cgs__loc-hours dd { margin: 0; }
+.cgs__loc-ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+.cgs__loc-ctas .cgs__btn { white-space: normal; text-align: center; }
+.cgs__loc-note { font-size: 1.5rem; color: rgba(255,255,255,0.8); line-height: 1.7; }
+.cgs__loc-note p { margin: 0 0 12px; }
+.cgs__loc-note p:last-child { margin-bottom: 0; }
+.cgs__loc-note a { color: #fff; text-decoration: underline; }
+.cgs__loc-note strong { color: #fcd34d; }
+
+/* Related links */
+.cgs__links { padding: 64px 0; border-bottom: 1px solid #eee; }
+.cgs__links-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.cgs__links-list li { border: 1px solid #e5e5e5; border-radius: 6px; padding: 16px 18px; font-size: 1.4rem; color: #555; line-height: 1.5; }
+.cgs__links-list a { display: block; font-size: 1.6rem; font-weight: 600; color: var(--red); text-decoration: underline; margin-bottom: 4px; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Calgary service page",
+  "blocks": [
+    {
+      "type": "faq",
+      "name": "FAQ item",
+      "settings": [
+        { "type": "text",     "id": "question", "label": "Question" },
+        { "type": "textarea", "id": "answer",   "label": "Answer" }
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "Content panel",
+      "settings": [
+        { "type": "text",     "id": "heading", "label": "H2 heading" },
+        { "type": "richtext", "id": "body",    "label": "Body" },
+        {
+          "type": "select",
+          "id": "slot",
+          "label": "Position",
+          "options": [
+            { "value": "before_pricing", "label": "After How it works" },
+            { "value": "after_pricing",  "label": "After Pricing" }
+          ],
+          "default": "before_pricing"
+        },
+        {
+          "type": "select",
+          "id": "background",
+          "label": "Background",
+          "options": [
+            { "value": "white", "label": "White" },
+            { "value": "light", "label": "Light gray" }
+          ],
+          "default": "white"
+        }
+      ]
+    },
+    {
+      "type": "compare_row",
+      "name": "Comparison row",
+      "settings": [
+        { "type": "text", "id": "feature", "label": "Row label" },
+        { "type": "text", "id": "col_a",   "label": "Column A value" },
+        { "type": "text", "id": "col_b",   "label": "Column B value" }
+      ]
+    },
+    {
+      "type": "price_row",
+      "name": "Price row",
+      "settings": [
+        { "type": "text",     "id": "label",        "label": "Service" },
+        { "type": "text",     "id": "price",        "label": "Price shown (e.g. $35)" },
+        { "type": "text",     "id": "unit",         "label": "Unit (e.g. per wheel)" },
+        { "type": "text",     "id": "note",         "label": "Details" },
+        { "type": "text",     "id": "schema_price", "label": "Price for structured data (number only, e.g. 35.00)" },
+        { "type": "checkbox", "id": "in_schema",    "label": "Include in Service structured data", "default": false }
+      ]
+    },
+    {
+      "type": "link",
+      "name": "Related link",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Link text" },
+        { "type": "url",  "id": "url",   "label": "Link" },
+        { "type": "text", "id": "text",  "label": "Short description" }
+      ]
+    }
+  ],
+  "settings": [
+    { "type": "text",         "id": "heading",       "label": "H1 heading" },
+    { "type": "text",         "id": "subheading",    "label": "Subheading" },
+    { "type": "text",         "id": "service_name",  "label": "Service name (for CTA copy)" },
+    { "type": "text",         "id": "cta_text",      "label": "CTA button text", "default": "Book installation" },
+    { "type": "url",          "id": "booking_url",   "label": "Booking page URL" },
+    { "type": "text",         "id": "phone",         "label": "Phone number", "default": "403 452 4283" },
+    { "type": "text",         "id": "phone_href",    "label": "Phone link (e.g. +18253954024)", "info": "Leave blank to link the phone number as typed above." },
+    {
+      "type": "select",
+      "id": "location",
+      "label": "Shop this page is about",
+      "info": "Sets the address and map link. Pick Edmonton Trail for a service only that shop offers.",
+      "options": [
+        { "value": "sw", "label": "42 Ave SW" },
+        { "value": "ne", "label": "Edmonton Trail NE" }
+      ],
+      "default": "sw"
+    },
+    { "type": "image_picker", "id": "hero_image",    "label": "Hero background image" },
+    { "type": "text",         "id": "trust_2",       "label": "Trust strip, second item", "info": "Leave blank for the default." },
+    {
+      "type": "header",
+      "content": "How it works"
+    },
+    { "type": "text",     "id": "how_title",   "label": "Heading", "info": "Leave any of these blank to keep the default copy." },
+    { "type": "text",     "id": "how_1_title", "label": "Step 1 title" },
+    { "type": "textarea", "id": "how_1_text",  "label": "Step 1 text" },
+    { "type": "text",     "id": "how_2_title", "label": "Step 2 title" },
+    { "type": "textarea", "id": "how_2_text",  "label": "Step 2 text" },
+    { "type": "text",     "id": "how_3_title", "label": "Step 3 title" },
+    { "type": "textarea", "id": "how_3_text",  "label": "Step 3 text" },
+    {
+      "type": "header",
+      "content": "Comparison table"
+    },
+    { "type": "text",     "id": "compare_title",         "label": "Heading" },
+    { "type": "richtext", "id": "compare_intro",         "label": "Intro" },
+    { "type": "text",     "id": "compare_feature_label", "label": "First column heading" },
+    { "type": "text",     "id": "compare_col_a_label",   "label": "Column A heading" },
+    { "type": "text",     "id": "compare_col_b_label",   "label": "Column B heading" },
+    {
+      "type": "header",
+      "content": "Pricing"
+    },
+    { "type": "text",         "id": "pricing_title", "label": "Pricing section title", "default": "Pricing" },
+    { "type": "textarea",     "id": "pricing_intro", "label": "Pricing description" },
+    { "type": "text",         "id": "price_range",   "label": "Starting price (e.g. $80/tire)" },
+    {
+      "type": "header",
+      "content": "Location"
+    },
+    { "type": "text",     "id": "areas_title",              "label": "Heading", "info": "Leave blank for \"Areas we serve\"." },
+    { "type": "checkbox", "id": "hide_area_grid",           "label": "Hide the four-quadrant list", "default": false },
+    { "type": "checkbox", "id": "show_location_card",       "label": "Show a shop card (address, phone, directions)", "default": false },
+    { "type": "checkbox", "id": "location_card_show_hours", "label": "Show hours on the shop card", "info": "Hours come from the Store hours metaobject.", "default": false },
+    { "type": "richtext", "id": "location_note",            "label": "Text under the shop card" },
+    {
+      "type": "header",
+      "content": "Related links and closing CTA"
+    },
+    { "type": "text",     "id": "links_title",        "label": "Related links heading" },
+    { "type": "checkbox", "id": "show_bottom_cta",    "label": "Show the closing CTA", "default": true },
+    { "type": "text",     "id": "cta_bottom_heading", "label": "Closing CTA heading", "info": "Leave blank for the default." },
+    { "type": "text",     "id": "cta_bottom_text",    "label": "Closing CTA text", "info": "Leave blank for the default." },
+    {
+      "type": "header",
+      "content": "Structured data"
+    },
+    { "type": "checkbox", "id": "schema_enabled",          "label": "Output Service and BreadcrumbList JSON-LD", "info": "Replaces the old Service microdata on this page. Offers come from price rows marked for structured data.", "default": false },
+    { "type": "text",     "id": "schema_name",             "label": "Service name" },
+    { "type": "text",     "id": "schema_service_type",     "label": "Service type" },
+    { "type": "textarea", "id": "schema_description",      "label": "Service description", "info": "Leave blank to use the pricing description." },
+    {
+      "type": "select",
+      "id": "schema_provider_type",
+      "label": "Provider type",
+      "options": [
+        { "value": "AutoPartsStore", "label": "AutoPartsStore (matches the sitewide business schema)" },
+        { "value": "TireShop",       "label": "TireShop (only if schema-local-business is changed to match)" }
+      ],
+      "default": "AutoPartsStore"
+    },
+    { "type": "text", "id": "breadcrumb_parent_label", "label": "Breadcrumb parent name (e.g. Services)", "info": "Leave blank unless the visible breadcrumb (snippets/breadcrumbs.liquid) also shows this parent; the JSON-LD trail must match the visible one." },
+    { "type": "url",  "id": "breadcrumb_parent_url",   "label": "Breadcrumb parent link" }
+  ],
+  "presets": [
+    { "name": "Calgary service page" }
+  ]
+}
+{% endschema %}
