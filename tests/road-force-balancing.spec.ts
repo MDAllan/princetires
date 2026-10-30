@@ -34,8 +34,17 @@ test.describe('Road force balancing — NE only', () => {
     for (let i = 0; i < n; i++) {
       await expect(ctas.nth(i)).toHaveAttribute('href', /service=road_force_balancing/);
     }
-    // The page says which shop, and it is the NE one.
-    await expect(page.locator('.cgs__address')).toContainText(/Edmonton Trail/i);
+    // The page says which shop, and it is the NE one (location card since the 2026-10-30 rebuild).
+    await expect(page.locator('.cgs__loc-card')).toContainText(/Edmonton Trail/i);
+    await expect(page.locator('.cgs__loc-card')).toContainText(/825/);
+    // Search essentials from the rebuild: title, FAQ markup, service markup, sitewide footer link.
+    await expect(page).toHaveTitle(/Road Force Balancing Calgary/);
+    const ld = await page.locator('script[type="application/ld+json"]').allTextContents();
+    const types = ld.map((t) => { try { return JSON.stringify(JSON.parse(t)); } catch { return 'INVALID'; } });
+    expect(types.some((t) => t === 'INVALID'), 'every JSON-LD block parses').toBe(false);
+    expect(types.some((t) => t.includes('"FAQPage"')), 'FAQPage markup').toBe(true);
+    expect(types.some((t) => t.includes('"Service"') && t.includes('"price":"35')), 'Service markup with the $35 price').toBe(true);
+    await expect(page.locator('footer a[href="/pages/road-force-balancing"]')).toHaveCount(1);
   });
 
   test('booking page deep link pre-selects the tile and pins the shop to Edmonton Trail', async ({ page }) => {
