@@ -5,10 +5,10 @@ Prince Tires storefront, built on a 100% free stack:
 
 | Tool | Purpose |
 | --- | --- |
-| [Playwright](https://playwright.dev) | E2E tests across Chromium, Firefox, WebKit |
+| [Playwright](https://playwright.dev) | E2E tests (Chromium daily; Firefox/WebKit on demand) |
 | [@axe-core/playwright](https://github.com/dequelabs/axe-core-npm) | Automated accessibility scans |
-| [playwright-lighthouse](https://github.com/abhinaba-ghosh/playwright-lighthouse) + [lighthouse](https://github.com/GoogleChrome/lighthouse) | Performance & a11y scoring |
-| [GitHub Actions](https://docs.github.com/actions) | CI on push, PRs, and a daily schedule |
+| [Lighthouse](https://github.com/GoogleChrome/lighthouse) via `scripts/lighthouse-budget.mjs` | Mobile performance budget (ratchet against `tests/perf-baseline.json`) |
+| [GitHub Actions](https://docs.github.com/actions) | CI on push, PRs, and a daily schedule (`.github/workflows/tests.yml` on `main`) |
 
 > These tests run against **production** (`https://princetires.ca`). They are
 > read-only smoke tests. **The checkout test always stops before payment**, and
@@ -23,12 +23,16 @@ Prince Tires storefront, built on a 100% free stack:
 | `tests/homepage.spec.ts` | Loads, title, no console errors, key nav links present |
 | `tests/product-search.spec.ts` | Searching "tire" returns product results |
 | `tests/checkout-flow.spec.ts` | Product → add to cart → cart → checkout page loads (**stops before payment**) |
-| `tests/contact-form.spec.ts` | Fills the contact form and verifies it submits |
-| `tests/quote-form.spec.ts` | Fills the wheel-quote form and verifies it submits |
-| `tests/performance.spec.ts` | Lighthouse on homepage, product, contact — performance ≥ 70, accessibility ≥ 90 |
-| `tests/accessibility.spec.ts` | axe-core on homepage, product, cart, checkout — fails on serious/critical |
+| `tests/contact-form.spec.ts` | Fills the contact form and checks it is valid (sends only with `SUBMIT_FORMS=1`) |
+| `tests/quote-form.spec.ts` | `/pages/wheel-quote` and `/pages/wheel-package` render the package builder with priced packages (the old quote form was retired 2026-10-29) |
+| `tests/quote-button.spec.ts` | The staff/wholesale "Send a quote" button never shows to the public |
+| `tests/road-force-balancing.spec.ts` | Road force page, `?service=road_force_balancing` deep link, NE-only shop pin |
+| `tests/road-hazard-addon.spec.ts` | Protection Plan add-on: brand-gated, price, nudge |
+| `tests/drop-off.spec.ts` | "Drop off for the day" in the tire modal, cart and package builder; **every booking POST is mocked** and any other write to the app is aborted |
+| `tests/accessibility.spec.ts` | axe-core on homepage, product, cart, checkout — report-only unless `A11Y_STRICT=1` |
 | `tests/broken-links.spec.ts` | Crawls homepage links and asserts none return 4xx/5xx |
 | `tests/helpers.ts` | Shared utilities (not a test file) |
+| `scripts/lighthouse-budget.mjs` + `tests/perf-baseline.json` | Lighthouse mobile budget, run as its own CI job (see below) |
 
 ---
 
@@ -102,8 +106,8 @@ future regressions):
 A11Y_STRICT=1 npx playwright test tests/accessibility.spec.ts
 ```
 
-To enforce it in CI, add `A11Y_STRICT: '1'` to the `env:` block in
-`.github/workflows/tests.yml`.
+To enforce it in CI, add `A11Y_STRICT: '1'` to the `env:` block of the
+`functional` job in `.github/workflows/tests.yml`.
 
 ---
 
@@ -122,16 +126,59 @@ failure) for every test.
 
 ## Viewing results on GitHub
 
-1. Push to `main`/`master` or open a pull request (the workflow also runs daily
-   at **06:00 UTC** and can be triggered manually).
-2. Go to the repo's **Actions** tab → **Playwright Tests (princetires.ca)**.
-3. Open a run to see pass/fail per browser.
-4. Download the **`playwright-report`** artifact (bottom of the run page) and
-   open `index.html` locally — or run `npx playwright show-report path/to/unzipped`.
+The workflow lives on the **default branch (`main`)** — GitHub only runs
+scheduled workflows from there. It has two independent jobs:
 
-**Failure notifications:** GitHub automatically emails the commit author and
-repo watchers when a run fails (no extra setup). Manage this under your GitHub
-**Settings → Notifications → Actions**.
+| Job | Runs | Browsers |
+| --- | --- | --- |
+| **Playwright** (functional) | push to `main`, every PR, daily 06:00 UTC, manual | Chromium (manual run: pick `all` for Firefox + WebKit too) |
+| **Lighthouse budget** | the same triggers (manual: untick to skip) | Google Chrome, mobile emulation |
+
+1. Go to the repo's **Actions** tab → **Live site checks (princetires.ca)**.
+2. Open a run. The Lighthouse job writes its table to the run summary.
+3. Download the **`playwright-report`** artifact and open `index.html` — or
+   run `npx playwright show-report path/to/unzipped`. Lighthouse numbers are
+   in the **`lighthouse-results`** artifact.
+
+**Failure notifications:** for scheduled runs GitHub emails the person who
+last changed the `cron:` line in `tests.yml` (Settings → Notifications →
+Actions → "Only notify for failed workflows"). On a public repo GitHub pauses
+scheduled workflows after 60 days with no commits; re-enable them from the
+Actions tab if that happens.
+
+---
+
+## Performance budget (Lighthouse ratchet)
+
+The old check (a fixed "performance ≥ 70") was red from day one — the home
+page scores in the low 60s on mobile — so it was ignored. It is replaced by a
+**ratchet**:
+
+- `scripts/lighthouse-budget.mjs` audits 5 pages (home, a tire product,
+  `/collections/tires`, `/pages/booking`, `/pages/contact`) **3 times each**
+  with Lighthouse's default mobile settings (the same as PageSpeed Insights)
+  and takes the **median** of every metric. One noisy run can't fail it.
+- Each median is compared with `tests/perf-baseline.json`. The job fails only
+  when a page got **worse than its baseline by more than the tolerance** in the
+  same file (e.g. score −8, LCP +20 % / +0.5 s, CLS +0.05, HTML +10 %).
+- The plan's targets (P3-1: LCP ≤ 2.5 s, CLS ≤ 0.05, TBT ≤ 200 ms; home
+  LCP ≤ 4 s and HTML ≤ 900 KB for now) are in the same file under `goals`.
+  They are shown as "met / not yet" and never fail the job.
+- Every run writes `perf-results/baseline.candidate.json`: the baseline
+  tightened to every metric that improved. Commit it to lock in a gain.
+
+```bash
+npm run perf                 # measure + compare (~15 min)
+node scripts/lighthouse-budget.mjs --pages home,contact --runs 3
+npm run perf:baseline        # re-measure and REPLACE the baseline
+```
+
+The baseline was first measured on a laptop. GitHub's runners are a different
+machine, so if the first CI runs are red on TBT only, run the workflow by hand
+with **write_baseline** ticked and commit the `perf-baseline.json` from the
+`lighthouse-results` artifact. Lighthouse needs a real Google Chrome (set
+`CHROME_PATH` to override); Playwright's Chrome for Testing paints nothing
+under Lighthouse on macOS.
 
 ---
 
@@ -140,6 +187,7 @@ repo watchers when a run fails (no extra setup). Manage this under your GitHub
 All settings live in `playwright.config.ts`:
 
 - `baseURL`: `https://princetires.ca`
+- `baseURL`: override with `PLAYWRIGHT_BASE_URL`
 - Projects: `chromium`, `firefox`, `webkit`
 - Retries: **2 on CI**, **0 locally**
 - Reporters: HTML + list
@@ -172,7 +220,7 @@ Quick checklist:
 4. **Add a test for the new feature** (see below) so it's covered going forward.
 5. Open the report if anything failed: `npm run test:report`.
 
-> CI also runs the whole suite automatically on every push/PR and daily at
+> CI also runs the suite (Chromium) automatically on every push/PR and daily at
 > 06:00 UTC — but running locally first means you catch breakage before it ships.
 
 ---
