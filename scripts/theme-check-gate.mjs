@@ -110,6 +110,22 @@ function mdEscape(s) {
   return String(s).replace(/\|/g, '\\|').replace(/\n/g, ' ').slice(0, 220);
 }
 
+/** Workflow-command data escaping (the text after `::`). */
+export function ghEscape(s) {
+  return String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+}
+
+/** Workflow-command property escaping (file=, title=): also ':' and ','. */
+export function ghEscapeProp(s) {
+  return ghEscape(s).replace(/:/g, '%3A').replace(/,/g, '%2C');
+}
+
+/** One GitHub `::error` annotation line for a blocking offense. */
+export function annotation(o) {
+  const line = (o.lines || []).find((x) => x != null) || 1;
+  return `::error file=${ghEscapeProp(`princetires/${o.file}`)},line=${line},title=${ghEscapeProp(o.check)}::${ghEscape(o.message)}`;
+}
+
 function main() {
   const raw = fs.readFileSync(INPUT, 'utf8');
   const current = flatten(parseThemeCheckOutput(raw), THEME_PATH);
@@ -167,10 +183,7 @@ function main() {
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
   // GitHub annotations on the PR diff for blocking offenses.
   if (process.env.GITHUB_ACTIONS) {
-    for (const o of blocking) {
-      const line = (o.lines || []).find((x) => x != null) || 1;
-      console.log(`::error file=princetires/${o.file},line=${line},title=${o.check}::${mdEscape(o.message)}`);
-    }
+    for (const o of blocking) console.log(annotation(o));
   }
   if (blocking.length) process.exit(1);
 }

@@ -49,7 +49,9 @@ jobs:
           node-version: 24
 
       - name: Unit-test the gate script
-        run: node --test 'scripts/*.test.mjs'
+        # Named, not globbed: other scripts/*.test.mjs (e.g. main's Lighthouse
+        # tests) need npm deps this job never installs.
+        run: node --test scripts/theme-check-gate.test.mjs
 
       - name: Install Shopify CLI
         run: npm install --global --no-audit --no-fund "@shopify/cli@${SHOPIFY_CLI_VERSION}"

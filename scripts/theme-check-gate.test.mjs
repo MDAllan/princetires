@@ -1,7 +1,7 @@
 // node --test 'scripts/*.test.mjs' — unit tests for theme-check-gate.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseThemeCheckOutput, relFile, flatten, diff } from './theme-check-gate.mjs';
+import { parseThemeCheckOutput, relFile, flatten, diff, annotation } from './theme-check-gate.mjs';
 
 const THEME = '/ci/repo/princetires';
 const out = (offenses) => [{ path: `${THEME}/sections/a.liquid`, offenses }];
@@ -43,4 +43,10 @@ test('a different message or file is new; a removed offense is reported as fixed
 test('rejects output that is not Theme Check shaped', () => {
   assert.throws(() => flatten({ nope: true }, THEME));
   assert.throws(() => flatten([{ file: 'x' }], THEME));
+});
+
+test('annotations escape workflow-command data and properties', () => {
+  const line = annotation({ check: 'Asset,Size:X', file: 'snippets/a,b.liquid', lines: [null, 7], message: 'is 120% of 100%\r\nlimit' });
+  assert.equal(line, '::error file=princetires/snippets/a%2Cb.liquid,line=7,title=Asset%2CSize%3AX::is 120%25 of 100%25%0D%0Alimit');
+  assert.match(annotation({ check: 'C', file: 'f.liquid', message: 'm' }), /,line=1,/);
 });
