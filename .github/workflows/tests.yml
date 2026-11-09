@@ -1,0 +1,55 @@
+name: Playwright Tests (princetires.ca)
+
+# Runs the live-site Playwright suite on every push to the default branch,
+# on pull requests, and on a daily schedule at 06:00 UTC.
+#
+# Failure notifications: GitHub automatically emails the commit author /
+# repo watchers when a workflow run fails (Settings → Notifications →
+# "Actions"). No extra configuration or third-party service is required.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * *' # daily at 06:00 UTC
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  test:
+    name: Run Playwright suite
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers + OS deps
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: npx playwright test
+        env:
+          CI: 'true'
+          # Forms run in safe (fill + validate, no real submit) mode here so the
+          # daily schedule never emails the store. Flip to '1' only if you want
+          # CI to perform real contact/quote submissions.
+          SUBMIT_FORMS: '0'
+
+      - name: Upload HTML report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
