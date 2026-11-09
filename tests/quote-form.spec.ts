@@ -1,69 +1,38 @@
 import { test, expect } from '@playwright/test';
-import { SHOULD_SUBMIT_FORMS } from './helpers';
 
 /**
- * Wheel quote request form (/pages/wheel-quote, form#WheelQuoteForm).
+ * /pages/wheel-quote — formerly the wheel-quote contact form (form#WheelQuoteForm).
  *
- * Required text fields: contact[Name] (#WheelQuote-name),
- * contact[email] (#WheelQuote-email). Optional: contact[Phone] (#WheelQuote-phone),
- * vehicle year/make/model, and several wheel-spec <select> dropdowns.
+ * Since the package builder launched (2026-10-29) this page renders the wheel +
+ * tire package builder (.ptpb) instead of a form, and /pages/wheel-package is
+ * the builder's own page. Old links to /pages/wheel-quote must keep landing on
+ * a working builder, so this pins both URLs: the builder renders and picking a
+ * vehicle returns priced packages from the app (GET app.princetires.ca/api/package/*).
  *
- * Like the contact test, this FILLS + validates by default and only performs a
- * real submission when SUBMIT_FORMS=1.
+ * Read-only: it never opens the request dialog, so nothing is sent. (The
+ * request path is covered, fully mocked, in drop-off.spec.ts.)
  */
-test.describe('Quote form (wheel quote request)', () => {
-  test('fills and submits the wheel-quote form', async ({ page }) => {
-    const response = await page.goto('/pages/wheel-quote', {
-      waitUntil: 'domcontentloaded',
-    });
-    expect(response?.status(), 'wheel-quote page should exist').toBeLessThan(400);
+test.describe('Wheel quote page (now the package builder)', () => {
+  for (const path of ['/pages/wheel-quote', '/pages/wheel-package']) {
+    test(`${path} shows the builder with priced packages`, async ({ page }) => {
+      const response = await page.goto(path, { waitUntil: 'load' });
+      expect(response?.status(), `${path} should exist`).toBeLessThan(400);
 
-    const form = page.locator('form#WheelQuoteForm');
-    await expect(form, 'wheel-quote form should be present').toBeVisible();
+      const builder = page.locator('.ptpb').first();
+      await expect(builder, 'package builder should render').toBeVisible({ timeout: 15_000 });
+      // The retired form must not come back alongside the builder.
+      await expect(page.locator('form#WheelQuoteForm')).toHaveCount(0);
 
-    // Required contact fields.
-    await form.locator('#WheelQuote-name').fill('Test Tester');
-    await form.locator('#WheelQuote-email').fill('test@example.com');
+      // Year / make / model / trim tiles.
+      for (const tile of [/^\s*2020\s*$/, /^\s*Toyota\s*$/, /^\s*RAV4\s*$/, /^\s*LE\b/]) {
+        const btn = page.locator('.ptpb button:visible', { hasText: tile }).first();
+        await expect(btn, `tile ${tile} should be offered`).toBeVisible({ timeout: 15_000 });
+        await btn.click();
+      }
 
-    // Optional fields — fill if present.
-    const phone = form.locator('#WheelQuote-phone');
-    if (await phone.count()) await phone.fill('403-555-0123');
-    const year = form.locator('#WheelQuote-year');
-    if (await year.count()) await year.fill('2021');
-    const make = form.locator('#WheelQuote-make');
-    if (await make.count()) await make.fill('Ford');
-    const vModel = form.locator('input[name="contact[Vehicle Model]"]');
-    if (await vModel.count()) await vModel.fill('F-150');
-    const notes = form.locator('textarea');
-    if (await notes.count())
-      await notes.first().fill('Automated Playwright smoke test — please ignore.');
-
-    const submit = form
-      .locator('button[type="submit"], input[type="submit"]')
-      .first();
-    await expect(submit, 'submit button should be present').toBeVisible();
-
-    const isValid = await form.evaluate((f: HTMLFormElement) => f.checkValidity());
-    expect(isValid, 'quote form should pass HTML5 validation once filled').toBeTruthy();
-
-    if (!SHOULD_SUBMIT_FORMS) {
-      await expect(submit).toBeEnabled();
-      test.info().annotations.push({
-        type: 'note',
-        description: 'SUBMIT_FORMS not set — verified form validity without sending.',
+      await expect(page.locator('.ptpb__wcard').first(), 'wheel packages should load').toBeVisible({
+        timeout: 20_000,
       });
-      return;
-    }
-
-    await submit.click();
-    await page.waitForLoadState('domcontentloaded');
-    const posted =
-      /contact_posted=true/i.test(page.url()) ||
-      (await page
-        .getByText(/thanks|thank you|received|successfully|in touch/i)
-        .first()
-        .isVisible()
-        .catch(() => false));
-    expect(posted, 'expected a quote-form success confirmation').toBeTruthy();
-  });
+    });
+  }
 });

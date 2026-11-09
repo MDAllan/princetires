@@ -43,6 +43,17 @@ type Posted = { url: string; body: Record<string, unknown> };
 /** Intercept every booking POST. Never lets one through. */
 async function guardBookingPosts(page: Page): Promise<Posted[]> {
   const posted: Posted[] = [];
+  // Safety net, registered FIRST so it runs LAST (Playwright tries the most
+  // recently added route first): any write to the app that the mocks below
+  // don't answer is aborted, never sent. Reads fall through to the network,
+  // including the package builder's price check, which is a POST that only
+  // computes a price (app: src/app/api/package/price/route.ts writes nothing).
+  const READ_ONLY_POSTS = /\/api\/package\/price(\?|$)/;
+  await page.route(`${APP}/**`, (route) => {
+    const req = route.request();
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method()) || READ_ONLY_POSTS.test(req.url())) return route.fallback();
+    return route.abort('blockedbyclient');
+  });
   const handler = async (route: Route) => {
     const req = route.request();
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });

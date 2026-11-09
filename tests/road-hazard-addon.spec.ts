@@ -113,6 +113,12 @@ test.describe('Protection Plan add-on (brand-gated, 1-year)', () => {
     const nudge = page.locator('#bk-upsell-nudge');
     await expect(nudge).toBeHidden();
 
+    // The required old-tires question (live since 2026-10-27) blocks Continue
+    // until it is answered, so answer it first. Guarded so the test also
+    // passes against a theme that predates the question.
+    const keepOld = page.locator('#bk-oldtires input[value="keep"]');
+    if (await keepOld.count()) await keepOld.check({ force: true });
+
     // Continue without ticking → the nudge appears with the real price.
     await page.locator('#bk-step1-cta').click({ force: true });
     await expect(nudge).toBeVisible();

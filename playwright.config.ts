@@ -30,7 +30,7 @@ export default defineConfig({
   /* Shared settings for all projects. https://playwright.dev/docs/api/class-testoptions */
   use: {
     /* All page.goto('/...') calls are resolved against this base URL. */
-    baseURL: 'https://princetires.ca',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://princetires.ca',
 
     /* Capture a trace on the first retry of a failing test. */
     trace: 'on-first-retry',
@@ -46,7 +46,9 @@ export default defineConfig({
     actionTimeout: 15_000,
   },
 
-  /* Per-test timeout — Lighthouse runs can be slow, so give room. */
+  /* Per-test timeout. (Lighthouse is NOT part of this suite — it runs on its
+   * own via scripts/lighthouse-budget.mjs so its noise can't redden the
+   * functional checks.) */
   timeout: 90_000,
 
   expect: {
