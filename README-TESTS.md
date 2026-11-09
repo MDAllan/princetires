@@ -28,10 +28,11 @@ Prince Tires storefront, built on a 100% free stack:
 | `tests/quote-button.spec.ts` | The staff/wholesale "Send a quote" button never shows to the public |
 | `tests/road-force-balancing.spec.ts` | Road force page, `?service=road_force_balancing` deep link, NE-only shop pin |
 | `tests/road-hazard-addon.spec.ts` | Protection Plan add-on: brand-gated, price, nudge |
-| `tests/drop-off.spec.ts` | "Drop off for the day" in the tire modal, cart and package builder; **every booking POST is mocked** and any other write to the app is aborted |
+| `tests/drop-off.spec.ts` | "Drop off for the day" in the tire modal, cart and package builder; **every booking POST is mocked** and any other write, to any host, that isn't the price check / cart / analytics is aborted |
 | `tests/accessibility.spec.ts` | axe-core on homepage, product, cart, checkout — report-only unless `A11Y_STRICT=1` |
 | `tests/broken-links.spec.ts` | Crawls homepage links and asserts none return 4xx/5xx |
-| `tests/helpers.ts` | Shared utilities (not a test file) |
+| `tests/app-preflight.spec.ts` | `@preflight`: the booking app answers this machine's browser (no Vercel bot checkpoint) |
+| `tests/helpers.ts` | Shared utilities (not a test file), incl. `blockAnalytics` |
 | `scripts/lighthouse-budget.mjs` + `tests/perf-baseline.json` | Lighthouse mobile budget, run as its own CI job (see below) |
 
 ---
@@ -132,7 +133,20 @@ scheduled workflows from there. It has two independent jobs:
 | Job | Runs | Browsers |
 | --- | --- | --- |
 | **Playwright** (functional) | push to `main`, every PR, daily 06:00 UTC, manual | Chromium (manual run: pick `all` for Firefox + WebKit too) |
-| **Lighthouse budget** | the same triggers (manual: untick to skip) | Google Chrome, mobile emulation |
+| **Lighthouse budget** | push to `main`, daily, manual (untick to skip); on a PR only when it touches `scripts/lighthouse-budget*.mjs`, `tests/perf-baseline.json`, `package*.json` or the workflow | Google Chrome, mobile emulation |
+
+The Playwright job first runs a **preflight** (`tests/app-preflight.spec.ts`):
+it loads `https://app.princetires.ca/api/services` in the runner's browser and
+fails with a plain message if Vercel's bot checkpoint answers with a 403. GitHub
+runners are datacenter IPs, and without this the app-backed specs (Protection
+Plan, road force, package builder, drop-off) fail as "missing UI", which looks
+like a theme bug. The rest of the suite still runs.
+
+**Analytics:** the cart and checkout specs (and the drop-off spec) abort
+analytics beacons (`blockAnalytics` in `tests/helpers.ts`: Shopify monorail /
+event collect, GA, GTM, Meta, Clarity), so the daily run doesn't show up as
+add-to-cart / reached-checkout sessions in the store's numbers. Page views from
+the other specs can still appear.
 
 1. Go to the repo's **Actions** tab → **Live site checks (princetires.ca)**.
 2. Open a run. The Lighthouse job writes its table to the run summary.
@@ -165,7 +179,19 @@ page scores in the low 60s on mobile — so it was ignored. It is replaced by a
   LCP ≤ 4 s and HTML ≤ 900 KB for now) are in the same file under `goals`.
   They are shown as "met / not yet" and never fail the job.
 - Every run writes `perf-results/baseline.candidate.json`: the baseline
-  tightened to every metric that improved. Commit it to lock in a gain.
+  tightened to every metric that improved by **more than half its slack**
+  (smaller wins are noise), on the same URL. Commit it to lock in a gain.
+- **Different machine, different numbers.** Lighthouse's simulated throttling
+  scales with the host CPU. When a run's CPU benchmark index differs from the
+  baseline's `benchmarkIndex` by more than 35 %, the CPU-bound metrics (perf
+  score, LCP, TBT, FCP, Speed Index) are shown as `worse (not enforced)` and
+  only HTML size, page weight, CLS and the a11y score can fail the job.
+- Time limits: each run is capped at `PERF_RUN_TIMEOUT_MS` (CI: 150 s) and no
+  new run starts after `PERF_TOTAL_BUDGET_MS` (default 40 min), so the table
+  and artifacts are always written before the job's 50-minute limit.
+- The product page is the baseline's own product unless it returns 404/410 or
+  redirects away. A 429 or 5xx is retried (5 s, 15 s, 30 s) and then reported
+  as an error, never silently swapped for another product.
 
 ```bash
 npm run perf                 # measure + compare (~15 min)
@@ -173,10 +199,11 @@ node scripts/lighthouse-budget.mjs --pages home,contact --runs 3
 npm run perf:baseline        # re-measure and REPLACE the baseline
 ```
 
-The baseline was first measured on a laptop. GitHub's runners are a different
-machine, so if the first CI runs are red on TBT only, run the workflow by hand
-with **write_baseline** ticked and commit the `perf-baseline.json` from the
-`lighthouse-results` artifact. Lighthouse needs a real Google Chrome (set
+The baseline was first measured on a laptop (benchmark index 2792). GitHub's
+runners score roughly 1000–1500, so until the baseline is re-measured on CI
+the job only enforces the CPU-independent metrics (see above). To enforce them
+all: run the workflow by hand with **write_baseline** ticked and commit the
+`perf-baseline.json` from the `lighthouse-results` artifact. Lighthouse needs a real Google Chrome (set
 `CHROME_PATH` to override); Playwright's Chrome for Testing paints nothing
 under Lighthouse on macOS.
 
