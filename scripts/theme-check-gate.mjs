@@ -22,6 +22,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const flags = new Set(args.filter((a) => a.startsWith('--') && !a.includes('=')));
@@ -174,9 +175,12 @@ function main() {
   if (blocking.length) process.exit(1);
 }
 
-try {
-  main();
-} catch (err) {
-  console.error(`[theme-check] ${err.message}`);
-  process.exit(1);
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  try {
+    main();
+  } catch (err) {
+    console.error(`[theme-check] ${err.message}`);
+    process.exit(1);
+  }
 }

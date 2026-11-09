@@ -14,14 +14,14 @@ on:
     paths:
       - 'princetires/**'
       - 'theme-check-baseline.json'
-      - 'scripts/theme-check-gate.mjs'
+      - 'scripts/theme-check-gate*.mjs'
       - '.github/workflows/theme-check.yml'
   push:
     branches: [master]
     paths:
       - 'princetires/**'
       - 'theme-check-baseline.json'
-      - 'scripts/theme-check-gate.mjs'
+      - 'scripts/theme-check-gate*.mjs'
       - '.github/workflows/theme-check.yml'
   workflow_dispatch: {}
 
@@ -47,6 +47,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+
+      - name: Unit-test the gate script
+        run: node --test 'scripts/*.test.mjs'
 
       - name: Install Shopify CLI
         run: npm install --global --no-audit --no-fund "@shopify/cli@${SHOPIFY_CLI_VERSION}"
