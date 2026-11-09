@@ -1,0 +1,75 @@
+name: Theme Check
+
+# Lints the Shopify theme in princetires/ with Shopify Theme Check and fails
+# only on NEW error offenses compared with theme-check-baseline.json (matched by
+# check + file + message, never by line). Warnings are reported in the job
+# summary. No secrets: this reads the repo only and never talks to the store.
+#
+# Accepting an offense on purpose: regenerate the baseline in the same PR —
+#   shopify theme check --path princetires --output json > theme-check.json
+#   node scripts/theme-check-gate.mjs theme-check.json --write-baseline
+
+on:
+  pull_request:
+    paths:
+      - 'princetires/**'
+      - 'theme-check-baseline.json'
+      - 'scripts/theme-check-gate.mjs'
+      - '.github/workflows/theme-check.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'princetires/**'
+      - 'theme-check-baseline.json'
+      - 'scripts/theme-check-gate.mjs'
+      - '.github/workflows/theme-check.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: theme-check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned so the set of checks (and so the baseline) only changes on purpose.
+  SHOPIFY_CLI_VERSION: '3.94.3'
+
+jobs:
+  theme-check:
+    name: Theme Check (new errors only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Shopify CLI
+        run: npm install --global --no-audit --no-fund "@shopify/cli@${SHOPIFY_CLI_VERSION}"
+
+      - name: Run Theme Check
+        env:
+          SHOPIFY_CLI_NO_ANALYTICS: '1'
+        run: |
+          test -f princetires/layout/theme.liquid || { echo "princetires/layout/theme.liquid missing — wrong theme path"; exit 1; }
+          # Theme Check exits 1 whenever ANY error exists (the baseline has some),
+          # so its exit code is ignored here; the gate below decides.
+          shopify theme check --path princetires --output json > theme-check.json || true
+          test -s theme-check.json || { echo "Theme Check produced no output"; exit 1; }
+
+      - name: Compare with baseline
+        env:
+          THEME_CHECK_VERSION: ${{ env.SHOPIFY_CLI_VERSION }}
+        run: node scripts/theme-check-gate.mjs theme-check.json
+
+      - name: Upload raw results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: theme-check
+          path: theme-check.json
+          retention-days: 30
