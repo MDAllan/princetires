@@ -1,0 +1,193 @@
+name: Live site checks (princetires.ca)
+
+# Read-only checks of the LIVE storefront. Two independent jobs:
+#
+#   functional — the Playwright suite in tests/ (chromium by default).
+#   lighthouse — mobile Lighthouse, 3 runs per page, median, compared to the
+#                committed ratchet baseline tests/perf-baseline.json.
+#
+# They are separate jobs on purpose: Lighthouse is noisy and slow, and a perf
+# regression must not hide (or be hidden by) a broken booking modal.
+#
+# This workflow lives on the DEFAULT branch (main) because GitHub only runs
+# `schedule:` triggers from the default branch.
+#
+# Safety: forms never submit (SUBMIT_FORMS=0), the checkout test stops before
+# payment, every booking POST in drop-off.spec.ts is mocked (and any other
+# non-GET it doesn't recognise is aborted), and the specs that add to cart or
+# reach checkout abort analytics beacons so bot sessions don't pollute
+# Shopify/GA conversion numbers.
+#
+# Pull requests: main only holds tests, so a PR never changes the live site.
+# The Lighthouse job runs on a PR only when the PR touches the budget script,
+# the baseline, package*.json or this workflow; otherwise its result would just
+# reflect what the live site is doing at that moment.
+#
+# Failure emails: GitHub emails the person who last changed the `cron:` line
+# below when a scheduled run fails (Settings → Notifications → Actions →
+# "Notify me: only failed workflows"). Public repos: GitHub pauses scheduled
+# workflows after 60 days without a commit — re-enable from the Actions tab.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * *' # daily 06:00 UTC (midnight in Calgary)
+  workflow_dispatch:
+    inputs:
+      browsers:
+        description: 'Browsers for the functional suite'
+        type: choice
+        options: [chromium, all]
+        default: chromium
+      lighthouse:
+        description: 'Also run the Lighthouse budget job'
+        type: boolean
+        default: true
+      write_baseline:
+        description: 'Lighthouse: measure a NEW baseline and upload it as an artifact (does not fail on regressions)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-site-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: What the PR touches
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      perf: ${{ steps.files.outputs.perf }}
+    steps:
+      - id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # Can't list the files → run Lighthouse anyway (safe default).
+          if ! files="$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename')"; then
+            echo "perf=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          printf '%s\n' "$files"
+          if printf '%s\n' "$files" | grep -Eq '^(scripts/lighthouse-budget[^/]*\.mjs|tests/perf-baseline\.json|package(-lock)?\.json|\.github/workflows/tests\.yml)$'; then
+            echo "perf=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "perf=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  functional:
+    name: Playwright (${{ github.event_name == 'workflow_dispatch' && inputs.browsers == 'all' && 'all browsers' || 'chromium' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      # Forms fill + validate but never POST, so the daily run never emails the
+      # store. Do NOT flip this to '1' in CI.
+      SUBMIT_FORMS: '0'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install browsers
+        run: |
+          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.browsers == 'all' }}" = "true" ]; then
+            npx playwright install --with-deps
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      # GitHub's runners are datacenter IPs; Vercel's bot checkpoint can 403
+      # them on app.princetires.ca, which the storefront specs would only show
+      # as missing UI. This names the cause up front. The suite still runs.
+      - name: Preflight — app.princetires.ca reachable from this runner
+        id: preflight
+        run: |
+          if ! npx playwright test tests/app-preflight.spec.ts --project=chromium --reporter=list; then
+            echo "::error title=App blocked from this runner::app.princetires.ca did not answer this runner's browser with JSON (likely Vercel's bot checkpoint). Specs that need app data will fail as missing UI; see the Preflight step log."
+            exit 1
+          fi
+
+      - name: Run Playwright
+        if: ${{ !cancelled() && (success() || steps.preflight.outcome == 'failure') }}
+        run: |
+          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.browsers == 'all' }}" = "true" ]; then
+            npx playwright test --grep-invert @preflight
+          else
+            npx playwright test --project=chromium --grep-invert @preflight
+          fi
+
+      - name: Upload HTML report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+  lighthouse:
+    name: Lighthouse budget (mobile, median of 3)
+    needs: changes
+    # `changes` only runs on pull_request; !cancelled() keeps this job alive
+    # when it is skipped (push / schedule / dispatch).
+    if: >-
+      ${{ !cancelled() && (
+        (github.event_name == 'pull_request' && needs.changes.outputs.perf == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.lighthouse) ||
+        github.event_name == 'push' || github.event_name == 'schedule'
+      ) }}
+    runs-on: ubuntu-latest
+    # 5 pages × 3 runs × 150 s worst case = 37.5 min, and the script stops
+    # starting runs after 40 min (PERF_TOTAL_BUDGET_MS) and still writes its
+    # table, so the job's own limit never kills it before the summary.
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unit-test the budget script
+        run: npm run test:scripts
+
+      - name: Install Chromium (used to find a product URL; Lighthouse drives Google Chrome)
+        run: npx playwright install --with-deps chromium
+
+      - name: Measure and compare to tests/perf-baseline.json
+        env:
+          PERF_RUN_TIMEOUT_MS: '150000'
+          PERF_TOTAL_BUDGET_MS: '2400000'
+        run: |
+          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.write_baseline }}" = "true" ]; then
+            node scripts/lighthouse-budget.mjs --write-baseline
+            cp tests/perf-baseline.json perf-results/perf-baseline.json
+          else
+            node scripts/lighthouse-budget.mjs
+          fi
+
+      - name: Upload Lighthouse results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results
+          path: perf-results/
+          retention-days: 30
