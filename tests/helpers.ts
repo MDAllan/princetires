@@ -10,6 +10,25 @@ import { Page, expect } from '@playwright/test';
 export const SHOULD_SUBMIT_FORMS = process.env.SUBMIT_FORMS === '1';
 
 /**
+ * Analytics beacons (Shopify monorail / web pixels / event collect, Shopify's
+ * OpenTelemetry, GA, GTM, Meta pixel, Microsoft Clarity).
+ * The daily run adds real tires to the cart and reaches checkout on the live
+ * store; with these on, every run would show up as an add-to-cart /
+ * reached-checkout session in the owner's conversion and attach-rate numbers.
+ */
+export const ANALYTICS_URL =
+  /monorail|\/\.well-known\/shopify\/fec\/|\/api\/(event\/)?collect(\?|$)|otlp-http-production\.shopifysvc\.com|google-analytics\.com|analytics\.google\.com|googletagmanager\.com|doubleclick\.net|facebook\.com\/tr|connect\.facebook\.net|clarity\.ms/;
+
+const analyticsBlocked = new WeakSet<Page>();
+
+/** Abort analytics beacons for this page. Call before the first navigation. */
+export async function blockAnalytics(page: Page): Promise<void> {
+  if (analyticsBlocked.has(page)) return;
+  analyticsBlocked.add(page);
+  await page.route((url) => ANALYTICS_URL.test(url.href), (route) => route.abort('blockedbyclient'));
+}
+
+/**
  * Console / page-error noise we deliberately ignore. Live Shopify storefronts
  * always emit some third-party chatter (analytics, pixels, ad blockers, the
  * occasional 404 on an optional asset) that does not indicate a real bug.
@@ -73,6 +92,7 @@ export async function firstProductUrl(page: Page): Promise<string> {
  * Throws (failing the test) if no purchasable product / add-to-cart can be found.
  */
 export async function addFirstProductToCart(page: Page): Promise<string> {
+  await blockAnalytics(page);
   const productUrl = await firstProductUrl(page);
   await page.goto(productUrl, { waitUntil: 'domcontentloaded' });
 

@@ -1,4 +1,5 @@
 import { test, expect, Page, Route } from '@playwright/test';
+import { ANALYTICS_URL, blockAnalytics } from './helpers';
 
 /**
  * Drop-off for the day (live site) — owner, 2026-10-29.
@@ -18,7 +19,10 @@ import { test, expect, Page, Route } from '@playwright/test';
  *
  * SAFE ON THE LIVE SITE: every POST to /api/book and /api/package/request is
  * intercepted in beforeEach and answered with a mocked 201 — nothing reaches
- * the app, no booking is created, no text or email goes out. Availability
+ * the app, no booking is created, no text or email goes out. Any other write,
+ * to ANY host, that isn't on a short read-only/cart allowlist is aborted, so a
+ * theme that one day posts bookings somewhere else (another host, a Vercel
+ * URL, an /apps/ proxy path) still can't create a real one. Availability
  * calls that ask for drop_off=1 are answered with a fixed open (or full) day so
  * the result does not depend on how busy the shop is today.
  *
@@ -40,18 +44,44 @@ const LONG_DAY = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), [A
 
 type Posted = { url: string; body: Record<string, unknown> };
 
+/**
+ * Writes the guard lets through to the network: the package builder's price
+ * check (a POST that only computes a price — app:
+ * src/app/api/package/price/route.ts writes nothing), the Shopify cart (the
+ * cart tests need it; a cart is not an order), and analytics beacons
+ * (blockAnalytics aborts those anyway).
+ */
+const ALLOWED_WRITES = [
+  /\/api\/package\/price(\?|$)/,
+  /\/cart\/(add|change|update|clear)(\.js)?(\?|$)/,
+  ANALYTICS_URL,
+];
+
 /** Intercept every booking POST. Never lets one through. */
 async function guardBookingPosts(page: Page): Promise<Posted[]> {
   const posted: Posted[] = [];
-  // Safety net, registered FIRST so it runs LAST (Playwright tries the most
-  // recently added route first): any write to the app that the mocks below
-  // don't answer is aborted, never sent. Reads fall through to the network,
-  // including the package builder's price check, which is a POST that only
-  // computes a price (app: src/app/api/package/price/route.ts writes nothing).
-  const READ_ONLY_POSTS = /\/api\/package\/price(\?|$)/;
+  const logged = new Set<string>();
+  // Safety nets, registered FIRST so they run LAST (Playwright tries the most
+  // recently added route first), so the mocks below still answer first.
+  //
+  // 1. Origin-agnostic: any non-GET request, to any host, that isn't on the
+  //    allowlist is aborted, never sent.
+  await page.route('**/*', (route) => {
+    const req = route.request();
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method())) return route.fallback();
+    if (ALLOWED_WRITES.some((re) => re.test(req.url()))) return route.fallback();
+    const what = `${req.method()} ${req.url().split('?')[0]}`;
+    if (!logged.has(what)) {
+      logged.add(what);
+      console.log(`[drop-off guard] aborted ${what}`);
+    }
+    return route.abort('blockedbyclient');
+  });
+  // 2. The app specifically: any write the mocks below don't answer is
+  //    aborted (only the read-only price check falls through).
   await page.route(`${APP}/**`, (route) => {
     const req = route.request();
-    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method()) || READ_ONLY_POSTS.test(req.url())) return route.fallback();
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method()) || ALLOWED_WRITES[0].test(req.url())) return route.fallback();
     return route.abort('blockedbyclient');
   });
   const handler = async (route: Route) => {
@@ -158,6 +188,7 @@ test.describe('Drop off for the day', () => {
 
   test.beforeEach(async ({ page }) => {
     posted = await guardBookingPosts(page);
+    await blockAnalytics(page);
     await maybeUseLocalAssets(page);
   });
 
