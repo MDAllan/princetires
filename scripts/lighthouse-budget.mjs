@@ -5,22 +5,36 @@
 //   node scripts/lighthouse-budget.mjs --write-baseline # measure and REPLACE the baseline
 //   node scripts/lighthouse-budget.mjs --pages home,contact --runs 3
 //
-// Why a ratchet and not fixed thresholds: today the home page scores ~51 on
-// mobile, far under any sensible fixed bar, so a fixed bar is red forever and
+// Why a ratchet and not fixed thresholds: today the home page scores ~63 on
+// mobile (2026-11-08 laptop baseline), far under any sensible fixed bar, so a fixed bar is red forever and
 // gets ignored. Instead each page must not get WORSE than the committed
 // baseline by more than a tolerance. The plan's targets (P3-1) are printed as
 // goals, never enforced, until the baseline itself reaches them.
 //
-// Each page is audited N times (default 3) in a fresh Chromium with a cold
+// Each page is audited N times (default 3) in a fresh Google Chrome
+// (CHROME_PATH overrides; Playwright's Chromium is the last resort) with a cold
 // cache, using Lighthouse's default mobile settings (simulated slow 4G, 4x CPU
 // slowdown, moto g power screen — the same as PageSpeed Insights). Each metric
 // is the MEDIAN of the runs, so one noisy run can't fail the job: a metric
 // fails only when at least 2 of 3 runs are over the limit.
 //
+// Different machine, different numbers: Lighthouse's simulated throttling
+// scales with the host CPU, so TBT/LCP/FCP/Speed Index and the perf score from
+// a slow CI runner are much worse than from the laptop that measured the
+// baseline. When the run's CPU benchmark index differs from the baseline's by
+// more than 35%, those metrics are reported but NOT enforced; only the
+// CPU-independent ones (HTML size, page weight, CLS, a11y score) can fail.
+// Re-baseline on CI (workflow_dispatch → write_baseline) to enforce them all.
+//
+// Time limits: each run is capped at PERF_RUN_TIMEOUT_MS (default 240 s), and
+// no new run starts after PERF_TOTAL_BUDGET_MS (default 40 min), so the results
+// and summary are always written before the CI job's own timeout.
+//
 // Output: a table on stdout, the same as Markdown in $GITHUB_STEP_SUMMARY when
 // set, and perf-results/ (results.json + baseline.candidate.json). The
-// candidate is the baseline tightened to any metric that improved, so a
-// maintainer can commit it to lock in gains (ratchet only ever tightens).
+// candidate is the baseline tightened to any metric that improved by more than
+// half its slack (so it doesn't drift toward lucky medians), on the same URL,
+// so a maintainer can commit it to lock in gains (ratchet only ever tightens).
 //
 // Read-only: this only loads public pages. It never clicks or submits.
 
@@ -36,6 +50,7 @@ const BASELINE_PATH = path.join(ROOT, 'tests', 'perf-baseline.json');
 const OUT_DIR = path.join(ROOT, 'perf-results');
 const BASE = (process.env.PERF_BASE_URL || 'https://princetires.ca').replace(/\/$/, '');
 const RUN_TIMEOUT_MS = Number(process.env.PERF_RUN_TIMEOUT_MS) || 240_000;
+const TOTAL_BUDGET_MS = Number(process.env.PERF_TOTAL_BUDGET_MS) || 40 * 60_000;
 const BROWSER_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
 
@@ -64,6 +79,16 @@ export const METRICS = {
   totalBytes: { label: 'Page weight', better: 'lower', unit: 'B', round: 0 },
 };
 
+/**
+ * Metrics that don't depend on the host CPU, so they are enforced even when
+ * the baseline was measured on a different machine.
+ */
+export const CPU_INDEPENDENT = ['htmlBytes', 'totalBytes', 'cls', 'accessibility'];
+
+/** Benchmark-index difference (as a fraction of the baseline's) above which
+ *  the CPU-bound metrics are not enforced. */
+export const MACHINE_MISMATCH = 0.35;
+
 /** Default tolerances, used when the baseline file doesn't set its own. */
 export const DEFAULT_TOLERANCE = {
   performance: { abs: 8 },
@@ -86,12 +111,41 @@ export function median(values) {
   return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
 }
 
+/** How far a metric may move from its baseline before it counts as worse. */
+export function slackFor(metric, baseline, tol) {
+  const t = tol || DEFAULT_TOLERANCE[metric] || {};
+  return Math.max(t.abs ?? 0, ((t.pct ?? 0) / 100) * Math.abs(baseline));
+}
+
 /** The worst value still allowed for a metric, given its baseline. */
 export function limitFor(metric, baseline, tol) {
-  const def = METRICS[metric];
-  const t = tol || DEFAULT_TOLERANCE[metric] || {};
-  const slack = Math.max(t.abs ?? 0, ((t.pct ?? 0) / 100) * Math.abs(baseline));
-  return def.better === 'higher' ? baseline - slack : baseline + slack;
+  const slack = slackFor(metric, baseline, tol);
+  return METRICS[metric].better === 'higher' ? baseline - slack : baseline + slack;
+}
+
+/**
+ * Was the baseline measured on a machine too different from this one for the
+ * CPU-bound metrics to be compared? No baseline index → assume the same
+ * machine (enforce everything). A baseline index but none for this run →
+ * can't tell, so don't enforce them.
+ */
+export function machineMismatch(baselineIndex, currentIndex, maxDiff = MACHINE_MISMATCH) {
+  if (baselineIndex == null || !(baselineIndex > 0)) return false;
+  if (currentIndex == null || !Number.isFinite(currentIndex)) return true;
+  return Math.abs(currentIndex - baselineIndex) / baselineIndex > maxDiff;
+}
+
+/**
+ * What to do with the baseline's product page given how the request for it
+ * went: 'ok' (use it), 'gone' (404/410 or redirected away → pick another
+ * product), or 'retry' (429, 5xx or no response — transient; never swap the
+ * page on those, it would compare a different product against this baseline).
+ */
+export function classifyProductResponse(status, finalPath, preferred) {
+  if (status == null) return 'retry';
+  if (status === 404 || status === 410) return 'gone';
+  if (status >= 400) return 'retry'; // 429 local_rate_limited, 5xx, a 403 checkpoint
+  return finalPath === preferred ? 'ok' : 'gone';
 }
 
 export function isWorse(metric, value, limit) {
@@ -139,9 +193,10 @@ export function extractMetrics(lhr) {
  * Compare medians to the baseline. Returns rows + whether anything regressed.
  * A page missing from the baseline is reported but does not fail.
  */
-export function compare(current, baseline) {
+export function compare(current, baseline, { enforce = null } = {}) {
   const rows = [];
   let regressed = false;
+  const enforced = (metric) => !enforce || enforce.includes(metric);
   const tolerance = { ...DEFAULT_TOLERANCE, ...(baseline?.tolerance || {}) };
   for (const [pageId, page] of Object.entries(current)) {
     const base = baseline?.pages?.[pageId]?.metrics;
@@ -161,8 +216,10 @@ export function compare(current, baseline) {
       } else if (b != null) {
         row.limit = limitFor(metric, b, tolerance[metric]);
         if (isWorse(metric, now, row.limit)) {
-          row.status = 'REGRESSED';
-          regressed = true;
+          if (enforced(metric)) {
+            row.status = 'REGRESSED';
+            regressed = true;
+          } else row.status = 'worse (not enforced)';
         } else row.status = isBetter(metric, now, b) ? 'better' : 'ok';
       }
       if (goal != null && now != null) {
@@ -174,19 +231,35 @@ export function compare(current, baseline) {
   return { rows, regressed };
 }
 
-/** The baseline tightened to every metric that improved (never loosened). */
-export function ratchet(baseline, current) {
+/**
+ * The baseline tightened to every metric that improved by more than half its
+ * slack (never loosened). Small wins are left alone so the baseline doesn't
+ * drift toward the luckiest medians and squeeze the noise margin. A page
+ * measured on a different URL than its baseline entry is not touched, and
+ * neither are the CPU-bound metrics when `enforce` excludes them (a run on a
+ * different machine says nothing about them).
+ */
+export function ratchet(baseline, current, { enforce = null } = {}) {
   const next = JSON.parse(JSON.stringify(baseline || { pages: {} }));
   next.pages = next.pages || {};
+  const tolerance = { ...DEFAULT_TOLERANCE, ...(next.tolerance || {}) };
   for (const [pageId, page] of Object.entries(current)) {
     if (page.error) continue;
-    const entry = (next.pages[pageId] = next.pages[pageId] || { path: page.path, metrics: {} });
+    const existing = next.pages[pageId];
+    if (existing && existing.path && page.path && existing.path !== page.path) continue;
+    const entry = (next.pages[pageId] = existing || { path: page.path, metrics: {} });
     entry.metrics = entry.metrics || {};
     for (const metric of Object.keys(METRICS)) {
       const now = roundMetric(metric, page.metrics[metric]);
       if (now == null) continue;
       const b = entry.metrics[metric];
-      if (b == null || isBetter(metric, now, b)) entry.metrics[metric] = now;
+      if (b == null) {
+        entry.metrics[metric] = now;
+        continue;
+      }
+      if (enforce && !enforce.includes(metric)) continue;
+      const slack = slackFor(metric, b, tolerance[metric]);
+      if (isBetter(metric, now, b) && Math.abs(now - b) > slack / 2) entry.metrics[metric] = now;
     }
   }
   return next;
@@ -199,15 +272,34 @@ export function ratchet(baseline, current) {
  * compare like with like, unless it is gone (sold out / unpublished); then
  * the first tire card on /collections/tires.
  */
+const RETRY_DELAYS_MS = [5_000, 15_000, 30_000];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function resolveProductPath(preferred) {
   const browser = await chromium.launch();
   try {
     const ctx = await browser.newContext({ userAgent: BROWSER_UA });
     const page = await ctx.newPage();
     if (preferred) {
-      const res = await page.goto(`${BASE}${preferred}`, { waitUntil: 'domcontentloaded', timeout: 45_000 }).catch(() => null);
-      if (res && res.status() < 400 && new URL(page.url()).pathname === preferred) return preferred;
-      console.log(`[perf] baseline product ${preferred} is gone (HTTP ${res ? res.status() : 'error'}); using the first tire card`);
+      let verdict = 'retry';
+      let status = null;
+      for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+        if (attempt > 0) {
+          console.log(`[perf] baseline product ${preferred}: HTTP ${status ?? 'error'}, retrying in ${RETRY_DELAYS_MS[attempt - 1] / 1000}s`);
+          await sleep(RETRY_DELAYS_MS[attempt - 1]);
+        }
+        const res = await page.goto(`${BASE}${preferred}`, { waitUntil: 'domcontentloaded', timeout: 45_000 }).catch(() => null);
+        status = res ? res.status() : null;
+        verdict = classifyProductResponse(status, new URL(page.url()).pathname, preferred);
+        if (verdict !== 'retry') break;
+      }
+      if (verdict === 'ok') return preferred;
+      if (verdict === 'retry') {
+        // Transient (rate limit / server error): report the page as an error
+        // rather than silently comparing a different product to this baseline.
+        throw new Error(`baseline product ${preferred} kept failing (HTTP ${status ?? 'error'})`);
+      }
+      console.log(`[perf] baseline product ${preferred} is gone (HTTP ${status}, now ${new URL(page.url()).pathname}); using the first tire card`);
     }
     await page.goto(`${BASE}/collections/tires`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
     const href = await page
@@ -292,6 +384,14 @@ function markdown(rows, meta) {
   lines.push('');
   lines.push(meta.regressed ? '**Result: REGRESSED** — at least one metric is worse than the baseline allows.' : '**Result: OK** — nothing is worse than the baseline allows.');
   lines.push('');
+  if (meta.mismatch) {
+    lines.push(
+      `> **Baseline machine mismatch** (this run's CPU benchmark ${meta.benchmarkIndex ?? 'n/a'} vs baseline ${meta.baselineBenchmark}): ` +
+        `CPU-bound metrics (perf score, LCP, TBT, FCP, Speed Index) are reported, not enforced. ` +
+        `Only ${CPU_INDEPENDENT.join(', ')} can fail. Re-baseline on CI (workflow_dispatch → write_baseline) to enforce them all.`,
+    );
+    lines.push('');
+  }
   lines.push('| Page | Metric | Now | Baseline | Limit | Status | Goal (P3-1) |');
   lines.push('| --- | --- | --- | --- | --- | --- | --- |');
   for (const r of rows) {
@@ -322,7 +422,13 @@ async function main() {
   const paths = {};
   const benchmarks = [];
   let hostUserAgent = null;
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
+  const outOfTime = () => Date.now() > deadline;
   for (const p of pages) {
+    if (outOfTime()) {
+      current[p.id] = { path: null, error: `not measured: total time budget (${Math.round(TOTAL_BUDGET_MS / 60_000)} min) spent` };
+      continue;
+    }
     let pagePath = p.path;
     try {
       if (!pagePath) pagePath = await resolveProductPath(args.writeBaseline ? null : baseline?.pages?.[p.id]?.path);
@@ -334,6 +440,10 @@ async function main() {
     const runs = [];
     const errors = [];
     for (let i = 0; i < args.runs; i++) {
+      if (outOfTime()) {
+        errors.push(`run ${i + 1} not started: total time budget spent`);
+        break;
+      }
       process.stdout.write(`[perf] ${p.id} run ${i + 1}/${args.runs} … `);
       try {
         const t0 = Date.now();
@@ -384,21 +494,31 @@ async function main() {
     console.log(`[perf] wrote ${path.relative(ROOT, BASELINE_PATH)}`);
   }
 
-  const { rows, regressed } = compare(current, args.writeBaseline ? JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8')) : baseline);
+  const compareTo = args.writeBaseline ? JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8')) : baseline;
+  const mismatch = machineMismatch(compareTo?.benchmarkIndex, benchmarkIndex);
+  const enforce = mismatch ? CPU_INDEPENDENT : null;
+  if (mismatch) {
+    console.log(
+      `[perf] baseline machine mismatch (this run ${benchmarkIndex == null ? 'n/a' : Math.round(benchmarkIndex)} vs baseline ${compareTo.benchmarkIndex}): ` +
+        `CPU-bound metrics reported, not enforced; enforcing ${CPU_INDEPENDENT.join(', ')} only`,
+    );
+  }
+  const { rows, regressed } = compare(current, compareTo, { enforce });
   const md = markdown(rows, {
+    mismatch,
     runs: args.runs,
     base: BASE,
     regressed,
     paths,
     benchmarkIndex: benchmarkIndex == null ? null : Math.round(benchmarkIndex),
-    baselineBenchmark: baseline?.benchmarkIndex ?? null,
+    baselineBenchmark: compareTo?.benchmarkIndex ?? null,
   });
   console.log('\n' + md + '\n');
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
 
   fs.writeFileSync(path.join(OUT_DIR, 'results.json'), JSON.stringify({ base: BASE, benchmarkIndex, hostUserAgent, current, rows }, null, 2));
   if (baseline) {
-    const candidate = ratchet(baseline, current);
+    const candidate = ratchet(baseline, current, { enforce });
     fs.writeFileSync(path.join(OUT_DIR, 'baseline.candidate.json'), JSON.stringify(candidate, null, 2) + '\n');
   }
 
