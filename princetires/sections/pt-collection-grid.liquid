@@ -1,3 +1,5 @@
+{%- comment -%} /collections/all is the Shop by size hub (pt-shop-by-size), not a 20,000-product grid without filters. {%- endcomment -%}
+{%- unless collection.handle == 'all' -%}
 {%- comment -%}
   Auto-defaults on first visit:
   - All collections: cheapest-first sort (price-ascending) so customers see the
@@ -16,8 +18,8 @@
   var TIRE_COLLS  = { 'tires': 1, 'imported-tires': 1 };
   var WHEEL_COLLS = { 'wheels': 1, 'alloy-wheels': 1, 'steel-wheels': 1 };
   var handle = {{ collection.handle | json }};
-  var isTire  = !!TIRE_COLLS[handle];
-  var isWheel = !!WHEEL_COLLS[handle];
+  var isTire  = !!TIRE_COLLS[handle] || /^tires-\d{2}-inch$/.test(handle);
+  var isWheel = !!WHEEL_COLLS[handle] || /^wheels-\d{2}-inch$/.test(handle);
   // Cheapest-first now applies to EVERY collection; the seasonal / availability
   // extras below stay scoped to tire / wheel collections only.
 
@@ -83,2895 +85,1030 @@
 })();
 </script>
 
-{%- comment -%} Smart search config — brand list pulled from the live vendor facet so it always matches inventory {%- endcomment -%}
-{%- assign smart_brands = '' -%}
-{%- for f in collection.filters -%}
-  {%- if f.param_name == 'filter.p.vendor' -%}
-    {%- for v in f.values -%}
-      {%- assign smart_brands = smart_brands | append: v.label | append: '||' -%}
-    {%- endfor -%}
-  {%- endif -%}
-{%- endfor -%}
-<script data-smart-search-config type="application/json">
-{
-  "minYear": {{ settings.smart_search_min_year | default: 2001 }},
-  "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
-  "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
-  "manifestUrl": {{ 'pt-vehicle-manifest.json' | asset_url | json }},
-  "brands": {{ smart_brands | split: '||' | json }}
-}
-</script>
+{%- comment -%}
+  Results grid (redesign 2026-11-13, mockups Main / Mobile / MobileFilters /
+  States / WheelResults / WheelMobile .dc.html). The black header with the
+  title, count, Change size and tabs is sections/pt-collection-header.
+
+  Kept from the old grid: the first-visit default above (cheapest first +
+  season / availability), Shopify filter URLs (filter.p.m.* / filter.v.*),
+  pagination, the saved-car banner (tires only), the clearance banner,
+  sold-out cards listed but greyed (pt-collection-stock moves them last),
+  the compare drawer, the "Don't see the tire you need?" empty-state form,
+  AJAX add to cart, scroll restoration and the wholesale price hooks.
+  Dropped on purpose: the toolbar "Smart Search" box (the site search and
+  the Change size panel cover it), the price slider (Min / Max boxes from
+  the whole collection's price range instead of the page's), approximate
+  option counts (owner decision 5: none).
+
+  Behaviour lives in assets/pt-rd-results.js, styles in assets/pt-rd-results.css.
+{%- endcomment -%}
 {% render 'pt-vehicle-manifest-loader' %}
 {% render 'pt-search-tracking' %}
+{{ 'pt-rd-results.css' | asset_url | stylesheet_tag }}
 
 {%- paginate collection.products by section.settings.products_per_page -%}
-{%- liquid
-  assign price_max_val = 0
-  for product in collection.products
-    assign p = product.price | divided_by: 100
-    if p > price_max_val
-      assign price_max_val = p
-    endif
-  endfor
-  assign price_max_rounded = price_max_val | plus: 49 | divided_by: 50 | times: 50
-  assign price_max_rounded = price_max_rounded | at_least: 200
--%}
 {%- liquid
   # Clearance collection gets a banner + per-card CLEARANCE badge + % off.
   assign is_clearance = false
   if collection.handle == 'clearance'
     assign is_clearance = true
   endif
+
+  capture rd_kind
+    render 'pt-rd-results-kind', collection: collection
+  endcapture
+  assign rd_kind = rd_kind | strip
+  assign is_wheels = false
+  assign rd_one = 'tire'
+  assign rd_many = 'tires'
+  if rd_kind == 'wheels'
+    assign is_wheels = true
+    assign rd_one = 'wheel'
+    assign rd_many = 'wheels'
+  elsif rd_kind == 'items'
+    assign rd_one = 'item'
+    assign rd_many = 'items'
+  endif
+
+  # Wheels: mount and balance per wheel (owner: $30/wheel, the theme fallback - never change).
+  assign rd_wheel_install = 30
+
+  # Active filters (badge on the phone Filters button + chips). The default
+  # "available" filter is not counted: the site applies it for everyone.
+  assign rd_active = 0
+  for f in collection.filters
+    if f.type == 'price_range'
+      if f.min_value.value != blank or f.max_value.value != blank
+        assign rd_active = rd_active | plus: 1
+      endif
+    elsif f.param_name == 'filter.v.availability'
+      for v in f.active_values
+        if v.value != '1'
+          assign rd_active = rd_active | plus: 1
+        endif
+      endfor
+    elsif f.param_name == 'filter.p.m.custom.tire_width' or f.param_name == 'filter.p.m.custom.tire_profile' or f.param_name == 'filter.p.m.custom.rim_diameter' or f.param_name == 'filter.p.m.custom.tire_size'
+      # the size / diameter is the black header's, not a drawer filter
+    elsif f.param_name == 'filter.p.m.custom.bolt_pattern'
+      # One chosen pattern applies every value that contains it (5x139.7 ->
+      # 5x139.7, 5x127/5x139.7, ...): count patterns, not values.
+      if f.active_values.size > 0
+        capture rd_bolts
+          render 'pt-rd-results-bolt', filter: f
+        endcapture
+        assign rd_bolt_n = rd_bolts | strip | split: ', '
+        assign rd_active = rd_active | plus: rd_bolt_n.size
+      endif
+    else
+      assign rd_active = rd_active | plus: f.active_values.size
+    endif
+  endfor
+
+  # Tags applied through the collection tag URL (wheel Finish / Wheel type
+  # fallback, snippets/pt-rd-results-tagfacet) count as filters too.
+  assign rd_active = rd_active | plus: current_tags.size
+
+  assign rd_sort = collection.sort_by | default: collection.default_sort_by
+  assign rd_total = paginate.items | default: 0
+  assign rd_total_fmt = rd_total | times: 100 | money_without_currency | remove: '.00'
+  assign rd_from = paginate.current_offset | plus: 1
+  assign rd_to = paginate.current_offset | plus: collection.products.size
+  assign rd_b2b = false
+  if customer.b2b? or customer.tags contains 'wholesale'
+    assign rd_b2b = true
+  endif
+
+  # Tire pages: the size shown as the H1 (pt-rd-results-title) and whether
+  # the page has one (v16 cards put the size in the meta line only when not).
+  assign rd_has_size = false
+  assign rd_title = collection.title
+  if rd_kind == 'tires'
+    capture rd_title
+      render 'pt-rd-results-title', kind: rd_kind
+    endcapture
+    assign rd_title = rd_title | strip
+    if rd_title != collection.title
+      assign rd_has_size = true
+    endif
+  endif
 -%}
-<div class="ptg" style="--ptg-img-pad: {{ section.settings.image_padding }}rem; --ptg-img-ratio: {{ section.settings.image_ratio }};">
+{%- capture rd_sort_opts -%}
+  <option value="manual"{% if rd_sort == 'manual' %} selected{% endif %}>Recommended</option>
+  <option value="price-ascending"{% if rd_sort == 'price-ascending' %} selected{% endif %}>Price: low to high</option>
+  <option value="price-descending"{% if rd_sort == 'price-descending' %} selected{% endif %}>Price: high to low</option>
+  {%- if is_wheels or rd_sort == 'created-descending' -%}<option value="created-descending"{% if rd_sort == 'created-descending' %} selected{% endif %}>Newest</option>{%- endif -%}
+  {%- if rd_sort == 'best-selling' -%}<option value="best-selling" selected>Best selling</option>{%- endif -%}
+{%- endcapture -%}
+{%- comment -%} Tire pages (v16): Price: low to high first (the first-visit seed), then high to low, then Recommended. {%- endcomment -%}
+{%- capture rd_sort_opts_t -%}
+  <option value="price-ascending"{% if rd_sort == 'price-ascending' %} selected{% endif %}>Price: low to high</option>
+  <option value="price-descending"{% if rd_sort == 'price-descending' %} selected{% endif %}>Price: high to low</option>
+  <option value="manual"{% if rd_sort == 'manual' %} selected{% endif %}>Recommended</option>
+  {%- if rd_sort == 'created-descending' -%}<option value="created-descending" selected>Newest</option>{%- endif -%}
+  {%- if rd_sort == 'best-selling' -%}<option value="best-selling" selected>Best selling</option>{%- endif -%}
+{%- endcapture -%}
+{%- if rd_kind == 'tires' -%}
+{%- comment -%}
+  ── TIRE results, v16 (FINAL spec 2026-11-15, cdesign/FINAL/SPEC.md) ──
+  Every job once: the size is the H1 with one "Change size" (desktop
+  popover / phone sheet), one row of brands (phones: one swiping quick row
+  with the season items first), one row of applied chips with the only
+  desktop Clear all, red only on Request install. DOM order: skip link,
+  head, results (hidden H2, skip to filters, quick row, chips, pair tabs,
+  grid, foot), then the filters (placed in column 1 by CSS grid).
+  Wheels and other kinds keep the markup in the else branch below as is.
+{%- endcomment -%}
+{%- liquid
+  assign f_season = nil
+  assign f_vendor = nil
+  for f in collection.filters
+    if f.param_name == 'filter.p.m.custom.seasonality'
+      assign f_season = f
+    elsif f.param_name == 'filter.p.vendor'
+      assign f_vendor = f
+    endif
+  endfor
+  assign q_keys = 'winter|all-weather|all-season|summer' | split: '|'
+  assign q_names = 'Winter|All-weather|All-season|Summer' | split: '|'
+  assign q_sea_n = 0
+  assign q_sea_on = 0
+  if f_season
+    for v in f_season.values
+      assign qk = v.label | downcase | replace: ' ', '-'
+      if q_keys contains qk
+        if v.count > 0 or v.active
+          assign q_sea_n = q_sea_n | plus: 1
+        endif
+        if v.active
+          assign q_sea_on = q_sea_on | plus: 1
+        endif
+      endif
+    endfor
+  endif
+  assign q_brand_n = 0
+  assign q_brand_on = 0
+  if f_vendor
+    for v in f_vendor.values
+      if v.count > 0 or v.active
+        assign q_brand_n = q_brand_n | plus: 1
+      endif
+      if v.active
+        assign q_brand_on = q_brand_on | plus: 1
+      endif
+    endfor
+  endif
+  assign q_show_sea = false
+  if q_sea_n >= 2 or q_sea_on > 0
+    assign q_show_sea = true
+  endif
 
-  <div class="ptg__container">
-    <div class="ptg__layout">
+  # Clear all: the size, rear and sort stay (assets/pt-rd-results.js KEEP_ON_CLEAR does the same).
+  assign t_clear_q = ''
+  for f in collection.filters
+    if f.param_name == 'filter.p.m.custom.tire_width' or f.param_name == 'filter.p.m.custom.tire_profile' or f.param_name == 'filter.p.m.custom.rim_diameter' or f.param_name == 'filter.p.m.custom.tire_size'
+      for v in f.active_values
+        assign t_cv = v.value | url_encode
+        assign t_clear_q = t_clear_q | append: v.param_name | append: '=' | append: t_cv | append: '&'
+      endfor
+    endif
+  endfor
+  if collection.sort_by != blank
+    assign t_clear_q = t_clear_q | append: 'sort_by=' | append: collection.sort_by | append: '&'
+  endif
+  assign t_clear_q = t_clear_q | append: 'filter.v.availability=1'
+  assign t_clear = collection.url | append: '?' | append: t_clear_q
 
-      {%- comment -%} ── Sidebar Filters ── {%- endcomment -%}
-      {% render 'pt-collection-sidebar', price_max_rounded: price_max_rounded %}
-
-      {%- comment -%} ── Product Grid ── {%- endcomment -%}
-      <div class="ptg__main">
-
-        <button class="ptg__mobile-filter-btn" data-open-filters>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
-          Filters
-        </button>
-
-        {% render 'pt-collection-garage-banner' %}
-
-        {%- if section.settings.show_trust_bar -%}
+  # The few-results / empty panel names the most recent kind of filter: brand, then price, then season.
+  assign lr_brand = ''
+  assign lr_brand_url = ''
+  assign lr_price = ''
+  assign lr_price_url = ''
+  assign lr_sea = ''
+  assign lr_sea_url = ''
+  assign lr_sea_adj = ''
+  assign lr_other = ''
+  assign lr_other_url = ''
+-%}
+{%- capture t_chips_sea -%}
+  {%- if f_season -%}
+    {%- for qk in q_keys -%}
+      {%- assign qi = forloop.index0 -%}
+      {%- for v in f_season.values -%}
+        {%- assign vk = v.label | downcase | replace: ' ', '-' -%}
+        {%- if vk == qk and v.active -%}
+          {%- if lr_sea == '' -%}{%- assign lr_sea = q_names[qi] -%}{%- assign lr_sea_url = v.url_to_remove -%}{%- endif -%}
+          <a class="rd-chip rd-chip--link rd-chip--v16" href="{{ v.url_to_remove | escape }}" rel="nofollow" aria-label="Remove {{ q_names[qi] }}">{% render 'pt-icon', name: qk, size: 16, class: 'rd-chip__ic' %}<span>{{ q_names[qi] }}</span><span class="rd-chip__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 14 %}</span></a>
         {%- endif -%}
-
-        {%- if is_clearance -%}
-          <div class="ptg__clearance-banner" role="note">
-            <svg class="ptg__clearance-banner-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-            <span class="ptg__clearance-banner-text"><strong>Clearance</strong> — final markdowns, while quantities last</span>
-          </div>
+      {%- endfor -%}
+    {%- endfor -%}
+    {%- if q_sea_on == 1 -%}{%- assign lr_sea_adj = lr_sea | downcase -%}{%- endif -%}
+  {%- endif -%}
+{%- endcapture -%}
+{%- capture t_chips_brand -%}
+  {%- if f_vendor -%}
+    {%- for v in f_vendor.active_values -%}
+      {%- if lr_brand == '' -%}{%- assign lr_brand = v.label -%}{%- assign lr_brand_url = v.url_to_remove -%}{%- endif -%}
+      <a class="rd-chip rd-chip--link rd-chip--v16" href="{{ v.url_to_remove | escape }}" rel="nofollow" aria-label="Remove {{ v.label | escape }}"><span>{{ v.label | escape }}</span><span class="rd-chip__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 14 %}</span></a>
+    {%- endfor -%}
+  {%- endif -%}
+{%- endcapture -%}
+{%- capture t_chips_other -%}
+  {%- for f in collection.filters -%}
+    {%- liquid
+      assign ch_skip = false
+      case f.param_name
+        when 'filter.p.m.custom.tire_width', 'filter.p.m.custom.tire_profile', 'filter.p.m.custom.tire_size', 'filter.p.m.custom.rim_diameter', 'filter.p.m.custom.seasonality', 'filter.p.vendor'
+          assign ch_skip = true
+      endcase
+      case f.param_name
+        when 'filter.p.m.custom.service_type'
+          assign ch_name = 'Tire class'
+        when 'filter.p.m.custom.stud_option'
+          assign ch_name = 'Studs'
+        when 'filter.p.m.custom.tire_model'
+          assign ch_name = 'Model'
+        when 'filter.p.product_type'
+          assign ch_name = 'Tire type'
+        else
+          assign ch_name = f.label
+      endcase
+    -%}
+    {%- unless ch_skip -%}
+      {%- if f.type == 'price_range' -%}
+        {%- if f.min_value.value != blank or f.max_value.value != blank -%}
+          {%- liquid
+            assign ch_a = ''
+            assign ch_b = ''
+            if f.min_value.value != blank
+              assign ch_a = f.min_value.value | divided_by: 100 | floor
+            endif
+            if f.max_value.value != blank
+              assign ch_b = f.max_value.value | divided_by: 100 | floor
+            endif
+            if ch_a != '' and ch_b != ''
+              assign ch_txt = '$' | append: ch_a | append: ' – $' | append: ch_b
+            elsif ch_a != ''
+              assign ch_txt = '$' | append: ch_a | append: ' and up'
+            elsif ch_b == 150
+              assign ch_txt = 'Under $150'
+            else
+              assign ch_txt = 'Up to $' | append: ch_b
+            endif
+            if lr_price == ''
+              assign lr_price = ch_txt
+              assign lr_price_url = f.url_to_remove
+            endif
+          -%}
+          <a class="rd-chip rd-chip--link rd-chip--v16" href="{{ f.url_to_remove | escape }}" rel="nofollow" aria-label="Remove {{ ch_txt | escape }}"><span>{{ ch_txt }}</span><span class="rd-chip__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 14 %}</span></a>
         {%- endif -%}
+      {%- elsif f.param_name == 'filter.v.availability' or f.param_name == 'filter.p.tag' -%}
+        {%- for v in f.active_values -%}
+          {%- liquid
+            assign ch_show = true
+            assign ch_txt = v.label
+            if f.param_name == 'filter.v.availability'
+              if v.value == '1'
+                assign ch_show = false
+              else
+                assign ch_txt = 'Sold out only'
+              endif
+            elsif v.value == 'Prince Stock'
+              assign ch_txt = 'Stocked at our shops'
+            endif
+          -%}
+          {%- if ch_show -%}
+            {%- if lr_other == '' -%}{%- assign lr_other = ch_txt -%}{%- assign lr_other_url = v.url_to_remove -%}{%- endif -%}
+            <a class="rd-chip rd-chip--link rd-chip--v16" href="{{ v.url_to_remove | escape }}" rel="nofollow" aria-label="Remove {{ ch_txt | escape }}"><span>{{ ch_txt | escape }}</span><span class="rd-chip__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 14 %}</span></a>
+          {%- endif -%}
+        {%- endfor -%}
+      {%- elsif f.active_values.size > 0 -%}
+        {%- for v in f.active_values -%}
+          {%- liquid
+            assign ch_l = v.label
+            case v.value
+              when 'Non-Studdable'
+                assign ch_l = 'No studs'
+              when 'P'
+                assign ch_l = 'Passenger'
+              when 'LT'
+                assign ch_l = 'Light truck'
+              when 'ST'
+                assign ch_l = 'Trailer'
+            endcase
+            assign ch_txt = ch_name | append: ': ' | append: ch_l
+            if lr_other == ''
+              assign lr_other = ch_txt
+              assign lr_other_url = v.url_to_remove
+            endif
+          -%}
+          <a class="rd-chip rd-chip--link rd-chip--v16" href="{{ v.url_to_remove | escape }}" rel="nofollow" aria-label="Remove {{ ch_txt | escape }}"><span>{{ ch_txt | escape }}</span><span class="rd-chip__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 14 %}</span></a>
+        {%- endfor -%}
+      {%- endif -%}
+    {%- endunless -%}
+  {%- endfor -%}
+{%- endcapture -%}
+{%- liquid
+  assign lr_name = ''
+  assign lr_url = ''
+  if lr_brand != ''
+    assign lr_name = lr_brand
+    assign lr_url = lr_brand_url
+  elsif lr_price != ''
+    assign lr_name = lr_price
+    assign lr_url = lr_price_url
+  elsif lr_sea != ''
+    assign lr_name = lr_sea
+    assign lr_url = lr_sea_url
+  elsif lr_other != ''
+    assign lr_name = lr_other
+    assign lr_url = lr_other_url
+  endif
+  assign t_in = ''
+  if rd_has_size
+    assign t_in = ' in ' | append: rd_title
+  endif
+-%}
+<div class="rd rd-res rd-res--v16" data-rd-results data-kind="{{ rd_kind }}" data-unit="{{ rd_one }}" data-units="{{ rd_many }}">
+  {%- comment -%}
+    v16 fix1, before anything paints: rd-js (the phone no-JS Filters / Sort
+    bar takes no space; assets/pt-rd-results.js shows the floating pill) and,
+    with ?rear= in the address, rd-pairwait (the front grid, foot and Season
+    items wait for the staggered sets, so nothing jumps; pair mode removes
+    it, and it lifts by itself after 15 s if the script never runs).
+  {%- endcomment -%}
+  <script>(function(r){try{r.classList.add('rd-js');if(/[?&]rear=[^&]/.test(location.search)){r.classList.add('rd-pairwait');setTimeout(function(){r.classList.remove('rd-pairwait');},15000);}}catch(e){}})(document.currentScript.parentNode);</script>
+  <a class="rd-skip" href="#rd-results">Skip to results</a>
 
-        <div class="ptg__toolbar">
-          <div class="ptg__search" data-ptg-smart-search>
-            <svg class="ptg__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>
-            <input type="text" class="ptg__search-input" placeholder="" data-ptg-search data-ptg-typewriter autocomplete="off">
-            <span class="ptg__search-badge">
-              <span class="ptg__search-dot"></span>
-              Powered by <strong>Smart Search</strong>
-            </span>
-            <div class="ptg__search-results" data-ptg-results hidden>
-              <div class="ptg__search-loading" data-ptg-loading hidden>
-                <span class="ptg__search-spinner"></span>
-                AI is finding your vehicle...
-              </div>
-              <ul class="ptg__search-list" data-ptg-list></ul>
-            </div>
-          </div>
-          <div class="ptg__sort">
-            <label for="ptg-sort" class="ptg__sort-label">Sort by</label>
-            <div class="ptg__sort-wrap">
-              {%- assign sort_by = collection.sort_by | default: collection.default_sort_by -%}
-              <select id="ptg-sort" class="ptg__sort-select" data-ptg-sort>
-                <option value="manual" {% if sort_by == 'manual' %}selected{% endif %}>Featured</option>
-                <option value="best-selling" {% if sort_by == 'best-selling' %}selected{% endif %}>Best selling</option>
-                <option value="created-descending" {% if sort_by == 'created-descending' %}selected{% endif %}>Newest</option>
-                <option value="price-ascending" {% if sort_by == 'price-ascending' %}selected{% endif %}>Lowest price</option>
-                <option value="price-descending" {% if sort_by == 'price-descending' %}selected{% endif %}>Highest price</option>
-              </select>
-              <svg class="ptg__sort-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-            </div>
-          </div>
+  {%- comment -%} Phones / tablets without JS: sticky Filters + Sort bar (the floating pill replaces it). {%- endcomment -%}
+  <div class="rd-sortbar rd-res__bar">
+    <button type="button" class="rd-bar" data-rd-fopen aria-controls="rd-filters" aria-expanded="false">
+      {%- render 'pt-icon', name: 'filter', size: 19 -%}
+      Filters
+      {%- if rd_active > 0 -%}<span class="rd-bar__badge" aria-label="{{ rd_active }} applied">{{ rd_active }}</span>{%- endif -%}
+    </button>
+    <label class="rd-bar">
+      <span class="rd-sr">Sort by</span>
+      <select data-rd-sort aria-label="Sort by">{{ rd_sort_opts_t }}</select>
+      {%- render 'pt-icon', name: 'chevron-down', size: 16, class: 'rd-bar__chev' -%}
+    </label>
+  </div>
+
+  {%- comment -%}
+    Phones / tablets: floating "Filters (n) | Sort" pill. The badge counts
+    APPLIED filters only (absent when none); the result count lives in the
+    head and in the sheet's "Show N results". Shown by assets/pt-rd-results.js.
+  {%- endcomment -%}
+  <div class="rd-fab" data-rd-fab hidden>
+    <button type="button" class="rd-fab__f" data-rd-fopen aria-controls="rd-filters" aria-expanded="false" aria-label="Filters{% if rd_active > 0 %}, {{ rd_active }} applied{% endif %}">
+      {%- render 'pt-icon', name: 'filter', size: 18 -%}
+      <span aria-hidden="true">Filters</span>
+      {%- if rd_active > 0 -%}<span class="rd-fab__n" aria-hidden="true">{{ rd_active }}</span>{%- endif -%}
+    </button>
+    <span class="rd-fab__sep" aria-hidden="true"></span>
+    <label class="rd-fab__s">
+      <span aria-hidden="true">Sort</span>
+      {%- render 'pt-icon', name: 'chevron-down', size: 16, class: 'rd-fab__chev' -%}
+      <select data-rd-sort aria-label="Sort by">{{ rd_sort_opts_t }}</select>
+    </label>
+  </div>
+
+  <div class="rd-wrap rd-res__layout">
+    <span class="rd-rhd__sentinel" data-rd-head-sentinel aria-hidden="true"></span>
+    <div class="rd-rhd{% unless rd_has_size %} rd-rhd--nosize{% endunless %}" data-rd-head>
+      <div class="rd-rhd__l">
+        <div class="rd-rhd__t">
+          {%- comment -%} fix2: no size, sentence case like the rest ('16" Tires' -> '16" tires'). {%- endcomment -%}
+          {%- assign rd_h1 = rd_title -%}
+          {%- unless rd_has_size -%}
+            {%- assign rd_h1_end = rd_title | slice: -6, 6 -%}
+            {%- if rd_h1_end == ' Tires' -%}
+              {%- assign rd_h1_n = rd_title.size | minus: 6 -%}
+              {%- assign rd_h1 = rd_title | slice: 0, rd_h1_n | append: ' tires' -%}
+            {%- endif -%}
+          {%- endunless -%}
+          <h1 class="rd-rhd__title" id="rd-rh-title" data-rd-title{% unless rd_has_size %} data-rd-size-fallback{% endunless %}>{{ rd_h1 | escape }}</h1>
+          {%- comment -%} Staggered set (?rear=): the two-size H1 from the first paint (same markup as pairTitle() in pt-rd-results.js). {%- endcomment -%}
+          <script>(function(h){try{var r=new URLSearchParams(location.search).get('rear');if(!r||!h)return;r=r.replace(/\s+/g,'').toUpperCase().replace('ZR','R');var f=h.textContent.trim().toUpperCase(),re=/^\d{3}\/\d{2}R\d{2}$/;if(!re.test(r)||!re.test(f)||r===f)return;h.setAttribute('data-rd-h1-orig',h.innerHTML);h.classList.add('is-pair');h.innerHTML='<span class="rd-rhd__ax"><span>'+f+'</span><small> front</small></span><span class="rd-rhd__dot" aria-hidden="true">·</span><span class="rd-rhd__ax"><span>'+r+'</span><small> rear</small></span>';}catch(e){}})(document.currentScript.previousElementSibling);</script>
+          <p class="rd-rhd__sub"><span class="rd-rhd__count" data-rd-shown>
+            {%- if collection.products.size > 0 -%}
+              {%- comment -%} "results", not "tires": a count of matching listings must never read like stock on hand (owner 2026-11-15). {%- endcomment -%}{%- if paginate.current_page > 1 -%}Showing <strong data-rd-shown-n>{{ rd_from }}–{{ rd_to }}</strong> of {{ rd_total_fmt }} results{%- else -%}<strong data-rd-shown-n>{{ rd_total_fmt }}</strong> {% if rd_total == 1 %}result{% else %}results{% endif %}{%- endif -%}
+            {%- else -%}
+              <strong data-rd-shown-n>0</strong> results
+            {%- endif -%}
+          </span><span class="rd-rhd__gstm"> · before GST</span></p>
         </div>
+        <button type="button" class="rd-btnsec rd-rhd__size" aria-expanded="false" aria-controls="rd-search-panel" aria-haspopup="dialog" data-rd-panel-toggle data-pt-size-sheet data-pss-pop data-label-closed="{% if rd_has_size %}Change size{% else %}Find your size{% endif %}" data-label-open="Hide size search">
+          {%- render 'pt-icon', name: 'change-size', size: 18 -%}<span data-rd-size-label>{% if rd_has_size %}Change size{% else %}Find your size{% endif %}</span>
+        </button>
+      </div>
+      <div class="rd-rhd__r">
+        <span class="rd-rhd__gst">Prices per tire, before GST</span>
+        <button type="button" class="rd-btnsec rd-rhd__filters" data-rd-fopen aria-controls="rd-filters" aria-expanded="false" aria-label="Filters{% if rd_active > 0 %}, {{ rd_active }} applied{% endif %}">
+          {%- render 'pt-icon', name: 'filter', size: 18 -%}<span aria-hidden="true">Filters</span>{%- if rd_active > 0 -%}<span class="rd-rhd__n" aria-hidden="true">{{ rd_active }}</span>{%- endif -%}
+        </button>
+        <label class="rd-rhd__sort">
+          <span class="rd-rhd__sortk">Sort</span>
+          <select id="rd-sort" data-rd-sort>{{ rd_sort_opts_t }}</select>
+          {%- render 'pt-icon', name: 'chevron-down', size: 16, class: 'rd-rhd__sortchev' -%}
+        </label>
+      </div>
+    </div>
+    {%- unless rd_has_size -%}
+      {%- comment -%} No size yet (desktop): one quiet search row, filled by assets/pt-rd-results.js with the Find your size search (PTSizeSheet.inline, compact). {%- endcomment -%}
+      <div class="rd-quiet" data-rd-quiet hidden><div class="rd-quiet__in" data-rd-quiet-host></div></div>
+    {%- endunless -%}
 
-        {%- comment -%} Tire-size + saved-car context line (text only) {%- endcomment -%}
-        <p class="ptg__context" data-ptg-context hidden>
-          Searching for <span data-results-size><strong data-results-size-val></strong></span><span data-ptg-context-car></span>
-        </p>
+    <div class="rd-res__main" id="rd-results" tabindex="-1">
+      <h2 class="rd-sr">Results</h2>
+      <a class="rd-skip rd-skip--in" href="#rd-filters">Skip to filters</a>
 
-        {% render 'pt-collection-research-strip' %}
+      {% render 'pt-collection-garage-banner', hide: false %}
 
-        {%- if collection.products.size > 0 -%}
-          <div class="ptg__grid">
-            {%- comment -%}
-              Render ALL products on the page — including sold-out ones.
-              `pt-collection-card` applies a `--unavailable` greyscale class
-              + "Out of stock" badge + ARIA label, so sold-out cards are
-              visually distinct without being hidden. Customers can toggle
-              them off with the Availability sidebar filter.
+      {%- if is_clearance -%}
+        <p class="rd-note rd-res__clear" role="note"><strong>Clearance</strong> — final markdowns, while quantities last.</p>
+      {%- endif -%}
 
-              Previously this loop was wrapped in `{% unless product.available
-              == false %}` which silently dropped out-of-stock products from
-              the grid; combined with Shopify's `collection.products_count`
-              reporting the full total (41 wheels), the page showed
-              "41 products" but rendered as few as 1 card on a page where
-              the first-page sort happened to land on sold-out items.
-            {%- endcomment -%}
-            {%- for product in collection.products -%}
-              {% render 'pt-collection-card', product: product, is_clearance: is_clearance %}
-            {%- endfor -%}
-          </div>
-
-          {%- if paginate.pages > 1 -%}
-            <div class="ptg__pages">
-              {%- if paginate.previous -%}
-                <a href="{{ paginate.previous.url }}" class="ptg__page-btn">← Prev</a>
-              {%- endif -%}
-              {%- for part in paginate.parts -%}
-                {%- if part.is_link -%}
-                  <a href="{{ part.url }}" class="ptg__page-num">{{ part.title }}</a>
-                {%- else -%}
-                  {%- if part.title == paginate.current_page -%}
-                    <span class="ptg__page-num ptg__page-num--on">{{ part.title }}</span>
-                  {%- else -%}
-                    <span class="ptg__page-num">{{ part.title }}</span>
-                  {%- endif -%}
+      {%- comment -%}
+        Quick row. Desktop: the brand slider (one tab stop, arrows). Phones /
+        tablets: ONE swiping row (never stacked): Clear all (2+ filters), the
+        sidebar-only filters as chips, the picked seasons and brand, a divider,
+        the other seasons this size has, a divider, the other brands.
+        Season items are plain links to the same filter URLs as the Season
+        filter (multi-select), so they stay in sync with it.
+      {%- endcomment -%}
+      <nav class="rd-quick{% if q_sea_on > 0 or q_brand_on > 0 %} has-on{% endif %}" aria-label="Quick filters" data-rd-quick>
+        {%- if rd_active >= 2 -%}<a class="rd-q rd-q--clear" href="{{ t_clear | escape }}" rel="nofollow" data-rd-clear>Clear all</a>{%- endif -%}
+        {%- if t_chips_other != blank -%}<span class="rd-q-chips">{{ t_chips_other }}</span>{%- endif -%}
+        {%- if q_show_sea -%}
+          {%- for qk in q_keys -%}
+            {%- assign qi = forloop.index0 -%}
+            {%- for v in f_season.values -%}
+              {%- assign vk = v.label | downcase | replace: ' ', '-' -%}
+              {%- if vk == qk -%}
+                {%- if v.count > 0 or v.active -%}
+                  <a class="rd-q rd-q--season{% if v.active %} is-on{% endif %}" href="{% if v.active %}{{ v.url_to_remove | escape }}{% else %}{{ v.url_to_add | escape }}{% endif %}" rel="nofollow" role="button" aria-pressed="{{ v.active }}"{% if v.active %} aria-label="{{ q_names[qi] }}, selected. Remove"{% endif %} data-rd-qseason="{{ qk }}">
+                    {%- render 'pt-icon', name: qk, size: 18, class: 'rd-q__ic' -%}<span>{{ q_names[qi] }}</span>
+                    {%- if v.active -%}<span class="rd-q__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 16 %}</span>{%- endif -%}
+                  </a>
                 {%- endif -%}
-              {%- endfor -%}
-              {%- if paginate.next -%}
-                <a href="{{ paginate.next.url }}" class="ptg__page-btn">Next →</a>
+                {%- break -%}
               {%- endif -%}
+            {%- endfor -%}
+          {%- endfor -%}
+        {%- endif -%}
+        <span class="rd-qsep rd-qsep--a" aria-hidden="true"></span>
+        <span class="rd-qsep rd-qsep--b" aria-hidden="true"></span>
+        {%- if f_vendor -%}{% render 'pt-rd-brand-row', filter: f_vendor, collection: collection %}{%- endif -%}
+      </nav>
+
+      {%- assign t_chips = t_chips_sea | append: t_chips_brand | append: t_chips_other | strip -%}
+      {%- if t_chips != blank -%}
+        <div class="rd-chips rd-res__chips rd-chips--v16" role="group" aria-label="Applied filters">
+          {{- t_chips -}}
+          <a class="rd-chips__clear" href="{{ t_clear | escape }}" rel="nofollow" data-rd-clear>Clear all</a>
+        </div>
+      {%- endif -%}
+
+      {%- if rd_b2b == false -%}
+        {%- comment -%}
+          Staggered sets (front + rear sizes, ?rear=275%2F35R18): filled by
+          assets/pt-rd-results.js ("pair mode"), which then hides the grid,
+          the phone "Show more" and the pages below. Empty and hidden without
+          JS, so the page is the normal front-size grid. Not a .ptg__grid on
+          purpose (pt-collection-stock reorders those).
+        {%- endcomment -%}
+        <div class="rd-pair" data-rd-pair hidden></div>
+      {%- endif -%}
+
+      {%- if collection.products.size > 0 -%}
+        <div class="rd-grid ptg__grid" data-rd-grid>
+          {%- for product in collection.products -%}
+            {% render 'pt-collection-card', product: product, is_clearance: is_clearance, index: forloop.index, show_set: section.settings.show_set_price, show_compare: section.settings.enable_compare, show_best: section.settings.show_bestseller, show_rebate: section.settings.show_rebate, show_fit: section.settings.show_fitment, v16: true, has_size: rd_has_size %}
+          {%- endfor -%}
+          {%- if rd_total <= 2 and rd_active > 0 and lr_name != '' -%}
+            {%- comment -%} Few results with filters on: one way to widen, naming the filter. No numbers, no "only". {%- endcomment -%}
+            <div class="rd-widen" data-rd-widen>
+              <p class="rd-widen__h">Want more choice?</p>
+              <p class="rd-widen__p">Remove {{ lr_name | escape }} to see every {% if lr_name != lr_sea and lr_sea_adj != '' %}{{ lr_sea_adj }} {% endif %}tire{{ t_in | escape }}.</p>
+              <a class="rd-btnout" href="{{ lr_url | escape }}" rel="nofollow">Remove {{ lr_name | escape }}</a>
             </div>
           {%- endif -%}
+        </div>
 
-        {%- else -%}
-          {% render 'pt-collection-empty' %}
+        {%- if paginate.next and rd_b2b == false -%}
+          <div class="rd-res__more rd-hide-lg" data-rd-more-wrap hidden>
+            <button type="button" class="rd-btnout rd-btnout--block" data-rd-more-page data-next="{{ paginate.next.url | escape }}">Show more results</button>
+            <div class="rd-res__more-count" data-rd-more-count aria-live="polite">Showing {{ rd_to }} of {{ rd_total_fmt }} results</div>
+          </div>
         {%- endif -%}
+
+        {%- if paginate.pages > 1 -%}
+          <nav class="rd-pages" aria-label="Pages" data-rd-pages>
+            {%- if paginate.previous -%}
+              <a href="{{ paginate.previous.url }}" class="rd-pages__step" rel="prev">← Prev</a>
+            {%- else -%}
+              <span class="rd-pages__step is-off" aria-hidden="true">← Prev</span>
+            {%- endif -%}
+            {%- for part in paginate.parts -%}
+              {%- if part.is_link -%}
+                <a href="{{ part.url }}" class="rd-pages__num">{{ part.title }}</a>
+              {%- elsif part.title == paginate.current_page -%}
+                <span class="rd-pages__num is-on" aria-current="page">{{ part.title }}</span>
+              {%- else -%}
+                <span class="rd-pages__gap">{{ part.title }}</span>
+              {%- endif -%}
+            {%- endfor -%}
+            {%- if paginate.next -%}
+              <a href="{{ paginate.next.url }}" class="rd-pages__step rd-pages__step--next" rel="next">Next →</a>
+            {%- else -%}
+              <span class="rd-pages__step is-off" aria-hidden="true">Next →</span>
+            {%- endif -%}
+          </nav>
+        {%- endif -%}
+      {%- elsif rd_active > 0 and lr_name != '' -%}
+        {%- comment -%} Zero results with filters on: name the actual filters, one tap to remove each. {%- endcomment -%}
+        <div class="rd-widen rd-widen--empty" data-ptg-empty>
+          <p class="rd-widen__h">No tires match these filters</p>
+          <p class="rd-widen__p">
+            {%- if lr_sea_adj != '' -%}No {{ lr_sea_adj }} tires{%- else -%}Nothing{%- endif -%}
+            {%- if lr_brand != '' %} from {{ lr_brand | escape }}{% endif -%}
+            {%- if lr_price != '' %} {{ lr_price | replace: 'Up to', 'up to' | replace: 'Under', 'under' | escape }} per tire{% endif -%}
+            {{- t_in | escape }}. Remove a filter to see more.</p>
+          <div class="rd-widen__b">
+            {%- if lr_price != '' -%}<a class="rd-btnout rd-btnout--sm" href="{{ lr_price_url | escape }}" rel="nofollow">Remove {{ lr_price | escape }}</a>{%- endif -%}
+            {%- if lr_brand != '' -%}<a class="rd-btnout rd-btnout--sm" href="{{ lr_brand_url | escape }}" rel="nofollow">Remove {{ lr_brand | escape }}</a>{%- endif -%}
+            {%- if lr_sea != '' -%}<a class="rd-btnout rd-btnout--sm" href="{{ lr_sea_url | escape }}" rel="nofollow">Remove {{ lr_sea | escape }}</a>{%- endif -%}
+            {%- if lr_other != '' and lr_price == '' and lr_brand == '' and lr_sea == '' -%}<a class="rd-btnout rd-btnout--sm" href="{{ lr_other_url | escape }}" rel="nofollow">Remove {{ lr_other | escape }}</a>{%- endif -%}
+          </div>
+        </div>
+      {%- else -%}
+        {% render 'pt-collection-empty', is_wheels: false %}
+      {%- endif -%}
+
+      <div class="rd-res__end">
+        {%- if collection.products.size > 0 -%}
+          <p class="rd-res__foot">Prices are per tire, before GST. Installation is added when you request install.</p>
+        {%- endif -%}
+        <div class="rd-help">
+          <p class="rd-help__p">{% if collection.products.size > 0 %}Not sure which one? Call and we'll help you pick.{% else %}Can't find what you need? Call and we'll check what we can order in.{% endif %}</p>
+          <div class="rd-help__b">
+            <a class="rd-help__a" href="tel:+14034524283">{% render 'pt-icon', name: 'phone', size: 18 %}<span><b>42 Ave SW</b><small>(403) 452-4283</small></span></a>
+            <a class="rd-help__a" href="tel:+18253954024">{% render 'pt-icon', name: 'phone', size: 18 %}<span><b>Edmonton Trail NE</b><small>(825) 395-4024</small></span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% render 'pt-collection-sidebar', kind: rd_kind %}
+  </div>
+</div>
+{%- else -%}
+<div class="rd rd-res" data-rd-results data-kind="{{ rd_kind }}" data-unit="{{ rd_one }}" data-units="{{ rd_many }}">
+
+  {%- comment -%} Phones / tablets: sticky Filters + Sort bar (MobileFilters.dc.html) {%- endcomment -%}
+  <div class="rd-sortbar rd-res__bar">
+    <button type="button" class="rd-bar" data-rd-fopen aria-controls="rd-filters" aria-expanded="false">
+      {%- render 'pt-icon', name: 'filter', size: 19 -%}
+      Filters
+      {%- if rd_active > 0 -%}<span class="rd-bar__badge" aria-label="{{ rd_active }} active">{{ rd_active }}</span>{%- endif -%}
+    </button>
+    <label class="rd-bar">
+      <span class="rd-sr">Sort by</span>
+      <select data-rd-sort aria-label="Sort by">
+        <option value="manual"{% if rd_sort == 'manual' %} selected{% endif %}>Sort: Recommended</option>
+        <option value="price-ascending"{% if rd_sort == 'price-ascending' %} selected{% endif %}>Price: low to high</option>
+        <option value="price-descending"{% if rd_sort == 'price-descending' %} selected{% endif %}>Price: high to low</option>
+        {%- if is_wheels or rd_sort == 'created-descending' -%}<option value="created-descending"{% if rd_sort == 'created-descending' %} selected{% endif %}>Newest</option>{%- endif -%}
+        {%- if rd_sort == 'best-selling' -%}<option value="best-selling" selected>Best selling</option>{%- endif -%}
+      </select>
+      {%- render 'pt-icon', name: 'chevron-down', size: 16, class: 'rd-bar__chev' -%}
+    </label>
+  </div>
+
+  {%- comment -%}
+    Phones / tablets: floating "Filters · N | Sort" pill near the bottom
+    (SizeSheet.dc.html board 2). N = this page's result count. Hidden until
+    assets/pt-rd-results.js shows it; it then hides the sticky bar above,
+    so without JS the bar above still works.
+  {%- endcomment -%}
+  <div class="rd-fab" data-rd-fab hidden>
+    <button type="button" class="rd-fab__f" data-rd-fopen aria-controls="rd-filters" aria-expanded="false" aria-label="Filters{% if rd_active > 0 %}, {{ rd_active }} active{% endif %}. {{ rd_total_fmt }} {% if rd_total == 1 %}{{ rd_one }}{% else %}{{ rd_many }}{% endif %}">
+      {%- render 'pt-icon', name: 'filter', size: 18 -%}
+      <span aria-hidden="true">Filters · {{ rd_total_fmt }}</span>
+      {%- if rd_active > 0 -%}<span class="rd-fab__dot" aria-hidden="true"></span>{%- endif -%}
+    </button>
+    <span class="rd-fab__sep" aria-hidden="true"></span>
+    <label class="rd-fab__s">
+      <span aria-hidden="true">Sort</span>
+      <select data-rd-sort aria-label="Sort by">{{ rd_sort_opts }}</select>
+    </label>
+  </div>
+
+  <div class="rd-wrap rd-res__layout">
+    {% render 'pt-collection-sidebar', kind: rd_kind %}
+
+    <div class="rd-res__main" id="rd-results">
+      {%- if rd_kind == 'tires' -%}
+        {%- comment -%} Saved-car banner filters by TIRE size, so never on a wheel page. {%- endcomment -%}
+        {% render 'pt-collection-garage-banner', hide: false %}
+      {%- endif -%}
+
+      {%- if is_clearance -%}
+        <p class="rd-note rd-res__clear" role="note"><strong>Clearance</strong> — final markdowns, while quantities last.</p>
+      {%- endif -%}
+
+      <div class="rd-toolbar rd-res__toolbar">
+        {%- if rd_kind == 'tires' -%}
+          {%- comment -%}
+            Tire pages (owner 2026-11-15): the page title (H1) and count live
+            here, on the Sort line, instead of a black band above the size
+            search. Phones get "Change size" on this line (it opens the Find
+            your size sheet; desktop has the size bar open above, so the
+            button hides there via html:has(.rd-rh--bar)).
+          {%- endcomment -%}
+          <div class="rd-toolbar__head">
+            <h1 class="rd-toolbar__title" id="rd-rh-title" data-rd-title{% unless rd_has_size %} data-rd-size-fallback{% endunless %}>{{ rd_title | escape }}</h1>
+            <span class="rd-toolbar__count" data-rd-shown>
+              {%- if collection.products.size > 0 -%}
+                {%- comment -%} "results", not "tires": a count of matching listings must never read like stock on hand (owner 2026-11-15). {%- endcomment -%}{%- if paginate.current_page > 1 -%}Showing <strong data-rd-shown-n>{{ rd_from }}–{{ rd_to }}</strong> of {{ rd_total_fmt }} results{%- else -%}<strong data-rd-shown-n>{{ rd_total_fmt }}</strong> {% if rd_total == 1 %}result{% else %}results{% endif %}{%- endif -%}
+              {%- else -%}
+                No {{ rd_many }} match
+              {%- endif -%}
+            </span>
+            <button type="button" class="rd-toolbar__size" aria-expanded="false" aria-controls="rd-search-panel" data-rd-panel-toggle data-pt-size-sheet data-label-closed="{% if rd_has_size %}Change size{% else %}Find your size{% endif %}" data-label-open="Hide size search">{% if rd_has_size %}Change size{% else %}Find your size{% endif %}</button>
+          </div>
+          {%- comment -%}
+            Shop by brand (design board Option B, owner 2026-11-15): logo
+            tiles on this line (desktop) / a swipe row under it (phones), from
+            the Brand facet. Tire pages only; the sidebar Brand group stays.
+          {%- endcomment -%}
+          {%- for f in collection.filters -%}
+            {%- if f.param_name == 'filter.p.vendor' -%}
+              {% render 'pt-rd-brand-row', filter: f, collection: collection %}
+              {%- break -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- else -%}
+        <div class="rd-toolbar__count" data-rd-shown>
+          {%- if collection.products.size > 0 -%}
+            Showing <strong data-rd-shown-n>{% if paginate.current_page > 1 %}{{ rd_from }}–{{ rd_to }}{% else %}{{ collection.products.size }}{% endif %}</strong> of {{ rd_total_fmt }}
+          {%- else -%}
+            No {{ rd_many }} match
+          {%- endif -%}
+        </div>
+        {%- endif -%}
+
+        {%- comment -%} Active-filter chips: one per filter, each a link that removes it. {%- endcomment -%}
+        {%- capture rd_chips -%}
+          {%- comment -%} Tags in the collection URL (wheel Finish / Wheel type fallback): one chip each. {%- endcomment -%}
+          {%- if current_tags.size > 0 -%}
+            {%- liquid
+              assign tc_q = ''
+              for f in collection.filters
+                if f.type == 'price_range'
+                  if f.min_value.value != blank
+                    assign tc_pv = f.min_value.value | divided_by: 100
+                    assign tc_q = tc_q | append: 'filter.v.price.gte=' | append: tc_pv | append: '&'
+                  endif
+                  if f.max_value.value != blank
+                    assign tc_pv = f.max_value.value | divided_by: 100
+                    assign tc_q = tc_q | append: 'filter.v.price.lte=' | append: tc_pv | append: '&'
+                  endif
+                else
+                  for v in f.active_values
+                    assign tc_v = v.value | url_encode
+                    assign tc_q = tc_q | append: v.param_name | append: '=' | append: tc_v | append: '&'
+                  endfor
+                endif
+              endfor
+              if collection.sort_by != blank
+                assign tc_q = tc_q | append: 'sort_by=' | append: collection.sort_by
+              endif
+              assign tc_q = tc_q | remove_last: '&'
+            -%}
+            {%- for ct in current_tags -%}
+              {%- liquid
+                assign ct_h = ct | handleize
+                assign ct_label = ct
+                for t in collection.all_tags
+                  assign t_h = t | handleize
+                  if t_h == ct_h
+                    assign ct_label = t
+                    break
+                  endif
+                endfor
+                if ct_h == 'winter-approved'
+                  assign ct_label = 'Winter approved'
+                endif
+                assign ct_rest = ''
+                for o in current_tags
+                  assign o_h = o | handleize
+                  if o_h != ct_h
+                    if ct_rest != ''
+                      assign ct_rest = ct_rest | append: '+'
+                    endif
+                    assign ct_rest = ct_rest | append: o_h
+                  endif
+                endfor
+                assign ct_href = collection.url
+                if ct_rest != ''
+                  assign ct_href = ct_href | append: '/' | append: ct_rest
+                endif
+                if tc_q != ''
+                  assign ct_href = ct_href | append: '?' | append: tc_q
+                endif
+              -%}
+              <a class="rd-chip rd-chip--link" href="{{ ct_href | escape }}" rel="nofollow" aria-label="Remove filter {{ ct_label | escape }}" data-rd-tagchip="{{ ct_h }}"><span>{{ ct_label | escape }}</span><span class="rd-chip__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 14 %}</span></a>
+            {%- endfor -%}
+          {%- endif -%}
+          {%- for f in collection.filters -%}
+            {%- liquid
+              assign ch_skip = false
+              if f.param_name == 'filter.p.m.custom.tire_width' or f.param_name == 'filter.p.m.custom.tire_profile' or f.param_name == 'filter.p.m.custom.tire_size'
+                assign ch_skip = true
+              endif
+              if f.param_name == 'filter.p.m.custom.rim_diameter'
+                assign ch_skip = true
+              endif
+              case f.param_name
+                when 'filter.p.vendor'
+                  assign ch_name = 'Brand'
+                when 'filter.p.m.custom.seasonality'
+                  assign ch_name = 'Season'
+                when 'filter.p.m.custom.service_type'
+                  assign ch_name = 'Tire type'
+                when 'filter.p.m.custom.stud_option'
+                  assign ch_name = 'Studs'
+                when 'filter.p.m.custom.tire_model'
+                  assign ch_name = 'Model'
+                when 'filter.p.m.custom.bolt_pattern'
+                  assign ch_name = 'Bolt pattern'
+                when 'filter.p.m.custom.rim_width'
+                  assign ch_name = 'Width'
+                when 'filter.p.m.custom.rim_offset'
+                  assign ch_name = 'Offset'
+                when 'filter.p.m.custom.center_bore'
+                  assign ch_name = 'Centre bore'
+                when 'filter.p.product_type'
+                  if is_wheels
+                    assign ch_name = 'Wheel type'
+                  else
+                    assign ch_name = 'Type'
+                  endif
+                else
+                  assign ch_name = f.label
+              endcase
+            -%}
+            {%- unless ch_skip -%}
+              {%- if f.type == 'price_range' -%}
+                {%- if f.min_value.value != blank or f.max_value.value != blank -%}
+                  {%- liquid
+                    assign ch_txt = 'Price: '
+                    if f.min_value.value != blank and f.max_value.value != blank
+                      assign ch_a = f.min_value.value | divided_by: 100 | floor
+                      assign ch_b = f.max_value.value | divided_by: 100 | floor
+                      assign ch_txt = ch_txt | append: '$' | append: ch_a | append: ' – $' | append: ch_b
+                    elsif f.min_value.value != blank
+                      assign ch_a = f.min_value.value | divided_by: 100 | floor
+                      assign ch_txt = ch_txt | append: '$' | append: ch_a | append: ' and up'
+                    else
+                      assign ch_b = f.max_value.value | divided_by: 100 | floor
+                      assign ch_txt = ch_txt | append: 'under $' | append: ch_b
+                    endif
+                  -%}
+                  <a class="rd-chip rd-chip--link" href="{{ f.url_to_remove | escape }}" rel="nofollow" aria-label="Remove filter {{ ch_txt | escape }}"><span>{{ ch_txt }}</span><span class="rd-chip__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 14 %}</span></a>
+                {%- endif -%}
+              {%- elsif f.param_name == 'filter.p.m.custom.bolt_pattern' -%}
+                {%- if f.active_values.size > 0 -%}
+                  {%- capture ch_bolts -%}{% render 'pt-rd-results-bolt', filter: f %}{%- endcapture -%}
+                  {%- assign ch_txt = 'Bolt pattern: ' | append: ch_bolts -%}
+                  <a class="rd-chip rd-chip--link" href="{{ f.url_to_remove | escape }}" rel="nofollow" aria-label="Remove filter {{ ch_txt | escape }}"><span>{{ ch_txt | escape }}</span><span class="rd-chip__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 14 %}</span></a>
+                {%- endif -%}
+              {%- elsif f.param_name == 'filter.p.tag' or f.param_name == 'filter.v.availability' -%}
+                {%- for v in f.active_values -%}
+                  {%- liquid
+                    assign ch_show = true
+                    assign ch_txt = v.label
+                    if f.param_name == 'filter.v.availability'
+                      if v.value == '1'
+                        assign ch_show = false
+                      else
+                        assign ch_txt = 'Sold out only'
+                      endif
+                    elsif v.value == 'Prince Stock'
+                      assign ch_txt = 'Stocked at our shops'
+                    elsif v.value == 'Winter Approved'
+                      assign ch_txt = 'Winter approved'
+                    endif
+                  -%}
+                  {%- if ch_show -%}
+                    <a class="rd-chip rd-chip--link" href="{{ v.url_to_remove | escape }}" rel="nofollow" aria-label="Remove filter {{ ch_txt | escape }}"><span>{{ ch_txt | escape }}</span><span class="rd-chip__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 14 %}</span></a>
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- elsif f.active_values.size > 0 -%}
+                {%- liquid
+                  assign ch_vals = ''
+                  assign ch_seen = ','
+                  assign ch_n = 0
+                  assign ch_more = 0
+                  for v in f.active_values
+                    assign ch_l = v.label
+                    case v.value
+                      when 'All-Weather'
+                        assign ch_l = 'All-weather'
+                      when 'All-Season'
+                        assign ch_l = 'All-season'
+                      when 'Non-Studdable'
+                        assign ch_l = 'No studs'
+                      when 'Alloy Rims'
+                        assign ch_l = 'Alloy'
+                      when 'Steel Rims'
+                        assign ch_l = 'Steel'
+                      when 'P'
+                        assign ch_l = 'Passenger'
+                      when 'LT'
+                        assign ch_l = 'Light truck'
+                      when 'ST'
+                        assign ch_l = 'Trailer'
+                    endcase
+                    if f.param_name == 'filter.p.m.custom.rim_width'
+                      assign ch_wp = ch_l | split: '.'
+                      if ch_wp[1] == '0'
+                        assign ch_l = ch_wp[0]
+                      endif
+                      assign ch_l = ch_l | append: '″'
+                    endif
+                    if f.param_name == 'filter.p.m.custom.center_bore'
+                      assign ch_l = ch_l | append: ' mm'
+                    endif
+                    assign ch_tok = ',' | append: ch_l | append: ','
+                    if ch_seen contains ch_tok
+                      continue
+                    endif
+                    assign ch_seen = ch_seen | append: ch_l | append: ','
+                    if ch_n < 3
+                      if ch_vals != ''
+                        assign ch_vals = ch_vals | append: ', '
+                      endif
+                      assign ch_vals = ch_vals | append: ch_l
+                    else
+                      assign ch_more = ch_more | plus: 1
+                    endif
+                    assign ch_n = ch_n | plus: 1
+                  endfor
+                  assign ch_txt = ch_name | append: ': ' | append: ch_vals
+                  if ch_more > 0
+                    assign ch_txt = ch_txt | append: ' +' | append: ch_more
+                  endif
+                -%}
+                <a class="rd-chip rd-chip--link" href="{{ f.url_to_remove | escape }}" rel="nofollow" aria-label="Remove filter {{ ch_txt | escape }}"><span>{{ ch_txt | escape }}</span><span class="rd-chip__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 14 %}</span></a>
+              {%- endif -%}
+            {%- endunless -%}
+          {%- endfor -%}
+        {%- endcapture -%}
+        {%- if rd_chips != blank -%}
+          <div class="rd-chips rd-res__chips" aria-label="Active filters">{{ rd_chips }}</div>
+        {%- endif -%}
+
+        <div class="rd-toolbar__sort rd-res__sort">
+          <label for="rd-sort">Sort by</label>
+          <select id="rd-sort" class="rd-select" data-rd-sort>
+            <option value="manual"{% if rd_sort == 'manual' %} selected{% endif %}>Recommended</option>
+            <option value="price-ascending"{% if rd_sort == 'price-ascending' %} selected{% endif %}>Price: low to high</option>
+            <option value="price-descending"{% if rd_sort == 'price-descending' %} selected{% endif %}>Price: high to low</option>
+            {%- if is_wheels or rd_sort == 'created-descending' -%}<option value="created-descending"{% if rd_sort == 'created-descending' %} selected{% endif %}>Newest</option>{%- endif -%}
+            {%- comment -%} Best selling is not in the mockups: listed only when a link already uses it, so the box shows the real order. {%- endcomment -%}
+            {%- if rd_sort == 'best-selling' -%}<option value="best-selling" selected>Best selling</option>{%- endif -%}
+          </select>
+        </div>
       </div>
 
+      {%- if rd_kind == 'tires' and rd_b2b == false -%}
+        {%- comment -%}
+          Staggered sets (front + rear sizes, ?rear=275%2F35R18): filled by
+          assets/pt-rd-results.js ("pair mode"), which then hides the grid,
+          the phone "Show more" and the pages below. Empty and hidden without
+          JS, so the page is the normal front-size grid. Not a .ptg__grid on
+          purpose (pt-collection-stock reorders those).
+        {%- endcomment -%}
+        <div class="rd-pair" data-rd-pair hidden></div>
+      {%- endif -%}
+
+      {%- if collection.products.size > 0 -%}
+        {%- comment -%}
+          Every product on the page is rendered, sold-out ones included (greyed,
+          "Sold out"); pt-collection-stock moves them to the end of .ptg__grid.
+          Hiding them made "41 products" show as 1 card (see git history).
+        {%- endcomment -%}
+        <div class="rd-grid ptg__grid" data-rd-grid>
+          {%- for product in collection.products -%}
+            {%- if rd_kind == 'tires' -%}
+              {% render 'pt-collection-card', product: product, is_clearance: is_clearance, index: forloop.index, show_set: section.settings.show_set_price, show_compare: section.settings.enable_compare, show_best: section.settings.show_bestseller, show_rebate: section.settings.show_rebate, show_fit: section.settings.show_fitment, v16: true, has_size: rd_has_size %}
+            {%- else -%}
+              {% render 'pt-collection-card', product: product, is_clearance: is_clearance, index: forloop.index, show_set: section.settings.show_set_price, show_compare: section.settings.enable_compare, show_best: section.settings.show_bestseller, show_rebate: section.settings.show_rebate, show_fit: section.settings.show_fitment %}
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+
+        {%- if paginate.next and rd_b2b == false -%}
+          <div class="rd-res__more rd-hide-lg" data-rd-more-wrap hidden>
+            <div class="rd-res__more-count" data-rd-more-count aria-live="polite">Showing {{ rd_to }} of {{ rd_total_fmt }}</div>
+            <button type="button" class="rd-btn rd-btn--line rd-btn--block" data-rd-more-page data-next="{{ paginate.next.url | escape }}">Show more {{ rd_many }}</button>
+          </div>
+        {%- endif -%}
+
+        {%- if paginate.pages > 1 -%}
+          <nav class="rd-pages" aria-label="Pages" data-rd-pages>
+            {%- if paginate.previous -%}
+              <a href="{{ paginate.previous.url }}" class="rd-pages__step" rel="prev">← Prev</a>
+            {%- else -%}
+              <span class="rd-pages__step is-off" aria-hidden="true">← Prev</span>
+            {%- endif -%}
+            {%- for part in paginate.parts -%}
+              {%- if part.is_link -%}
+                <a href="{{ part.url }}" class="rd-pages__num">{{ part.title }}</a>
+              {%- elsif part.title == paginate.current_page -%}
+                <span class="rd-pages__num is-on" aria-current="page">{{ part.title }}</span>
+              {%- else -%}
+                <span class="rd-pages__gap">{{ part.title }}</span>
+              {%- endif -%}
+            {%- endfor -%}
+            {%- if paginate.next -%}
+              <a href="{{ paginate.next.url }}" class="rd-pages__step rd-pages__step--next" rel="next">Next →</a>
+            {%- else -%}
+              <span class="rd-pages__step is-off" aria-hidden="true">Next →</span>
+            {%- endif -%}
+          </nav>
+        {%- endif -%}
+      {%- else -%}
+        {% render 'pt-collection-empty', is_wheels: is_wheels %}
+      {%- endif -%}
+
+      <p class="rd-res__foot">
+        {%- if is_wheels -%}
+          Prices are per wheel, before GST. Mount and balance is ${{ rd_wheel_install }} a wheel, added when you request installation.
+        {%- elsif rd_kind == 'tires' -%}
+          Prices are per tire, before GST. Installation is added when you book.
+        {%- else -%}
+          Prices are before GST.
+        {%- endif -%}
+      </p>
+
+      {%- if is_wheels -%}
+        <div class="rd-res__box">
+          <div class="rd-res__box-text">
+            <div class="rd-res__box-h">Wheels and tires together?</div>
+            <div class="rd-res__box-sub">Build a package: wheels, tires, sensors and installation, priced as one set.</div>
+          </div>
+          <a class="rd-btn rd-btn--line" href="/pages/wheel-package">Build a package</a>
+        </div>
+      {%- endif -%}
+
+      <div class="rd-res__box rd-res__box--help">
+        <div class="rd-res__box-text">
+          {%- if is_wheels -%}
+            <div class="rd-res__box-h"><span class="rd-hide-sm">Don't see the wheel you need?</span><span class="rd-hide-lg">Not sure it fits?</span></div>
+            <div class="rd-res__box-sub rd-hide-sm">Call either shop. We can order most sizes and bolt patterns.</div>
+          {%- else -%}
+            <div class="rd-res__box-h">Not sure which one?</div>
+            <div class="rd-res__box-sub rd-hide-sm">Call either shop and we'll talk it through with you.</div>
+          {%- endif -%}
+        </div>
+        <div class="rd-res__calls">
+          {%- comment -%} Shop names + one phone format: "Call 42 Ave SW · (403) 452-4283" (the dot is read out, the label sits above the number). {%- endcomment -%}
+          <a class="rd-res__call" style="text-align:center" href="tel:+14034524283"><span class="rd-res__call-k">Call 42 Ave SW</span><span class="rd-sr"> · </span><span class="rd-res__call-n">(403) 452-4283</span></a>
+          <a class="rd-res__call" style="text-align:center" href="tel:+18253954024"><span class="rd-res__call-k">Call Edmonton Trail NE</span><span class="rd-sr"> · </span><span class="rd-res__call-n">(825) 395-4024</span></a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
+{%- endif -%}
 
 {%- if section.settings.enable_compare -%}
   {% render 'pt-collection-compare' %}
 {%- endif -%}
 
-{%- endpaginate -%}
-
-{% stylesheet %}
-  .ptg {
-    background: #fff;
-    padding: 0 0 5rem;
-  }
-
-  .ptg__container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 12rem;
-  }
-
-  .ptg__layout {
-    display: grid;
-    grid-template-columns: 24rem 1fr;
-    gap: 3rem;
-    align-items: start;
-  }
-
-  /* ══ Sidebar ══ */
-  .ptg__sidebar {
-    position: sticky;
-    top: 8rem;
-    max-height: calc(100vh - 9rem);
-    overflow-y: auto;
-    padding: 2rem 0.6rem 2rem 0;
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 #f3f4f6;
-    scroll-behavior: smooth;
-  }
-
-  .ptg__sidebar::-webkit-scrollbar { width: 8px; }
-  .ptg__sidebar::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 4px; }
-  .ptg__sidebar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; border: 2px solid #f3f4f6; }
-  .ptg__sidebar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-  /* ── Grid transition ── */
-  .ptg__grid {
-    animation: ptg-fade-in 0.3s ease-out;
-  }
-
-  @keyframes ptg-fade-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .ptg__size-display {
-    margin-bottom: 1.6rem;
-    padding-bottom: 1.6rem;
-    border-bottom: 1px solid #f0f0f0;
-  }
-
-  .ptg__size-display-label {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.05rem;
-    font-weight: 300;
-    color: #9ca3af;
-    display: block;
-    margin-bottom: 0.3rem;
-  }
-
-  .ptg__size-display-row {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-  }
-
-  .ptg__size-display-input {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: #111;
-    letter-spacing: 0.02em;
-    border: none;
-    background: transparent;
-    outline: none;
-    padding: 0;
-    width: auto;
-    max-width: 16rem;
-    cursor: text;
-    border-bottom: 1.5px dashed transparent;
-    transition: border-color 0.2s;
-  }
-
-  .ptg__size-display-input:hover {
-    border-bottom-color: #e5e7eb;
-  }
-
-  .ptg__size-display-input:focus {
-    border-bottom-color: #F5820B;
-  }
-
-  .ptg__size-display-input::placeholder {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 300;
-    color: #d1d5db;
-    letter-spacing: 0;
-  }
-
-  .ptg__size-display-clear {
-    display: flex;
-    align-items: center;
-    color: #d1d5db;
-    transition: color 0.15s;
-  }
-
-  .ptg__size-display-clear:hover {
-    color: #dc2626;
-  }
-
-  .ptg__sidebar-head {
-    margin-bottom: 1.2rem;
-  }
-
-  .ptg__sidebar-title {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #111;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .ptg__filter {
-    margin-bottom: 0.4rem;
-  }
-
-  .ptg__filter-label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.2rem 0;
-    cursor: pointer;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.3rem;
-    font-weight: 500;
-    color: #111;
-    list-style: none;
-  }
-
-  .ptg__filter-label::-webkit-details-marker { display: none; }
-
-  .ptg__filter-label svg {
-    color: #9ca3af;
-    transition: transform 0.2s;
-  }
-
-  .ptg__filter[open] .ptg__filter-label svg {
-    transform: rotate(180deg);
-  }
-
-  .ptg__filter-options {
-    padding: 0 0 1.2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-  }
-
-  .ptg__filter--open {
-    padding-bottom: 1rem;
-    margin-bottom: 0.4rem;
-  }
-
-  .ptg__filter-label--static {
-    display: block;
-    padding: 1.2rem 0 0.8rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.3rem;
-    font-weight: 500;
-    color: #111;
-  }
-
-  /* ── Price Slider ── */
-  .ptg__price-slider {
-    padding: 0 0.2rem;
-  }
-
-  .ptg__price-values {
-    display: flex;
-    justify-content: space-between;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 500;
-    color: #374151;
-    margin-bottom: 0.6rem;
-  }
-
-  .ptg__price-track {
-    position: relative;
-    height: 28px;
-    display: flex;
-    align-items: center;
-  }
-
-  .ptg__price-range {
-    position: absolute;
-    width: 100%;
-    height: 4px;
-    appearance: none;
-    background: transparent;
-    pointer-events: none;
-    outline: none;
-  }
-
-  .ptg__price-range::-webkit-slider-runnable-track {
-    height: 4px;
-    background: #e5e7eb;
-    border-radius: 2px;
-  }
-
-  .ptg__price-range::-webkit-slider-runnable-track {
-    background: linear-gradient(to right, #F5820B, #F5820B) !important;
-  }
-
-  .ptg__price-range::-webkit-slider-thumb {
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    background: #F5820B;
-    border-radius: 50%;
-    border: 3px solid #fff;
-    box-shadow: 0 1px 6px rgba(245,130,11,0.3);
-    cursor: pointer;
-    pointer-events: all;
-    margin-top: -7px;
-  }
-
-  .ptg__price-range::-moz-range-track {
-    background: #F5820B !important;
-  }
-
-  .ptg__price-range::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    background: #F5820B;
-    border-radius: 50%;
-    border: 3px solid #fff;
-    box-shadow: 0 1px 6px rgba(245,130,11,0.3);
-    cursor: pointer;
-    pointer-events: all;
-  }
-
-  /* ── Scrollable inner lists (brand, model) ── */
-  .ptg__filter-options--scroll {
-    max-height: 18rem;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 #f3f4f6;
-  }
-
-  .ptg__filter-options--scroll::-webkit-scrollbar { width: 7px; }
-  .ptg__filter-options--scroll::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 4px; }
-  .ptg__filter-options--scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; border: 1px solid #f3f4f6; }
-  .ptg__filter-options--scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-  /* ── Season Icons ── */
-  .ptg__season-icons {
-    display: flex;
-    gap: 0.6rem;
-    padding: 0.4rem 0;
-  }
-
-  .ptg__season-icon {
-    position: relative;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--sc) 10%, transparent);
-    color: var(--sc);
-    text-decoration: none;
-    transition: all 0.2s;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .ptg__season-icon:hover {
-    background: var(--sc);
-    color: #fff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--sc) 30%, transparent);
-  }
-
-  .ptg__season-tooltip {
-    position: absolute;
-    bottom: calc(100% + 0.5rem);
-    left: 50%;
-    transform: translateX(-50%);
-    background: #111;
-    color: #fff;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1rem;
-    font-weight: 400;
-    padding: 0.3rem 0.7rem;
-    border-radius: 3px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s;
-  }
-
-  .ptg__season-icon:hover .ptg__season-tooltip {
-    opacity: 1;
-  }
-
-  .ptg__filter-link {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.6rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 300;
-    color: #9ca3af;
-    text-decoration: none;
-    border: none;
-    background: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: color 0.2s, background 0.2s;
-    text-align: left;
-    width: 100%;
-  }
-
-  .ptg__filter-link:hover {
-    color: #111;
-    background: #fafafa;
-  }
-
-  .ptg__filter-link--active {
-    color: #111;
-    font-weight: 500;
-  }
-
-  /* ── Checkmark ── */
-  .ptg__filter-check {
-    width: 16px;
-    height: 16px;
-    border: 1.5px solid #d1d5db;
-    border-radius: 3px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-  .ptg__season-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    display: inline-block;
-    margin-right: 0.1rem;
-  }
-  .ptg__filter-search {
-    width: 100%;
-    padding: 0.45rem 0.65rem;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 0.88rem;
-    margin-bottom: 0.5rem;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  .ptg__filter-search:focus { border-color: #F5820B; }
-
-  .ptg__filter-link--active .ptg__filter-check {
-    background: #F5820B;
-    border-color: #F5820B;
-  }
-
-  .ptg__filter-link--active .ptg__filter-check::after {
-    content: '';
-    width: 4px;
-    height: 8px;
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-    margin-top: -2px;
-  }
-
-  .ptg__filter-symbol {
-    font-size: 1.05rem;
-    font-weight: 500;
-    color: #d1d5db;
-  }
-
-  .ptg__filter-link--active .ptg__filter-symbol {
-    color: #F5820B;
-  }
-
-  /* ── Season active frame ── */
-  .ptg__season-icon--active {
-    outline: 2px solid #F5820B;
-    outline-offset: 2px;
-    border-radius: 8px;
-    background: var(--sc) !important;
-    color: #fff !important;
-  }
-
-  .ptg__filter-cnt {
-    color: #d1d5db;
-    font-size: 1.1rem;
-  }
-
-  .ptg__filter-input {
-    width: 100%;
-    padding: 0.6rem 0.8rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
-    outline: none;
-    background: #f7f7f7;
-    margin-bottom: 0.6rem;
-  }
-
-  .ptg__filter-input:focus {
-    border-color: #dc2626;
-    background: #fff;
-  }
-
-  .ptg__filter-sizes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-  }
-
-  .ptg__filter-sizes .ptg__filter-link {
-    padding: 0.4rem 0.8rem;
-    background: #f7f7f7;
-    border-radius: 4px;
-    font-size: 1.15rem;
-    font-weight: 400;
-    color: #374151;
-  }
-
-  .ptg__filter-sizes .ptg__filter-link:hover {
-    background: #fef2f2;
-    color: #dc2626;
-  }
-
-  .ptg__filter-options--wrap {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .ptg__filter-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.35rem 0.7rem;
-    background: #f7f7f7;
-    border-radius: 4px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 400;
-    color: #374151;
-    text-decoration: none;
-    transition: all 0.15s;
-    min-width: 3.6rem;
-    text-align: center;
-  }
-
-  .ptg__filter-pill:hover {
-    background: #fef2f2;
-    color: #dc2626;
-  }
-
-  /* ══ Main ══ */
-  .ptg__main {
-    min-width: 0;
-  }
-
-  /* ── Active Filters ── */
-  .ptg__active-filters {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-    padding: 0 0 1rem;
-  }
-
-  .ptg__active-filters[hidden] { display: none; }
-
-  .ptg__active-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.3rem 0.7rem;
-    background: none;
-    color: #dc2626;
-    border: none;
-    border-radius: 99px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.05rem;
-    font-weight: 400;
-    cursor: pointer;
-    transition: opacity 0.15s;
-    background: #fef2f2;
-  }
-
-  .ptg__active-tag:hover {
-    opacity: 0.7;
-  }
-
-  .ptg__active-clear {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.05rem;
-    font-weight: 300;
-    color: #9ca3af;
-    border: none;
-    background: none;
-    cursor: pointer;
-    margin-left: 0.2rem;
-  }
-
-  .ptg__active-clear:hover { color: #dc2626; }
-
-  /* ══ Trust Bar ══ */
-  .ptg__trust-bar {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    gap: 0.8rem;
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    border-radius: 6px;
-    padding: 0.6rem 1.2rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-  }
-  .ptg__trust-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: #15803d;
-    white-space: nowrap;
-  }
-  .ptg__trust-sep {
-    color: #bbf7d0;
-    font-weight: 300;
-  }
-
-  .ptg__toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1.2rem;
-    padding: 1rem 0;
-    margin-bottom: 1.6rem;
-  }
-
-  .ptg__context {
-    margin: 0.6rem 0 0.4rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 300;
-    color: #6b7280;
-  }
-  .ptg__context[hidden] { display: none; }
-  .ptg__context strong { color: #dc2626; font-weight: 600; }
-  [data-ptg-context-car] { color: #111; font-weight: 500; }
-  [data-ptg-context-car]:not(:empty)::before { content: ' — '; color: #9ca3af; font-weight: 300; }
-
-  .ptg__search {
-    flex: 1;
-    position: relative;
-    display: flex;
-    align-items: center;
-    max-width: 36rem;
-  }
-
-  .ptg__search-icon {
-    position: absolute;
-    left: 1rem;
-    color: #F5820B;
-    pointer-events: none;
-    z-index: 1;
-  }
-
-  .ptg__search-input {
-    width: 100%;
-    padding: 0.6rem 1rem 0.6rem 2.8rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 300;
-    color: #111;
-    background: #fafafa;
-    outline: none;
-    transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
-    caret-color: #F5820B;
-  }
-
-  .ptg__search-input::placeholder {
-    color: #9ca3af;
-    transition: color 0.2s;
-  }
-
-  .ptg__search-input:focus {
-    border-color: #F5820B;
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(245, 130, 11, 0.1), 0 2px 8px rgba(245, 130, 11, 0.08);
-  }
-
-  .ptg__search-badge {
-    position: absolute;
-    right: 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 300;
-    color: #c0c0c0;
-    pointer-events: none;
-  }
-
-  .ptg__search-dot {
-    width: 5px;
-    height: 5px;
-    background: #F5820B;
-    border-radius: 50%;
-    box-shadow: 0 0 4px rgba(245,130,11,0.4);
-  }
-
-  .ptg__search-input:focus ~ .ptg__search-badge {
-    opacity: 0;
-  }
-
-  .ptg__search-results {
-    position: absolute;
-    top: calc(100% + 0.4rem);
-    left: 0;
-    right: 0;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-    z-index: 50;
-    max-height: 28rem;
-    overflow-y: auto;
-  }
-
-  .ptg__search-results[hidden] { display: none; }
-
-  .ptg__search-loading {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 1rem 1.2rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 300;
-    color: #9ca3af;
-  }
-
-  .ptg__search-loading[hidden] { display: none; }
-
-  .ptg__search-spinner {
-    width: 14px;
-    height: 14px;
-    border: 2px solid #e5e7eb;
-    border-top-color: #F5820B;
-    border-radius: 50%;
-    animation: ptg-spin 0.6s linear infinite;
-  }
-
-  @keyframes ptg-spin { to { transform: rotate(360deg); } }
-
-  .ptg__search-list {
-    list-style: none;
-    margin: 0;
-    padding: 0.4rem;
-  }
-
-  .ptg__search-item {
-    padding: 0.8rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
-    color: #374151;
-    transition: background 0.15s;
-  }
-
-  .ptg__search-item:hover {
-    background: #f7f7f7;
-  }
-
-  .ptg__search-item-icon {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    background: #f7f7f7;
-    color: #9ca3af;
-    flex-shrink: 0;
-  }
-
-  .ptg__search-item-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .ptg__search-item-title {
-    font-weight: 500;
-    color: #111;
-  }
-
-  .ptg__search-item-meta {
-    font-size: 1.05rem;
-    font-weight: 300;
-    color: #9ca3af;
-  }
-
-  .ptg__search-item-tag {
-    font-size: 0.95rem;
-    padding: 0.15rem 0.5rem;
-    border-radius: 3px;
-    background: #f0f0f0;
-    color: #6b7280;
-    flex-shrink: 0;
-  }
-
-  .ptg__sort { display: flex; align-items: center; gap: 0.6rem; }
-
-  .ptg__sort-label {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
-    color: #6b7280;
-  }
-
-  .ptg__sort-wrap { position: relative; }
-
-  .ptg__sort-select {
-    appearance: none;
-    background: #f7f7f7;
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    padding: 0.5rem 2.8rem 0.5rem 1rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.15rem;
-    color: #374151;
-    cursor: pointer;
-    outline: none;
-  }
-
-  .ptg__sort-select:focus { border-color: #dc2626; }
-
-  .ptg__sort-icon { position: absolute; right: 0.8rem; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
-
-  /* ══ Grid ══ */
-  .ptg__grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.6rem;
-  }
-
-  .ptg__card {
-    background: #fff;
-    border: 1px solid #f0f0f0;
-    border-radius: 8px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    text-decoration: none;
-    color: inherit;
-    max-width: 100%;
-    cursor: pointer;
-    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-  }
-  .ptg__card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
-    border-color: #e0e0e0;
-  }
-  .ptg__card:focus-visible {
-    outline: 2px solid #DA291C;
-    outline-offset: 2px;
-  }
-
-  .ptg__card-img {
-    aspect-ratio: var(--ptg-img-ratio, 1);
-    background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    padding: calc(var(--ptg-img-pad, 1.2rem) + 1.6rem) var(--ptg-img-pad, 1.2rem) 0.8rem;
-    position: relative;
-  }
-
-  .ptg__img {
-    width: 85%;
-    height: 85%;
-    object-fit: contain;
-    max-height: 180px;
-    margin: auto;
-  }
-
-  /* Branded placeholder — products with no photo */
-  .ptg__card-ph {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.45rem;
-    width: 100%;
-    height: 100%;
-    padding: 0.75rem;
-    background: linear-gradient(145deg, #f8f9fa 0%, #eceef0 100%);
-  }
-  .ptg__card-ph-tire {
-    width: 44%;
-    max-width: 88px;
-    color: #c4cad2;
-    flex-shrink: 0;
-  }
-  .ptg__card-ph-brand {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 0.95rem;
-    line-height: 1;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: #8b94a0;
-    text-align: center;
-  }
-  .ptg__card-ph-size {
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.72rem;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    color: #aab2bd;
-    text-align: center;
-  }
-
-  .ptg__card--unavailable { opacity: 0.55; }
-  .ptg__card--unavailable .ptg__img { filter: grayscale(80%); }
-  .ptg__card-oos {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(17, 24, 39, 0.85);
-    color: #fff;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 0.3rem 0.7rem;
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    pointer-events: none;
-    z-index: 2;
-  }
-  .ptg__card-sale {
-    position: absolute;
-    top: 0.6rem;
-    left: 0.6rem;
-    background: #dc2626;
-    color: #fff;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 600;
-    padding: 0.15rem 0.5rem;
-    border-radius: 3px;
-    text-transform: uppercase;
-  }
-  .ptg__card-lowstock {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    margin-top: 0.35rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #dc2626;
-    line-height: 1.2;
-  }
-  .ptg__card-lowstock svg { flex-shrink: 0; }
-
-  .ptg__card-img-bottom {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-  }
-
-  .ptg__card-stars {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #374151;
-    background: rgba(255,255,255,0.9);
-    backdrop-filter: blur(4px);
-    padding: 0.2rem 0.5rem;
-    border-radius: 3px;
-  }
-
-  .ptg__card-stars--na {
-    color: #9ca3af;
-    font-weight: 400;
-    font-size: 0.9rem;
-  }
-
-  .ptg__card-season {
-    color: #fff;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 500;
-    padding: 0.2rem 0.6rem;
-    border-radius: 3px;
-    letter-spacing: 0.02em;
-  }
-
-  .ptg__card-body {
-    padding: 1.2rem 1.4rem 1.4rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    flex: 1;
-  }
-
-  .ptg__card-size-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.4rem;
-  }
-
-  .ptg__card-vendor {
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #8b1a1a;
-    flex-shrink: 0;
-  }
-
-  .ptg__card-vendor--michelin { color: #00205b; }
-  .ptg__card-vendor--bridgestone { color: #cc0000; }
-  .ptg__card-vendor--continental { color: #f0a000; }
-  .ptg__card-vendor--goodyear { color: #003da5; }
-  .ptg__card-vendor--toyo { color: #e60012; }
-  .ptg__card-vendor--yokohama { color: #e60012; }
-  .ptg__card-vendor--cooper { color: #003366; }
-  .ptg__card-vendor--kumho { color: #d41920; }
-  .ptg__card-vendor--bfgoodrich { color: #cc0000; }
-  .ptg__card-vendor--firestone { color: #c41230; }
-  .ptg__card-vendor--general { color: #333333; }
-  .ptg__card-vendor--pirelli { color: #ffcc00; }
-  .ptg__card-vendor--radar { color: #0066cc; }
-  .ptg__card-vendor--falken { color: #005ca9; }
-
-  .ptg__card-title {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #111;
-    margin: 0;
-    line-height: 1.3;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-
-  .ptg__card-size {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #111;
-    letter-spacing: 0.02em;
-    line-height: 1.2;
-  }
-
-  .ptg__card-type-tag {
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 300;
-    color: #9ca3af;
-  }
-
-  .ptg__card-review-count { font-weight: 300; font-size: 0.8rem; color: #9ca3af; }
-
-  .ptg__card-badge-best {
-    position: absolute;
-    bottom: 0.6rem;
-    left: 0.6rem;
-    background: #F5820B;
-    color: #fff;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 0.15rem 0.5rem;
-    border-radius: 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-  }
-
-  .ptg__card-fitment {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #16a34a;
-  }
-  .ptg__card-fitment[hidden] { display: none; }
-
-  .ptg__card-warranty {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #16a34a;
-    background: #ecfdf5;
-    padding: 0.15rem 0.5rem;
-    border-radius: 3px;
-    width: fit-content;
-  }
-
-  .ptg__card-specs {
-    display: flex;
-    gap: 0.3rem;
-    flex-wrap: wrap;
-  }
-  .ptg__card-spec {
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 400;
-    color: #6b7280;
-    background: #f7f7f7;
-    padding: 0.1rem 0.4rem;
-    border-radius: 3px;
-  }
-
-  .ptg__card-rebate {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #F5820B;
-    background: rgba(245, 130, 11, 0.08);
-    padding: 0.15rem 0.5rem;
-    border-radius: 3px;
-    width: fit-content;
-  }
-
-  .ptg__card-price {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #111;
-    margin-top: auto;
-    padding-top: 0.8rem;
-    display: flex;
-    align-items: baseline;
-    gap: 0.3rem;
-  }
-
-  .ptg__price-sale { color: #dc2626; }
-  .ptg__price-was { font-size: 1.05rem; font-weight: 300; color: #9ca3af; text-decoration: line-through; }
-  .ptg__price-per { font-size: 1rem; font-weight: 300; color: #9ca3af; }
-  .ptg__price-set { font-size: 0.9rem; font-weight: 400; color: #6b7280; margin-left: auto; }
-
-  /* ── Clearance collection treatment (collection.handle == 'clearance') ── */
-  .ptg__card-clearance {
-    position: absolute;
-    top: 0.6rem;
-    left: 0.6rem;
-    background: #b91c1c;
-    color: #fff;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 700;
-    padding: 0.15rem 0.55rem;
-    border-radius: 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    box-shadow: 0 1px 4px rgba(185, 28, 28, 0.4);
-    z-index: 2;
-  }
-  .ptg__price-off {
-    display: inline-block;
-    margin-top: 0.35rem;
-    background: #fee2e2;
-    color: #b91c1c;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 700;
-    padding: 0.1rem 0.45rem;
-    border-radius: 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-  .ptg__clearance-banner {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    background: linear-gradient(90deg, #dc2626, #b91c1c);
-    color: #fff;
-    font-family: 'Outfit', sans-serif;
-    padding: 0.75rem 1.1rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 10px rgba(220, 38, 38, 0.25);
-  }
-  .ptg__clearance-banner-icon { flex-shrink: 0; }
-  .ptg__clearance-banner-text { font-size: 0.95rem; font-weight: 400; line-height: 1.3; }
-  .ptg__clearance-banner-text strong { font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
-
-  /* Phase 5A · trade-price badge on collection cards. Hidden by default; shown
-     when body.pt-trade-visible (header "Show cost" toggle is on). Compact so
-     it doesn't disrupt the grid rhythm. */
-  .ptg__card-trade {
-    display: none;
-    align-items: baseline;
-    gap: 0.4rem;
-    margin-top: 0.4rem;
-    padding: 0.35rem 0.55rem;
-    background: #fef3c7;
-    border-left: 3px solid #DC2626;
-    border-radius: 4px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.78rem;
-    line-height: 1.2;
-    color: #374151;
-  }
-  body.pt-trade-visible .ptg__card-trade { display: flex; }
-  .ptg__card-trade-label { font-weight: 500; }
-  .ptg__card-trade-amount { color: #DC2626; font-weight: 700; font-size: 0.9rem; }
-  .ptg__card-trade-pct { color: #6b7280; margin-left: auto; }
-
-  .ptg__card-actions {
-    display: flex;
-    gap: 0.4rem;
-    margin-top: 0.4rem;
-  }
-
-  .ptg__card-book {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.45rem 0.5rem;
-    background: #f3f4f6;
-    color: #dc2626;
-    border: 1.5px solid #dc2626;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 600;
-    border-radius: 8px;
-    transition: all 0.2s;
-    white-space: nowrap;
-    cursor: pointer;
-  }
-
-  .ptg__card-book:hover {
-    background: #fef2f2;
-    color: #b91c1c;
-    border-color: #b91c1c;
-  }
-
-  .ptg__card-cart {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f3f4f6;
-    color: #374151;
-    border: none;
-    border-radius: 8px;
-    flex-shrink: 0;
-    transition: all 0.2s;
-    cursor: pointer;
-  }
-
-  .ptg__card-cart:hover:not(:disabled) {
-    background: #e5e7eb;
-    color: #111;
-  }
-
-  /* Navigation progress bar — a thin bar pinned to the top of the viewport
-     that animates while a filter/sort/pagination click is in flight. Not a
-     full skeleton (the SSR grid renders with content already in the HTML);
-     just an "in-flight" signal so the customer's tap doesn't feel dropped
-     on slow networks. Auto-cleared when the reload paints. */
-  .ptg__nav-progress {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, transparent 0%, #dc2626 40%, #F5820B 70%, transparent 100%);
-    background-size: 40% 100%;
-    background-repeat: no-repeat;
-    background-position: -40% 0;
-    z-index: 9999;
-    animation: ptg-nav-progress 1.2s cubic-bezier(.4,0,.6,1) infinite;
-    pointer-events: none;
-  }
-  @keyframes ptg-nav-progress {
-    0%   { background-position: -40% 0; }
-    100% { background-position: 140% 0; }
-  }
-
-  /* Disabled state kept low-opacity ONLY when NOT showing a status flash —
-     during --success we want the button to look active (green pill), not dimmed.
-     Same for --error (red pill). */
-  .ptg__card-cart:disabled:not(.ptg__card-cart--success):not(.ptg__card-cart--error) { opacity: .5; cursor: not-allowed; }
-  .ptg__card-cart--success { background: #dcfce7 !important; color: #16a34a !important; }
-  .ptg__card-cart--error { background: #fee2e2 !important; color: #dc2626 !important; }
-  .ptg__card-cart--success .ptg__cart-icon,
-  .ptg__card-cart--error .ptg__cart-icon,
-  .ptg__card-cart--loading .ptg__cart-icon { display: none !important; }
-  .ptg__card-cart--success .ptg__cart-check { display: inline-block !important; }
-  .ptg__card-cart--error::before { content: '!'; font-weight: 700; font-size: 1.4rem; }
-  .ptg__card-cart--loading .ptg__cart-spin { display: inline-block !important; animation: ptg-cart-spin .7s linear infinite; }
-  @keyframes ptg-cart-spin { to { transform: rotate(360deg); } }
-
-  /* ══ Compare ══ */
-  .ptg__card-compare {
-    position: absolute;
-    bottom: 0.5rem;
-    right: 0.5rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    background: rgba(255,255,255,0.95);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    padding: 0.25rem 0.55rem;
-    border: 1px solid rgba(220,38,38,0.2);
-    border-radius: 999px;
-    cursor: pointer;
-    z-index: 2;
-    opacity: 0;
-    transition: opacity 0.18s ease;
-  }
-  .ptg__card:hover .ptg__card-compare,
-  .ptg__card-compare:has(.ptg__compare-check:checked) { opacity: 1; }
-  .ptg__compare-check { width: 14px; height: 14px; accent-color: #dc2626; cursor: pointer; margin: 0; }
-  .ptg__compare-label { font-family: 'Outfit', sans-serif; font-size: 0.8rem; font-weight: 500; color: #374151; cursor: pointer; }
-
-  /* ══ Pagination ══ */
-  .ptg__pages {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-top: 3rem;
-  }
-
-  .ptg__page-btn {
-    padding: 0.6rem 1.2rem;
-    background: #f7f7f7;
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
-    color: #374151;
-    text-decoration: none;
-    transition: all 0.15s;
-  }
-
-  .ptg__page-btn:hover { border-color: #dc2626; color: #dc2626; }
-
-  .ptg__page-num {
-    width: 34px;
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
-    color: #374151;
-    text-decoration: none;
-  }
-
-  a.ptg__page-num:hover { background: #f7f7f7; color: #dc2626; }
-
-  .ptg__page-num--on { background: #dc2626; color: #fff; font-weight: 600; }
-
-  /* Empty-state styles moved to snippets/pt-collection-empty.liquid */
-
-  .ptg__empty a { color: #dc2626; text-decoration: none; display: inline-block; margin-top: 0.8rem; }
-
-  /* ══ Responsive ══ */
-  /* ── Mobile filter button (hidden on desktop) ── */
-  .ptg__mobile-filter-btn {
-    display: none;
-  }
-
-  .ptg__sidebar-backdrop {
-    display: none;
-  }
-
-  .ptg__sidebar-mobile-head {
-    display: none;
-  }
-
-  @media (max-width: 989px) {
-    .ptg__container { padding: 0 4rem; }
-    .ptg__layout { grid-template-columns: 20rem 1fr; gap: 2rem; }
-    .ptg__grid { grid-template-columns: repeat(3, 1fr); }
-  }
-
-  @media (max-width: 768px) {
-    .ptg__container { padding: 0 1.6rem; }
-    .ptg__layout { grid-template-columns: 1fr; }
-    .ptg__grid { grid-template-columns: repeat(2, 1fr); gap: 0.8rem; }
-
-    /* ── Mobile filter button ── */
-    .ptg__mobile-filter-btn {
-      /* Sticky floating button — sits above the mobile tabbar */
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      position: fixed;
-      bottom: calc(78px + env(safe-area-inset-bottom, 0px));
-      right: 1rem;
-      z-index: 1001;
-      padding: 0.75rem 1.1rem;
-      background: #111;
-      color: #fff;
-      border: none;
-      border-radius: 999px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-      font-family: 'Outfit', sans-serif;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      width: auto;
-      justify-content: center;
-    }
-    .ptg__mobile-filter-btn[data-count]:not([data-count="0"])::after {
-      content: attr(data-count);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 18px;
-      height: 18px;
-      padding: 0 5px;
-      background: #F5820B;
-      border-radius: 999px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      margin-left: 0.1rem;
-    }
-
-    /* ── Sidebar as drawer ── */
-    .ptg__sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      width: min(320px, 85vw);
-      background: #fff;
-      z-index: 500;
-      transform: translateX(-100%);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      padding: 0 1.6rem 2rem;
-      overflow-y: auto;
-      box-shadow: none;
-      max-height: 100vh;
-    }
-
-    .ptg__sidebar.is-open {
-      transform: translateX(0);
-      box-shadow: 8px 0 40px rgba(0, 0, 0, 0.15);
-    }
-
-    /* ── Mobile header inside drawer ── */
-    .ptg__sidebar-mobile-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1.4rem 0;
-      border-bottom: 1px solid #f0f0f0;
-      margin-bottom: 1.2rem;
-      position: sticky;
-      top: 0;
-      background: #fff;
-      z-index: 1;
-    }
-
-    .ptg__sidebar-mobile-title {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 1.6rem;
-      font-weight: 600;
-      color: #111;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .ptg__sidebar-close {
-      width: 36px;
-      height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f7f7f7;
-      border: none;
-      border-radius: 6px;
-      color: #6b7280;
-      cursor: pointer;
-    }
-
-    .ptg__sidebar-close:hover {
-      color: #111;
-    }
-
-    /* ── Backdrop ── */
-    .ptg__sidebar-backdrop {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.4);
-      z-index: 490;
-      backdrop-filter: blur(2px);
-    }
-
-    .ptg__sidebar-backdrop.is-open {
-      display: block;
-    }
-
-    /* ── Hide desktop sidebar head on mobile ── */
-    .ptg__sidebar-head {
-      display: none;
-    }
-
-    /* ── Trust bar mobile ── */
-    .ptg__trust-bar {
-      flex-direction: column;
-      gap: 0.4rem;
-      padding: 0.5rem 1rem;
-      font-size: 0.85rem;
-    }
-    .ptg__trust-sep { display: none; }
-
-    /* Mobile: hide the per-card compare checkbox — compare drawer is hidden on mobile so this would be unreachable */
-    .ptg__card-compare { display: none; }
-    .ptg__card-size { font-size: 1.2rem; }
-  }
-
-  @media (max-width: 480px) {
-    .ptg__container {
-      padding: 0 1.2rem;
-    }
-    .ptg__grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 0.6rem;
-    }
-    .ptg__mobile-filter-btn {
-      padding: 1rem 1.4rem;
-      font-size: 1.3rem;
-      min-height: 4.4rem;
-    }
-    .ptg__sidebar {
-      width: min(280px, 85vw);
-    }
-    .ptg__card-book {
-      padding: 0.45rem 0.5rem;
-      font-size: 0.9rem;
-    }
-    .ptg__card-cart {
-      width: 4rem;
-      height: 4rem;
-      min-width: 4rem;
-    }
-    .ptg__card-title {
-      font-size: 1.15rem;
-    }
-    .ptg__card-price {
-      font-size: 1.5rem;
-    }
-    .ptg__card-size {
-      font-size: 1.1rem;
-    }
-    .ptg__trust-bar {
-      font-size: 0.8rem;
-      padding: 0.4rem 0.8rem;
-    }
-    .ptg__search-badge {
-      display: none;
-    }
-    .ptg__search-input {
-      font-size: 1.4rem;
-      padding: 0.5rem 0.8rem 0.5rem 2.6rem;
-    }
-    .ptg__search {
-      max-width: 100%;
-    }
-    .ptg__sort-label {
-      display: none;
-    }
-    .ptg__card-specs {
-      display: none;
-    }
-    .ptg__top-bar {
-      flex-direction: column;
-      gap: 0.8rem;
-      align-items: stretch;
-    }
-    .ptg__compare-tray-inner {
-      flex-direction: column;
-      gap: 0.6rem;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .ptg__container {
-      padding: 0 1rem;
-    }
-    .ptg__grid {
-      gap: 0.5rem;
-    }
-    .ptg__sidebar {
-      width: 100vw;
-    }
-    .ptg__card-body {
-      padding: 0.8rem;
-    }
-    .ptg__card-title {
-      font-size: 1.05rem;
-    }
-    .ptg__card-actions {
-      gap: 0.3rem;
-    }
-    .ptg__card-book {
-      padding: 0.45rem 0.5rem;
-      font-size: 0.9rem;
-    }
-    .ptg__card-cart {
-      width: 3.6rem;
-      height: 3.6rem;
-      min-width: 3.6rem;
-    }
-  }
-{% endstylesheet %}
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-
-  /* ── Filter pills with [data-filter-set-key] preserve all active filters ──
-     Set the named filter to the named value (or delete it if no value),
-     keep every other URL param intact, then navigate. */
-  document.addEventListener('click', function (e) {
-    var pill = e.target.closest('[data-filter-set-key]');
-    if (!pill) return;
-    e.preventDefault();
-    var key = pill.dataset.filterSetKey;
-    var val = pill.dataset.filterSetValue;
-    var qs = new URLSearchParams(window.location.search);
-    if (val === undefined || val === '') {
-      qs.delete(key);
-    } else {
-      qs.set(key, val);
-    }
-    window.location.href = window.location.pathname + (qs.toString() ? '?' + qs.toString() : '');
-  });
-
-  /* ── Typewriter placeholder ── */
-  (function() {
-    var input = document.querySelector('[data-ptg-typewriter]');
-    if (!input) return;
-    var phrases = [
-      'Search by vehicle...',
-      '2025 Toyota RAV4',
-      'Search by tire size...',
-      '225/65R17',
-      'Smart search...',
-      'Michelin Defender'
-    ];
-    var phraseIdx = 0, charIdx = 0, deleting = false, paused = false;
-
-    function tick() {
-      if (paused || input === document.activeElement || input.value !== '') return;
-      var phrase = phrases[phraseIdx];
-
-      if (!deleting) {
-        charIdx++;
-        input.setAttribute('placeholder', phrase.slice(0, charIdx));
-        if (charIdx >= phrase.length) {
-          deleting = true;
-          setTimeout(tick, 1800);
-          return;
-        }
-        setTimeout(tick, 70);
-      } else {
-        charIdx--;
-        input.setAttribute('placeholder', phrase.slice(0, charIdx));
-        if (charIdx <= 0) {
-          deleting = false;
-          phraseIdx = (phraseIdx + 1) % phrases.length;
-          setTimeout(tick, 300);
-          return;
-        }
-        setTimeout(tick, 25);
-      }
-    }
-
-    input.addEventListener('focus', function() { paused = true; input.setAttribute('placeholder', ''); });
-    input.addEventListener('blur', function() {
-      paused = false;
-      if (input.value === '') { charIdx = 0; deleting = false; tick(); }
-    });
-
-    tick();
-  })();
-
-  var activeFiltersBar = document.querySelector('[data-active-filters-sidebar]');
-  var params = new URLSearchParams(window.location.search);
-  var baseUrl = window.location.pathname;
-
-  // Helpers: identify size-related URL params and reconstruct display string
-  function isSizeParam(k) {
-    return k === 'filter.p.m.custom.tire_width' ||
-           k === 'filter.p.m.custom.tire_profile' ||
-           k === 'filter.p.m.custom.rim_diameter' ||
-           k === 'filter.p.m.custom.tire_size';
-  }
-  function ptgNormSection(t) {
-    return window.PTTireParse.normalizeSection(t);
-  }
-  function getSizeFromParams(p) {
-    var w  = p.get('filter.p.m.custom.tire_width');
-    var pr = p.get('filter.p.m.custom.tire_profile');
-    var r  = p.get('filter.p.m.custom.rim_diameter');
-    if (w && pr && r) {
-      // Flotation (35X12.50R20) is written with "X"; metric (225/65R17) with "/".
-      var sep = (pr.indexOf('.') !== -1 || w.length <= 2) ? 'X' : '/';
-      return w + sep + pr + 'R' + r;
-    }
-    return p.get('filter.p.m.custom.tire_size'); // legacy fallback
-  }
-
-  // Result count — show tire size context (plus vehicle when localStorage has a matching saved car)
-  (function() {
-    var sizeParam = getSizeFromParams(params);
-    if (!sizeParam) return;
-    var contextRow = document.querySelector('[data-ptg-context]');
-    var sizeVal = document.querySelector('[data-results-size-val]');
-    var carEl = document.querySelector('[data-ptg-context-car]');
-    if (!contextRow || !sizeVal) return;
-
-    sizeVal.textContent = sizeParam;
-
-    // Surface saved-car name when its size matches the URL filter
-    if (carEl) {
-      try {
-        var raw = localStorage.getItem('pt-tire-search-vehicle');
-        if (raw) {
-          var v = JSON.parse(raw);
-          if (v && v.tireSize && v.tireSize.indexOf(sizeParam.split('/')[0]) !== -1) {
-            var car = [v.year, v.make, v.model, v.trim].filter(Boolean).join(' ');
-            if (car) carEl.textContent = car;
-          }
-        }
-      } catch (e) {}
-    }
-
-    contextRow.hidden = false;
-  })();
-
-  function isFilterActive(key, value) {
-    var found = false;
-    params.forEach(function(v, k) { if (k === key && v === value) found = true; });
-    return found;
-  }
-
-  function toggleFilter(key, value) {
-    var newParams = new URLSearchParams();
-    var removed = false;
-    params.forEach(function(v, k) {
-      if (k === key && v === value) { removed = true; }
-      else { newParams.append(k, v); }
-    });
-    if (!removed) newParams.append(key, value);
-    var qs = newParams.toString();
-    try { sessionStorage.setItem('ptg_filter_open', '1'); } catch(e) {}
-    window.location.href = baseUrl + (qs ? '?' + qs : '');
-  }
-
-  // Universal filter links (brands, product types, etc.)
-  document.querySelectorAll('[data-filter-key]').forEach(function(el) {
-    var key = el.dataset.filterKey;
-    var val = el.dataset.filterValue;
-    if (isFilterActive(key, val)) el.classList.add('ptg__filter-link--active');
-    el.addEventListener('click', function(e) {
-      e.preventDefault();
-      toggleFilter(key, val);
-    });
-  });
-
-  // Brand list search — type to filter visible brand options
-  (function () {
-    var brandSearch = document.querySelector('[data-brand-search]');
-    var brandList = document.querySelector('[data-brand-list]');
-    if (!brandSearch || !brandList) return;
-    brandSearch.addEventListener('input', function () {
-      var q = this.value.trim().toLowerCase();
-      brandList.querySelectorAll('[data-filter-key="filter.p.vendor"]').forEach(function (link) {
-        var label = (link.textContent || '').toLowerCase();
-        link.style.display = !q || label.indexOf(q) !== -1 ? '' : 'none';
-      });
-    });
-  })();
-
-  // Model list search — type to filter visible model options
-  (function () {
-    var modelSearch = document.querySelector('[data-model-search]');
-    var modelList = document.querySelector('[data-model-list]');
-    if (!modelSearch || !modelList) return;
-    modelSearch.addEventListener('input', function () {
-      var q = this.value.trim().toLowerCase();
-      modelList.querySelectorAll('[data-filter-key="filter.p.m.custom.tire_model"]').forEach(function (link) {
-        var label = (link.textContent || '').toLowerCase();
-        link.style.display = !q || label.indexOf(q) !== -1 ? '' : 'none';
-      });
-    });
-  })();
-
-  // Empty-state handlers (clear-all + missing-vehicle form + auto-webhook)
-  // moved to snippets/pt-collection-empty.liquid
-
-  // Season icons
-  document.querySelectorAll('[data-meta-filter]').forEach(function(el) {
-    var key = 'filter.p.m.custom.' + el.dataset.metaFilter;
-    var val = el.dataset.metaValue;
-    if (isFilterActive(key, val)) {
-      el.classList.add('ptg__season-icon--active');
-    }
-    el.addEventListener('click', function(e) {
-      e.preventDefault();
-      toggleFilter(key, val);
-    });
-  });
-
-  // Active filter bubbles
-  var activeFilters = [];
-  params.forEach(function(v, k) {
-    if (k.startsWith('filter.') && !k.includes('price')) {
-      activeFilters.push({ key: k, value: v });
-    }
-  });
-
-  // Reflect active filter count on the mobile filter button (count badge)
-  var mobileBtn = document.querySelector('[data-open-filters]');
-  if (mobileBtn) mobileBtn.setAttribute('data-count', String(activeFilters.length));
-
-  function chipLabel(key, value) {
-    var serviceMap = { 'P': 'Passenger', 'LT': 'Light Truck', 'ST': 'Trailer' };
-    switch (key) {
-      case 'filter.p.m.custom.tire_width':   return (value.length <= 2 ? 'Diameter: ' : 'Width: ') + value;
-      case 'filter.p.m.custom.tire_profile': return (value.indexOf('.') !== -1 ? 'Width: ' : 'Aspect: ') + value;
-      case 'filter.p.m.custom.rim_diameter': return 'Rim: ' + value + '"';
-      case 'filter.p.m.custom.service_type': return serviceMap[value] || value;
-      case 'filter.p.m.custom.tire_model':   return 'Model: ' + value;
-      case 'filter.v.availability':          return value === '1' ? 'In stock' : 'Out of stock';
-      default:                                return value;
-    }
-  }
-
-  if (activeFilters.length > 0 && activeFiltersBar) {
-    var html = '';
-    activeFilters.forEach(function(f) {
-      var lbl = chipLabel(f.key, f.value);
-      html += '<button type="button" class="ptg__active-tag" data-rk="' + f.key + '" data-rv="' + f.value + '" aria-label="Remove filter ' + lbl + '">' +
-        lbl +
-        '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
-      '</button>';
-    });
-    html += '<button type="button" class="ptg__active-clear" data-clear-all>Clear all</button>';
-    activeFiltersBar.innerHTML = html;
-    activeFiltersBar.hidden = false;
-
-    activeFiltersBar.querySelectorAll('[data-rk]').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        toggleFilter(this.dataset.rk, this.dataset.rv);
-      });
-    });
-    var clearAll = activeFiltersBar.querySelector('[data-clear-all]');
-    if (clearAll) clearAll.addEventListener('click', function() {
-      // Clear every filter, including tire size. The customer can re-apply
-      // the size from the saved-car banner / Change-search strip / sidebar
-      // pills if they want it back.
-      window.location.href = baseUrl;
-    });
-  }
-
-  // Editable tire size — populated from URL via JS
-  var sizeDisplay = document.querySelector('[data-size-display]');
-  var sizeEdit = document.querySelector('[data-size-edit]');
-  var sizeClearLink = document.querySelector('[data-size-clear-link]');
-  var activeTireSize = getSizeFromParams(params);
-
-  if (activeTireSize && sizeEdit) {
-    sizeEdit.value = activeTireSize;
-    // Show X button when size is active
-    if (sizeClearLink) {
-      sizeClearLink.hidden = false;
-      var clearParams = new URLSearchParams();
-      params.forEach(function(v, k) {
-        if (!isSizeParam(k)) clearParams.append(k, v);
-      });
-      var qs = clearParams.toString();
-      sizeClearLink.href = baseUrl + (qs ? '?' + qs : '');
-    }
-  }
-
-  if (sizeEdit) {
-    sizeEdit.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        var val = this.value.trim();
-        if (!val) {
-          if (sizeClearLink) window.location.href = sizeClearLink.href;
-          return;
-        }
-        var fl = val.match(/(\d{2})\s*[xX×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*[rR]?\s*(\d{2})/);
-        var m  = val.match(/[Pp]?[LlTtSs]?[Tt]?(\d{2,3})\/?(\d{2,3})[Rr](\d{2})/);
-        var sw, sp, sr;
-        if (fl) { sw = fl[1]; sp = ptgNormSection(fl[2]); sr = fl[3]; }
-        else if (m) { sw = m[1]; sp = m[2]; sr = m[3]; }
-        else { return; }
-        var newParams = new URLSearchParams();
-        params.forEach(function(v, k) {
-          if (!isSizeParam(k)) newParams.append(k, v);
-        });
-        newParams.set('filter.p.m.custom.tire_width', sw);
-        newParams.set('filter.p.m.custom.tire_profile', sp);
-        newParams.set('filter.p.m.custom.rim_diameter', sr);
-        window.location.href = baseUrl + '?' + newParams.toString();
-      }
-    });
-  }
-
-  // Price slider — Shopify expects filter.v.price.gte / filter.v.price.lte
-  var minSlider = document.querySelector('[data-price-min]');
-  var maxSlider = document.querySelector('[data-price-max]');
-  var minDisplay = document.querySelector('[data-price-min-display]');
-  var maxDisplay = document.querySelector('[data-price-max-display]');
-  if (minSlider && maxSlider) {
-    // Seed slider from URL so it reflects the active filter on page load
-    var urlMin = params.get('filter.v.price.gte');
-    var urlMax = params.get('filter.v.price.lte');
-    if (urlMin !== null) {
-      minSlider.value = urlMin;
-      if (minDisplay) minDisplay.textContent = '$' + urlMin;
-    }
-    if (urlMax !== null) {
-      maxSlider.value = urlMax;
-      if (maxDisplay) maxDisplay.textContent = '$' + urlMax;
-    }
-
-    var priceTimer = null;
-    function updatePrice() {
-      var mn = parseInt(minSlider.value);
-      var mx = parseInt(maxSlider.value);
-      if (mn > mx) { minSlider.value = mx; mn = mx; }
-      if (mx < mn) { maxSlider.value = mn; mx = mn; }
-      minDisplay.textContent = '$' + mn;
-      maxDisplay.textContent = '$' + mx;
-    }
-    function applyPrice() {
-      clearTimeout(priceTimer);
-      priceTimer = setTimeout(function() {
-        var mn = parseInt(minSlider.value);
-        var mx = parseInt(maxSlider.value);
-        var sliderMin = parseInt(minSlider.min);
-        var sliderMax = parseInt(maxSlider.max);
-        var newParams = new URLSearchParams();
-        params.forEach(function(v, k) {
-          if (!k.includes('price')) newParams.append(k, v);
-        });
-        // Only emit the bound when it constrains the result.
-        if (mn > sliderMin) newParams.set('filter.v.price.gte', mn);
-        if (mx < sliderMax) newParams.set('filter.v.price.lte', mx);
-        try { sessionStorage.setItem('ptg_filter_open', '1'); } catch(e) {}
-        window.location.href = baseUrl + '?' + newParams.toString();
-      }, 800);
-    }
-    minSlider.addEventListener('input', updatePrice);
-    maxSlider.addEventListener('input', updatePrice);
-    minSlider.addEventListener('change', applyPrice);
-    maxSlider.addEventListener('change', applyPrice);
-  }
-
-
-  // Approximate filter counts from visible cards
-  (function() {
-    var cards = document.querySelectorAll('.ptg__card[data-vendor]');
-    var vendorCounts = {};
-    var typeCounts = {};
-    cards.forEach(function(card) {
-      var v = card.dataset.vendor;
-      if (v) vendorCounts[v] = (vendorCounts[v] || 0) + 1;
-      var t = card.dataset.type;
-      if (t) typeCounts[t] = (typeCounts[t] || 0) + 1;
-    });
-    document.querySelectorAll('[data-filter-cnt]').forEach(function(el) {
-      var parts = el.dataset.filterCnt.split(':');
-      var kind = parts[0], key = parts[1];
-      var count = 0;
-      if (kind === 'vendor') count = vendorCounts[key] || 0;
-      else if (kind === 'type') count = typeCounts[key] || 0;
-      if (count > 0) el.textContent = '(' + count + ')';
-    });
-  })();
-
-  // Vehicle fitment confirmation on cards
-  (function() {
-    var fitmentBadges = document.querySelectorAll('[data-card-fitment]');
-    if (!fitmentBadges.length) return;
-    try {
-      var keys = Object.keys(localStorage).filter(function(k) { return k.startsWith('pt-garage-'); });
-      var vehicleSizes = [];
-      for (var i = 0; i < keys.length; i++) {
-        var vehicles = JSON.parse(localStorage.getItem(keys[i]));
-        var def = (vehicles || []).find(function(v) { return v.isDefault; });
-        if (def && def.sizes) { vehicleSizes = def.sizes; break; }
-      }
-      if (vehicleSizes.length > 0) {
-        document.querySelectorAll('.ptg__card[data-tire-size]').forEach(function(card) {
-          var cardSize = card.dataset.tireSize;
-          if (cardSize && vehicleSizes.indexOf(cardSize) !== -1) {
-            var badge = card.querySelector('[data-card-fitment]');
-            if (badge) badge.hidden = false;
-          }
-        });
-      }
-    } catch(e) {}
-  })();
-
-  // Collection smart search — same logic as hero
-  (function() {
-    var wrap = document.querySelector('[data-ptg-smart-search]');
-    if (!wrap) return;
-    var input = wrap.querySelector('[data-ptg-search]');
-    var results = wrap.querySelector('[data-ptg-results]');
-    var loading = wrap.querySelector('[data-ptg-loading]');
-    var list = wrap.querySelector('[data-ptg-list]');
-    var configEl = document.querySelector('[data-smart-search-config]');
-    var config = configEl ? JSON.parse(configEl.textContent) : {};
-    // Year range is data-driven: widen to pt-vehicle-manifest.json once it
-    // loads; until then (or on a 404) the theme-setting bounds stand.
-    if (window.PTVehicleManifest) {
-      window.PTVehicleManifest.load(config.manifestUrl).then(function (m) {
-        if (!m) return;
-        config.minYear = m.minYear;
-        config.maxYear = m.maxYear;
-        config.manifest = m;
-      });
-    }
-    var tireSizeRegex = /(?:^|[\s,])([Pp]?[LlTtSs]?[Tt]?\d{3}\/?\d{2,3}[Rr]\d{2}(?:\.\d)?)/;
-    var vehicleCache = {};
-    var debounceTimer = null;
-
-    /* ── Cross-surface search analytics ────────────────────────────────────
-       One pt_search_submit + one pt_search_result per SEARCH, never per
-       keystroke. Schema + outcomes: snippets/pt-search-tracking.liquid.
-
-       search() runs 300 ms after typing pauses, so what it resolves is a live
-       suggestion, not a search — those outcomes are PENDED and reported only
-       when the search finishes: the customer presses Enter or clicks a
-       rendered row (ptEmit / ptFlush), or it dead-ends, in which case it
-       self-reports after PT_SETTLE_MS of no further typing. Typing again
-       cancels that, which is what stops an abandoned prefix or a corrected
-       typo from counting as its own failed search.
-
-       The raw query is never sent; query_len stands in for it. */
-    var PT_SETTLE_MS = 1200;
-    var ptPending = null;
-    var ptSettleTimer = null;
-
-    function ptClear() {
-      if (ptSettleTimer) { clearTimeout(ptSettleTimer); ptSettleTimer = null; }
-      ptPending = null;
-    }
-    function ptEmit(outcome, d) {
-      ptClear();
-      if (!window.PTTrack) return;
-      d = d || {};
-      var key = [d.year, d.make, d.model, d.size, d.query_len, outcome].join('|');
-      window.PTTrack.once('cg-s|' + key, 'pt_search_submit', {
-        surface: 'collection_grid', method: 'text',
-        year: d.year, make: d.make, model: d.model, trim: d.trim,
-        size: d.size, query_len: d.query_len
-      });
-      window.PTTrack.once('cg-r|' + key, 'pt_search_result', {
-        surface: 'collection_grid', method: 'text', outcome: outcome,
-        sizes_count: d.sizes_count || 0, trims_count: d.trims_count,
-        year: d.year, make: d.make, model: d.model, size: d.size
-      });
-    }
-    function ptPend(outcome, d) {
-      ptClear();
-      ptPending = { outcome: outcome, d: d || {} };
-      /* A dead end has nothing to click — report it once they stop typing. */
-      if (outcome === 'not_found' || outcome === 'no_sizes' || outcome === 'data_error') {
-        ptSettleTimer = setTimeout(function () { ptSettleTimer = null; ptFlush(); }, PT_SETTLE_MS);
-      }
-    }
-    function ptFlush() {
-      var p = ptPending;
-      if (!p) return;
-      ptEmit(p.outcome, p.d);
-    }
-    /* Navigate without dropping the event we just queued — see PTTrack.go. */
-    function ptGo(url) {
-      if (window.PTTrack && typeof window.PTTrack.go === 'function') window.PTTrack.go(url);
-      else window.location.href = url;
-    }
-    /* Distinct OEM sizes in a trim list — six trims sharing one size is one
-       size, not six. sizes_count and trims_count are separate for that reason. */
-    function ptDistinctSizes(trims) {
-      var seen = {}, n = 0;
-      (trims || []).forEach(function (t) {
-        var s = t && t.size;
-        if (!s || seen[s]) return;
-        seen[s] = true; n++;
-      });
-      return n;
-    }
-    // Brand list — built dynamically from collection.filters (passed via the
-    // smart-search-config JSON) so every stocked vendor is searchable.
-    // Lowercased for case-insensitive matching; falls back to the historic
-    // hardcoded list if the config didn't include a brands array.
-    var brandLabels = (config.brands && config.brands.length)
-      ? config.brands.filter(function (b) { return b && b.trim(); })
-      : ['Michelin','Bridgestone','Goodyear','Continental','Toyo','Pirelli','Falken','Kumho','Yokohama','Firestone','Cooper','BFGoodrich','General','Uniroyal','Hankook','Nitto','Mickey Thompson','Firemax','Linglong','Farroad','Yeada','Fortune','Radar','Rotalla','Haida','CARLSTAR','Tesche'];
-    var brands = brandLabels.map(function (b) { return b.toLowerCase(); });
-    // Map lowercased → canonical label for setting intent.brand
-    var brandCanonical = {};
-    brandLabels.forEach(function (b) { brandCanonical[b.toLowerCase()] = b; });
-    var knownMakes = ['acura','alfa romeo','aston martin','audi','bmw','bentley','buick','cadillac','chevrolet','chevy','chrysler','dodge','ferrari','fiat','ford','gmc','genesis','honda','hyundai','ineos','infiniti','jaguar','jeep','karma','kia','lamborghini','land rover','lexus','lincoln','lotus','lucid','maserati','mazda','mclaren','mercedes-benz','mercedes','benz','mini','mitsubishi','nissan','polestar','porsche','ram','rivian','rolls-royce','subaru','tesla','toyota','vinfast','volkswagen','vw','volvo'];
-    var makeAliases = {'chevy':'Chevrolet','vw':'Volkswagen','mercedes':'Mercedes-Benz','benz':'Mercedes-Benz'};
-    var modelShortcuts = {'crv':'CR-V','cr-v':'CR-V','hrv':'HR-V','hr-v':'HR-V','rav':'RAV4','rav4':'RAV4','f150':'F-150','f-150':'F-150','f250':'F-250','f-250':'F-250','f350':'F-350','f-350':'F-350','4runner':'4Runner','forerunner':'4Runner','camry':'Camry','corolla':'Corolla','cx5':'CX-5','cx-5':'CX-5','cx50':'CX-50','cx-50':'CX-50','cx9':'CX-9','cx-9':'CX-9','cx30':'CX-30','cx-30':'CX-30','mazda3':'Mazda3','mazda6':'Mazda6','q5':'Q5','q7':'Q7','q3':'Q3','x3':'X3','x5':'X5','x1':'X1','crz':'CR-Z','brz':'BRZ','gr86':'GR86','wrx':'WRX','sti':'WRX STI','outback':'Outback','forester':'Forester','crosstrek':'Crosstrek','silverado':'Silverado 1500','sierra':'Sierra 1500','tahoe':'Tahoe','suburban':'Suburban','wrangler':'Wrangler','cherokee':'Cherokee','grandcherokee':'Grand Cherokee','grand cherokee':'Grand Cherokee','mustang':'Mustang','bronco':'Bronco','escape':'Escape','explorer':'Explorer','expedition':'Expedition','tacoma':'Tacoma','tundra':'Tundra','highlander':'Highlander','prius':'Prius','supra':'GR Supra','civic':'Civic','accord':'Accord','pilot':'Pilot','odyssey':'Odyssey','ridgeline':'Ridgeline','altima':'Altima','maxima':'Maxima','sentra':'Sentra','rogue':'Rogue','pathfinder':'Pathfinder','frontier':'Frontier','elantra':'Elantra','sonata':'Sonata','tucson':'Tucson','santafe':'Santa Fe','santa fe':'Santa Fe','palisade':'Palisade','sorento':'Sorento','sportage':'Sportage','forte':'Forte','telluride':'Telluride','jetta':'Jetta','tiguan':'Tiguan','atlas':'Atlas','golf':'Golf','passat':'Passat','model3':'Model 3','modely':'Model Y','modelx':'Model X','models':'Model S','glc':'GLC','gle':'GLE','gls':'GLS','ram1500':'1500','ram2500':'2500','ram3500':'3500','malibu':'Malibu','equinox':'Equinox','traverse':'Traverse','trax':'Trax','blazer':'Blazer','terrain':'Terrain','acadia':'Acadia','yukon':'Yukon','durango':'Durango','charger':'Charger','challenger':'Challenger','impreza':'Impreza','legacy':'Legacy','maverick':'Maverick','ranger':'Ranger','ioniq5':'Ioniq 5','ioniq6':'Ioniq 6','kona':'Kona','ct4':'CT4','ct5':'CT5','escalade':'Escalade','xt5':'XT5','xt6':'XT6'};
-    var noiseWords = ['tires','tire','for','my','the','a','an','need','needs','looking','want','i','on','new','set','of','best','good','cheap','get','find','buy','shop','what','fit','fits','size','sizes'];
-
-    function levenshtein(a, b) {
-      if (a.length === 0) return b.length;
-      if (b.length === 0) return a.length;
-      var matrix = [];
-      for (var i = 0; i <= b.length; i++) matrix[i] = [i];
-      for (var j = 0; j <= a.length; j++) matrix[0][j] = j;
-      for (var i = 1; i <= b.length; i++) {
-        for (var j = 1; j <= a.length; j++) {
-          var cost = a[j - 1] === b[i - 1] ? 0 : 1;
-          matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
-        }
-      }
-      return matrix[b.length][a.length];
-    }
-
-    function fuzzyMatchMake(word) {
-      if (knownMakes.indexOf(word) >= 0) return makeAliases[word] || word;
-      var maxDist = word.length <= 4 ? 1 : 2;
-      var best = null, bestDist = maxDist + 1;
-      for (var i = 0; i < knownMakes.length; i++) {
-        var mk = knownMakes[i];
-        if (Math.abs(mk.length - word.length) > maxDist) continue;
-        var d = levenshtein(word, mk);
-        if (d < bestDist) { bestDist = d; best = mk; }
-      }
-      return best ? (makeAliases[best] || best) : null;
-    }
-
-    function normalizeTireSize(query) {
-      var p = window.PTTireParse && window.PTTireParse.parseSize(query);
-      if (!p) return null;
-      return { width: p.width, aspect: p.profile, rim: p.rim, size: p.canonical, flotation: p.flotation };
-    }
-
-    function parseIntent(query) {
-      /* Expand brand abbreviations and synonym aliases before any detection. */
-      if (window.PTTireParse && window.PTTireParse.expandSynonyms) query = window.PTTireParse.expandSynonyms(query);
-      var q = query.toLowerCase();
-      var intent = { season: null, brand: null };
-      if (q.includes('winter') || q.includes('snow') || q.includes('ice')) intent.season = 'Winter';
-      else if (q.includes('all-season') || q.includes('all season') || q.includes('allseason')) intent.season = 'All-Season';
-      else if (q.includes('all-weather') || q.includes('all weather')) intent.season = 'All-Weather';
-      else if (q.includes('summer') || q.includes('performance')) intent.season = 'Summer';
-      // Pick the longest matching brand first so 'mickey thompson' beats
-      // 'mickey' on its own, etc.
-      var sorted = brands.slice().sort(function (a, b) { return b.length - a.length; });
-      for (var i = 0; i < sorted.length; i++) {
-        var b = sorted[i];
-        // Word-boundary match where possible (handles 'general' not matching
-        // inside 'generally')
-        var re = new RegExp('(^|\\s)' + b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\s|$)');
-        if (re.test(q) || q.indexOf(b) !== -1) {
-          intent.brand = brandCanonical[b] || b;
-          break;
-        }
-      }
-      return intent;
-    }
-
-    function cleanQueryForVehicle(query, intent) {
-      var q = query.toLowerCase();
-      var seasonWords = ['winter','snow','ice','all-season','all season','allseason','all-weather','all weather','summer','performance'];
-      for (var i = 0; i < seasonWords.length; i++) {
-        q = q.replace(new RegExp('\\b' + seasonWords[i].replace(/-/g, '[-\\s]?') + '\\b', 'g'), ' ');
-      }
-      if (intent.brand) {
-        var brandLower = intent.brand.toLowerCase();
-        q = q.replace(new RegExp('\\b' + brandLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), ' ');
-        for (var b of brands) {
-          if (q.includes(b)) q = q.replace(new RegExp('\\b' + b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), ' ');
-        }
-      }
-      return q.replace(/\s+/g, ' ').trim();
-    }
-
-    function buildUrl(p) {
-      var base = '/collections/tires';
-      var urlP = new URLSearchParams();
-      if (p.tireSize) {
-        // Vehicle-data sizes can carry a P/LT/ST service prefix ("LT245/75R16");
-        // the filter metafields store only the numbers, so drop it first.
-        var ts = String(p.tireSize).replace(/^(?:P|LT|ST)(?=\d)/i, '');
-        var sm = ts.match(/^(\d+)\/(\d+)R(\d+(?:\.\d+)?)$/);
-        var fm = ts.match(/^(\d+)X(\d+(?:\.\d+)?)R(\d+)$/);
-        if (sm) {
-          urlP.set('filter.p.m.custom.tire_width', sm[1]);
-          urlP.set('filter.p.m.custom.tire_profile', sm[2]);
-          urlP.set('filter.p.m.custom.rim_diameter', sm[3]);
-        } else if (fm) {
-          urlP.set('filter.p.m.custom.tire_width', fm[1]);
-          urlP.set('filter.p.m.custom.tire_profile', fm[2]);
-          urlP.set('filter.p.m.custom.rim_diameter', fm[3]);
-        }
-      }
-      if (p.brand) urlP.set('filter.p.vendor', p.brand);
-      if (p.season) urlP.set('filter.p.m.custom.seasonality', p.season);
-      var qs = urlP.toString();
-      return qs ? base + '?' + qs : base;
-    }
-
-    function extractSize(q) {
-      var n = normalizeTireSize(q);
-      return n ? n.size : null;
-    }
-
-    input.addEventListener('input', function() {
-      clearTimeout(debounceTimer);
-      // Whatever the last keystroke resolved to was a prefix, not a search.
-      ptClear();
-      debounceTimer = setTimeout(function() {
-        var q = input.value.trim();
-        if (q.length < 2) { results.hidden = true; return; }
-        search(q);
-      }, 300);
-    });
-
-    input.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        var q = this.value.trim();
-        if (!q) return;
-        var size = extractSize(q);
-        var intent = parseIntent(q);
-        if (size || intent.brand || intent.season) {
-          window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: q, search_type: size ? 'size' : 'vehicle', search_outcome: 'match' });
-          /* Committed: Enter. Emitting here also cancels the pending copy the
-             live-suggest path left behind for this same query. */
-          if (size) ptEmit('sizes', { size: size, sizes_count: 1, query_len: q.length });
-          else ptEmit('browse', { sizes_count: 0, query_len: q.length });
-          ptGo(buildUrl({ tireSize: size, brand: intent.brand, season: intent.season }));
-        } else {
-          window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: q, search_type: 'none', search_outcome: 'no_match' });
-          ptEmit('not_found', { sizes_count: 0, query_len: q.length });
-          ptGo('/search?q=' + encodeURIComponent(q) + '&type=product');
-        }
-      } else if (e.key === 'Escape') {
-        results.hidden = true;
-      }
-    });
-
-    document.addEventListener('click', function(e) {
-      if (!wrap.contains(e.target)) results.hidden = true;
-    });
-
-    function search(query) {
-      var normalized = normalizeTireSize(query);
-      if (normalized) {
-        var intent = parseIntent(query);
-        var label = normalized.size + (intent.brand ? ' by ' + intent.brand : '');
-        var meta = 'Filter collection' + (intent.season ? ' · ' + intent.season : '');
-        renderResults([{ type: 'size', title: label, meta: meta, url: buildUrl({ tireSize: normalized.size, brand: intent.brand, season: intent.season }) }]);
-        window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'size', search_outcome: 'match' });
-        /* Live suggestion, not a search yet. */
-        ptPend('sizes', { size: normalized.size, sizes_count: 1, query_len: String(query || '').length });
-        return;
-      }
-      searchVehicle(query);
-    }
-
-    async function searchVehicle(query) {
-      results.hidden = false;
-      loading.hidden = false;
-      list.innerHTML = '';
-      var intent = parseIntent(query);
-      var cleanedQuery = cleanQueryForVehicle(query, intent);
-
-      try {
-        var vehicle = cleanedQuery.length >= 2 ? tryDirectParse(cleanedQuery) : null;
-
-        if (!vehicle || (!vehicle.year && !vehicle.model && !vehicle.make)) {
-          if (intent.brand || intent.season) {
-            var filterTitle = [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires';
-            renderResults([{ type: 'search', title: filterTitle, meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
-            /* No vehicle and no size — a brand/season collection is all we
-               could offer. Reported so a parser miss is never silent. */
-            ptPend('browse', { sizes_count: 0, query_len: String(query || '').length });
-          } else {
-            renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
-            window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'none', search_outcome: 'no_match' });
-            ptPend('not_found', { sizes_count: 0, query_len: String(query || '').length });
-          }
-          return;
-        }
-
-        var trims = await lookupTrims(vehicle);
-        var vLabel = (vehicle.year + ' ' + (vehicle.make || '') + ' ' + (vehicle.model || '')).replace(/\s+/g, ' ').trim();
-        var ptV = {
-          year: vehicle.year, make: vehicle.make, model: vehicle.model,
-          trim: vehicle.trim, query_len: String(query || '').length
-        };
-
-        if (trims.length === 1 && vehicle.trim) {
-          /* User specified a trim — go straight to collection */
-          var url = buildUrl({ tireSize: trims[0].size, brand: intent.brand, season: intent.season });
-          renderResults([{ type: 'vehicle', title: vLabel + ' ' + trims[0].trim, meta: trims[0].size + (intent.season ? ' · ' + intent.season : '') + (intent.brand ? ' · ' + intent.brand : ''), url: url }]);
-          ptV.size = trims[0].size;
-          ptV.sizes_count = 1;
-          ptV.trims_count = 1;
-          ptPend('sizes', ptV);
-        } else if (trims.length > 0) {
-          renderTrimResults(vLabel, trims, intent);
-          /* sizes_count counts SIZES, not trims — six trims that share one OEM
-             size are one size. trims_count carries the list length. */
-          ptV.sizes_count = ptDistinctSizes(trims);
-          ptV.trims_count = trims.length;
-          ptPend('sizes', ptV);
-        } else {
-          renderResults([{ type: 'vehicle', title: vLabel, meta: 'Browse all tires', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
-          // Vehicle recognised but we can't size it — a dead end for the customer.
-          ptV.sizes_count = 0;
-          ptPend('no_sizes', ptV);
-        }
-        window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'vehicle', search_outcome: 'match' });
-      } catch(e) {
-        if (intent.brand || intent.season) {
-          renderResults([{ type: 'search', title: [intent.brand, intent.season].filter(Boolean).join(' ') + ' tires', meta: 'Filter collection', url: buildUrl({ brand: intent.brand, season: intent.season }) }]);
-          /* The lookup threw and a brand saved us — visible as 'browse', not
-             as a silently-missing event. */
-          ptPend('browse', { sizes_count: 0, query_len: String(query || '').length });
-        } else {
-          renderResults([{ type: 'search', title: 'Search "' + query + '"', meta: 'Browse all products', url: '/search?q=' + encodeURIComponent(query) + '&type=product' }]);
-          window.PTTireParse && window.PTTireParse.track({ surface: 'collection', search_query: query, search_type: 'none', search_outcome: 'no_match' });
-          ptPend('not_found', { sizes_count: 0, query_len: String(query || '').length });
-        }
-      }
-    }
-
-    function tryDirectParse(query) {
-      var q = query.trim().toLowerCase();
-      var words = q.split(/\s+/).filter(function(w) { return noiseWords.indexOf(w) === -1; });
-      if (words.length === 0) return null;
-
-      /* Extract year from anywhere */
-      var year = null;
-      var yearIndex = -1;
-      for (var i = 0; i < words.length; i++) {
-        var w = words[i].replace(/^[''\u2018\u2019]/, '');
-        var ym = w.match(/^(\d{2,4})$/);
-        if (ym) {
-          var y = ym[1];
-          if (y.length === 2) y = (parseInt(y) > 50 ? '19' : '20') + y;
-          var yn = parseInt(y);
-          if (yn >= 1990 && yn <= config.maxYear) { year = yn; yearIndex = i; break; }
-        }
-      }
-      if (yearIndex >= 0) words.splice(yearIndex, 1);
-      if (words.length === 0) return null;
-
-      /* Try to find a known make */
-      var make = null;
-      /* Check two-word makes first */
-      for (var i = 0; i < words.length - 1; i++) {
-        var twoWord = words[i] + ' ' + words[i + 1];
-        if (knownMakes.indexOf(twoWord) >= 0) {
-          make = makeAliases[twoWord] || twoWord.split(' ').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
-          words.splice(i, 2); break;
-        }
-      }
-      if (!make) {
-        for (var i = 0; i < words.length; i++) {
-          var matched = fuzzyMatchMake(words[i]);
-          if (matched) {
-            make = matched;
-            if (make === 'Bmw') make = 'BMW';
-            if (make === 'Gmc') make = 'GMC';
-            if (make === 'Ram') make = 'RAM';
-            make = make.charAt(0).toUpperCase() + make.slice(1);
-            if (makeAliases[words[i]]) make = makeAliases[words[i]];
-            words.splice(i, 1); break;
-          }
-        }
-      }
-
-      if (words.length === 0 && !make) return null;
-      var model = null, trim = null;
-      if (words.length > 0) {
-        var modelJoined = words.join(' ');
-        var modelNoSpace = words.join('');
-        if (modelShortcuts[modelJoined]) { model = modelShortcuts[modelJoined]; words = []; }
-        else if (modelShortcuts[modelNoSpace]) { model = modelShortcuts[modelNoSpace]; words = []; }
-        else if (modelShortcuts[words[0]]) { model = modelShortcuts[words[0]]; words.splice(0, 1); trim = words.length > 0 ? words.join(' ') : null; }
-        else { model = words[0]; trim = words.length > 1 ? words.slice(1).join(' ') : null; }
-      }
-      var yearDefaulted = !year;
-      if (!year) year = defaultYear();
-      return { year: year, make: make, model: model, trim: trim, yearDefaulted: yearDefaulted };
-    }
-
-    // Year assumed when the query names none. Theme-setting range: maxYear, as
-    // before. Manifest range: the newest published year can be a sparse
-    // early-release file, so cap at the calendar year (lookupTrims walks back).
-    function defaultYear() {
-      if (!config.manifest) return config.maxYear;
-      return Math.min(config.maxYear, Math.max(config.minYear, new Date().getFullYear()));
-    }
-
-    async function lookupTrims(vehicle) {
-      var trims = await lookupTrimsInYear(vehicle);
-      // No year typed + manifest range: walk back up to 3 years before giving up.
-      if (vehicle.yearDefaulted && config.manifest) {
-        for (var back = 1; !trims.length && back <= 3 && vehicle.year - back >= config.minYear; back++) {
-          var older = { year: vehicle.year - back, make: vehicle.make, model: vehicle.model, trim: vehicle.trim };
-          trims = await lookupTrimsInYear(older);
-          if (trims.length) {
-            vehicle.year = older.year;
-            vehicle.make = older.make;
-            vehicle.model = older.model;
-          }
-        }
-      }
-      return trims;
-    }
-
-    async function lookupTrimsInYear(vehicle) {
-      var year = vehicle.year;
-      if (!vehicleCache[year]) {
-        try {
-          var url = window.PTVehicleManifest
-            ? window.PTVehicleManifest.yearUrl(config.assetUrlBase, year, config.manifest, '')
-            : config.assetUrlBase + 'pt-vehicle-' + year + '.json';
-          var r = await fetch(url);
-          if (r.ok) vehicleCache[year] = await r.json();
-        } catch(e) {}
-      }
-      var data = vehicleCache[year];
-      if (!data || !data.models) return [];
-
-      var makeData = null, modelData = null;
-
-      if (vehicle.make) {
-        makeData = data.models[vehicle.make];
-        if (!makeData) {
-          var ml = vehicle.make.toLowerCase();
-          for (var k in data.models) { if (k.toLowerCase() === ml) { makeData = data.models[k]; vehicle.make = k; break; } }
-        }
-      }
-
-      if (vehicle.model) {
-        var modelLower = vehicle.model.toLowerCase();
-        var modelClean = modelLower.replace(/[-\s]/g, '');
-        var searchIn = makeData ? [[vehicle.make, makeData]] : Object.entries(data.models);
-        for (var [mk, models] of searchIn) {
-          for (var [mn, md] of Object.entries(models)) {
-            if (mn.toLowerCase() === modelLower) { modelData = md; vehicle.make = mk; vehicle.model = mn; break; }
-          }
-          if (modelData) break;
-          for (var [mn, md] of Object.entries(models)) {
-            var mnClean = mn.toLowerCase().replace(/[-\s]/g, '');
-            if (mnClean.includes(modelClean) || modelClean.includes(mnClean)) { modelData = md; vehicle.make = mk; vehicle.model = mn; break; }
-          }
-          if (modelData) break;
-          /* Fuzzy match */
-          var bestModel = null, bestDist = 3, bestMd = null;
-          for (var [mn, md] of Object.entries(models)) {
-            var mnClean = mn.toLowerCase().replace(/[-\s]/g, '');
-            var maxDist = modelClean.length <= 4 ? 1 : 2;
-            if (Math.abs(mnClean.length - modelClean.length) > maxDist) continue;
-            var d = levenshtein(modelClean, mnClean);
-            if (d <= maxDist && d < bestDist) { bestDist = d; bestModel = mn; bestMd = md; }
-          }
-          if (bestModel) { modelData = bestMd; vehicle.make = mk; vehicle.model = bestModel; break; }
-        }
-      }
-
-      if (!modelData) return [];
-
-      /* If trim specified, filter to matching trims */
-      var trims = [];
-      if (vehicle.trim) {
-        var trimLower = vehicle.trim.toLowerCase();
-        for (var [tn, sizes] of Object.entries(modelData)) {
-          if (Array.isArray(sizes) && sizes.length > 0) {
-            var tnl = tn.toLowerCase();
-            if (tnl === trimLower || tnl.includes(trimLower) || trimLower.includes(tnl)) {
-              trims.push({ trim: tn, size: sizes[0] });
-            }
-          }
-        }
-      }
-      if (trims.length === 0) {
-        for (var [tn, sizes] of Object.entries(modelData)) {
-          if (Array.isArray(sizes) && sizes.length > 0) trims.push({ trim: tn, size: sizes[0] });
-        }
-      }
-      return trims;
-    }
-
-    function renderTrimResults(vLabel, trims, intent) {
-      loading.hidden = true;
-      var seasonBadge = intent.season ? ' <span style="font-size:0.85rem;color:#F5820B;background:rgba(245,130,11,0.1);padding:0.1rem 0.4rem;border-radius:3px;margin-left:0.3rem">' + esc(intent.season) + '</span>' : '';
-      var brandBadge = intent.brand ? ' <span style="font-size:0.85rem;color:#F5820B;background:rgba(245,130,11,0.1);padding:0.1rem 0.4rem;border-radius:3px;margin-left:0.3rem">' + esc(intent.brand) + '</span>' : '';
-
-      var html = '<li style="padding:0.8rem 1rem;border-bottom:1px solid #f0f0f0">' +
-        '<div style="font-weight:600;color:#111;font-size:1.2rem">' + esc(vLabel) + seasonBadge + brandBadge + '</div>' +
-        '<div style="font-size:0.95rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-top:0.2rem">Choose your trim</div>' +
-      '</li>';
-
-      html += trims.map(function(t) {
-        var url = buildUrl({ tireSize: t.size, brand: intent.brand, season: intent.season });
-        return '<li class="ptg__search-item" data-url="' + url + '" style="display:flex;justify-content:space-between;padding:0.7rem 1rem;cursor:pointer">' +
-          '<span style="font-weight:500;color:#374151">' + esc(t.trim) + '</span>' +
-          '<span style="color:#F5820B;font-size:1.1rem">' + esc(t.size) + '</span>' +
-        '</li>';
-      }).join('');
-
-      list.innerHTML = html;
-      results.hidden = false;
-      list.querySelectorAll('.ptg__search-item').forEach(function(item) {
-        item.addEventListener('click', function() { ptCommitRow(this.dataset.url); });
-      });
-    }
-
-    /* Picking a row is the commit for whatever the live-suggest path rendered. */
-    function ptCommitRow(url) {
-      ptFlush();
-      ptGo(url);
-    }
-
-    function renderResults(items) {
-      loading.hidden = true;
-      if (!items.length) { results.hidden = true; return; }
-      list.innerHTML = items.map(function(r) {
-        return '<li class="ptg__search-item" data-url="' + r.url + '">' +
-          '<span class="ptg__search-item-info"><span class="ptg__search-item-title">' + esc(r.title) + '</span><span class="ptg__search-item-meta">' + esc(r.meta) + '</span></span>' +
-        '</li>';
-      }).join('');
-      results.hidden = false;
-      list.querySelectorAll('.ptg__search-item').forEach(function(item) {
-        item.addEventListener('click', function() { ptCommitRow(this.dataset.url); });
-      });
-    }
-
-    function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-  })();
-
-  // Mobile filter drawer
-  var openBtn = document.querySelector('[data-open-filters]');
-  var closeBtn = document.querySelector('[data-close-filters]');
-  var sidebar = document.querySelector('[data-sidebar]');
-  var backdrop = document.querySelector('[data-filter-backdrop]');
-
-  function openFilters() {
-    if (sidebar) sidebar.classList.add('is-open');
-    if (backdrop) backdrop.classList.add('is-open');
-    document.body.style.overflow = 'hidden';
-  }
-
-  function closeFilters() {
-    if (sidebar) sidebar.classList.remove('is-open');
-    if (backdrop) backdrop.classList.remove('is-open');
-    document.body.style.overflow = '';
-  }
-
-  if (openBtn) openBtn.addEventListener('click', openFilters);
-  if (closeBtn) closeBtn.addEventListener('click', closeFilters);
-  if (backdrop) backdrop.addEventListener('click', closeFilters);
-
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeFilters();
-  });
-
-  // Reopen filter drawer after a filter is selected — mobile only.
-  // On desktop the sidebar is always visible (no drawer); openFilters() would
-  // lock body scroll with no backdrop/close button on screen to release it.
-  try {
-    if (sessionStorage.getItem('ptg_filter_open') === '1') {
-      sessionStorage.removeItem('ptg_filter_open');
-      if (openBtn && getComputedStyle(openBtn).display !== 'none') openFilters();
-    }
-  } catch(e) {}
-
-  // Sort
-  var sortSelect = document.querySelector('[data-ptg-sort]');
-  if (sortSelect) {
-    sortSelect.addEventListener('change', function() {
-      var url = new URL(window.location.href);
-      url.searchParams.set('sort_by', this.value);
-      window.location.href = url.toString();
-    });
-  }
-
-  /* ── AJAX add-to-cart for collection card cart buttons ─────────────────── */
-  (function() {
-    function updateBadge(count) {
-      // Live header is pt-header (sections/header-group.json); its cart count
-      // lives in .pt-header__cart-count (desktop + mobile). The old
-      // #cart-icon-bubble target only existed in the orphaned pt-navbar.
-      document.querySelectorAll('.pt-header__cart-count').forEach(function(el) {
-        el.textContent = count;
-      });
-    }
-
-    function readBadge() {
-      var el = document.querySelector('.pt-header__cart-count');
-      var n = el ? parseInt(el.textContent, 10) : 0;
-      return isNaN(n) ? 0 : n;
-    }
-
-    document.addEventListener('click', function(e) {
-      var btn = e.target.closest('.ptg__card-cart');
-      if (!btn || btn.disabled) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      var variantId = btn.dataset.variant;
-      if (!variantId) return;
-
-      // Optimistic UI — flip the button to its success state IMMEDIATELY so
-      // the customer gets feedback in the same paint frame, and bump the
-      // header cart count by 1 optimistically. If the POST fails, we roll
-      // both back with an error indication.
-      var priorBadge = readBadge();
-      btn.disabled = true;                         // prevents double-add during the 2s success flash
-      btn.classList.add('ptg__card-cart--success');
-      updateBadge(priorBadge + 1);
-
-      fetch('/cart/add.js', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ id: variantId, quantity: 1 })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.status) {
-          // Shopify returned an error payload (e.g. "product not available") —
-          // reconcile: roll back the optimistic success state + badge.
-          btn.classList.remove('ptg__card-cart--success');
-          btn.classList.add('ptg__card-cart--error');
-          updateBadge(priorBadge);
-          setTimeout(function() { btn.classList.remove('ptg__card-cart--error'); btn.disabled = false; }, 1600);
-          return;
-        }
-        // Success — reconcile the badge with the authoritative count from
-        // /cart.js in case the optimistic +1 was off (e.g. product had a
-        // quantity cap that snapped the added qty back).
-        fetch('/cart.js', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(function(r) { return r.json(); })
-          .then(function(cart) { updateBadge(cart.item_count); })
-          .catch(function() {});
-        setTimeout(function() { btn.classList.remove('ptg__card-cart--success'); btn.disabled = false; }, 2000);
-      })
-      .catch(function() {
-        // Network error — roll back optimistic state.
-        btn.classList.remove('ptg__card-cart--success');
-        btn.classList.add('ptg__card-cart--error');
-        updateBadge(priorBadge);
-        setTimeout(function() { btn.classList.remove('ptg__card-cart--error'); btn.disabled = false; }, 1600);
-      });
-    });
-  })();
-
-  // ── Navigation progress bar ─────────────────────────────────────────────
-  // Fires when the customer clicks a filter/sort/pagination link. The bar
-  // stays visible until the next paint (i.e. the fresh HTML replaces the
-  // current DOM). Also fires on the sort-select change (that triggers a
-  // programmatic location.href change above). Small, non-blocking, and
-  // makes the "click → white flash → new page" gap feel intentional.
-  (function () {
-    function showNavProgress() {
-      if (document.querySelector('.ptg__nav-progress')) return;
-      var bar = document.createElement('div');
-      bar.className = 'ptg__nav-progress';
-      bar.setAttribute('aria-hidden', 'true');
-      document.body.appendChild(bar);
-    }
-    // Any left-click on a link that navigates within our origin fires the bar.
-    // Skip if it's a modifier-clicked link (open in new tab) or non-primary btn.
-    document.querySelectorAll(
-      '[data-filter-key], .ptg__page-btn, .ptg__filter-link, [data-clear-filters]'
-    ).forEach(function (el) {
-      el.addEventListener('click', function (e) {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-        showNavProgress();
-      });
-    });
-    // Sort-select programmatically sets window.location.href — hook change.
-    var sortEl = document.querySelector('[data-ptg-sort]');
-    if (sortEl) sortEl.addEventListener('change', showNavProgress);
-  })();
-
-  // ── Scroll restoration ────────────────────────────────────────────────
-  // MPA pattern (see davidtran.dev scroll-restoration-in-spas): save the
-  // scroll position + clicked product handle to sessionStorage on card click,
-  // then on the back-navigation pageshow, either scroll the clicked card into
-  // view (best UX — the customer sees exactly where they were) or fall back
-  // to the raw scrollY. history.scrollRestoration='manual' disables the
-  // browser's own guess, which is often wrong when the grid re-renders.
-  // Scoped per-pathname so /collections/tires and /collections/wheels don't
-  // stomp each other's saved positions. Keyed on URL search too, so a
-  // filter/page change doesn't restore into a stale grid.
-  (function () {
-    if (!('sessionStorage' in window)) return;
-    var KEY = 'ptg_scroll:' + (window.location.pathname || '/');
-    var TTL_MS = 30 * 60 * 1000;
-    try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) {}
-
-    function saveScroll(handle) {
-      try {
-        sessionStorage.setItem(KEY, JSON.stringify({
-          y: window.scrollY,
-          at: Date.now(),
-          s: window.location.search,
-          h: handle || null
-        }));
-      } catch (e) {}
-    }
-    function restoreScroll() {
-      var raw;
-      try { raw = sessionStorage.getItem(KEY); } catch (e) { return; }
-      if (!raw) return;
-      try {
-        var p = JSON.parse(raw);
-        if (!p || Date.now() - (p.at || 0) > TTL_MS) return;
-        // Filter/pagination changed since save → skip; don't scroll into a
-        // grid the customer isn't actually looking at.
-        if ((p.s || '') !== (window.location.search || '')) return;
-        // Prefer the clicked-card-into-view path; falls back to raw y if
-        // the DOM has re-shuffled (or the card is no longer on this page).
-        if (p.h) {
-          var link = document.querySelector('.ptg__grid a[href*="/products/' + p.h + '"]');
-          if (link) {
-            link.scrollIntoView({ block: 'center', behavior: 'auto' });
-            return;
-          }
-        }
-        window.scrollTo({ top: p.y || 0, behavior: 'auto' });
-      } catch (e) {}
-    }
-
-    // Save on product-card clicks (grab the handle out of the href so we can
-    // scroll to that exact card on the return trip).
-    document.querySelectorAll('.ptg__grid a[href*="/products/"]').forEach(function (a) {
-      a.addEventListener('click', function () {
-        var m = a.getAttribute('href').match(/\/products\/([a-z0-9-]+)/i);
-        saveScroll(m ? m[1] : null);
-      });
-    });
-    // Save on pagination too so returning from a Prev/Next hop feels stable.
-    document.querySelectorAll('.ptg__page-btn').forEach(function (a) {
-      a.addEventListener('click', function () { saveScroll(null); });
-    });
-
-    // pageshow fires on both first paint AND bfcache restore. Small delay
-    // lets the auto-default script at the top of this section + any dynamic
-    // grid mutation settle before we scroll.
-    window.addEventListener('pageshow', function (e) {
-      setTimeout(restoreScroll, e.persisted ? 0 : 60);
-    });
-  })();
-});
+<script type="application/json" data-rd-results-config>
+{
+  "kind": {{ rd_kind | json }},
+  "one": {{ rd_one | json }},
+  "many": {{ rd_many | json }},
+  "b2b": {{ rd_b2b | json }},
+  "sectionId": {{ section.id | json }},
+  "collectionUrl": {{ collection.url | json }},
+  "tags": [{%- for t in current_tags -%}{%- unless forloop.first -%},{%- endunless -%}{{ t | handleize | json }}{%- endfor -%}],
+  "total": {{ rd_total | json }},
+  "perPage": {{ section.settings.products_per_page | json }},
+  "page": {{ paginate.current_page | json }}
+}
 </script>
+{%- comment -%} window.PTVehiclePairs.url (the one staggered-set URL builder); loaded here for now, sitewide later. {%- endcomment -%}
+<script src="{{ 'pt-vehicle-pairs.js' | asset_url }}" defer></script>
+<script src="{{ 'pt-rd-results.js' | asset_url }}" defer></script>
+{%- endpaginate -%}
+{%- endunless -%}
 
 {% schema %}
 {
@@ -3030,7 +1167,7 @@ document.addEventListener('DOMContentLoaded', function() {
       "type": "text",
       "id": "trust_2",
       "label": "Trust item 2",
-      "default": "Price Match Guarantee"
+      "default": "Price match vs local independent shops"
     },
     {
       "type": "text",

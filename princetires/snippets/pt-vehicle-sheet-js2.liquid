@@ -1,0 +1,432 @@
+
+    function pick(level, v) {
+      var k = STEPS[level];
+      for (var j = level + 1; j < STEPS.length; j++) { state[STEPS[j]] = null; clearSel(sel[STEPS[j]]); }
+      state[k] = (Array.prototype.find.call(sel[k].options, function (o) { return o.value === v; }) || { text: v }).text;
+      fire(sel[k], v);
+      show(level + 1, 'fwd');
+    }
+
+    async function replay(s, partial) {
+      if (!s) return;
+      var my = ++token;
+      skeleton('fwd');
+      var i = 0;
+      for (; i < STEPS.length; i++) {
+        var k = STEPS[i], want = s[k];
+        if (!want) break;
+        var o = await waitFor(function () { return Array.prototype.find.call(sel[k].options, function (x) { return x.value !== '' && (x.value === want || x.text === want); }); }, 6000);
+        if (my !== token) return;
+        if (!o) { return show(i, 'fade'); }
+        for (var j = i + 1; j < STEPS.length; j++) clearSel(sel[STEPS[j]]);
+        state[k] = o.text;
+        fire(sel[k], o.value);
+      }
+      show(partial ? i : N, 'fwd');
+    }
+
+    function sizeOf(text) { var m = String(text).match(/(?:HL|LT|ST|P)?\d{2,3}\/\d{2}Z?RF?\d{2}(?:\.\d)?(?:\/[A-Z]\b|C\b)?|\d{2}[xX]\d{1,2}\.\d{2}R\d{2}(?:LT(?:\/[A-Z]\b)?)?|\d{3}R\d{2}(?:LT\b|C\b)?/i); return m ? m[0] : ''; }
+    function norm(z) { return String(z).toUpperCase().replace(/^(HL|LT|ST|P)/, '').replace(/LT(\/[A-Z])?$/, '').replace(/\/[A-Z]$/, '').replace(/C$/, '').replace('ZRF', 'R').replace('ZR', 'R').replace('RF', 'R'); }
+
+    /* Staggered sets (2026-11-15). The picked trim's own sizes from the year
+       file (the same pt-vehicle-YYYY.json the hero picker reads), sent to
+       PTVehiclePairs.lookup (assets/pt-vehicle-pairs.js, own 2.5 s timeout).
+       Anything but a staggered answer resolves null: showResult then does
+       exactly what it did before. */
+    var yearFiles = {};
+    function trimSizes() {
+      var base = '';
+      try { base = JSON.parse(document.querySelector('[data-smart-search-config]').textContent).assetUrlBase || ''; } catch (e) {}
+      var y = state.year, mk = state.make, md = state.model, tr = state.trim;
+      if (!base || !y || !mk || !md) return Promise.resolve(null);
+      if (!yearFiles[y]) yearFiles[y] = fetch(base + 'pt-vehicle-' + y + '.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+      return Promise.race([yearFiles[y], sleep(2500).then(function () { return null; })]).then(function (d) {
+        if (!d) { delete yearFiles[y]; return null; }
+        var byModel = ((d.models || {})[mk] || {})[md];
+        if (!byModel) return null;
+        var keys = Object.keys(byModel);
+        if (!tr && keys.length === 1) tr = keys[0];
+        return tr && Array.isArray(byModel[tr]) ? { trim: tr, sizes: byModel[tr] } : null;
+      });
+    }
+    /* -> { sets: staggered answer | null, plain: non-staggered answer | null,
+       failed: the trim lists 2+ different sizes but the lookup gave no answer
+       (error / timeout), so front and rear MAY differ }. */
+    function distinct(list) { var k = {}; list.forEach(function (z) { k[norm(z)] = 1; }); return Object.keys(k).length; }
+    function pairAnswer() {
+      var VP = window.PTVehiclePairs;
+      var none = { sets: null, plain: null, failed: false, sizes: [] };
+      if (!VP || typeof VP.lookup !== 'function' || typeof VP.url !== 'function') return Promise.resolve(none);
+      var multi = false, sizes = [];
+      return trimSizes().then(function (t) {
+        if (!t || t.sizes.length < 2) return null;
+        sizes = t.sizes.slice();
+        var k = {};
+        t.sizes.forEach(function (z) { k[norm(z)] = 1; });
+        multi = Object.keys(k).length > 1;
+        return VP.lookup({ year: state.year, make: state.make, model: state.model, trim: t.trim, sizes: t.sizes });
+      }).then(function (a) {
+        if (a && a.staggered && Array.isArray(a.pairs) && a.pairs.length) return { sets: a, plain: null, failed: false, sizes: sizes };
+        /* No set but 2+ different sizes (a mayDiffer answer, or square
+           options): list every size, never just the hero's first one as
+           "Your tire size". */
+        if (a && Array.isArray(a.pairs) && distinct((a.others || []).concat(a.sameSize || [])) > 1) return { sets: a, plain: null, failed: false, sizes: sizes };
+        if (a && Array.isArray(a.pairs)) return { sets: null, plain: a, failed: false, sizes: sizes };
+        return { sets: null, plain: null, failed: multi, sizes: sizes };
+      }, function () { return { sets: null, plain: null, failed: multi, sizes: sizes }; });
+    }
+    /* Same event pair the hero's own row click sends (surface hero, method
+       text), so popup searches that end on these cards are still counted. */
+    function track(size, count) {
+      var T = window.PTTrack;
+      if (!T || typeof T.once !== 'function') return;
+      var d = { surface: 'hero', method: 'text', year: state.year, make: state.make, model: state.model, trim: state.trim, size: size };
+      var key = ['vs', d.year, d.make, d.model, d.trim, size, count].join('|');
+      try {
+        T.once('hero-s|' + key, 'pt_search_submit', d);
+        T.once('hero-r|' + key, 'pt_search_result', { surface: 'hero', method: 'text', outcome: 'sizes', sizes_count: count, year: d.year, make: d.make, model: d.model, size: size });
+      } catch (e) {}
+    }
+    function go(h) {
+      var T = window.PTTrack;
+      if (T && typeof T.go === 'function') T.go(h); else window.location.href = h;
+    }
+    function rimOf(z) { var m = norm(z).match(/R(\d{2})(?:\.\d)?$/); return m ? m[1] : ''; }
+    /* One size -> the URL today's size card lands on (the hero's
+       buildCollectionUrl({ tireSize }) routed to its rim collection). */
+    function sizeUrl(z) {
+      var c = norm(z).match(/^(\d{3})\/(\d{2,3})R(\d{2})$/);
+      if (c) {
+        var u = '/collections/tires?filter.p.m.custom.tire_width=' + c[1] + '&filter.p.m.custom.tire_profile=' + c[2] + '&filter.p.m.custom.rim_diameter=' + c[3] + '&sort_by=price-ascending';
+        return window.PTRim ? window.PTRim.route(u) : u;
+      }
+      var VP = window.PTVehiclePairs;
+      return VP && typeof VP.url === 'function' ? VP.url({ front: z }) : null;
+    }
+    /* Today's check: no size in stock online -> "Call" instead of "Shop". */
+    function stockCheck(card) {
+        var z = card.querySelector('.ptvs__size').textContent;
+        var code = norm(z).match(/^(\d{3})\/(\d{2})R(\d{2})$/);
+        if (!code) return;
+        fetch('/search/suggest.json?q=' + code[1] + code[2] + code[3] + '&resources[type]=product&resources[limit]=10').then(function (r) { return r.json(); }).then(function (j) {
+          var ps = ((j.resources || {}).results || {}).products || [];
+          if (ps.some(function (p) { return p.available && norm(sizeOf(p.title)) === norm(z); })) return;
+          var b = card.querySelector('.ptvs__cta');
+          var note = document.createElement('div');
+          note.style.cssText = 'color:#98989f;font-size:14px;margin:6px 0 10px';
+          note.textContent = 'Not in stock online right now. Call us and we can usually order it in.';
+          b.parentNode.insertBefore(note, b);
+          var a = document.createElement('a');
+          a.className = 'ptvs__cta'; a.href = 'tel:' + phone.replace(/\D/g, ''); a.textContent = 'Call ' + phone;
+          a.style.cssText = 'display:block;text-align:center;text-decoration:none';
+          b.replaceWith(a);
+        }).catch(function () {});
+    }
+
+    /* "Which wheels are on your car?": one card per factory setup. Standard
+       sets, then same-size-all-round, then factory options, then any other
+       size the trim lists. A set whose front rim has no collection falls
+       back to its two sizes as single cards (never /collections/tires). */
+    function showSets(a, veh, dir) {
+      var VP = window.PTVehiclePairs;
+      save({ year: state.year, make: state.make, model: state.model, trim: state.trim });
+      paintTrigger();
+      var cards = [], seen = {};
+      var tel = 'tel:' + phone.replace(/\D/g, '');
+      /* a.staggered false: a multi-size trim with no set, so list the trim's
+         sizes. Only a server sameSize says "same size on all 4"; a size the
+         server could not place (others) is never offered as one. */
+      var plain = !a.staggered;
+      var rimSeen = {}, rimMixed = false;
+      /* square: a "same size on all 4" card, shown even when a set uses the
+         size (a car sold both square and staggered). */
+      function single(z, eyebrow, square) {
+        var k = (square ? 'sq:' : '') + norm(z); if (seen[k]) return; seen[k] = 1;
+        var r = rimOf(z);
+        if (r) { if (rimSeen[r]) rimMixed = true; rimSeen[r] = 1; }
+        var u = sizeUrl(z);
+        cards.push('<div class="ptvs__sizecard" data-single><small>' + esc(eyebrow) + '</small><div class="ptvs__size">' + esc(z) + '</div>' +
+          (u ? '<a class="ptvs__cta" href="' + esc(u) + '" data-go data-size="' + esc(z) + '">Shop ' + esc(z) + ' tires</a>'
+             : '<a class="ptvs__cta" href="' + tel + '">Call ' + esc(phone) + '</a>') + '</div>');
+      }
+      function inch(z) { var r = rimOf(z); return r ? r + '-inch wheels' : 'Wheels'; }
+      function set(x) {
+        var u = VP.url({ front: x.front, rear: x.rear });
+        if (!u) { single(x.front, inch(x.front)); single(x.rear, inch(x.rear)); return; }
+        seen[norm(x.front)] = 1; seen[norm(x.rear)] = 1;
+        var rims = x.rimFront && x.rimRear && x.rimFront !== x.rimRear ? x.rimFront + '/' + x.rimRear + '-inch wheels' : inch(x.front);
+        var fr = esc(x.front), rr = esc(x.rear), sz = ' data-size="' + fr + '" data-set';
+        cards.push('<div class="ptvs__sizecard ptvs__set"><small>' + esc(rims) + ' · front and rear differ' +
+          (x.oe === 'option' ? ' <span class="ptvs__tag">Factory option</span>' : '') + '</small>' +
+          '<div class="ptvs__axles"><div class="ptvs__axle"><span>Front</span><b>' + fr + '</b></div>' +
+          '<div class="ptvs__axle"><span>Rear</span><b>' + rr + '</b></div></div>' +
+          '<a class="ptvs__cta" href="' + esc(u) + '" data-go' + sz + ' aria-label="Shop ' + fr + ' front and ' + rr + ' rear sets">Shop front + rear sets</a>' +
+          '<div class="ptvs__halves"><a href="' + esc(u + '&view=front') + '" data-go' + sz + ' aria-label="Front tires only, ' + fr + '">Front tires only</a>' +
+          '<a href="' + esc(u + '&view=rear') + '" data-go' + sz + ' aria-label="Rear tires only, ' + rr + '">Rear tires only</a></div></div>');
+      }
+      var pairs = a.pairs || [];
+      pairs.filter(function (x) { return x.oe === 'standard'; }).forEach(set);
+      (a.sameSize || []).forEach(function (z) { single(z, inch(z) + ' · same size on all 4', true); });
+      pairs.filter(function (x) { return x.oe !== 'standard'; }).forEach(set);
+      (a.others || []).forEach(function (z) { single(z, a.mayDiffer ? inch(z) + ' · front or rear only?' : (plain ? inch(z) : 'Also fits')); });
+      /* Same rule as the hero (PTVehiclePairs.only): one confident STANDARD
+         pair and nothing else -> "Here's your set"; a factory option never is. */
+      var one = cards.length === 1 && typeof VP.only === 'function' && !!VP.only(a);
+      var title = one ? 'Here’s your set' : (plain && cards.length === 1 ? 'Here’s your size' : 'Which wheels are on your car?');
+      var note = a.staggered && !a.confident ? 'These sizes usually go front and rear.'
+        : (a.mayDiffer || (plain && (rimMixed || a.failed)) ? 'Front and rear may differ on this car.' : '');
+      var html = '<div class="ptvs__result"><div class="ptvs__check">' + ICON.check + '</div><div class="ptvs__q" style="margin:0 0 4px">' + title + '</div>' +
+        '<div class="ptvs__veh">' + esc(veh) + '</div>' +
+        (note ? '<div class="ptvs__note">' + note + '</div>' : '') +
+        cards.join('') +
+        '<div class="ptvs__help">' + (cards.length > 1 ? 'Not sure which one? ' : 'Not sure? ') + 'Check the sticker inside the driver’s door, or call us at <a href="' + tel + '">' + esc(phone) + '</a>.</div>' +
+        '<button type="button" class="ptvs__alt" data-restart>Change vehicle</button></div>';
+      var pane = swap(html, dir === 'fade' ? 'fwd' : dir);
+      Array.prototype.forEach.call(pane.querySelectorAll('.ptvs__sizecard[data-single]'), stockCheck);
+      pane.addEventListener('click', function (e) {
+        var g = e.target.closest('a[data-go]');
+        if (g) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+          e.preventDefault();
+          buzz();
+          var h = g.getAttribute('href');
+          track(g.getAttribute('data-size') || '', g.hasAttribute('data-set') ? 2 : 1);
+          if (g.classList.contains('ptvs__cta')) g.textContent = 'Loading…';
+          close(true);
+          setTimeout(function () { go(h); }, 60);
+          return;
+        }
+        if (e.target.closest('[data-restart]')) { buzz(); state = { year: null, make: null, model: null, trim: null }; show(0, 'back'); }
+      });
+    }
+
+    async function showResult(dir, my) {
+      skeleton(dir);
+      var veh = [state.year, state.make, state.model, state.trim].filter(Boolean).join(' ');
+      var pa = await pairAnswer();
+      if (my !== token) return;
+      if (pa.sets) return showSets(pa.sets, veh, dir);
+      /* The check failed for a trim with 2+ different sizes: every size,
+         "front or rear only?", BEFORE the hero's rows (a one-trim model skips
+         the trim step, and the hero's first row would read "Your tire size"
+         with the rear size gone: 2012 XKR Base). */
+      if (pa.failed && distinct(pa.sizes) > 1) return showSets({ staggered: false, confident: false, failed: true, mayDiffer: true, pairs: [], sameSize: [], others: pa.sizes }, veh, dir);
+      var items = await waitFor(function () {
+        var li = Array.prototype.filter.call(section.querySelectorAll('.hero-smart-search__result-item'), function (el) {
+          var sz = sizeOf(el.textContent);
+          var inp = section.querySelector('[data-smart-search-input]');
+          // A front + rear row is the customer's own typed pair, never this vehicle's size.
+          if (/[?&]rear=/.test(el.getAttribute('data-url') || '')) return false;
+          return sz && (el.textContent.indexOf(state.model || '\u0000') !== -1 || (inp && norm(sizeOf(inp.value)) === norm(sz)));
+        });
+        return li.length ? li : null;
+      }, 5000) || [];
+      if (my !== token) return;
+      /* Nothing found by the hero but the lookup has the trim's sizes
+         (e.g. 2018 Camaro LS): list them instead of "no size on file". */
+      if (!items.length && pa.plain && ((pa.plain.sameSize || []).length || (pa.plain.others || []).length)) return showSets(pa.plain, veh, dir);
+      /* Lookup failed and the hero found nothing either: the trim's own sizes,
+         with the "may differ" note (e.g. 2022 911 Carrera while offline). */
+      if (!items.length && pa.failed && pa.sizes.length) return showSets({ staggered: false, confident: false, failed: true, mayDiffer: true, pairs: [], sameSize: [], others: pa.sizes }, veh, dir);
+      save({ year: state.year, make: state.make, model: state.model, trim: state.trim });
+      paintTrigger();
+      var seen = {}, cards = '';
+      /* 2+ different sizes (from the trim or the hero's rows): none is "Your
+         tire size"; each may be one end only. */
+      var many = distinct(pa.sizes) > 1 || distinct(items.map(function (el) { return sizeOf(el.textContent); }).filter(Boolean)) > 1;
+      var hedge = many || pa.failed;
+      items.forEach(function (el, i) {
+        var sz = sizeOf(el.textContent);
+        if (!sz || seen[sz]) return; seen[sz] = 1;
+        cards += '<div class="ptvs__sizecard"><small>' + (many ? 'Front or rear only?' : (i === 0 ? 'Your tire size' : 'Also fits')) + '</small><div class="ptvs__size">' + esc(sz) + '</div>' +
+          '<button type="button" class="ptvs__cta" data-shop="' + i + '">Shop ' + esc(sz) + ' tires</button></div>';
+      });
+      var html = '<div class="ptvs__result"><div class="ptvs__check">' + ICON.check + '</div><div class="ptvs__q" style="margin:0 0 4px">' + (cards ? (many ? 'Which wheels are on your car?' : 'Here’s your size') : 'Let’s find your size') + '</div>' +
+        '<div class="ptvs__veh">' + esc(veh) + '</div>' +
+        /* The front/rear lookup failed, or 2+ sizes: never imply the first
+           size fits all four without a word. */
+        (cards && hedge ? '<div class="ptvs__note" style="margin:-10px 0 12px">Front and rear may differ on this car. Check the sticker inside the driver’s door, or call us.</div>' : '') +
+        (cards || '<div class="ptvs__empty" style="padding-top:0">We don’t have a size on file for this one yet.</div>') +
+        '<div class="ptvs__help">Not sure? Call <a href="tel:' + phone.replace(/\D/g, '') + '">' + esc(phone) + '</a></div>' +
+        '<button type="button" class="ptvs__alt" data-restart>Change vehicle</button></div>';
+      var pane = swap(html, dir === 'fade' ? 'fwd' : dir);
+      Array.prototype.forEach.call(pane.querySelectorAll('.ptvs__sizecard'), stockCheck);
+      pane.addEventListener('click', function (e) {
+        var shop = e.target.closest('[data-shop]');
+        if (shop) {
+          buzz();
+          var el = items[+shop.getAttribute('data-shop')];
+          shop.textContent = 'Loading…';
+          close(true);
+          setTimeout(function () {
+            var a = el.querySelector('a') || el.closest('a');
+            if (a && a.href) { window.location.href = a.href; return; }
+            /* A multi-size trim row would ask the hero's front/rear check again,
+               and that answer is dropped once the popup closes (the "Shop" button
+               did nothing). showResult already asked: take the row's own URL. */
+            if (el.hasAttribute('data-pairs')) el._ptPairDone = true;
+            el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            el.click();
+          }, 60);
+          return;
+        }
+        if (e.target.closest('[data-restart]')) { buzz(); state = { year: null, make: null, model: null, trim: null }; show(0, 'back'); }
+      });
+    }
+
+    function showDone(dir, my) {
+      var veh = [state.year, state.make, state.model, state.trim].filter(Boolean).join(' ');
+      save({ year: state.year, make: state.make, model: state.model, trim: state.trim || (load() || {}).trim || null });
+      paintTrigger();
+      var label = (o.submit && o.submit.textContent.trim()) || 'Continue';
+      var html = '<div class="ptvs__result"><div class="ptvs__check">' + ICON.check + '</div><div class="ptvs__q" style="margin:0 0 4px">' + (o.kind === 'packages' ? 'Ready to build' : 'Let’s find your wheels') + '</div>' +
+        '<div class="ptvs__veh">' + esc(veh) + '</div>' +
+        '<div class="ptvs__sizecard"><small>' + (o.kind === 'packages' ? 'Wheels, tires, hardware and install' : 'Every wheel is fit-checked for your vehicle') + '</small>' +
+        '<div class="ptvs__size" style="font-size:22px">' + esc(state.make + ' ' + state.model) + '</div>' +
+        '<button type="button" class="ptvs__cta" data-go-submit>' + esc(label) + '</button></div>' +
+        '<div class="ptvs__help">Not sure? Call <a href="tel:' + phone.replace(/\D/g, '') + '">' + esc(phone) + '</a></div>' +
+        '<button type="button" class="ptvs__alt" data-restart>Change vehicle</button></div>';
+      var pane = swap(html, dir === 'fade' ? 'fwd' : dir);
+      pane.addEventListener('click', function (e) {
+        var go = e.target.closest('[data-go-submit]');
+        if (go) {
+          buzz();
+          go.textContent = 'Loading…';
+          waitFor(function () { return o.submit && !o.submit.disabled; }, 3000).then(function () {
+            close(true);
+            if (o.submit) { o.submit.disabled = false; o.submit.click(); }
+          });
+          return;
+        }
+        if (e.target.closest('[data-restart]')) { buzz(); state = { year: null, make: null, model: null, trim: null }; show(0, 'back'); }
+      });
+    }
+
+    var KIND_LABEL = { tires: 'Tires', wheels: 'Wheels', packages: 'Packages' };
+    function paintSeg() {
+      var reg = window.__ptvsReg || {};
+      var kinds = ['tires', 'wheels', 'packages'].filter(function (k) { return reg[k]; });
+      seg.hidden = kinds.length < 2 || !reg[o.kind] || reg[o.kind].wrap !== wrap;
+      seg.innerHTML = kinds.map(function (k) {
+        var on = k === o.kind;
+        return '<button type="button" role="tab" aria-selected="' + on + '" class="' + (on ? 'is-on' : '') + '" data-kind="' + k + '">' + KIND_LABEL[k] + '</button>';
+      }).join('');
+    }
+    function heroTab(k) {
+      var hero = root.closest('.section-hero-smart-search') || document.querySelector('.section-hero-smart-search');
+      if (!hero) return;
+      var want = KIND_LABEL[k].toLowerCase();
+      var t = Array.prototype.find.call(hero.querySelectorAll('button, a, [role="tab"]'), function (el) {
+        return !el.closest('.ptvs') && !el.closest('.ptvs-trigger') && el.textContent.trim().toLowerCase() === want;
+      });
+      if (t) { try { t.click(); } catch (e) {} }
+    }
+
+    function open(seed, instant) {
+      lastFocus = document.activeElement;
+      wrap.hidden = false;
+      if (instant === true) wrap.classList.add('is-instant');
+      document.documentElement.style.overflow = 'hidden';
+      state = { year: null, make: null, model: null, trim: null };
+      stage.innerHTML = '';
+      paintSeg();
+      if (seed && seed.year) replay(seed, true); else show(0, 'fwd');
+      requestAnimationFrame(function () { requestAnimationFrame(function () { wrap.classList.add('is-open'); setTimeout(function () { wrap.classList.remove('is-instant'); }, 80); }); });
+      setTimeout(function () { if (!window.matchMedia('(min-width: 750px)').matches) wrap.querySelector('.ptvs__close').focus({ preventScroll: true }); }, 50);
+    }
+    function close(quick) {
+      token++;
+      wrap.classList.remove('is-open');
+      sheet.style.transform = '';
+      document.documentElement.style.overflow = '';
+      setTimeout(function () { wrap.hidden = true; }, quick ? 0 : 420);
+      if (lastFocus && lastFocus.focus && !quick) lastFocus.focus({ preventScroll: true });
+    }
+
+    var reg = window.__ptvsReg = window.__ptvsReg || {};
+    var inHero = !!root.closest('.section-hero-smart-search');
+    if (!reg[o.kind] || (inHero && !reg[o.kind].hero)) reg[o.kind] = { open: open, wrap: wrap, hero: inHero };
+
+    trigger.addEventListener('click', function () { buzz(); open(); });
+    wrap.addEventListener('click', function (e) {
+      if (e.target.closest('[data-close]')) { close(); return; }
+      var kb = e.target.closest('[data-kind]');
+      if (kb) {
+        var nk = kb.getAttribute('data-kind'), r = window.__ptvsReg || {};
+        if (nk === o.kind || !r[nk]) return;
+        buzz();
+        var carry = { year: state.year, make: state.make, model: state.model, trim: state.trim };
+        close(true);
+        heroTab(nk);
+        setTimeout(function () { r[nk].open(carry, true); }, 20);
+        return;
+      }
+      var g = e.target.closest('[data-go]');
+      if (g) { buzz(); var i = +g.getAttribute('data-go'); for (var j = i; j < N; j++) state[STEPS[j]] = null; show(i, 'back'); }
+    });
+    backBtn.addEventListener('click', function () { if (step > 0) { buzz(); var i = Math.min(step, N) - 1; for (var j = i; j < N; j++) state[STEPS[j]] = null; show(i, 'back'); } });
+    document.addEventListener('keydown', function (e) {
+      if (wrap.hidden) return;
+      if (e.key === 'Escape') close();
+      if (e.key === 'Tab') {
+        var f = Array.prototype.filter.call(sheet.querySelectorAll('button, input, a[href]'), function (el) { return el.offsetParent && el.tabIndex !== -1 && !el.closest('.out-fwd, .out-back'); });
+        if (!f.length) return;
+        if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+      }
+    });
+
+    /* swipe down to close (phones) */
+    var y0 = null, dy = 0;
+    var handle = wrap.querySelector('.ptvs__head');
+    [handle, wrap.querySelector('.ptvs__grab')].forEach(function (h) {
+      h.addEventListener('touchstart', function (e) { y0 = e.touches[0].clientY; dy = 0; wrap.classList.add('is-dragging'); }, { passive: true });
+    });
+    window.addEventListener('touchmove', function (e) {
+      if (y0 === null) return;
+      dy = Math.max(0, e.touches[0].clientY - y0);
+      sheet.style.transform = 'translateY(' + dy + 'px)';
+    }, { passive: true });
+    window.addEventListener('touchend', function () {
+      if (y0 === null) return;
+      y0 = null; wrap.classList.remove('is-dragging');
+      if (dy > 110) close(); else sheet.style.transform = '';
+    });
+  }
+
+  function mergePills() {
+    Array.prototype.forEach.call(document.querySelectorAll('.pt-scene__meta'), function (meta) {
+      if (meta.hasAttribute('data-pt-merged')) return;
+      var eb = meta.querySelector('.pt-scene__eyebrow'), t = meta.querySelector('[data-pt-temp]');
+      if (!eb || !t) return;
+      meta.setAttribute('data-pt-merged', '');
+      var out = document.createElement('span');
+      out.className = 'ptvs-temp';
+      eb.appendChild(out);
+      function sync() { var m = (t.textContent || '').match(/-?\d+\s*°\s*[CF]?/); out.textContent = m ? m[0].replace(/\s+/g, '') : ''; out.hidden = !m; }
+      sync();
+      try { new MutationObserver(sync).observe(t, { childList: true, characterData: true, subtree: true }); } catch (e) {}
+    });
+  }
+
+  function init() {
+    mergePills();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-vehicle-picker]'), function (root) {
+      setup({ kind: 'tires', root: root, mount: root,
+        sel: { year: root.querySelector('[data-vp-year]'), make: root.querySelector('[data-vp-make]'), model: root.querySelector('[data-vp-model]'), trim: root.querySelector('[data-vp-trim]') },
+        hide: [root.querySelector('.hero-smart-search__picker-selects'), root.querySelector('.hero-smart-search__picker-label')] });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-pt-ws]'), function (w) {
+      var panel = w.querySelector('[data-pt-ws-panel="vehicle"]');
+      if (!panel) return;
+      var submit = w.querySelector('[data-pt-ws-submit-vehicle]');
+      var hide = Array.prototype.filter.call(panel.querySelectorAll('.pt-ws__row'), function (r) { return r.querySelector('select'); });
+      if (submit) hide.push(submit.closest('.pt-ws__actions') || submit);
+      setup({ kind: w.classList.contains('pt-ws--package') ? 'packages' : 'wheels', root: w, mount: panel, submit: submit, section: w, hide: hide,
+        sel: { year: panel.querySelector('[data-pt-ws-year]'), make: panel.querySelector('[data-pt-ws-make]'), model: panel.querySelector('[data-pt-ws-model]'), trim: panel.querySelector('[data-pt-ws-trim]') } });
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  document.addEventListener('shopify:section:load', init);
+})();
+</script>

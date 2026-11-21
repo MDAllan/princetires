@@ -10,12 +10,63 @@
 {% enddoc %}
 
 {%- comment -%}
-  The Organization + per-location AutoPartsStore entities now live in the
-  canonical @graph in snippets/schema-local-business.liquid (rendered site-wide
-  from the layout). Emitting an Organization here too would create a duplicate,
-  conflicting node — so it has been removed. This snippet keeps the AI-overview
-  summary metas + the product/collection/article entities below.
+  Organization entity — establishes the business as a known entity
+  in the knowledge graph. Helps AI engines build entity relationships.
 {%- endcomment -%}
+{%- if request.page_type == 'index' -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": {{ request.origin | append: '/#org' | json }},
+    "name": {{ shop.name | json }},
+    "url": {{ request.origin | json }},
+    {%- if shop.brand.logo -%}
+      "logo": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }},
+    {%- endif -%}
+    {%- assign org_phone = settings.shop_phone | default: '(403) 452-4283' -%}
+    {%- if org_phone != blank -%}
+      "telephone": {{ org_phone | json }},
+    {%- endif -%}
+    {%- comment -%} Public inbox — shop.email is the old account Gmail. {%- endcomment -%}
+    "email": "info@princetires.ca",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "111 42 Ave SW",
+      "addressLocality": {{ shop.address.city | json }},
+      "addressRegion": {{ shop.address.province_code | json }},
+      "postalCode": {{ shop.address.zip | json }},
+      "addressCountry": {{ shop.address.country_code | json }}
+    },
+    "sameAs": [
+      {%- liquid
+        assign social_links = ''
+        if settings.social_facebook_link != blank
+          assign social_links = social_links | append: settings.social_facebook_link | append: '|'
+        else
+          assign social_links = social_links | append: 'https://www.facebook.com/PrincetiresLTD' | append: '|'
+        endif
+        if settings.social_instagram_link != blank
+          assign social_links = social_links | append: settings.social_instagram_link | append: '|'
+        endif
+        if settings.social_twitter_link != blank
+          assign social_links = social_links | append: settings.social_twitter_link | append: '|'
+        endif
+        if settings.social_youtube_link != blank
+          assign social_links = social_links | append: settings.social_youtube_link | append: '|'
+        endif
+        if settings.social_tiktok_link != blank
+          assign social_links = social_links | append: settings.social_tiktok_link | append: '|'
+        endif
+        assign social_links = social_links | split: '|' | compact
+      -%}
+      {%- for link in social_links -%}
+        {{ link | json }}{% unless forloop.last %},{% endunless %}
+      {%- endfor -%}
+    ]
+  }
+  </script>
+{%- endif -%}
 
 {%- comment -%}
   Product entity enrichment — provides AI engines with detailed
@@ -50,8 +101,39 @@
     {%- if product.variants.first.sku != blank -%}
       "sku": {{ product.variants.first.sku | json }},
     {%- endif -%}
-    {%- if product.variants.first.barcode != blank -%}
-      "gtin": {{ product.variants.first.barcode | json }},
+    {%- comment -%}
+      gtin only when the barcode is a real GTIN: 8, 12, 13 or 14 digits and a
+      valid GS1 check digit. Most barcodes here are supplier part numbers
+      (e.g. "86995", "RTL1497"); those go out as mpn further down instead.
+    {%- endcomment -%}
+    {%- liquid
+      assign pt_bc = product.variants.first.barcode | strip
+      assign pt_gtin_ok = false
+      if pt_bc != blank
+        assign pt_bc_rest = pt_bc | remove: '0' | remove: '1' | remove: '2' | remove: '3' | remove: '4' | remove: '5' | remove: '6' | remove: '7' | remove: '8' | remove: '9'
+        assign pt_bc_len = pt_bc.size
+        if pt_bc_rest == blank
+          if pt_bc_len == 8 or pt_bc_len == 12 or pt_bc_len == 13 or pt_bc_len == 14
+            assign pt_sum = 0
+            assign pt_last = pt_bc_len | minus: 1
+            for pt_i in (0..pt_last)
+              assign pt_d = pt_bc | slice: pt_i | plus: 0
+              assign pt_pos = pt_last | minus: pt_i | modulo: 2
+              if pt_pos == 1
+                assign pt_d = pt_d | times: 3
+              endif
+              assign pt_sum = pt_sum | plus: pt_d
+            endfor
+            assign pt_mod = pt_sum | modulo: 10
+            if pt_mod == 0
+              assign pt_gtin_ok = true
+            endif
+          endif
+        endif
+      endif
+    -%}
+    {%- if pt_gtin_ok -%}
+      "gtin": {{ pt_bc | json }},
     {%- endif -%}
     {%- if product.variants.first.weight > 0 -%}
       "weight": {
@@ -60,52 +142,44 @@
         "unitCode": {{ product.variants.first.weight_unit | json }}
       },
     {%- endif -%}
+    {%- comment -%}
+      One variant = a plain Offer (Google merchant listings need Offer with a
+      price, not AggregateOffer). Price is built from cents so a price of
+      $1,000+ never prints a thousands comma. shippingDetails and
+      hasMerchantReturnPolicy were removed on 2026-11-02: they claimed free
+      Canada-wide shipping and free mail returns, which is not our policy.
+    {%- endcomment -%}
     "offers": {
+      {%- if product.variants.size == 1 -%}
+        {%- liquid
+          assign pt_cents = product.variants.first.price
+          assign pt_dollars = pt_cents | divided_by: 100 | floor
+          assign pt_rem = pt_cents | modulo: 100
+          if pt_rem < 10
+            assign pt_rem = pt_rem | prepend: '0'
+          endif
+        -%}
+      "@type": "Offer",
+      "url": {{ request.origin | append: product.url | json }},
+      "price": "{{ pt_dollars }}.{{ pt_rem }}",
+      "availability": "https://schema.org/{% if product.variants.first.available %}InStock{% else %}OutOfStock{% endif %}",
+      {%- else -%}
       "@type": "AggregateOffer",
-      "priceCurrency": {{ cart.currency.iso_code | json }},
       "lowPrice": {{ product.price_min | money_without_currency | strip_html | json }},
       "highPrice": {{ product.price_max | money_without_currency | strip_html | json }},
       "offerCount": {{ product.variants.size | json }},
       "availability": "https://schema.org/{% if product.available %}InStock{% else %}OutOfStock{% endif %}",
-      "priceValidUntil": "{{ 'now' | date: '%Y' }}-12-31",
+      {%- endif -%}
+      "priceCurrency": {{ cart.currency.iso_code | json }},
+      {%- comment -%} No condition claim on used takeoff listings (owner has not decided on them). {%- endcomment -%}
+      {%- assign pt_title_d = product.title | downcase -%}
+      {%- unless pt_title_d contains 'takeoff' or pt_title_d contains 'take-off' -%}
+      "itemCondition": "https://schema.org/NewCondition",
+      {%- endunless -%}
+      "priceValidUntil": "{{ 'now' | date: '%s' | plus: 31536000 | date: '%Y-%m-%d' }}",
       "seller": {
         "@type": "Organization",
         "name": {{ shop.name | json }}
-      },
-      "shippingDetails": {
-        "@type": "OfferShippingDetails",
-        "shippingRate": {
-          "@type": "MonetaryAmount",
-          "value": "0",
-          "currency": {{ cart.currency.iso_code | json }}
-        },
-        "shippingDestination": {
-          "@type": "DefinedRegion",
-          "addressCountry": "CA"
-        },
-        "deliveryTime": {
-          "@type": "ShippingDeliveryTime",
-          "handlingTime": {
-            "@type": "QuantitativeValue",
-            "minValue": 1,
-            "maxValue": 2,
-            "unitCode": "DAY"
-          },
-          "transitTime": {
-            "@type": "QuantitativeValue",
-            "minValue": 3,
-            "maxValue": 5,
-            "unitCode": "DAY"
-          }
-        }
-      },
-      "hasMerchantReturnPolicy": {
-        "@type": "MerchantReturnPolicy",
-        "applicableCountry": "CA",
-        "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
-        "merchantReturnDays": 30,
-        "returnMethod": "https://schema.org/ReturnByMail",
-        "returnFees": "https://schema.org/FreeReturn"
       }
     },
     {%- if product.metafields.reviews.rating.value != blank -%}
@@ -118,6 +192,8 @@
     {%- endif -%}
     {%- if product.metafields.custom.mpn != blank -%}
       "mpn": {{ product.metafields.custom.mpn | json }},
+    {%- elsif pt_bc != blank and pt_gtin_ok == false -%}
+      "mpn": {{ pt_bc | json }},
     {%- endif -%}
     "additionalProperty": [
       {%- if product.metafields.custom.tire_size != blank -%}
@@ -159,6 +235,51 @@
       {%- if product.metafields.custom.run_flat == true -%}
         { "@type": "PropertyValue", "name": "Run-Flat", "value": "Yes" },
       {%- endif -%}
+      {%- comment -%}
+        2026-11-13: a wheel is not a radial tire and has no season (a "Winter
+        Approved" tag used to come out as Season=Winter). Same wheel test as
+        sections/pt-product.liquid (keep the two in step): no tire size, and a
+        bolt pattern, or a type naming wheels / rims / alloy or the Wheels tag
+        (never a "Tire & Wheel Assembly" or "Wheel Accessories"), or a blank
+        type whose title names wheels / rims. Wheels list their own facts.
+      {%- endcomment -%}
+      {%- assign geo_is_wheel = false -%}
+      {%- if product.metafields.custom.tire_size == blank -%}
+        {%- if product.metafields.custom.bolt_pattern != blank -%}
+          {%- assign geo_is_wheel = true -%}
+        {%- endif -%}
+        {%- assign geo_type_down = product.type | downcase -%}
+        {%- unless geo_type_down contains 'tire' or geo_type_down contains 'accessor' -%}
+          {%- if geo_type_down contains 'wheel' or geo_type_down contains 'rims' or geo_type_down contains 'alloy' or product.tags contains 'Wheels' -%}
+            {%- assign geo_is_wheel = true -%}
+          {%- elsif geo_type_down == blank -%}
+            {%- assign geo_title_down = product.title | downcase -%}
+            {%- unless geo_title_down contains 'tire' -%}
+              {%- if geo_title_down contains 'wheel' or geo_title_down contains ' rim' -%}
+                {%- assign geo_is_wheel = true -%}
+              {%- endif -%}
+            {%- endunless -%}
+          {%- endif -%}
+        {%- endunless -%}
+      {%- endif -%}
+      {%- if geo_is_wheel -%}
+      {%- if product.metafields.custom.bolt_pattern != blank -%}
+        { "@type": "PropertyValue", "name": "Bolt Pattern", "value": {{ product.metafields.custom.bolt_pattern | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.rim_diameter != blank -%}
+        { "@type": "PropertyValue", "name": "Wheel Diameter", "value": {{ product.metafields.custom.rim_diameter | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.rim_width != blank -%}
+        { "@type": "PropertyValue", "name": "Wheel Width", "value": {{ product.metafields.custom.rim_width | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.rim_offset != blank -%}
+        { "@type": "PropertyValue", "name": "Offset", "value": {{ product.metafields.custom.rim_offset | json }} },
+      {%- endif -%}
+      {%- if product.metafields.custom.center_bore != blank -%}
+        { "@type": "PropertyValue", "name": "Center Bore", "value": {{ product.metafields.custom.center_bore | json }} },
+      {%- endif -%}
+        { "@type": "PropertyValue", "name": "Product Type", "value": {{ product.type | default: 'Wheel' | json }} }
+      {%- else -%}
       {%- assign season_label = '' -%}
       {%- for tag in product.tags -%}
         {%- assign td = tag | downcase -%}
@@ -172,6 +293,7 @@
         { "@type": "PropertyValue", "name": "Season", "value": {{ season_label | json }} },
       {%- endif -%}
       { "@type": "PropertyValue", "name": "Construction", "value": "Radial" }
+      {%- endif -%}
     ],
     "isRelatedTo": [
       {%- for collection in product.collections limit: 3 -%}
@@ -202,7 +324,16 @@
     {%- else -%}
       {{ ' ' }}Price range: {{ product.price_min | money }} - {{ product.price_max | money }}.
     {%- endif -%}
-    {%- if product.available %} In stock at Prince Tires Calgary.{% else %} Out of stock.{% endif -%}
+    {%- comment -%} Never claim a supplier's tire is on the shelf in Calgary. {%- endcomment -%}
+    {%- comment -%} Same own-vs-supplier rule as every other surface (snippets/pt-stock-state.liquid, owner 2026-11-10). {%- endcomment -%}
+    {%- capture geo_stock_raw -%}{% render 'pt-stock-state', product: product %}{%- endcapture -%}
+    {%- comment -%} 2026-11-13: lead time only - "Ready today" only for own stock AND Tier A (4th field of pt-stock-state). {%- endcomment -%}
+    {%- assign geo_stock_parts = geo_stock_raw | strip | split: '|' -%}
+    {%- assign geo_stock_lead = geo_stock_parts[3] | default: 'out' -%}
+    {%- if geo_stock_lead == 'today' %} {{ 'products.stock.summary_own' | t }}
+    {%- elsif geo_stock_lead == '1-2' %} {{ 'products.stock.summary_supplier' | t }}
+    {%- elsif geo_stock_lead == 'order' %} {{ 'products.stock.summary_order' | t }}
+    {%- else %} Sold out.{% endif -%}
   {%- endcapture -%}
   <meta name="summary" content="{{ ai_summary | strip_newlines | strip | escape }}">
 {%- endif -%}

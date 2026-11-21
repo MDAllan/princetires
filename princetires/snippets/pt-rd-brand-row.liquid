@@ -1,0 +1,198 @@
+{% doc %}
+  Shop by brand: brand logo buttons on the tire results line (design board
+  Option B, owner 2026-11-15). Desktop: one sliding row of logo tiles
+  between the count and Sort by (owner 2026-11-15: "slide them to the left
+  on desktop too"), with round Previous / Next arrows at the ends, a soft
+  fade on the side that has more, trackpad / shift+wheel / click-and-drag.
+  Phones / tablets: the tiles join the one swiping quick row under the
+  results head (sections/pt-collection-grid .rd-quick), never stacked.
+  Order (owner 2026-11-15 v16): Kumho 4th, Goodyear 11th.
+
+  Rules (owner):
+  - Built from Shopify's own Brand facet (filter.p.vendor) on this page:
+    only brands with results under the other filters now applied; a brand
+    with 0 results is not listed (unless it is the one applied).
+  - NO numbers or counts anywhere in the row or the menu.
+  - Brands with a logo first, in the order below; then the others A to Z
+    as plain bold-name tiles.
+  - One brand at a time: a tile applies only that brand (any other brand
+    is replaced) and keeps every other filter, the size, the sort and the
+    page's own params (rear, view, stock); the applied brand's tile removes
+    it. Each tile is a real link (works without JS); assets/pt-rd-results.js
+    rebuilds the links from the address bar so params Liquid cannot see
+    (rear=, view=, stock=) are kept.
+  - Not rendered with fewer than 2 brands, unless one is picked (v16).
+  - Staggered sets (rear=): the facet is the front size's, so the JS keeps
+    per tab only the brands that tab can show (Sets: brands that make a
+    set; Rear only: brands in the rear size; Front only: the facet) and
+    hides the row while the sets load or when fewer than 2 are left.
+
+  Logos are Shopify Files (Settings > Files), the same files as the home
+  page "Trusted brands" blocks, looked up with the `images` object.
+  Vendors match by handle, without a "-tire(s)" ending and dashes
+  ("General Tire" = general, "BF Goodrich" = bfgoodrich).
+
+  @param {filter} filter - The filter.p.vendor storefront filter
+  @param {collection} collection - The collection (for the link base)
+
+  @example
+    {% render 'pt-rd-brand-row', filter: f, collection: collection %}
+{% enddoc %}
+{%- liquid
+  assign rb_keys = 'michelin|bridgestone|continental|kumho|pirelli|hankook|yokohama|toyo|bfgoodrich|general|goodyear|cooper|firestone|uniroyal' | split: '|'
+  assign rb_files = 'michelin-man-logo-183790o2kam9mn5j.png|Bridgestone-Logo_8cf108ad-7232-4f44-b10e-01c0363fc6b5.png|Continental-Tires-logo.png|Kumho-New-Logo.jpg|Pirelli_Logo.png|Hankook_Logo.png|Yokohama-logo-5100x800-1.png|toyo-logo-web-EN.png|BFGoodrich-Tires.jpg|General_Tire-Logo.wine.png|Goodyear_Logo.png|Cooper-Tire-Rubber-Company-logo.webp|firestone-logo-3000x350-show.png|Uniroyal_Logo.png' | split: '|'
+
+  # Every other active filter (not the brand) + the sort: the base query of each tile.
+  assign rb_q = ''
+  for f in collection.filters
+    if f.param_name == 'filter.p.vendor'
+      continue
+    endif
+    if f.type == 'price_range'
+      # Cents -> dollars with the cents kept (100.50 stays 100.50, 100.00 is 100).
+      if f.min_value.value != blank
+        assign rb_pv = f.min_value.value | divided_by: 100
+        assign rb_pc = f.min_value.value | modulo: 100
+        if rb_pc > 9
+          assign rb_pv = rb_pv | append: '.' | append: rb_pc
+        elsif rb_pc > 0
+          assign rb_pv = rb_pv | append: '.0' | append: rb_pc
+        endif
+        assign rb_q = rb_q | append: 'filter.v.price.gte=' | append: rb_pv | append: '&'
+      endif
+      if f.max_value.value != blank
+        assign rb_pv = f.max_value.value | divided_by: 100
+        assign rb_pc = f.max_value.value | modulo: 100
+        if rb_pc > 9
+          assign rb_pv = rb_pv | append: '.' | append: rb_pc
+        elsif rb_pc > 0
+          assign rb_pv = rb_pv | append: '.0' | append: rb_pc
+        endif
+        assign rb_q = rb_q | append: 'filter.v.price.lte=' | append: rb_pv | append: '&'
+      endif
+    else
+      for v in f.active_values
+        assign rb_v = v.value | url_encode
+        assign rb_q = rb_q | append: v.param_name | append: '=' | append: rb_v | append: '&'
+      endfor
+    endif
+  endfor
+  if collection.sort_by != blank
+    assign rb_q = rb_q | append: 'sort_by=' | append: collection.sort_by | append: '&'
+  endif
+  assign rb_base = collection.url | append: '?' | append: rb_q
+  # The link without a brand. rb_q is empty or ends with '&' (values are
+  # url-encoded, so that '&' is the last one): drop it, and the '?' too
+  # when nothing is left.
+  if rb_q == blank
+    assign rb_clear = collection.url
+  else
+    assign rb_clear = rb_q | remove_last: '&'
+    assign rb_clear = collection.url | append: '?' | append: rb_clear
+  endif
+
+  # Usable brands: results now, or applied. Unmatched (no-logo) labels go A to Z.
+  assign rb_n = 0
+  assign rb_active = 0
+  assign rb_other = ''
+  for v in filter.values
+    if v.count > 0 or v.active
+      assign rb_n = rb_n | plus: 1
+      if v.active
+        assign rb_active = rb_active | plus: 1
+      endif
+      assign rb_h = v.value | handleize | remove: '-tires' | remove: '-tire' | remove: '-'
+      unless rb_keys contains rb_h
+        assign rb_other = rb_other | append: v.label | append: '||'
+      endunless
+    endif
+  endfor
+  assign rb_other = rb_other | remove_last: '||' | split: '||' | sort_natural
+-%}
+{%- comment -%} v16: also drawn when only the picked brand is left (0 results), so it can be removed from the row. {%- endcomment -%}
+{%- if rb_n >= 2 or rb_active > 0 -%}
+{%- comment -%}
+  Tiles (tire results redesign v16, 2026-11-15): the picked brand is drawn
+  FIRST (2px ink border, "X, selected. Remove"), then the logo brands in the
+  owner's order, then the word brands A to Z. No "Shop by brand" label, no
+  "All brands" tile (no brand picked = all brands), no red tick. The row is
+  ONE tab stop (roving tabindex, assets/pt-rd-results.js): only the first
+  tile is in the tab order, arrow keys move between tiles.
+{%- endcomment -%}
+{%- capture rb_on -%}
+  {%- for v in filter.values -%}
+    {%- unless v.active -%}{%- continue -%}{%- endunless -%}
+    {%- assign rb_h = v.value | handleize | remove: '-tires' | remove: '-tire' | remove: '-' -%}
+    {%- assign rb_img = nil -%}
+    {%- for rb_key in rb_keys -%}
+      {%- if rb_key == rb_h -%}{%- assign rb_fn = rb_files[forloop.index0] -%}{%- assign rb_img = images[rb_fn] -%}{%- break -%}{%- endif -%}
+    {%- endfor -%}
+    <a class="rd-brand{% if rb_img == blank %} rd-brand--word{% endif %} is-on" href="{{ rb_clear | escape }}" rel="nofollow" data-rd-brand="{{ v.value | escape }}" aria-current="true" aria-label="{{ v.label | escape }}, selected. Remove" title="{{ v.label | escape }}">
+      {%- if rb_img != blank -%}
+        {%- assign rb_hgt = 160 | times: rb_img.height | divided_by: rb_img.width -%}
+        {%- capture rb_set -%}{{ rb_img | image_url: width: 160 }} {{ rb_img.width | at_most: 160 }}w{% if rb_img.width >= 240 %}, {{ rb_img | image_url: width: 240 }} 240w{% endif %}{% if rb_img.width >= 320 %}, {{ rb_img | image_url: width: 320 }} 320w{% endif %}{%- endcapture -%}
+        <img class="rd-brand__logo" src="{{ rb_img | image_url: width: 160 }}" srcset="{{ rb_set }}" sizes="80px" alt="" width="160" height="{{ rb_hgt }}" loading="lazy" decoding="async">
+      {%- else -%}
+        <span class="rd-brand__word">{{ v.label | escape }}</span>
+      {%- endif -%}
+      <span class="rd-brand__x" aria-hidden="true">{% render 'pt-icon', name: 'close', size: 16 %}</span>
+    </a>
+    {%- break -%}
+  {%- endfor -%}
+{%- endcapture -%}
+{%- capture rb_tiles -%}
+  {%- comment -%} Brands with a logo, in the owner's order. {%- endcomment -%}
+  {%- for rb_key in rb_keys -%}
+    {%- assign rb_i = forloop.index0 -%}
+    {%- for v in filter.values -%}
+      {%- if v.active -%}{%- continue -%}{%- endif -%}
+      {%- unless v.count > 0 -%}{%- continue -%}{%- endunless -%}
+      {%- assign rb_h = v.value | handleize | remove: '-tires' | remove: '-tire' | remove: '-' -%}
+      {%- if rb_h == rb_key -%}
+        {%- assign rb_fn = rb_files[rb_i] -%}
+        {%- assign rb_img = images[rb_fn] -%}
+        {%- assign rb_enc = v.value | url_encode -%}
+        {%- assign rb_href = rb_base | append: 'filter.p.vendor=' | append: rb_enc -%}
+        <a class="rd-brand{% if rb_img == blank %} rd-brand--word{% endif %}" href="{{ rb_href | escape }}" rel="nofollow" data-rd-brand="{{ v.value | escape }}" title="{{ v.label | escape }}">
+          {%- if rb_img != blank -%}
+            {%- assign rb_hgt = 160 | times: rb_img.height | divided_by: rb_img.width -%}
+            {%- comment -%} Drawn at most 80px wide: 160w / 240w / 320w for 2x and 3x screens, never a width larger than the file. {%- endcomment -%}
+            {%- capture rb_set -%}{{ rb_img | image_url: width: 160 }} {{ rb_img.width | at_most: 160 }}w{% if rb_img.width >= 240 %}, {{ rb_img | image_url: width: 240 }} 240w{% endif %}{% if rb_img.width >= 320 %}, {{ rb_img | image_url: width: 320 }} 320w{% endif %}{%- endcapture -%}
+            <img class="rd-brand__logo" src="{{ rb_img | image_url: width: 160 }}" srcset="{{ rb_set }}" sizes="80px" alt="" width="160" height="{{ rb_hgt }}" loading="lazy" decoding="async">
+            <span class="rd-sr">{{ v.label | escape }}</span>
+          {%- else -%}
+            <span class="rd-brand__word">{{ v.label | escape }}</span>
+          {%- endif -%}
+        </a>
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endfor -%}
+  {%- comment -%} The others, A to Z, as name tiles. {%- endcomment -%}
+  {%- for rb_label in rb_other -%}
+    {%- for v in filter.values -%}
+      {%- if v.label != rb_label -%}{%- continue -%}{%- endif -%}
+      {%- if v.active -%}{%- break -%}{%- endif -%}
+      {%- unless v.count > 0 -%}{%- continue -%}{%- endunless -%}
+      {%- assign rb_enc = v.value | url_encode -%}
+      {%- assign rb_href = rb_base | append: 'filter.p.vendor=' | append: rb_enc -%}
+      <a class="rd-brand rd-brand--word" href="{{ rb_href | escape }}" rel="nofollow" data-rd-brand="{{ v.value | escape }}">
+        <span class="rd-brand__word">{{ v.label | escape }}</span>
+      </a>
+      {%- break -%}
+    {%- endfor -%}
+  {%- endfor -%}
+{%- endcapture -%}
+{%- comment -%} Roving tabindex: the first tile is the row's one tab stop. {%- endcomment -%}
+{%- assign rb_all = rb_on | append: rb_tiles | replace: '<a class="rd-brand', '<a tabindex="-1" class="rd-brand' -%}
+{%- assign rb_all = rb_all | replace_first: '<a tabindex="-1" class="rd-brand', '<a class="rd-brand' -%}
+<div class="rd-brands" data-rd-brands>
+  {%- comment -%} Desktop: the arrows show only when the row has more to slide to (assets/pt-rd-results.js). Phones: the tiles join the quick row (display: contents). {%- endcomment -%}
+  <div class="rd-brands__rail" data-rd-brands-rail>
+    <button type="button" class="rd-brands__arrow rd-brands__arrow--prev" aria-label="Previous brands" aria-controls="rd-brands-track" data-rd-brands-prev hidden>{% render 'pt-icon', name: 'chevron-left', size: 18 %}</button>
+    <div class="rd-brands__track" id="rd-brands-track" role="group" aria-label="Brands" data-rd-brands-track>
+      {{- rb_all -}}
+    </div>
+    <button type="button" class="rd-brands__arrow rd-brands__arrow--next" aria-label="Next brands" aria-controls="rd-brands-track" data-rd-brands-next hidden>{% render 'pt-icon', name: 'chevron-right', size: 18 %}</button>
+  </div>
+</div>
+{%- endif -%}

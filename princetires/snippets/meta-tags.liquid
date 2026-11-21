@@ -13,6 +13,24 @@
   endif
 %}
 
+{%- if request.page_type == 'collection' -%}
+  {%- comment -%}
+    SEO fix (Nov 8, 2026): sections/pt-collection-grid.liquid seeds every collection with
+    ?sort_by=price-ascending (+ a season filter) via location.replace. robots.txt disallows
+    /collections/*sort_by*, so Googlebot was redirected into a blocked URL and could not read
+    collection pages. For search-engine crawlers only, mark the seed as done so the page stays
+    on its clean canonical URL. Shoppers still get the cheapest-first / seasonal default.
+  {%- endcomment -%}
+  <script>
+    (function () {
+      var ua = navigator.userAgent || '';
+      if (/bot|crawl|spider|slurp|Google-InspectionTool|Lighthouse|Mediapartners/i.test(ua)) {
+        window.__ptCollSeed = true;
+      }
+    })();
+  </script>
+{%- endif -%}
+
 <meta property="og:site_name" content="{{ shop.name }}">
 <meta property="og:url" content="{{ og_url }}">
 <meta property="og:title" content="{{ og_title | escape }}">
@@ -37,3 +55,54 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ og_title | escape }}">
 <meta name="twitter:description" content="{{ og_description | escape }}">
+
+{%- comment -%} Nov 8, 2026: "Search by vehicle" + spec popups — replace the small hero dropdowns. {%- endcomment -%}
+{%- render 'pt-vehicle-sheet' -%}
+{%- render 'pt-spec-sheet' -%}
+{%- render 'pt-search-focus' -%}
+{%- if request.page_type == 'collection' -%}
+  {%- comment -%}
+    Tire results v16 (2026-11-15): the two old overlays below target the
+    pre-redesign grid (.ptg__filter, .pt-rs ...) and only add observers on
+    the redesigned TIRE results page, so they are not loaded there. Every
+    other collection page (wheels, accessories, the /collections/all hub)
+    keeps them exactly as before. pt-collection-stock (availability seed)
+    stays everywhere.
+  {%- endcomment -%}
+  {%- capture mt_kind -%}{% render 'pt-rd-results-kind', collection: collection %}{%- endcapture -%}
+  {%- assign mt_tires = false -%}
+  {%- assign mt_kind = mt_kind | strip -%}
+  {%- if mt_kind == 'tires' and collection.handle != 'all' -%}{%- assign mt_tires = true -%}{%- endif -%}
+  {%- comment -%} Nov 8, 2026: filter drawer + tire size picker upgrades. {%- endcomment -%}
+  {%- unless mt_tires -%}{%- render 'pt-filter-ux' -%}{%- endunless -%}
+  {%- comment -%} Nov 9, 2026: Show all / in stock dropdown, in-stock first, bigger card-style filter sidebar. {%- endcomment -%}
+  {%- render 'pt-collection-stock' -%}
+  {%- comment -%} Nov 9, 2026: hide width / ratio / rim filters (size dropdowns cover them). {%- endcomment -%}
+  {%- unless mt_tires -%}{%- render 'pt-filter-hide-size' -%}{%- endunless -%}
+{%- endif -%}
+{%- comment -%}
+  Nov 9, 2026: booking popup (pt-booking-ux) and booking page
+  (pt-booking-page-ux + pt-booking-ymm) layers. Redesign 2026-11-13: no longer
+  rendered. They only targeted the old modals' and old /pages/booking DOM
+  (.bk-modal, #bp-vehicles, #bp-price-note), which the one booking form
+  (snippets/pt-book.liquid) replaced. The files stay for rollback: restore
+  these two renders together with the old modals.
+{%- endcomment -%}
+{%- if request.page_type == 'page' -%}
+  {%- if page.handle == 'winter-tires-calgary' -%}
+    {%- comment -%} Nov 9, 2026: winter page — clean hero, quick facts, price cards, studded vs studless, related links. {%- endcomment -%}
+    {%- render 'pt-winter-page' -%}
+  {%- endif -%}
+{%- endif -%}
+{%- if request.page_type == 'product' -%}
+  {%- comment -%} Nov 9, 2026: product page hierarchy — installed price hero, chips, sticky bar. {%- endcomment -%}
+  {%- render 'pt-product-ux' -%}
+  {%- comment -%} Nov 9, 2026: title above image (phones), grey details panel, icon trust row + stats. {%- endcomment -%}
+  {%- render 'pt-product-ux2' -%}
+{%- endif -%}
+{%- comment -%} Nov 9, 2026: hero reveal + wheel background on the Wheels tab. {%- endcomment -%}
+{%- render 'pt-hero-reveal' -%}
+{%- comment -%} Nov 9, 2026: ice reveal on the hero tires (from Scroll Reveal Test — Oct 12). {%- endcomment -%}
+{%- render 'pt-ice-reveal' -%}
+{%- comment -%} Nov 9, 2026: red Clearance badge for products tagged clearance (cards + product page). {%- endcomment -%}
+{%- render 'pt-clearance-badge' -%}

@@ -1,0 +1,133 @@
+<script>
+(function () {
+  if (window.__ptFilterUX) return;
+  window.__ptFilterUX = true;
+
+  var SIZE_KEYS = ['filter.p.m.custom.tire_width', 'filter.p.m.custom.tire_profile', 'filter.p.m.custom.rim_diameter'];
+  var MOBILE = window.matchMedia('(max-width: 768px)');
+  var noun = /wheel|rim/i.test(location.pathname) ? 'wheels' : /tire/i.test(location.pathname) ? 'tires' : 'results';
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function buzz() { try { if (navigator.vibrate) navigator.vibrate(8); } catch (e) {} }
+  function lbl(n) { return 'Show ' + n + ' ' + (n === '1' ? noun.replace(/s$/, '') : noun); }
+  function urlFor(p) { var qs = p.toString(), u = location.pathname + (qs ? '?' + qs : ''); return window.PTRim ? window.PTRim.route(u) : u; }
+
+  /* ---------- 1. collapse groups, remember what the shopper opened ---------- */
+  function setupGroups(sb) {
+    var openKey = 'ptfx_open:' + location.pathname, ready = false;
+    var priceBox = sb.querySelector('div.ptg__filter');
+    if (priceBox && priceBox.querySelector('[data-price-min]')) {
+      var lab = priceBox.querySelector('.ptg__filter-label') || priceBox.firstElementChild;
+      var chev = sb.querySelector('details.ptg__filter summary svg');
+      var det = document.createElement('details');
+      det.className = 'ptg__filter';
+      var sum = document.createElement('summary');
+      sum.className = 'ptg__filter-label';
+      sum.textContent = (lab && lab.textContent.trim()) || 'Price range';
+      if (chev) sum.appendChild(chev.cloneNode(true));
+      det.appendChild(sum);
+      var body = document.createElement('div');
+      Array.prototype.slice.call(priceBox.childNodes).forEach(function (n) { if (n !== lab) body.appendChild(n); });
+      det.appendChild(body);
+      priceBox.parentNode.replaceChild(det, priceBox);
+    }
+    var groups = Array.prototype.slice.call(sb.querySelectorAll('details.ptg__filter'));
+    var title = function (d) { var s = d.querySelector('summary'); return s ? s.childNodes[0].textContent.trim() : ''; };
+    if (noun === 'wheels') {
+      var cb = groups.filter(function (d) { return /center bore/i.test(title(d)); })[0];
+      var bp = groups.filter(function (d) { return /bolt/i.test(title(d)); })[0];
+      if (cb && bp && bp.nextSibling !== cb) bp.parentNode.insertBefore(cb, bp.nextSibling);
+    }
+    var saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(openKey) || 'null'); } catch (e) {}
+    groups.forEach(function (d) { d.open = !!(saved && saved.indexOf(title(d)) !== -1); });
+    paintBadges(sb);
+    setTimeout(function () { ready = true; }, 400);
+    sb.addEventListener('toggle', function () {
+      if (!ready) return;
+      var open = groups.filter(function (d) { return d.open; }).map(title);
+      try { sessionStorage.setItem(openKey, JSON.stringify(open)); } catch (e) {}
+    }, true);
+  }
+  function paintBadges(sb) {
+    Array.prototype.forEach.call(sb.querySelectorAll('details.ptg__filter'), function (d) {
+      var s = d.querySelector('summary'); if (!s) return;
+      var n = d.querySelectorAll('.ptg__filter-link--active').length;
+      var b = s.querySelector('.ptfx-badge');
+      if (!n) { if (b) b.remove(); return; }
+      if (!b) { b = document.createElement('span'); b.className = 'ptfx-badge'; s.insertBefore(b, s.querySelector('svg')); }
+      b.textContent = n;
+    });
+  }
+
+  /* ---------- 2. phones: pick several filters, then one "Show N" button ---------- */
+  function setupBatch(sb) {
+    var pending = null, timer = null, ctl = null;
+    var bar = document.createElement('div');
+    bar.className = 'ptfx-bar';
+    bar.innerHTML = '<button type="button" class="ptfx-apply">Show ' + noun + '</button>';
+    sb.appendChild(bar);
+    var btn = bar.querySelector('button');
+    var c0 = document.querySelector('.ptc__count');
+    var n0 = c0 && (c0.textContent.match(/[\d,]+/) || [])[0];
+    if (n0) btn.textContent = lbl(n0);
+    function isDrawer() { return MOBILE.matches && sb.classList.contains('is-open'); }
+    function start() { if (!pending) pending = new URLSearchParams(location.search); }
+    function changed() {
+      bar.classList.add('is-on');
+      btn.textContent = 'Updating…';
+      clearTimeout(timer);
+      timer = setTimeout(count, 250);
+    }
+    function count() {
+      if (ctl) try { ctl.abort(); } catch (e) {}
+      ctl = window.AbortController ? new AbortController() : null;
+      fetch(urlFor(pending), ctl ? { signal: ctl.signal } : {}).then(function (r) { return r.text(); }).then(function (h) {
+        var m = h.match(/ptc__count[^>]*>\s*([\d,]+)\s*product/);
+        var n = m ? m[1] : null;
+        btn.textContent = n === '0' ? 'No ' + noun + ' match, try fewer filters' : n ? lbl(n) : 'Show ' + noun;
+        btn.classList.toggle('is-zero', n === '0');
+      }).catch(function () {});
+    }
+    document.addEventListener('click', function (e) {
+      var link = e.target.closest && e.target.closest('aside.ptg__sidebar [data-filter-key]');
+      if (!link || !isDrawer()) return;
+      e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation();
+      start(); buzz();
+      var k = link.getAttribute('data-filter-key'), v = link.getAttribute('data-filter-value');
+      var on = pending.getAll(k).indexOf(v) !== -1;
+      if (on) { var keep = pending.getAll(k).filter(function (x) { return x !== v; }); pending.delete(k); keep.forEach(function (x) { pending.append(k, x); }); }
+      else pending.append(k, v);
+      link.classList.toggle('ptg__filter-link--active', !on);
+      paintBadges(sb); changed();
+    }, true);
+    function priceIntercept(e) {
+      if (!e.target.matches || !e.target.matches('[data-price-min], [data-price-max]') || !isDrawer()) return;
+      e.stopImmediatePropagation(); e.stopPropagation();
+      var mnEl = sb.querySelector('[data-price-min]'), mxEl = sb.querySelector('[data-price-max]');
+      var mn = parseInt(mnEl.value, 10), mx = parseInt(mxEl.value, 10);
+      if (mn > mx) { if (e.target === mnEl) { mnEl.value = mx; mn = mx; } else { mxEl.value = mn; mx = mn; } }
+      var a = sb.querySelector('[data-price-min-display]'), b = sb.querySelector('[data-price-max-display]');
+      if (a) a.textContent = '$' + mn; if (b) b.textContent = '$' + mx;
+      start();
+      if (mn > parseInt(mnEl.min || 0, 10)) pending.set('filter.v.price.gte', mn); else pending.delete('filter.v.price.gte');
+      if (mx < parseInt(mxEl.max || mx, 10)) pending.set('filter.v.price.lte', mx); else pending.delete('filter.v.price.lte');
+      if (e.type === 'change') changed();
+    }
+    document.addEventListener('input', priceIntercept, true);
+    document.addEventListener('change', priceIntercept, true);
+    btn.addEventListener('click', function () {
+      if (!pending) { var x = sb.querySelector('[data-close-filters]'); if (x) x.click(); return; }
+      if (btn.classList.contains('is-zero')) return;
+      buzz(); btn.textContent = 'Loading…';
+      try { sessionStorage.removeItem('ptg_filter_open'); } catch (e) {}
+      location.href = urlFor(pending);
+    });
+    document.addEventListener('click', function (e) {
+      if (!pending || !e.target.closest || !e.target.closest('[data-close-filters], [data-filter-backdrop]')) return;
+      var cur = new URLSearchParams(location.search);
+      Array.prototype.forEach.call(sb.querySelectorAll('[data-filter-key]'), function (l) {
+        l.classList.toggle('ptg__filter-link--active', cur.getAll(l.getAttribute('data-filter-key')).indexOf(l.getAttribute('data-filter-value')) !== -1);
+      });
+      pending = null; bar.classList.remove('is-on'); paintBadges(sb);
+    }, true);
+  }

@@ -1,0 +1,139 @@
+{% doc %}
+  Prince Tires — Smart tire search (pt-smart-search)
+
+  The single-input vehicle/size search, lifted out of sections/hero-smart-search
+  so any hero can render it. Previously the markup, 37KB of CSS and 128KB of JS
+  all lived inside that one 184KB section, which meant the search only existed
+  where that section did.
+
+  Nothing was rewritten — the markup, styles and script are byte-identical to
+  what hero-smart-search shipped, just addressable:
+    assets/pt-smart-search.css   the section stylesheet (flat BEM, so the rules
+                                 apply wherever the markup renders)
+    assets/pt-smart-search.js    the search engine — contains no Liquid, reads
+                                 everything it needs from the JSON config below
+
+  The .hero-smart-search__* class names are kept on purpose so the extracted CSS
+  keeps matching. The --hero-* custom properties the styles read are set on the
+  wrapper here, since the original section set them on its own root element.
+
+  @param accent {String} optional - accent colour, defaults to brand red
+  @param text {String} optional - text colour, defaults to white
+
+  @example
+  {% render 'pt-smart-search' %}
+{% enddoc %}
+
+<div
+  class="pt-smart-search"
+  style="--hero-accent: {{ accent | default: '#dc2626' }}; --hero-text: {{ text | default: '#ffffff' }}; --hero-bg: transparent;"
+>
+      <div class="hero-smart-search__search-wrapper">
+        <div class="hero-smart-search__tabs" role="tablist" aria-label="Search category">
+          <button
+            type="button"
+            class="hero-smart-search__tab hero-smart-search__tab--active"
+            role="tab"
+            aria-selected="true"
+            data-search-mode="tires"
+          >Tires</button>
+          <button
+            type="button"
+            class="hero-smart-search__tab"
+            role="tab"
+            aria-selected="false"
+            data-search-mode="wheels"
+          >Wheels</button>
+        </div>
+
+        <div class="hero-smart-search__search" data-smart-search>
+          <div class="hero-smart-search__input-wrapper">
+            <input
+              type="text"
+              class="hero-smart-search__input"
+              data-smart-search-input
+              placeholder=""
+              autocomplete="off"
+              aria-label="{{ 'sections.hero_smart_search.search_label' | t }}"
+              aria-expanded="false"
+              aria-controls="smart-search-results"
+              role="combobox"
+            >
+            <span class="hero-smart-search__typewriter" data-typewriter aria-hidden="true"></span>
+            {%- comment -%}
+              Inline ghost-text autocomplete. Only renders when there's exactly
+              one obvious completion (e.g. "2020 Honda Civi" → "c"). The prefix
+              span holds the customer's typed text in transparent color so it
+              measures the exact visual width — the suffix then renders muted
+              right where the cursor sits. Accept with Tab or → at end-of-input.
+            {%- endcomment -%}
+            <span class="hero-smart-search__ghost is-hidden" data-ghost aria-hidden="true"><span class="hero-smart-search__ghost-prefix" data-ghost-prefix></span><span class="hero-smart-search__ghost-suffix" data-ghost-suffix></span></span>
+            <button
+              class="hero-smart-search__submit"
+              data-smart-search-submit
+              aria-label="{{ 'sections.hero_smart_search.search_submit' | t }}"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="hero-smart-search__results" id="smart-search-results" data-smart-search-results hidden>
+            <div class="hero-smart-search__loading" data-smart-search-loading hidden>
+              <span class="hero-smart-search__spinner"></span>
+              <span>{{ 'sections.hero_smart_search.ai_thinking' | t }}</span>
+            </div>
+            <ul class="hero-smart-search__results-list" role="listbox" data-smart-search-list></ul>
+          </div>
+
+          {%- comment -%}
+            Discoverability hint + clickable example chips. Solves the
+            most common UX gap: customers don't realize the search bar
+            accepts a vehicle ("2022 Toyota RAV4") in addition to a tire
+            size ("225/65R17"). Clicking a chip auto-fills the input and
+            dispatches an `input` event so the existing search handler
+            picks up the value and runs the query.
+
+            Mobile: horizontal-scrolls the chip row, hides the helper
+            text caret arrow, shrinks padding.
+          {%- endcomment -%}
+          <div class="hero-smart-search__hint" data-smart-search-hint>
+            <p class="hero-smart-search__hint-text">
+              Don't know your tire size?
+              <span class="hero-smart-search__hint-text-mobile">Try your vehicle:</span>
+              <span class="hero-smart-search__hint-text-desktop">Just type your vehicle — try one of these ↓</span>
+            </p>
+            <div class="hero-smart-search__chips" role="list">
+              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2022 Toyota RAV4" role="listitem">2022 Toyota RAV4</button>
+              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2024 Ford F-150" role="listitem">2024 Ford F-150</button>
+              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="2020 Honda Civic" role="listitem">2020 Honda Civic</button>
+              <button type="button" class="hero-smart-search__chip" data-smart-search-chip="225/65R17" role="listitem">225/65R17</button>
+            </div>
+          </div>
+        </div>
+      </div>
+</div>
+
+{%- assign hero_brands = '' -%}
+{%- for f in collections.tires.filters -%}
+  {%- if f.param_name == 'filter.p.vendor' -%}
+    {%- for v in f.values -%}
+      {%- assign hero_brands = hero_brands | append: v.label | append: '||' -%}
+    {%- endfor -%}
+  {%- endif -%}
+{%- endfor -%}
+<script data-smart-search-config type="application/json">
+  {
+    "minYear": {{ settings.smart_search_min_year | default: 2001 }},
+    "maxYear": {{ settings.smart_search_max_year | default: 2026 }},
+    "assetUrlBase": {{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first | json }},
+    "fallbackPhone": {{ settings.smart_search_fallback_phone | default: '403 452 4283' | json }},
+    "missingVehicleWebhookUrl": {{ settings.missing_vehicle_webhook_url | json }},
+    "brands": {{ hero_brands | split: '||' | json }}
+  }
+</script>
+
+
+{{ 'pt-smart-search.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'pt-smart-search.js' | asset_url }}" defer="defer"></script>

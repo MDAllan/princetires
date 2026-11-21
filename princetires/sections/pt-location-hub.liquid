@@ -1,0 +1,370 @@
+{%- comment -%}
+  Locations hub (/pages/locations, built 2026-11-04). Both shops side by
+  side, each card rendered entirely from pt-nap (snippets/pt-location-card),
+  then a "what each shop offers" table, an optional page-body block, an FAQ
+  and a bottom CTA.
+
+  Structured data: the sitewide schema-local-business graph already has both
+  shops (#business, #business-ne), so there is no LocalBusiness here. This
+  section adds a BreadcrumbList matching the visible Home > page title trail
+  and one FAQPage that is the page entity (about both @ids + breadcrumb). No
+  separate WebPage node (aeo-meta already emits one), no rating markup.
+
+  Text tokens (filled from pt-nap): [[hours_sw]] [[hours_ne]]
+  [[address_sw]] [[address_ne]] [[phone_sw]] [[phone_ne]]
+{%- endcomment -%}
+{%- capture t_hours_sw %}{% render 'pt-nap', location: 'sw', field: 'hours_line' %}{% endcapture -%}
+{%- capture t_hours_ne %}{% render 'pt-nap', location: 'ne', field: 'hours_line' %}{% endcapture -%}
+{%- capture t_address_sw %}{% render 'pt-nap', location: 'sw', field: 'address_full' %}{% endcapture -%}
+{%- capture t_address_ne %}{% render 'pt-nap', location: 'ne', field: 'address_full' %}{% endcapture -%}
+{%- capture t_phone_sw %}{% render 'pt-nap', location: 'sw', field: 'phone' %}{% endcapture -%}
+{%- capture t_phone_ne %}{% render 'pt-nap', location: 'ne', field: 'phone' %}{% endcapture -%}
+{%- capture t_name_sw %}{% render 'pt-nap', location: 'sw', field: 'name' %}{% endcapture -%}
+{%- capture t_name_ne %}{% render 'pt-nap', location: 'ne', field: 'name' %}{% endcapture -%}
+{%- liquid
+  assign t_hours_sw = t_hours_sw | strip_newlines | strip
+  assign t_hours_ne = t_hours_ne | strip_newlines | strip
+  assign t_address_sw = t_address_sw | strip_newlines | strip
+  assign t_address_ne = t_address_ne | strip_newlines | strip
+  assign t_phone_sw = t_phone_sw | strip_newlines | strip
+  assign t_phone_ne = t_phone_ne | strip_newlines | strip
+  assign t_name_sw = t_name_sw | strip
+  assign t_name_ne = t_name_ne | strip
+
+  assign ptlh_sw_book = '/pages/booking?service=' | append: section.settings.sw_book_service | append: '&location=sw'
+  assign ptlh_ne_book = '/pages/booking?service=' | append: section.settings.ne_book_service | append: '&location=ne'
+
+  assign ptlh_rows = section.blocks | where: 'type', 'compare_row'
+  assign ptlh_faqs = section.blocks | where: 'type', 'faq'
+
+  assign ptlh_sw_id = request.origin | append: '/#business'
+  assign ptlh_ne_id = request.origin | append: '/#business-ne'
+  assign ptlh_about = ptlh_sw_id | append: ',' | append: ptlh_ne_id
+  assign ptlh_crumb_id = canonical_url | append: '#breadcrumb'
+-%}
+
+{%- capture ptlh_answer -%}{{ section.settings.answer | replace: '[[hours_sw]]', t_hours_sw | replace: '[[hours_ne]]', t_hours_ne | replace: '[[address_sw]]', t_address_sw | replace: '[[address_ne]]', t_address_ne | replace: '[[phone_sw]]', t_phone_sw | replace: '[[phone_ne]]', t_phone_ne }}{%- endcapture -%}
+{%- capture ptlh_sw_note -%}{{ section.settings.sw_note | replace: '[[hours_sw]]', t_hours_sw | replace: '[[address_sw]]', t_address_sw | replace: '[[phone_sw]]', t_phone_sw }}{%- endcapture -%}
+{%- capture ptlh_ne_note -%}{{ section.settings.ne_note | replace: '[[hours_ne]]', t_hours_ne | replace: '[[address_ne]]', t_address_ne | replace: '[[phone_ne]]', t_phone_ne }}{%- endcapture -%}
+
+<div class="ptlh">
+  <div class="ptlh__hero">
+    <div class="ptlh__wrap">
+      {%- if section.settings.eyebrow != blank -%}
+        <p class="ptlh__eyebrow">{{ section.settings.eyebrow }}</p>
+      {%- endif -%}
+      <h1 class="ptlh__title aeo-speakable-title">{{ section.settings.heading }}</h1>
+      {%- if section.settings.answer != blank -%}
+        <div class="ptlh__answer rte aeo-speakable-summary">{{ ptlh_answer }}</div>
+      {%- endif -%}
+    </div>
+  </div>
+
+  <div class="ptlh__cards-band">
+    <div class="ptlh__wrap">
+      <div class="ptlh__cards">
+        {%- render 'pt-location-card',
+          location: 'sw',
+          heading_tag: 'h2',
+          variant: 'light',
+          book_url: ptlh_sw_book,
+          book_label: section.settings.sw_book_label,
+          alt_book_url: '/pages/booking?location=sw',
+          alt_book_label: section.settings.alt_book_label,
+          page_url: section.settings.sw_page_url,
+          page_label: section.settings.sw_page_label,
+          note: ptlh_sw_note,
+          show_map: section.settings.show_maps,
+          map_embed_url: section.settings.sw_map_embed_url,
+          holiday_dates: section.settings.holiday_dates,
+          event_location: 'locations_sw'
+        -%}
+        {%- render 'pt-location-card',
+          location: 'ne',
+          heading_tag: 'h2',
+          variant: 'light',
+          book_url: ptlh_ne_book,
+          book_label: section.settings.ne_book_label,
+          alt_book_url: '/pages/booking?location=ne',
+          alt_book_label: section.settings.alt_book_label,
+          page_url: section.settings.ne_page_url,
+          page_label: section.settings.ne_page_label,
+          note: ptlh_ne_note,
+          show_map: section.settings.show_maps,
+          map_embed_url: section.settings.ne_map_embed_url,
+          holiday_dates: section.settings.holiday_dates,
+          event_location: 'locations_ne'
+        -%}
+      </div>
+      {%- if section.settings.cards_note != blank -%}
+        <div class="ptlh__note rte">{{ section.settings.cards_note }}</div>
+      {%- endif -%}
+    </div>
+  </div>
+
+  {%- if ptlh_rows.size > 0 -%}
+    <div class="ptlh__band">
+      <div class="ptlh__wrap">
+        <h2 class="ptlh__h2">{{ section.settings.compare_title }}</h2>
+        {%- if section.settings.compare_intro != blank -%}
+          <div class="ptlh__body rte">{{ section.settings.compare_intro }}</div>
+        {%- endif -%}
+        <div class="ptlh__table-wrap" role="region" aria-label="{{ section.settings.compare_title | escape }}" tabindex="0">
+          <table class="ptlh__table">
+            <thead>
+              <tr>
+                <th scope="col">Service</th>
+                <th scope="col">{{ t_name_sw }}</th>
+                <th scope="col">{{ t_name_ne }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {%- for block in ptlh_rows -%}
+                <tr {{ block.shopify_attributes }}>
+                  <th scope="row">
+                    {%- if block.settings.url != blank -%}
+                      <a href="{{ block.settings.url }}">{{ block.settings.service }}</a>
+                    {%- else -%}
+                      {{ block.settings.service }}
+                    {%- endif -%}
+                  </th>
+                  <td>{{ block.settings.sw }}</td>
+                  <td>{{ block.settings.ne }}</td>
+                </tr>
+              {%- endfor -%}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- if section.settings.show_page_content and page.content != blank -%}
+    <div class="ptlh__band ptlh__band--white">
+      <div class="ptlh__wrap">
+        <div class="ptlh__body rte">{{ page.content }}</div>
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- if ptlh_faqs.size > 0 -%}
+    <div class="ptlh__band ptlh__band--white">
+      <div class="ptlh__wrap">
+        {%- render 'pt-location-faq',
+          faqs: ptlh_faqs,
+          heading: section.settings.faq_title,
+          id_prefix: 'ptlh-faq',
+          hours_sw: t_hours_sw,
+          hours_ne: t_hours_ne,
+          address_sw: t_address_sw,
+          address_ne: t_address_ne,
+          phone_sw: t_phone_sw,
+          phone_ne: t_phone_ne,
+          schema: section.settings.schema_enabled,
+          about_ids: ptlh_about,
+          breadcrumb_id: ptlh_crumb_id
+        -%}
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- if section.settings.cta_title != blank -%}
+    <div class="ptlh__cta">
+      <div class="ptlh__wrap">
+        <h2 class="ptlh__cta-title">{{ section.settings.cta_title }}</h2>
+        {%- if section.settings.cta_text != blank -%}
+          <p class="ptlh__cta-text">{{ section.settings.cta_text }}</p>
+        {%- endif -%}
+        <div class="ptlh__cta-btns">
+          <a href="{{ ptlh_sw_book }}" class="ptl-btn ptlh__cta-btn" data-pt-event="book_cta" data-pt-location="bottom_cta" data-pt-label="book sw">{{ section.settings.cta_sw_label }}</a>
+          <a href="{{ ptlh_ne_book }}" class="ptl-btn ptlh__cta-btn" data-pt-event="book_cta" data-pt-location="bottom_cta" data-pt-label="book ne">{{ section.settings.cta_ne_label }}</a>
+        </div>
+      </div>
+    </div>
+  {%- endif -%}
+</div>
+
+{%- if section.settings.schema_enabled -%}
+  {%- liquid
+    if page.title != blank
+      assign ptlh_crumb = page.title
+    else
+      assign ptlh_crumb = section.settings.heading
+    endif
+  -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "@id": {{ ptlh_crumb_id | json }},
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": {{ request.origin | append: '/' | json }} },
+      { "@type": "ListItem", "position": 2, "name": {{ ptlh_crumb | strip_html | json }}, "item": {{ canonical_url | json }} }
+    ]
+  }
+  </script>
+{%- endif -%}
+
+{% stylesheet %}
+  .ptlh {
+    --ptlh-red: #E8251D;
+    --ptlh-orange: #F5820B;
+    --ptlh-black: #111;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.6rem;
+    line-height: 1.6;
+    color: #1a1a1a;
+    overflow-wrap: anywhere;
+  }
+  .ptlh__wrap { max-width: 112rem; margin: 0 auto; padding: 0 1.6rem; }
+  .ptlh__hero { background: var(--ptlh-black); color: #fff; padding: 4rem 0 4.8rem; }
+  .ptlh__eyebrow { margin: 0 0 1.2rem; font-size: 1.4rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ptlh-orange); }
+  .ptlh__title { margin: 0 0 2rem; font-family: 'Barlow Condensed', sans-serif; font-size: clamp(3.4rem, 7vw, 5.6rem); font-weight: 800; line-height: 1; text-transform: uppercase; color: #fff; }
+  .ptlh__answer { max-width: 80rem; font-size: 1.8rem; line-height: 1.6; color: rgba(255, 255, 255, 0.88); }
+  .ptlh__answer p { margin: 0 0 1.2rem; }
+  .ptlh__answer p:last-child { margin-bottom: 0; }
+  .ptlh__answer strong { color: #fff; }
+  .ptlh__answer a { color: #fff; text-decoration: underline; }
+  .ptlh__cards-band { padding: 3.2rem 0 4.8rem; background: #f8f8f8; }
+  .ptlh__cards { display: grid; gap: 2rem; }
+  .ptlh__note { margin-top: 2rem; font-size: 1.5rem; color: #555; }
+  .ptlh__note a { color: var(--ptlh-red); text-decoration: underline; }
+  .ptlh__band { padding: 4.8rem 0; background: #fff; }
+  .ptlh__band--white { background: #fff; border-top: 1px solid #eee; }
+  .ptlh__h2 { margin: 0 0 2rem; font-family: 'Barlow Condensed', sans-serif; font-size: 2.8rem; font-weight: 700; line-height: 1.1; text-transform: uppercase; color: var(--ptlh-black); }
+  .ptlh__body { max-width: 72rem; margin: 0 0 2.4rem; font-size: 1.6rem; line-height: 1.7; color: #333; }
+  .ptlh__body p { margin: 0 0 1.6rem; }
+  .ptlh__body p:last-child { margin-bottom: 0; }
+  .ptlh__body a { color: var(--ptlh-red); text-decoration: underline; }
+  .ptlh__table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e5e5e5; border-radius: 0.6rem; }
+  .ptlh__table-wrap:focus-visible { outline: 3px solid var(--ptlh-orange); outline-offset: 2px; }
+  .ptlh__table { width: 100%; min-width: 48rem; border-collapse: collapse; font-size: 1.5rem; line-height: 1.5; color: #333; }
+  .ptlh__table th, .ptlh__table td { padding: 1.2rem 1.4rem; text-align: left; vertical-align: top; border-bottom: 1px solid #eee; }
+  .ptlh__table thead th { background: var(--ptlh-black); color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 1.6rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; }
+  .ptlh__table tbody th { color: #111; font-weight: 600; }
+  .ptlh__table tbody th a { color: var(--ptlh-red); text-decoration: underline; }
+  .ptlh__table tbody tr:nth-child(even) { background: #fafafa; }
+  .ptlh__table tbody tr:last-child th, .ptlh__table tbody tr:last-child td { border-bottom: 0; }
+  .ptlh__cta { padding: 5.6rem 0; background: var(--ptlh-red); color: #fff; text-align: center; }
+  .ptlh__cta-title { margin: 0 0 1.2rem; font-family: 'Barlow Condensed', sans-serif; font-size: clamp(2.8rem, 5vw, 4rem); font-weight: 800; line-height: 1.05; text-transform: uppercase; color: #fff; }
+  .ptlh__cta-text { max-width: 64rem; margin: 0 auto 2.8rem; font-size: 1.7rem; line-height: 1.6; }
+  .ptlh__cta-btns { display: flex; flex-direction: column; gap: 1.2rem; max-width: 48rem; margin: 0 auto; }
+  .ptlh .ptlh__cta-btn { background: #fff; color: var(--ptlh-red); border: 2px solid #fff; }
+  .ptlh .ptlh__cta-btn:hover { background: #f3f3f3; }
+  @media screen and (min-width: 750px) {
+    .ptlh__wrap { padding: 0 2.4rem; }
+    .ptlh__hero { padding: 6.4rem 0; }
+    .ptlh__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.4rem; }
+    .ptlh__band { padding: 6.4rem 0; }
+    .ptlh__cta-btns { flex-direction: row; justify-content: center; max-width: none; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Location: hub",
+  "tag": "section",
+  "class": "section-pt-location-hub",
+  "settings": [
+    { "type": "header", "content": "Intro" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow" },
+    { "type": "text", "id": "heading", "label": "H1 heading", "default": "Prince Tires locations in Calgary" },
+    {
+      "type": "richtext",
+      "id": "answer",
+      "label": "Direct answer",
+      "info": "Tokens: [[address_sw]] [[address_ne]] [[phone_sw]] [[phone_ne]] [[hours_sw]] [[hours_ne]] are filled from pt-nap."
+    },
+    { "type": "header", "content": "Shop cards" },
+    { "type": "paragraph", "content": "Name, address, phone and hours come from pt-nap and the Store hours metaobject. Edit them there." },
+    { "type": "checkbox", "id": "show_maps", "label": "Show a map in each card (loads lazily)", "default": false },
+    { "type": "textarea", "id": "holiday_dates", "label": "Holiday dates (no open/closed status)", "info": "Comma-separated YYYY-MM-DD, Calgary dates. On these days the shop card shows 'Holiday today, call ahead' instead of open/closed from the weekly hours. Prefilled with Alberta holidays to Dec 2027 (incl. Boxing Day, Heritage Day); add or remove as the shop decides.", "default": "2026-11-11,2026-12-25,2026-12-26,2027-01-01,2027-02-15,2027-03-26,2027-05-24,2027-07-01,2027-08-02,2027-09-06,2027-10-11,2027-11-11,2027-12-25,2027-12-26" },
+    { "type": "text", "id": "alt_book_label", "label": "Other-services booking link text", "default": "Book another service here" },
+    { "type": "richtext", "id": "cards_note", "label": "Note under the cards" },
+    { "type": "header", "content": "42 Ave SW card" },
+    {
+      "type": "select",
+      "id": "sw_book_service",
+      "label": "Booking button: service",
+      "options": [
+        { "value": "installation_on", "label": "Seasonal swap (on rims)" },
+        { "value": "installation_off", "label": "Tire installation (loose tires)" },
+        { "value": "balancing", "label": "Wheel balancing" },
+        { "value": "rotation", "label": "Tire rotation" },
+        { "value": "flat_repair", "label": "Flat repair" },
+        { "value": "tpms", "label": "TPMS service" }
+      ],
+      "default": "installation_on"
+    },
+    { "type": "text", "id": "sw_book_label", "label": "Booking button: text", "default": "Request a time" },
+    { "type": "richtext", "id": "sw_note", "label": "Note", "info": "[[address_sw]] [[phone_sw]] [[hours_sw]] work here." },
+    { "type": "url", "id": "sw_page_url", "label": "Shop page link" },
+    { "type": "text", "id": "sw_page_label", "label": "Shop page link text", "default": "Contact and directions" },
+    { "type": "text", "id": "sw_map_embed_url", "label": "Map embed URL (optional)", "info": "Blank = map the address." },
+    { "type": "header", "content": "Edmonton Trail NE card" },
+    {
+      "type": "select",
+      "id": "ne_book_service",
+      "label": "Booking button: service",
+      "options": [
+        { "value": "installation_on", "label": "Seasonal swap (on rims)" },
+        { "value": "installation_off", "label": "Tire installation (loose tires)" },
+        { "value": "balancing", "label": "Wheel balancing" },
+        { "value": "road_force_balancing", "label": "Road force balancing" },
+        { "value": "rotation", "label": "Tire rotation" },
+        { "value": "flat_repair", "label": "Flat repair" },
+        { "value": "tpms", "label": "TPMS service" }
+      ],
+      "default": "installation_on"
+    },
+    { "type": "text", "id": "ne_book_label", "label": "Booking button: text", "default": "Request a time" },
+    { "type": "richtext", "id": "ne_note", "label": "Note", "info": "[[address_ne]] [[phone_ne]] [[hours_ne]] work here." },
+    { "type": "url", "id": "ne_page_url", "label": "Shop page link" },
+    { "type": "text", "id": "ne_page_label", "label": "Shop page link text", "default": "Edmonton Trail NE shop page" },
+    { "type": "text", "id": "ne_map_embed_url", "label": "Map embed URL (optional)", "info": "Blank = map the address." },
+    { "type": "header", "content": "Services table" },
+    { "type": "text", "id": "compare_title", "label": "Heading", "default": "What each shop offers" },
+    { "type": "richtext", "id": "compare_intro", "label": "Intro" },
+    { "type": "header", "content": "Page content" },
+    { "type": "checkbox", "id": "show_page_content", "label": "Show the page's own body text", "info": "Off by default: the intro above replaces it.", "default": false },
+    { "type": "header", "content": "FAQ" },
+    { "type": "text", "id": "faq_title", "label": "Heading", "default": "Questions about our locations" },
+    { "type": "header", "content": "Bottom call to action" },
+    { "type": "text", "id": "cta_title", "label": "Heading", "info": "Leave blank to hide the band." },
+    { "type": "text", "id": "cta_text", "label": "Text" },
+    { "type": "text", "id": "cta_sw_label", "label": "SW booking button text", "default": "Request a time at 42 Ave SW" },
+    { "type": "text", "id": "cta_ne_label", "label": "NE booking button text", "default": "Request a time at Edmonton Trail NE" },
+    { "type": "header", "content": "Structured data" },
+    {
+      "type": "checkbox",
+      "id": "schema_enabled",
+      "label": "Emit BreadcrumbList and FAQPage JSON-LD",
+      "info": "Both shops are already in the sitewide schema; this only points to them. No rating markup.",
+      "default": true
+    }
+  ],
+  "blocks": [
+    {
+      "type": "compare_row",
+      "name": "Services table row",
+      "settings": [
+        { "type": "text", "id": "service", "label": "Service" },
+        { "type": "url", "id": "url", "label": "Service page (optional)" },
+        { "type": "text", "id": "sw", "label": "42 Ave SW" },
+        { "type": "text", "id": "ne", "label": "Edmonton Trail NE" }
+      ]
+    },
+    {
+      "type": "faq",
+      "name": "FAQ item",
+      "settings": [
+        { "type": "text", "id": "question", "label": "Question" },
+        { "type": "richtext", "id": "answer", "label": "Answer", "info": "Tokens work here, in the page and in the FAQ structured data." }
+      ]
+    }
+  ],
+  "presets": [
+    { "name": "Location: hub" }
+  ]
+}
+{% endschema %}

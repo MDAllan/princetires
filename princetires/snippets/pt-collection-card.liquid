@@ -1,293 +1,1003 @@
 {% doc %}
-  One product card for the tires collection grid. Renders the image,
-  season/sale/bestseller badges, compare checkbox, brand + title,
-  size, stars, spec strip, price, rebate, and the Book Install / Add
-  to Cart buttons.
+  One product card on the tire / wheel results pages (redesign 2026-11-13,
+  mockups Main / Mobile / States / WheelResults / WheelMobile .dc.html).
 
-  All product-derived helpers (season_tag, card_title, set_price, …)
-  are computed inside the snippet so the section's for-loop only has
-  to pass the product object.
+  Layout: photo tile, brand, full title, one meta line (tires: season and
+  load/speed; wheels: finish and the spec line from metafields), the price
+  "/tire" or "/wheel" with "$X for 4", the LEAD TIME (snippets/pt-lead-time,
+  the only stock wording customers see), then the actions:
+    normal    red "Request install" + cart button
+    order in  same as normal, plus an "Ask about this tire" call link
+              (States.dc.html wording; still bookable / buyable like the PDP)
+    sold out  disabled "Sold out", no cart (phones: "Call for options" tel link)
+    call      "Call to book" (pt-stock-state 'call')
+  Phones: 2 per row, the cart button sits on the photo.
 
-  @param {product} product - The Shopify product to render.
-  @param {boolean} [is_clearance] - When true (clearance collection), shows a CLEARANCE badge + % off instead of the generic Sale badge.
+  Owner rules: no counts, no fabricated ratings (stars only from a real
+  reviews.rating, or TyreReviews >= 4.0 labelled as such), red only for the
+  main button and the sale / clearance badge, wheels never say 3PMSF or
+  carry a levy (data-is-wheel tells the booking form).
+
+  Hooks other scripts read - keep them:
+    .ptg__card[data-vendor|data-tire-size|data-type]  grid JS (fitment badge),
+      pt-collection-stock (in-stock first: .ptg__card--unavailable in .ptg__grid)
+    .ptg__compare-check[data-compare-*]  pt-collection-compare
+    .ptg__card-cart[data-variant]        grid JS add-to-cart
+    [data-pt-price] / [data-pt-trade-info]  pt-header wholesale prices
+    openBookingModal(this) + data-tire-name ... data-sold-out  booking form
+    .rd-card[data-pair-* data-studded data-runflat data-class data-spec
+      data-price-cents data-variant-id data-vtype data-pair-ok]  staggered-set
+      pairing in assets/pt-rd-results.js (tires only; data-pair-ok is a yes/no,
+      never a count; totals use data-price-cents, never data-price)
+
+  @param {product} product - The product
+  @param {boolean} [is_clearance] - The page is the clearance collection
+  @param {number} [index] - Position on the page (first 4 load eagerly)
+  @param {boolean} [show_set] - "$X for 4" line (default true)
+  @param {boolean} [show_compare] - Compare checkbox (default true)
+  @param {boolean} [show_best] - Ignored (the Best seller badge was dropped: no unverified superlatives)
+  @param {boolean} [show_rebate] - Rebate line (default true)
+  @param {boolean} [show_fit] - "Fits your vehicle" check (default true)
+  @param {boolean} [v16] - Tire results redesign v16 (2026-11-15, FINAL spec):
+    tire cards only (never wheels). Season tag with its icon (white tag, dark
+    shade text), one meta line (brand + load/speed; the size leads it on
+    pages without a size), the model as the title (minimal cleanup below,
+    raw title as the fallback), "$X /tire" with "$Y for 4" on the same line,
+    sale / clearance as text under the price ("Was $83.13 · Sale −9%"),
+    Compare always visible, one lead-time wording. Every data-* hook stays.
+  @param {boolean} [has_size] - v16: the page already shows one tire size
 
   @example
-  {% render 'pt-collection-card', product: product %}
+    {% render 'pt-collection-card', product: product, is_clearance: is_clearance, index: forloop.index %}
 {% enddoc %}
+{%- liquid
+  assign c_ts = product.metafields.custom.tire_size | default: ''
+  assign c_title = product.title
+  if c_ts != blank
+    assign c_title = product.title | remove: c_ts | strip
+  endif
+  # The brand line sits right above the title, so drop a leading "Vendor ".
+  assign c_vpre = product.vendor | append: ' '
+  assign c_vlen = c_vpre.size
+  assign c_head = c_title | slice: 0, c_vlen
+  if c_vlen > 1 and c_head == c_vpre and c_title.size > c_vlen
+    assign c_title = c_title | slice: c_vlen, 400 | strip
+  endif
+  # c_name = what the card title shows. The brand, size, load/speed and the
+  # wheel spec + finish have their own lines, so the title is the model only
+  # (mockups: "HD617", "Aggressor"). c_title stays for the data-* hooks.
+  assign c_name = c_title
+  assign c_variant = product.selected_or_first_available_variant
+  assign c_vid = c_variant.id
 
-              {%- liquid
-                # Canonical (and ONLY) source for the season pill: custom.seasonality metafield.
-                # No tag/type fallback — set the metafield on the product if you want a pill.
-                # Backfilled + case-normalized 2026-05-24 (97% coverage).
-                assign season_tag = product.metafields.custom.seasonality | default: '' | strip
-                assign season_color = '#6b7280'
-                case season_tag
-                  when 'Winter'
-                    assign season_color = '#2563eb'
-                  when 'All-Weather'
-                    assign season_color = '#F5820B'
-                  when 'All-Season'
-                    assign season_color = '#16a34a'
-                  when 'Summer'
-                    assign season_color = '#eab308'
-                  when 'All-Terrain'
-                    assign season_color = '#92400e'
-                  when 'Performance'
-                    assign season_color = '#7c3aed'
-                endcase
-              -%}
-              {%- liquid
-                assign tire_size_display = product.metafields.custom.tire_size | default: ''
-                assign card_title = product.title
-                if tire_size_display != blank
-                  assign card_title = product.title | remove: tire_size_display | strip | remove_first: ' '
-                endif
-                assign set_price = product.price | times: 4
-                comment
-                  Low-stock cap for the displayed set price (mirrors the PDP). The
-                  full 4x set_price above still feeds the compare drawer so tires
-                  compare apples-to-apples; the card UI shows what's buyable now.
-                endcomment
-                assign card_max_qty = 0
-                if product.selected_or_first_available_variant.inventory_management == 'shopify' and product.selected_or_first_available_variant.inventory_policy == 'deny' and product.selected_or_first_available_variant.inventory_quantity > 0
-                  assign card_max_qty = product.selected_or_first_available_variant.inventory_quantity
-                endif
-                assign card_set_count = 4
-                if card_max_qty > 0 and card_max_qty < 4
-                  assign card_set_count = card_max_qty
-                endif
-                assign card_set_price = product.price | times: card_set_count
-                assign card_rating = product.metafields.reviews.rating.value
-                assign card_rating_count = product.metafields.reviews.rating_count | default: 0
-                assign mileage_warranty = product.metafields.custom.mileage_warranty | default: ''
-                assign card_speed = product.metafields.custom.speed_rating | default: ''
-                assign card_load = product.metafields.custom.load_index | default: ''
-                assign rebate_text = product.metafields.custom.rebate_text | default: ''
-                # Clearance treatment (clearance collection only — flag passed by the grid section).
-                assign is_clearance = is_clearance | default: false
-                assign is_clearance_sale = false
-                assign pct_off = 0
-                if product.compare_at_price > product.price
-                  if is_clearance
-                    assign is_clearance_sale = true
-                  endif
-                  if product.compare_at_price > 0
-                    assign pct_off = product.compare_at_price | minus: product.price | times: 100.0 | divided_by: product.compare_at_price | round
-                  endif
-                endif
-                assign is_bestseller = false
-                for tag in product.tags
-                  assign tag_down = tag | downcase
-                  if tag_down == 'best-seller' or tag_down == 'best seller' or tag_down == 'bestseller'
-                    assign is_bestseller = true
-                  endif
-                endfor
-              -%}
-              <a href="{{ product.url }}" class="ptg__card{% unless product.available %} ptg__card--unavailable{% endunless %}" data-vendor="{{ product.vendor | handleize }}" data-season="{{ season_tag | handleize }}" data-type="{{ product.type | downcase }}" data-price="{{ product.price | money_without_currency | strip_html | strip }}" data-tire-size="{{ tire_size_display }}" data-product-title="{{ card_title | escape }}"{% unless product.available %} aria-label="Out of stock — {{ card_title | escape }}"{% endunless %}>
-                <div class="ptg__card-img">
-                  {%- if product.featured_image -%}
-                    {%- if forloop.index <= 4 -%}
-                      {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'ptg__img', loading: 'eager', fetchpriority: 'high', widths: '200,300,400,600', sizes: '(max-width: 768px) 50vw, (max-width: 989px) 30vw, 25vw', alt: product.title }}
-                    {%- else -%}
-                      {{ product.featured_image | image_url: width: 300, height: 300, crop: 'center' | image_tag: class: 'ptg__img', loading: 'lazy', widths: '200,300,400,600', sizes: '(max-width: 768px) 50vw, (max-width: 989px) 30vw, 25vw', alt: product.title }}
-                    {%- endif -%}
-                  {%- else -%}
-                    {%- comment -%} Branded placeholder when product has no photo {%- endcomment -%}
-                    <div class="ptg__card-ph" aria-hidden="true">
-                      <svg class="ptg__card-ph-tire" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="50" cy="50" r="45"/>
-                        <circle cx="50" cy="50" r="39" stroke-width="5" stroke-dasharray="3.5 5"/>
-                        <circle cx="50" cy="50" r="22"/>
-                        <circle cx="50" cy="50" r="4.5" fill="currentColor" stroke="none"/>
-                        <g stroke-width="2.4" stroke-linecap="round">
-                          <line x1="50" y1="50" x2="50" y2="31"/>
-                          <line x1="50" y1="50" x2="68" y2="43.5"/>
-                          <line x1="50" y1="50" x2="61" y2="65"/>
-                          <line x1="50" y1="50" x2="39" y2="65"/>
-                          <line x1="50" y1="50" x2="32" y2="43.5"/>
-                        </g>
-                      </svg>
-                      {%- if product.vendor != blank -%}
-                        <span class="ptg__card-ph-brand">{{ product.vendor | escape }}</span>
-                      {%- endif -%}
-                      {%- if tire_size_display != blank -%}
-                        <span class="ptg__card-ph-size">{{ tire_size_display }}</span>
-                      {%- endif -%}
-                    </div>
-                  {%- endif -%}
-                  {%- unless product.available -%}
-                    <span class="ptg__card-oos">Out of stock</span>
-                  {%- endunless -%}
-                  {%- if is_clearance_sale -%}
-                    <span class="ptg__card-clearance">Clearance</span>
-                  {%- elsif product.compare_at_price > product.price -%}
-                    <span class="ptg__card-sale">Sale</span>
-                  {%- endif -%}
-                  {%- if section.settings.show_bestseller and is_bestseller -%}
-                    <span class="ptg__card-badge-best">Best Seller</span>
-                  {%- endif -%}
-                  {%- if section.settings.enable_compare -%}
-                    <label class="ptg__card-compare" onclick="event.stopPropagation();">
-                      <input type="checkbox" class="ptg__compare-check" data-compare-id="{{ product.id }}" data-compare-title="{{ card_title | escape }}" data-compare-vendor="{{ product.vendor | escape }}" data-compare-price="{{ product.price | money_without_currency | strip_html | strip }}" data-compare-set="{{ set_price | money_without_currency | strip_html | strip }}" data-compare-img="{{ product.featured_image | image_url: width: 200 }}" data-compare-size="{{ tire_size_display }}" data-compare-url="{{ product.url }}" data-compare-season="{{ season_tag }}" data-compare-type="{{ product.type | escape }}" data-compare-speed="{{ card_speed }}" data-compare-load="{{ card_load }}" data-compare-warranty="{{ mileage_warranty }}">
-                      <span class="ptg__compare-label">Compare</span>
-                    </label>
-                  {%- endif -%}
-                  <div class="ptg__card-img-bottom">
-                    {%- liquid
-                      assign display_rating = 0
-                      if card_rating != blank
-                        assign display_rating = card_rating | round: 1
-                      elsif product.metafields.custom.tyre_rating.value and product.metafields.custom.tyre_rating.value > 0
-                        assign tr = product.metafields.custom.tyre_rating.value | times: 1.0
-                        assign display_rating = tr | divided_by: 20.0 | round: 1
-                      else
-                        assign v = product.vendor | downcase
-                        if v == 'michelin' or v == 'continental' or v == 'pirelli' or v == 'goodyear'
-                          assign display_rating = 4.7
-                        elsif v == 'bridgestone' or v == 'hankook' or v == 'yokohama' or v == 'falken' or v == 'nokian'
-                          assign display_rating = 4.5
-                        elsif v == 'kumho' or v == 'toyo' or v == 'cooper' or v == 'firestone' or v == 'general' or v == 'dunlop' or v == 'bfgoodrich' or v == 'nexen'
-                          assign display_rating = 4.3
-                        elsif v == 'gt radial' or v == 'maxxis' or v == 'rotalla'
-                          assign display_rating = 4.0
-                        elsif v == 'radar' or v == 'haida' or v == 'starfire' or v == 'austone'
-                          assign display_rating = 3.7
-                        else
-                          assign display_rating = 3.9
-                        endif
-                      endif
-                    -%}
-                    {%- if display_rating >= 4.0 -%}
-                    <span class="ptg__card-stars">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="#F5820B"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                      {{ display_rating }}
-                      {%- if card_rating != blank and card_rating_count > 0 -%}
-                        <span class="ptg__card-review-count">({{ card_rating_count }})</span>
-                      {%- endif -%}
-                    </span>
-                    {%- else -%}
-                    <span class="ptg__card-stars ptg__card-stars--na">N/A</span>
-                    {%- endif -%}
-                    {%- if season_tag != blank -%}
-                      <span class="ptg__card-season" style="background: {{ season_color }}">{{ season_tag }}</span>
-                    {%- endif -%}
-                  </div>
-                </div>
-                <div class="ptg__card-body">
-                  <div class="ptg__card-size-row">
-                    {%- if tire_size_display != blank -%}
-                      <span class="ptg__card-size">{{ tire_size_display }}</span>
-                    {%- endif -%}
-                    <span class="ptg__card-vendor ptg__card-vendor--{{ product.vendor | handleize }}">{{ product.vendor | escape }}</span>
-                  </div>
-                  {%- if section.settings.show_fitment -%}
-                    <span class="ptg__card-fitment" data-card-fitment hidden>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-                      Fits your vehicle
-                    </span>
-                  {%- endif -%}
-                  <h3 class="ptg__card-title">{{ card_title | escape }}</h3>
-                  <span class="ptg__card-type-tag">{{ product.type | escape }}</span>
-                  {%- if section.settings.show_warranty and mileage_warranty != blank -%}
-                    <span class="ptg__card-warranty">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                      {{ mileage_warranty }} warranty
-                    </span>
-                  {%- endif -%}
-                  {%- if section.settings.show_specs -%}
-                    {%- if card_speed != blank or card_load != blank -%}
-                      <div class="ptg__card-specs">
-                        {%- if card_load != blank -%}<span class="ptg__card-spec">{{ card_load }}LI</span>{%- endif -%}
-                        {%- if card_speed != blank -%}<span class="ptg__card-spec">{{ card_speed }}</span>{%- endif -%}
-                      </div>
-                    {%- endif -%}
-                  {%- endif -%}
-                  {%- if section.settings.show_rebate and rebate_text != blank -%}
-                    <span class="ptg__card-rebate">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                      {{ rebate_text }}
-                    </span>
-                  {%- endif -%}
-                  {%- comment -%} Phase 5A · trade-price toggle. data-pt-price spans get their text overwritten with retail × multiplier from /apps/api/wholesale/pricing; the trade badge below renders the wholesale cost. {%- endcomment -%}
-                  {%- assign card_variant_id = product.selected_or_first_available_variant.id -%}
-                  <div class="ptg__card-price">
-                    {%- if product.compare_at_price > product.price -%}
-                      <span class="ptg__price-sale" data-pt-price data-pt-variant-id="{{ card_variant_id }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span>
-                      <span class="ptg__price-was">${{ product.compare_at_price | money_without_currency }}</span>
-                    {%- else -%}
-                      <span data-pt-price data-pt-variant-id="{{ card_variant_id }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span>
-                    {%- endif -%}
-                    <span class="ptg__price-per">/tire</span>
-                    {%- if section.settings.show_set_price -%}
-                      <span class="ptg__price-set"><span data-pt-price data-pt-variant-id="{{ card_variant_id }}" data-pt-multiplier="{{ card_set_count }}">${{ card_set_price | money_without_currency }}</span> for {{ card_set_count }}</span>
-                    {%- endif -%}
-                  </div>
-                  {%- if is_clearance_sale and pct_off > 0 -%}
-                    <span class="ptg__price-off">{{ pct_off }}% off</span>
-                  {%- endif -%}
-                  {%- comment -%} Low-stock urgency on the grid (mirrors the PDP badge). Fires only for genuinely low stock (1-4 on hand) so it stays meaningful; card_max_qty is already gated on tracked + inventory_policy: deny. {%- endcomment -%}
-                  {%- if product.available and card_max_qty > 0 and card_max_qty <= 4 -%}
-                    <span class="ptg__card-lowstock"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>{{ 'products.product.low_stock' | t: count: card_max_qty }}</span>
-                  {%- endif -%}
-                  {%- if customer.b2b? or customer.tags contains 'wholesale' -%}
-                    {%- comment -%} Visible only when the header toggle is ON (body.pt-trade-visible). JS fills in amount + tier + pct from the API. Gate matches the header — either Shopify's native B2B flag OR the legacy tag. {%- endcomment -%}
-                    <div class="ptg__card-trade" data-pt-trade-info data-pt-variant-id="{{ card_variant_id }}">
-                      <span class="ptg__card-trade-label">Your cost</span>
-                      <span class="ptg__card-trade-amount" data-pt-trade-amount>—</span>
-                      <span class="ptg__card-trade-pct"><span data-pt-trade-pct>—</span>% off</span>
-                    </div>
-                  {%- endif -%}
-                  <div class="ptg__card-actions">
-                    {%- liquid
-                      assign grid_vtype = 'passenger'
-                      assign grid_ts = product.metafields.custom.tire_size | default: '' | upcase
-                      assign grid_vmeta = product.metafields.custom.vehicle_type | downcase | default: ''
-                      if grid_vmeta contains 'suv' or grid_vmeta contains 'cuv'
-                        assign grid_vtype = 'suv'
-                      elsif grid_vmeta contains 'light truck'
-                        assign grid_vtype = 'truck'
-                      elsif grid_vmeta contains 'trailer'
-                        assign grid_vtype = 'trailer'
-                      elsif grid_vmeta contains 'van'
-                        assign grid_vtype = 'van'
-                      elsif grid_vmeta contains 'truck'
-                        assign grid_vtype = 'truck'
-                      elsif grid_ts contains 'LT'
-                        assign grid_vtype = 'truck'
-                      elsif grid_ts contains 'ST'
-                        assign grid_vtype = 'trailer'
-                      elsif grid_ts contains 'R21' or grid_ts contains 'R22' or grid_ts contains 'R23' or grid_ts contains 'R24'
-                        assign grid_vtype = 'largetruck'
-                      else
-                        assign grid_pt = product.type | downcase
-                        if grid_pt contains 'trailer'
-                          assign grid_vtype = 'trailer'
-                        elsif grid_pt contains 'light truck'
-                          assign grid_vtype = 'truck'
-                        endif
-                      endif
-                    -%}
-                    {%- capture grid_supplier_tier -%}{% render 'pt-supplier-tier', product: product %}{%- endcapture -%}
-                    <button type="button" class="ptg__card-book"
-                      data-tire-name="{{ product.title | escape }}"
-                      data-vendor="{{ product.vendor | escape }}"
-                      data-tire-size="{{ product.metafields.custom.tire_size | default: '' | escape }}"
-                      data-vehicle-type="{{ grid_vtype }}"
-                      data-tire-price="{{ product.selected_or_first_available_variant.price }}"
-                      data-install-price="{{ product.metafields.custom.install_price.value | default: 30 }}"
-                      data-supplier-tier="{{ grid_supplier_tier | strip }}"
-                      data-product-handle="{{ product.handle }}"
-                      data-variant-id="{{ product.selected_or_first_available_variant.id }}"
-                      data-max-qty="{{ card_max_qty }}"
-                      onclick="event.preventDefault();event.stopPropagation();if(typeof openBookingModal==='function')openBookingModal(this)">Book Install</button>
-                    <button type="button" class="ptg__card-cart"
-                      data-variant="{{ product.selected_or_first_available_variant.id }}"
-                      data-title="{{ product.title | escape }}"
-                      aria-label="Add {{ product.title | escape }} to cart">
-                      <svg class="ptg__cart-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-                      <svg class="ptg__cart-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="display:none"><path d="M20 6L9 17l-5-5"/></svg>
-                      <svg class="ptg__cart-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="display:none"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
-                    </button>
-                  </div>
-                </div>
-              </a>
+  # Wheel test: same rule as sections/pt-product.liquid is_wheel.
+  assign c_is_wheel = false
+  if c_ts == blank
+    if product.metafields.custom.bolt_pattern != blank
+      assign c_is_wheel = true
+    endif
+    assign c_type = product.type | downcase
+    if c_type contains 'accessor'
+      assign c_type = 'tire'
+    endif
+    unless c_type contains 'tire'
+      if c_type contains 'wheel' or c_type contains 'rims' or c_type contains 'alloy' or product.tags contains 'Wheels'
+        assign c_is_wheel = true
+      elsif c_type == blank
+        assign c_tdown = product.title | downcase
+        unless c_tdown contains 'tire'
+          if c_tdown contains 'wheel' or c_tdown contains ' rim'
+            assign c_is_wheel = true
+          endif
+        endunless
+      endif
+    endunless
+  endif
+  # Booking levy flag data-is-wheel: "true" for wheels, "false" only for a
+  # real tire (tire size, or a product type naming tires that is not an
+  # accessory), empty for anything else. pt-book.js treats "false" as a
+  # tire and adds the recycling levy, so an accessory must send empty.
+  assign c_type_raw = product.type | downcase
+  assign c_is_tire = false
+  if c_ts != blank
+    assign c_is_tire = true
+  elsif c_type_raw contains 'tire'
+    unless c_type_raw contains 'accessor'
+      assign c_is_tire = true
+    endunless
+  endif
+  assign c_unit = 'tire'
+  if c_is_wheel
+    assign c_unit = 'wheel'
+  endif
+
+  assign c_show_set = true
+  if show_set == false
+    assign c_show_set = false
+  endif
+  assign c_show_cmp = true
+  if show_compare == false
+    assign c_show_cmp = false
+  endif
+
+  # Season (tires only - a season / 3PMSF is a tire rating).
+  assign c_season_raw = product.metafields.custom.seasonality | default: '' | strip
+  assign c_season = c_season_raw
+  case c_season_raw
+    when 'All-Weather'
+      assign c_season = 'All-weather'
+    when 'All-Season'
+      assign c_season = 'All-season'
+    when 'All-Terrain'
+      assign c_season = 'All-terrain'
+  endcase
+  assign c_winter_ok = false
+  if c_is_wheel
+    if product.tags contains 'Winter Approved' or c_season_raw == 'Winter'
+      assign c_winter_ok = true
+    endif
+  endif
+
+  # Tire spec: load index + speed rating, XL, Studded
+  assign c_speed = product.metafields.custom.speed_rating | default: ''
+  assign c_load = product.metafields.custom.load_index | default: ''
+  assign c_spec = c_load | append: c_speed | strip
+  assign c_tup = product.title | upcase | append: ' '
+  if c_tup contains ' XL '
+    assign c_spec = c_spec | append: ' XL' | strip
+  endif
+  if product.metafields.custom.stud_option == 'Studded'
+    assign c_spec = c_spec | append: ' Studded' | strip
+  endif
+
+  comment
+    Wheel spec line from metafields: "19×8.5 · 5x114.3 · ET +35 · CB 74.1".
+    Decimal metafields print "20.0" - the ".0" is dropped.
+  endcomment
+  assign c_wspec = ''
+  assign c_finish = ''
+  if c_is_wheel
+    assign w_dia = product.metafields.custom.rim_diameter | append: '' | strip
+    assign w_wid = product.metafields.custom.rim_width | append: '' | strip
+    assign w_bolt = product.metafields.custom.bolt_pattern | append: '' | strip
+    assign w_et = product.metafields.custom.rim_offset | append: '' | strip
+    assign w_cb = product.metafields.custom.center_bore | append: '' | strip
+    assign w_dp = w_dia | split: '.'
+    if w_dp[1] == '0' or w_dp[1] == '00'
+      assign w_dia = w_dp[0]
+    endif
+    assign w_wp = w_wid | split: '.'
+    if w_wp[1] == '0' or w_wp[1] == '00'
+      assign w_wid = w_wp[0]
+    endif
+    assign w_parts = ''
+    if w_dia != blank and w_wid != blank
+      assign w_parts = w_dia | append: '×' | append: w_wid
+    elsif w_dia != blank
+      assign w_parts = w_dia | append: '″'
+    endif
+    if w_bolt != blank
+      if w_parts != ''
+        assign w_parts = w_parts | append: ' · '
+      endif
+      assign w_parts = w_parts | append: w_bolt | replace: '/', ' / '
+    endif
+    assign w_ep = w_et | split: '.'
+    if w_ep[1] == '0' or w_ep[1] == '00'
+      assign w_et = w_ep[0]
+    endif
+    if w_et != blank
+      assign w_etn = w_et | plus: 0
+      assign w_ets = w_et | remove: '+' | replace: '-', '−'
+      if w_etn > 0
+        assign w_ets = '+' | append: w_ets
+      endif
+      if w_parts != ''
+        assign w_parts = w_parts | append: ' · '
+      endif
+      assign w_parts = w_parts | append: 'ET ' | append: w_ets
+    endif
+    if w_cb != blank
+      if w_parts != ''
+        assign w_parts = w_parts | append: ' · '
+      endif
+      assign w_parts = w_parts | append: 'CB ' | append: w_cb
+    endif
+    assign c_wspec = w_parts
+  endif
+
+  assign c_words = c_title | split: ' '
+  assign c_keep = ''
+  if c_is_wheel
+    # Model = the words before the first spec token: "20x10", "5x127/5x139.7",
+    # "ET-24", "ET", or a diameter like 20" / 20in.
+    # Finish = the words AFTER the spec tokens ("... ET+35 Black Machined
+    # CB54.1" -> "Black Machined"): the title says it; tags can hold model
+    # names with finish words in them ("Black Widow").
+    assign c_seen_spec = false
+    assign c_tail = ''
+    for wd in c_words
+      assign wd_up = wd | upcase
+      assign wd_0 = wd | slice: 0, 1
+      assign wd_1 = wd | slice: 1, 1
+      assign wd_et = wd_up | slice: 0, 2
+      assign wd_et3 = wd_up | slice: 2, 1
+      assign wd_spec = false
+      if wd_0 != blank and '0123456789' contains wd_0
+        if wd_up contains 'X' or wd_up contains '"' or wd_up contains '″' or wd_up contains 'IN'
+          assign wd_spec = true
+        endif
+      endif
+      if wd_et == 'ET'
+        if wd_up.size == 2 or '0123456789+-−:' contains wd_et3
+          assign wd_spec = true
+        endif
+      endif
+      if c_seen_spec == false
+        if wd_spec
+          assign c_seen_spec = true
+          continue
+        endif
+        assign c_keep = c_keep | append: ' ' | append: wd
+      else
+        # After the size: numbers (78.1, +30), CB / ET tokens, "Blank",
+        # separators and the words wheel / rim / alloy / steel are not finish.
+        if wd_0 != blank and '0123456789.' contains wd_0
+          assign wd_spec = true
+        endif
+        if wd_1 != blank and '+-−' contains wd_0 and '0123456789' contains wd_1
+          assign wd_spec = true
+        endif
+        if wd_et == 'CB'
+          if wd_up.size == 2 or '0123456789:' contains wd_et3
+            assign wd_spec = true
+          endif
+        endif
+        case wd_up
+          when '-', '–', '|', 'X', 'BLANK', 'WHEEL', 'WHEELS', 'RIM', 'RIMS', 'ALLOY', 'STEEL'
+            assign wd_spec = true
+        endcase
+        unless wd_spec
+          assign c_tail = c_tail | append: ' ' | append: wd
+        endunless
+      endif
+    endfor
+    assign c_tail = c_tail | strip
+    assign f_words = 'black,gloss,matte,satin,chrome,polished,machined,milled,bronze,silver,grey,gray,gunmetal,white,anthracite,graphite,titanium' | split: ','
+    assign c_tail_low = c_tail | downcase
+    for w in f_words
+      if c_tail_low contains w
+        assign c_finish = c_tail
+        break
+      endif
+    endfor
+    if c_finish == ''
+      # No finish in the title: the longest finish-word tag that is not part
+      # of the model name (the title words before the size).
+      assign c_model_low = c_keep | downcase
+      for t in product.tags
+        assign t_low = t | downcase
+        if c_model_low contains t_low
+          continue
+        endif
+        for w in f_words
+          if t_low contains w
+            if t.size > c_finish.size
+              assign c_finish = t
+            endif
+            break
+          endif
+        endfor
+      endfor
+    endif
+  else
+    # Tires: drop the load/speed token ("95H", "104/101S") and "XL" - the meta line shows them.
+    assign c_ls = ''
+    if c_load != blank and c_speed != blank
+      assign c_ls = c_load | append: c_speed | upcase
+    endif
+    for wd in c_words
+      assign wd_up = wd | upcase
+      if c_ls != '' and wd_up == c_ls
+        continue
+      endif
+      if wd_up == 'XL'
+        continue
+      endif
+      assign c_keep = c_keep | append: ' ' | append: wd
+    endfor
+  endif
+  assign c_keep = c_keep | strip
+  if c_keep != blank
+    assign c_name = c_keep
+  endif
+
+  comment
+    v16 (tire results only): the card title is the MODEL. Minimal,
+    conservative cleanup of the raw title (owner rule: never mangle a real
+    model name; the raw title is the fallback):
+    - the tire size (also glued to LT / ST / P before it, LT / C after it,
+      and any other whole size token such as 215/55ZR17 or 35X12.50R20LT)
+    - a leading bracket code ("[D] "), leading LT / ST / P and ply ("10PR")
+    - load / speed tokens: 94V, 121/118Q, (100T), and the spaced "101 W"
+      (index 60-150 + a speed letter), XL, and part numbers in brackets
+      made only of digits ("(9-02532)")
+    - a leading vendor name ("Haida HD617" -> "HD617"; "Tesche Tires",
+      "RoyalBlack", and Composal's misspelling "Compasal")
+    - ALL-CAPS words are title-cased ONLY when on a fixed allow-list of
+      plain words / model names ("BLIZZAK" -> "Blizzak"); every other word
+      stays as typed ("ORWL", "CUVA", "ADVAN", "WS90", "A/T")
+    - the LT / ST / C marker and a removed ply rating move to the meta line
+    The removed load / speed token is used as the spec when the metafields
+    are empty, so nothing the shopper needs is lost.
+  endcomment
+  assign c_v16 = false
+  if v16 and c_is_wheel == false
+    assign c_v16 = true
+  endif
+  assign c_spec_show = c_spec
+  assign c_size_disp = c_ts
+  assign c_ply = ''
+  if c_v16
+    # Tire-type marker (LT / ST front, LT / C back). When the size metafield
+    # lacks it but the raw title has it, the meta line shows the marked size
+    # on every page (an ST trailer tire must never read as a car tire).
+    assign c_ts16 = c_ts | upcase
+    if c_ts != blank
+      assign c_m2 = c_ts16 | slice: 0, 2
+      assign c_m1 = c_ts16 | slice: -1
+      assign c_m3 = c_ts16 | slice: -2, 2
+      unless c_m2 == 'LT' or c_m2 == 'ST' or c_m1 == 'C' or c_m3 == 'LT'
+        assign c_tu16 = product.title | upcase | append: ' '
+        assign c_x = 'LT' | append: c_ts16
+        assign c_y = 'ST' | append: c_ts16
+        assign c_z = c_ts16 | append: 'LT'
+        assign c_c1 = c_ts16 | append: 'C '
+        assign c_c2 = c_ts16 | append: 'C-'
+        if c_tu16 contains c_x
+          assign c_size_disp = 'LT' | append: c_ts
+        elsif c_tu16 contains c_y
+          assign c_size_disp = 'ST' | append: c_ts
+        elsif c_tu16 contains c_z
+          assign c_size_disp = c_ts | append: 'LT'
+        elsif c_tu16 contains c_c1 or c_tu16 contains c_c2
+          assign c_size_disp = c_ts | append: 'C'
+        endif
+      endunless
+    endif
+    # The size must lead the title (after a [D] code, LT / ST / P or the
+    # vendor). A size in the middle ("15-inch Trailer Tire & Wheel
+    # Assembly - ST205/75R15 on ...") means a different kind of title: the
+    # card then shows the raw title as is.
+    assign c_mid = false
+    if c_ts != blank
+      assign c_tu0 = product.title | upcase
+      if c_tu0 contains c_ts16
+        assign c_pre0 = c_tu0 | split: c_ts16 | first | default: '' | remove: ' '
+        if c_pre0 contains ']'
+          assign c_pb = c_pre0 | split: ']'
+          if c_pb.size > 1
+            assign c_pre0 = c_pb | last
+          else
+            assign c_pre0 = ''
+          endif
+        endif
+        assign c_vu = product.vendor | upcase | remove: ' '
+        unless c_pre0 == '' or c_pre0 == 'LT' or c_pre0 == 'ST' or c_pre0 == 'P' or c_pre0 == c_vu
+          assign c_mid = true
+        endunless
+      endif
+    endif
+    assign c_t2 = product.title | append: ' '
+    if c_mid
+      assign c_t2 = ''
+    endif
+    if c_ts != blank and c_mid == false
+      assign c_x = 'LT' | append: c_ts
+      assign c_t2 = c_t2 | remove: c_x
+      assign c_x = 'ST' | append: c_ts
+      assign c_t2 = c_t2 | remove: c_x
+      assign c_x = 'P' | append: c_ts
+      assign c_t2 = c_t2 | remove: c_x
+      assign c_x = c_ts | append: 'LT'
+      assign c_t2 = c_t2 | remove: c_x
+      assign c_x = c_ts | append: 'C-'
+      assign c_t2 = c_t2 | replace: c_x, ' -'
+      assign c_x = c_ts | append: 'C '
+      assign c_t2 = c_t2 | replace: c_x, ' '
+      assign c_t2 = c_t2 | remove: c_ts
+    endif
+    assign c_w2 = c_t2 | split: ' '
+    assign c_k2 = ''
+    assign c_found = ''
+    assign c_xl16 = false
+    assign c_skip = false
+    assign c_spd = 'JKLMNPQRSTUHVWYZ'
+    assign c_vfirst = product.vendor | downcase | split: ' ' | first | default: '~'
+    for wd in c_w2
+      if c_skip
+        assign c_skip = false
+        continue
+      endif
+      assign wu = wd | upcase
+      assign w0 = wd | slice: 0
+      assign wl = wd | slice: -1
+      if c_k2 == ''
+        if w0 == '[' and wl == ']' and wd.size <= 5
+          continue
+        endif
+        if wu == 'LT' or wu == 'ST' or wu == 'P' or wu == '-' or wu == '–' or wu == '|'
+          continue
+        endif
+        assign wp = wu | remove_first: '-'
+        assign wp_n = wp | remove: 'PLY' | remove: 'PR'
+        assign wp_s = wp_n | plus: 0 | append: ''
+        if wp_n != wp and wp_n != '' and wp_s == wp_n
+          if c_ply == ''
+            assign c_ply = wp_n | append: 'PR'
+          endif
+          continue
+        endif
+        # A bare load index right before the vendor ("96 Michelin Pilot ...").
+        assign wd_i = wd | plus: 0
+        assign wd_s = wd_i | append: ''
+        if wd_s == wd and wd.size >= 2 and wd.size <= 3 and wd_i >= 60 and wd_i <= 150
+          assign nx = c_w2[forloop.index] | default: '' | downcase
+          if nx == c_vfirst
+            if c_found == ''
+              assign c_found = wd
+            endif
+            continue
+          endif
+        endif
+      endif
+      if wu == 'XL'
+        continue
+      endif
+      # Load / speed: 94V, 121/118Q, (100T), and glued after a bracket ("(Acous-dB)101Y").
+      assign lc = wu | remove: '(' | remove: ')'
+      assign l_head = ''
+      if wd contains ')' and wl != ')'
+        assign l_tail = wd | split: ')' | last
+        assign lc = l_tail | upcase
+        assign l_hn = wd.size | minus: l_tail.size
+        assign l_head = wd | slice: 0, l_hn
+      endif
+      if lc.size >= 3
+        assign l_last = lc | slice: -1
+        if c_spd contains l_last
+          assign l_n = lc.size | minus: 1
+          assign l_body = lc | slice: 0, l_n
+          assign l_parts = l_body | split: '/'
+          assign l_join = l_parts | join: '/'
+          assign l_ok = false
+          if l_join == l_body and l_parts.size >= 1 and l_parts.size <= 2
+            assign l_ok = true
+            for lp in l_parts
+              assign lp_i = lp | plus: 0
+              assign lp_s = lp_i | append: ''
+              if lp_s != lp or lp.size < 2 or lp.size > 3 or lp_i < 60 or lp_i > 150
+                assign l_ok = false
+              endif
+            endfor
+          endif
+          if l_ok
+            if c_found == ''
+              assign c_found = lc
+            endif
+            if l_head != ''
+              assign c_k2 = c_k2 | append: ' ' | append: l_head
+            endif
+            continue
+          endif
+        endif
+      endif
+      # Other whole size tokens (215/55ZR17, LT265/70r17, 35X12.50R20LT)
+      assign sc = wu
+      assign sc2 = sc | slice: 0, 2
+      if sc2 == 'LT' or sc2 == 'ST'
+        assign sc = sc | slice: 2, 99
+      elsif w0 == 'P' or w0 == 'p'
+        assign sc = sc | slice: 1, 99
+      endif
+      assign s0 = sc | slice: 0
+      if s0 != '' and '0123456789' contains s0
+        if sc contains '/' and sc contains 'R' and sc.size >= 8
+          continue
+        endif
+        if sc contains 'X' and sc contains 'R' and sc contains '.' and sc.size >= 9
+          continue
+        endif
+      endif
+      # Spaced load / speed: "101 W", "107/105 T", and "111 VXL"
+      assign sp_parts = wd | split: '/'
+      assign sp_join = sp_parts | join: '/'
+      assign sp_ok = false
+      if sp_join == wd and sp_parts.size >= 1 and sp_parts.size <= 2
+        assign sp_ok = true
+        for sp in sp_parts
+          assign sp_i = sp | plus: 0
+          assign sp_s = sp_i | append: ''
+          if sp_s != sp or sp.size < 2 or sp.size > 3 or sp_i < 60 or sp_i > 150
+            assign sp_ok = false
+          endif
+        endfor
+      endif
+      if sp_ok
+        assign nx = c_w2[forloop.index] | default: '' | upcase
+        assign nx0 = nx | slice: 0
+        assign nx12 = nx | slice: 1, 2
+        if nx.size == 1 and c_spd contains nx
+          if c_found == ''
+            assign c_found = wd | append: nx
+          endif
+          assign c_skip = true
+          continue
+        elsif nx.size == 3 and nx12 == 'XL' and c_spd contains nx0
+          if c_found == ''
+            assign c_found = wd | append: nx0
+          endif
+          assign c_xl16 = true
+          assign c_skip = true
+          continue
+        endif
+      endif
+      # Part numbers: "(9-02532)", "(247903)"
+      if w0 == '(' and wl == ')' and wd.size > 3
+        assign pn = wd | remove: '(' | remove: ')' | remove: '-'
+        assign pn_s = pn | plus: 0 | append: ''
+        if pn != '' and pn_s == pn
+          continue
+        endif
+        # fix2: a letters + digits code with 4+ digits is a part number too ("(RTL0027)").
+        assign pn_n = wd.size | minus: 2
+        assign pn_u = wd | slice: 1, pn_n | upcase
+        assign pn_d = pn_u | remove: '0' | remove: '1' | remove: '2' | remove: '3' | remove: '4' | remove: '5' | remove: '6' | remove: '7' | remove: '8' | remove: '9'
+        assign pn_l = pn_d | remove: 'A' | remove: 'B' | remove: 'C' | remove: 'D' | remove: 'E' | remove: 'F' | remove: 'G' | remove: 'H' | remove: 'I' | remove: 'J' | remove: 'K' | remove: 'L' | remove: 'M' | remove: 'N' | remove: 'O' | remove: 'P' | remove: 'Q' | remove: 'R' | remove: 'S' | remove: 'T' | remove: 'U' | remove: 'V' | remove: 'W' | remove: 'X' | remove: 'Y' | remove: 'Z'
+        assign pn_dc = pn_u.size | minus: pn_d.size
+        if pn_l == '' and pn_dc >= 4
+          continue
+        endif
+      endif
+      assign c_k2 = c_k2 | append: ' ' | append: wd
+    endfor
+    assign c_k2 = c_k2 | strip
+    # A leading vendor name.
+    assign kl = c_k2 | downcase
+    assign vl = product.vendor | downcase | strip
+    assign v_pres = vl | append: ' tires |' | append: vl | append: ' tire |' | append: vl | append: ' '
+    if vl == 'composal'
+      assign v_pres = v_pres | append: '|compasal '
+    endif
+    assign v_pres = v_pres | split: '|'
+    assign v_done = false
+    for pre in v_pres
+      assign pre_n = pre.size
+      assign k_head = kl | slice: 0, pre_n
+      if pre_n > 1 and k_head == pre and kl.size > pre_n
+        assign c_k2 = c_k2 | slice: pre_n, 400 | strip
+        assign v_done = true
+        break
+      endif
+    endfor
+    unless v_done
+      assign vns = vl | remove: ' '
+      assign k_first = kl | split: ' ' | first
+      assign k_cnt = kl | split: ' '
+      if k_first == vns and k_cnt.size > 1
+        assign k_fn = k_first.size | plus: 1
+        assign c_k2 = c_k2 | slice: k_fn, 400 | strip
+      endif
+    endunless
+    comment
+      Case: only ALL-CAPS words on a fixed allow-list of plain words and
+      model names whose title case is certain are title-cased ("BLIZZAK" ->
+      "Blizzak", "X-ICE" -> "X-Ice", "SNOW+" -> "Snow+"). Every other word
+      stays exactly as typed (ORWL, CUVA, TYCSCA, ADVAN, GEOLANDAR, ...).
+    endcomment
+    assign c_tc = ',ALL,SEASON,SPORT,TRAIL,CLIMBER,WINTER,PLUS,ICE,SNOW,RACE,TRACTION,COMMAND,ULTRA,COMFORT,ROAD,VENTURE,STUDDED,STUDABLE,RADIAL,CLAW,MOBILE,HOME,STREET,WIDE,GREEN,GRIP,TRUE,NORTH,RUGGED,TREK,ASCENT,ASCEND,PRESTIGE,DESTINATION,ROTATOR,RENEGADE,EVOLUTION,ENDEAVOR,STRONGHOLD,COBRA,DISCOVERER,ALENZA,TURANZA,BLIZZAK,POTENZA,DUELER,ECOPIA,DURAVIS,FIREHAWK,WINTERFORCE,TRANSFORCE,WILDPEAK,CHAMPIRO,ENDURAMAX,SOLUS,CRUGEN,INDY,'
+    assign c_k3 = ''
+    assign c_blk = false
+    assign c_w3 = c_k2 | split: ' '
+    for wd in c_w3
+      assign wd_o = wd
+      assign wd_up = wd | upcase
+      assign wd_dn = wd | downcase
+      if wd == wd_up and wd != wd_dn
+        assign wd_core = wd
+        assign wd_plus = ''
+        assign wd_lc = wd | slice: -1
+        if wd_lc == '+' and wd.size > 1
+          assign wd_cn = wd.size | minus: 1
+          assign wd_core = wd | slice: 0, wd_cn
+          assign wd_plus = '+'
+        endif
+        assign tc_segs = wd_core | split: '-'
+        assign tc_join = tc_segs | join: '-'
+        if tc_join == wd_core and tc_segs.size > 0
+          assign tc_ok = true
+          assign tc_any = false
+          assign tc_out = ''
+          for sg in tc_segs
+            assign sg_o = sg
+            if sg.size > 1
+              assign sg_key = ',' | append: sg | append: ','
+              if c_tc contains sg_key
+                assign sg_o = sg | downcase | capitalize
+                assign tc_any = true
+              else
+                assign tc_ok = false
+                break
+              endif
+            endif
+            if forloop.first
+              assign tc_out = sg_o
+            else
+              assign tc_out = tc_out | append: '-' | append: sg_o
+            endif
+          endfor
+          if tc_ok and tc_any
+            assign wd_o = tc_out | append: wd_plus
+          endif
+        endif
+        # fix2: an ALL-CAPS word of 4+ letters that is not on the list
+        # ("INDY" once, "EVERDRIVE", "BAJA") keeps the whole name as typed,
+        # so a name is never half title-cased.
+        if wd_o == wd
+          assign bk_l = wd_core | remove: '-'
+          assign bk_r = bk_l | remove: 'A' | remove: 'B' | remove: 'C' | remove: 'D' | remove: 'E' | remove: 'F' | remove: 'G' | remove: 'H' | remove: 'I' | remove: 'J' | remove: 'K' | remove: 'L' | remove: 'M' | remove: 'N' | remove: 'O' | remove: 'P' | remove: 'Q' | remove: 'R' | remove: 'S' | remove: 'T' | remove: 'U' | remove: 'V' | remove: 'W' | remove: 'X' | remove: 'Y' | remove: 'Z'
+          if bk_r == '' and bk_l.size >= 4
+            assign c_blk = true
+          endif
+        endif
+      endif
+      assign c_k3 = c_k3 | append: ' ' | append: wd_o
+    endfor
+    if c_blk
+      assign c_k3 = c_k2
+    endif
+    assign c_k3 = c_k3 | strip
+    if c_k3 != blank and c_mid == false
+      assign c_name = c_k3
+    else
+      assign c_name = product.title
+    endif
+    # Spec: "94V XL" (a load index stored with its speed letter is not doubled).
+    assign c_lsp = ''
+    if c_load != blank
+      assign c_ll = c_load | slice: -1
+      if c_speed != blank and c_ll != c_speed
+        assign c_lsp = c_load | append: c_speed
+      else
+        assign c_lsp = c_load
+      endif
+    elsif c_speed != blank
+      assign c_lsp = c_speed
+    endif
+    if c_lsp == blank
+      assign c_lsp = c_found
+    endif
+    assign c_spec_show = c_lsp | strip
+    if c_tup contains ' XL ' or c_xl16
+      assign c_spec_show = c_spec_show | append: ' XL' | strip
+    endif
+    if c_ply != ''
+      if c_spec_show != blank
+        assign c_spec_show = c_spec_show | append: ' · '
+      endif
+      assign c_spec_show = c_spec_show | append: c_ply
+    endif
+    if product.metafields.custom.stud_option == 'Studded'
+      assign c_spec_show = c_spec_show | append: ' · Studded' | strip
+    endif
+  endif
+
+  # Sale / clearance badge (the only red on the card besides the main button).
+  assign c_clear = is_clearance
+  unless c_clear
+    for col in product.collections
+      if col.handle == 'clearance'
+        assign c_clear = true
+        break
+      endif
+    endfor
+  endunless
+  assign c_pct = 0
+  if product.compare_at_price > product.price
+    assign c_half = product.compare_at_price | divided_by: 2
+    assign c_pct = product.compare_at_price | minus: product.price | times: 100 | plus: c_half | divided_by: product.compare_at_price | floor
+  endif
+
+  # Real ratings only (unchanged rule from the old card).
+  assign c_rating = 0
+  assign c_rating_src = ''
+  assign c_rmf = product.metafields.reviews.rating.value
+  assign c_rcount = product.metafields.reviews.rating_count.value | default: 0 | plus: 0
+  # States.dc.html: stars only with a real average AND a count.
+  if c_rmf != blank and c_rcount > 0
+    assign c_rating = c_rmf.rating | default: c_rmf | plus: 0 | round: 1
+  elsif product.metafields.custom.tyre_rating.value and product.metafields.custom.tyre_rating.value > 0
+    assign c_tr = product.metafields.custom.tyre_rating.value | times: 1.0 | divided_by: 20.0 | round: 1
+    if c_tr >= 4.0
+      assign c_rating = c_tr
+      assign c_rating_src = 'TyreReviews'
+    endif
+  endif
+
+  # No "Best seller" badge on the redesigned card: it came from a hand-set
+  # tag, not sales data, and the owner rule is no unverified superlatives.
+  # show_best is accepted and ignored so old render calls keep working.
+
+  # Stock: one rule set (pt-stock-state). Same cap as the product page.
+  capture c_stock_raw
+    render 'pt-stock-state', product: product, is_wheel: c_is_wheel
+  endcapture
+  assign c_stock = c_stock_raw | strip | split: '|'
+  assign c_stock_state = c_stock[1] | default: 'out'
+  assign c_lead = c_stock[3] | default: 'out'
+  assign c_sold_out = false
+  if product.available == false
+    assign c_sold_out = true
+    assign c_lead = 'out'
+  endif
+  assign c_max = 0
+  if c_variant.inventory_management == 'shopify' and c_variant.inventory_policy == 'deny'
+    if c_variant.inventory_quantity > 0
+      assign c_max = c_variant.inventory_quantity
+    else
+      assign c_sold_out = true
+    endif
+  endif
+
+  # Staggered sets (results pair mode, assets/pt-rd-results.js): can this
+  # tire supply one axle (2 tires)? 1 only when it is bookable at all and,
+  # when Shopify tracks a count, that count is at least 2. Only the yes / no
+  # reaches the page, never the number (owner rule: no counts).
+  assign c_pair_ok = 0
+  unless c_sold_out or c_stock_state == 'call'
+    if c_max == 0 or c_max >= 2
+      assign c_pair_ok = 1
+    endif
+  endunless
+
+  assign c_set = product.price | times: 4
+  assign c_tel = settings.stock_call_tel | default: '+14034524283'
+
+  # Booking vehicle type (unchanged).
+  assign c_vtype = 'passenger'
+  assign c_tsu = c_ts | upcase
+  assign c_vmeta = product.metafields.custom.vehicle_type | downcase | default: ''
+  if c_vmeta contains 'suv' or c_vmeta contains 'cuv'
+    assign c_vtype = 'suv'
+  elsif c_vmeta contains 'light truck'
+    assign c_vtype = 'truck'
+  elsif c_vmeta contains 'trailer'
+    assign c_vtype = 'trailer'
+  elsif c_vmeta contains 'van'
+    assign c_vtype = 'van'
+  elsif c_vmeta contains 'truck'
+    assign c_vtype = 'truck'
+  elsif c_tsu contains 'LT'
+    assign c_vtype = 'truck'
+  elsif c_tsu contains 'ST'
+    assign c_vtype = 'trailer'
+  elsif c_tsu contains 'R21' or c_tsu contains 'R22' or c_tsu contains 'R23' or c_tsu contains 'R24'
+    assign c_vtype = 'largetruck'
+  else
+    assign c_pt = product.type | downcase
+    if c_pt contains 'trailer'
+      assign c_vtype = 'trailer'
+    elsif c_pt contains 'light truck'
+      assign c_vtype = 'truck'
+    endif
+  endif
+-%}
+<article class="rd-card ptg__card{% if c_is_wheel %} rd-card--wheel{% endif %}{% if c_v16 %} rd-card--v16{% endif %}{% if c_sold_out %} rd-card--out ptg__card--unavailable{% endif %}" data-vendor="{{ product.vendor | handleize }}" data-season="{{ c_season_raw | handleize }}" data-type="{{ product.type | downcase | escape }}" data-price="{{ product.price | money_without_currency | strip_html | strip }}" data-tire-size="{{ c_ts | escape }}" data-product-title="{{ c_title | escape }}" data-product-handle="{{ product.handle }}" data-pt-lead="{{ c_lead }}"{% unless c_is_wheel %} data-pair-model="{{ product.metafields.custom.tire_model | default: '' | escape }}"{% if c_v16 %} data-pair-display="{{ c_name | escape }}"{% endif %} data-pair-title="{{ product.title | escape }}" data-studded="{% if product.metafields.custom.stud_option == 'Studded' %}1{% else %}0{% endif %}" data-runflat="{{ product.metafields.custom.run_flat | default: '' | escape }}" data-class="{{ product.metafields.custom.service_type | default: '' | strip | escape }}" data-spec="{{ c_spec | escape }}" data-price-cents="{{ c_variant.price }}" data-variant-id="{{ c_vid }}" data-vtype="{{ c_vtype }}" data-pair-ok="{{ c_pair_ok }}"{% endunless %}>
+  <div class="rd-card__tile">
+    {%- if product.featured_image -%}
+      {%- assign c_alt = product.featured_image.alt | default: product.title -%}
+      {%- if index and index <= 4 -%}
+        {{ product.featured_image | image_url: width: 600 | image_tag: class: 'rd-card__img', loading: 'eager', fetchpriority: 'high', widths: '200,300,400,600', sizes: '(max-width: 749px) 46vw, (max-width: 989px) 45vw, 300px', alt: c_alt }}
+      {%- else -%}
+        {{ product.featured_image | image_url: width: 600 | image_tag: class: 'rd-card__img', loading: 'lazy', widths: '200,300,400,600', sizes: '(max-width: 749px) 46vw, (max-width: 989px) 45vw, 300px', alt: c_alt }}
+      {%- endif -%}
+    {%- else -%}
+      <div class="rd-card__ph" aria-hidden="true">
+        {%- if c_is_wheel -%}
+          {% render 'pt-icon', name: 'wheel', size: 72, class: 'rd-card__ph-ico' %}
+        {%- else -%}
+          {% render 'pt-icon', name: 'tire', size: 72, class: 'rd-card__ph-ico' %}
+        {%- endif -%}
+        <span class="rd-card__ph-brand">{{ product.vendor | escape }}</span>
+        <span class="rd-card__ph-note">Photo coming soon</span>
+      </div>
+    {%- endif -%}
+
+    {%- if c_v16 -%}
+      {%- comment -%} v16: sale / clearance is text under the price, not a badge on the photo. {%- endcomment -%}
+    {%- elsif c_clear -%}
+      <span class="rd-card__badge">{% if c_pct > 0 %}<span class="rd-hide-sm">Clearance </span>−{{ c_pct }}%{% else %}Clearance{% endif %}</span>
+    {%- elsif c_pct > 0 -%}
+      <span class="rd-card__badge"><span class="rd-hide-sm">Sale </span>−{{ c_pct }}%</span>
+    {%- endif -%}
+
+    {%- comment -%}
+      Season tag on the photo, in the old card's season colours (owner
+      2026-11-14: "the old design have better color accent"). Wheels show
+      "Winter approved" here in winter blue.
+    {%- endcomment -%}
+    {%- if c_is_wheel -%}
+      {%- if c_winter_ok -%}<span class="rd-card__season rd-card__season--winter">Winter approved</span>{%- endif -%}
+    {%- elsif c_season != '' and c_v16 -%}
+      {%- liquid
+        assign c_sic = c_season_raw | handleize
+        case c_sic
+          when 'winter', 'all-weather', 'all-season', 'summer'
+            assign c_sic = c_sic
+          else
+            assign c_sic = ''
+        endcase
+      -%}
+      <span class="rd-card__season rd-card__season--{{ c_season_raw | handleize }} rd-tag">{%- if c_sic != '' -%}{% render 'pt-icon', name: c_sic, size: 15, class: 'rd-tag__ic' %}{%- endif -%}{{ c_season | escape }}</span>
+    {%- elsif c_season != '' -%}
+      <span class="rd-card__season rd-card__season--{{ c_season_raw | handleize }}">{{ c_season | escape }}</span>
+    {%- endif -%}
+
+    {%- if c_show_cmp -%}
+      <label class="rd-card__cmp rd-hide-sm">
+        <input type="checkbox" class="ptg__compare-check" data-compare-id="{{ product.id }}" data-compare-title="{% if c_v16 %}{{ c_name | escape }}{% else %}{{ c_title | escape }}{% endif %}" data-compare-vendor="{{ product.vendor | escape }}" data-compare-price="{{ product.price | money_without_currency | strip_html | strip }}" data-compare-set="{{ c_set | money_without_currency | strip_html | strip }}" data-compare-img="{% if product.featured_image %}{{ product.featured_image | image_url: width: 200 }}{% endif %}" data-compare-size="{% if c_is_wheel %}{{ w_parts | split: ' · ' | first | escape }}{% else %}{{ c_ts | escape }}{% endif %}" data-compare-url="{{ product.url }}" data-compare-season="{% if c_is_wheel %}{% if c_winter_ok %}Winter approved{% endif %}{% else %}{{ c_season | escape }}{% endif %}" data-compare-wheel="{{ c_is_wheel }}" data-compare-type="{{ product.type | escape }}" data-compare-speed="{{ c_speed | escape }}" data-compare-load="{{ c_load | escape }}" data-compare-warranty="{{ product.metafields.custom.mileage_warranty | default: '' | escape }}" data-compare-bolt="{{ w_bolt | escape }}" data-compare-offset="{% if c_is_wheel and w_et != blank %}ET {{ w_ets | escape }}{% endif %}" data-compare-bore="{% if c_is_wheel and w_cb != blank %}{{ w_cb | escape }} mm{% endif %}" data-compare-finish="{{ c_finish | escape }}" data-compare-lead="{% render 'pt-lead-time', product: product, is_wheel: c_is_wheel, format: 'text' %}">
+        Compare{% if c_v16 %}<span class="rd-sr"> {{ product.vendor | escape }} {{ c_name | escape }}</span>{% endif %}
+      </label>
+    {%- endif -%}
+
+    {%- unless c_sold_out or c_stock_state == 'call' -%}
+      <button type="button" class="rd-iconbtn rd-iconbtn--round rd-card__fab rd-hide-lg ptg__card-cart" data-variant="{{ c_vid }}" data-title="{{ product.title | escape }}" aria-label="Add {{ product.title | escape }} to cart">
+        {%- render 'pt-icon', name: 'cart', size: 18, class: 'rd-cart-ico' -%}
+        {%- render 'pt-icon', name: 'check', size: 18, class: 'rd-cart-ok' -%}
+      </button>
+    {%- endunless -%}
+  </div>
+
+  <div class="rd-card__body">
+    <div class="rd-card__head">
+      {%- if c_v16 -%}
+      {%- comment -%} v16: one meta line (brand · spec, size first on pages without a size), then the model. {%- endcomment -%}
+      <p class="rd-card__meta rd-card__meta--v16"><b class="rd-card__brand">{{ product.vendor | escape }}</b>
+        {%- capture c_meta_spec -%}{%- if has_size != true or c_size_disp != c_ts -%}{{ c_size_disp }} {% endif -%}{{ c_spec_show }}{%- endcapture -%}
+        {%- assign c_meta_spec = c_meta_spec | strip -%}
+        {%- if c_meta_spec != blank -%}<span class="rd-card__spec">{{ c_meta_spec | escape }}</span>{%- endif -%}
+        {%- if c_rating > 0 -%}<span class="rd-card__rating rd-hide-sm">{%- render 'pt-icon', name: 'star', size: 12 -%}<span><span class="rd-sr">Rated </span>{{ c_rating }}<span class="rd-sr"> out of 5</span>{% if c_rating_src != '' %}<span class="rd-sr"> by</span><span aria-hidden="true"> ·</span> {{ c_rating_src }}{% elsif c_rcount > 0 %} ({{ c_rcount }}<span class="rd-sr"> reviews</span>){% endif %}</span></span>{%- endif -%}
+      </p>
+      <h3 class="rd-card__title"><a class="rd-card__link" href="{{ product.url }}" title="{{ c_title | escape }}"><span class="rd-sr">{{ product.vendor | escape }} </span>{{ c_name | escape }}</a></h3>
+      {%- if show_fit != false -%}
+        <span class="rd-card__fit" data-card-fitment hidden>{% render 'pt-icon', name: 'check', size: 14 %}Fits your vehicle</span>
+      {%- endif -%}
+      {%- else -%}
+      <div class="rd-card__brand">{{ product.vendor | escape }}</div>
+      <h3 class="rd-card__title"><a class="rd-card__link" href="{{ product.url }}"{% if c_name != c_title %} title="{{ c_title | escape }}"{% endif %}>{{ c_name | escape }}</a></h3>
+      {%- if c_rating > 0 -%}
+        <div class="rd-card__rating">
+          {%- render 'pt-icon', name: 'star', size: 15, class: 'rd-ico--star' -%}
+          <strong>{{ c_rating }}</strong>
+          {%- if c_rating_src != '' -%}
+            <span class="rd-card__rsrc">{{ c_rating_src }}</span>
+          {%- elsif c_rcount > 0 -%}
+            <span class="rd-card__rsrc">({{ c_rcount }} {% if c_rcount == 1 %}review{% else %}reviews{% endif %})</span>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+      {%- if c_is_wheel -%}
+        {%- if c_finish != '' -%}<div class="rd-card__meta">{{ c_finish | escape }}</div>{%- endif -%}
+        {%- if c_wspec != '' -%}<div class="rd-card__spec">{{ c_wspec }}</div>{%- endif -%}
+      {%- else -%}
+        {%- comment -%} The season now sits on the photo; this line keeps the load / speed spec (desktop). {%- endcomment -%}
+        {%- if c_spec != '' -%}
+          <div class="rd-card__meta rd-hide-sm"><span>{{ c_spec | escape }}</span></div>
+        {%- endif -%}
+        {%- if show_fit != false -%}
+          <span class="rd-card__fit" data-card-fitment hidden>{% render 'pt-icon', name: 'check', size: 14 %}Fits your vehicle</span>
+        {%- endif -%}
+      {%- endif -%}
+      {%- endif -%}
+      {%- assign c_rebate = product.metafields.custom.rebate_text | default: '' -%}
+      {%- if show_rebate != false and c_rebate != blank -%}
+        <div class="rd-card__rebate">{{ c_rebate | escape }}</div>
+      {%- endif -%}
+    </div>
+
+    <div class="rd-price rd-card__push">
+      {%- if c_v16 -%}
+      <div class="rd-price__row">
+        <span class="rd-price__now" data-pt-price data-pt-variant-id="{{ c_vid }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span>
+        <span class="rd-price__unit">/{{ c_unit }}</span>
+        {%- if c_show_set -%}
+          <span class="rd-price__set"><span data-pt-price data-pt-variant-id="{{ c_vid }}" data-pt-multiplier="4">${{ c_set | money_without_currency }}</span> for 4</span>
+        {%- endif -%}
+      </div>
+      {%- if product.compare_at_price > product.price or c_clear -%}
+        <p class="rd-card__was">
+          {%- if product.compare_at_price > product.price -%}<span class="rd-card__wl">Was </span><s>${{ product.compare_at_price | money_without_currency }}</s><span class="rd-card__wl rd-card__wdot" aria-hidden="true"> ·</span> {% endif -%}
+          <em>{% if c_clear %}Clearance{% else %}Sale{% endif %}{% if c_pct > 0 %} −{{ c_pct }}%{% endif %}</em>
+        </p>
+      {%- endif -%}
+      {%- else -%}
+      <div class="rd-price__row">
+        <span class="rd-price__now" data-pt-price data-pt-variant-id="{{ c_vid }}" data-pt-multiplier="1">${{ product.price | money_without_currency }}</span>
+        <span class="rd-price__unit">/{{ c_unit }}</span>
+        {%- if product.compare_at_price > product.price -%}
+          <s class="rd-price__was"><span class="rd-sr">Was </span>${{ product.compare_at_price | money_without_currency }}</s>
+        {%- endif -%}
+      </div>
+      {%- if c_show_set -%}
+        <div class="rd-price__set rd-hide-sm"><span data-pt-price data-pt-variant-id="{{ c_vid }}" data-pt-multiplier="4">${{ c_set | money_without_currency }}</span> for 4</div>
+      {%- endif -%}
+      {%- endif -%}
+      {%- comment -%}
+        No install-promo chip on the card (owner 2026-11-14: "too much"). The
+        promo still shows on the product page and is still priced in the
+        booking popup (data-install-* on the Request install button below).
+        Rollback: bkpop/v4/card-before-promo.liquid.
+      {%- endcomment -%}
+      {%- capture card_ip_raw -%}{% render 'pt-install-promo', product: product, is_wheel: c_is_wheel %}{%- endcapture -%}
+      {%- assign card_ip = card_ip_raw | strip | split: '|' -%}
+      {%- if customer.b2b? or customer.tags contains 'wholesale' -%}
+        <div class="rd-card__trade" data-pt-trade-info data-pt-variant-id="{{ c_vid }}">
+          <span>Your cost</span>
+          <span class="rd-card__trade-amt" data-pt-trade-amount>—</span>
+          <span class="rd-card__trade-pct"><span data-pt-trade-pct>—</span>% off</span>
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div class="rd-card__lead">
+      {%- if c_v16 -%}
+        {%- comment -%} v16: one wording on every screen ("Ready in 1–2 business days"). {%- endcomment -%}
+        {%- render 'pt-lead-time', product: product, is_wheel: c_is_wheel, hint: true, icon_size: 18 -%}
+      {%- else -%}
+      {%- render 'pt-lead-time', product: product, is_wheel: c_is_wheel, hint: true, class: 'rd-hide-sm' -%}
+      {%- render 'pt-lead-time', product: product, is_wheel: c_is_wheel, short: true, icon_size: 17, class: 'rd-hide-lg' -%}
+      {%- endif -%}
+    </div>
+
+    <div class="rd-card__actions">
+      {%- if c_sold_out -%}
+        <button type="button" class="rd-btn rd-btn--primary rd-card__book rd-hide-sm" disabled aria-disabled="true">Sold out</button>
+        {%- comment -%} Phones have no room for "· call us for options" in the lead line: the action is the call. {%- endcomment -%}
+        <a class="rd-btn rd-btn--line rd-card__book rd-hide-lg" href="tel:{{ c_tel }}" aria-label="Sold out. Call us about this {{ c_unit }}">Call for options</a>
+      {%- elsif c_stock_state == 'call' -%}
+        <a class="rd-btn rd-btn--line rd-card__book" href="tel:{{ c_tel }}" data-pt-call-to-book>{{ 'products.stock.call_cta' | t }}</a>
+      {%- else -%}
+        {%- capture c_tier -%}{% render 'pt-supplier-tier', product: product %}{%- endcapture -%}
+        <button type="button" class="rd-btn rd-btn--primary rd-card__book ptg__card-book"
+          data-tire-name="{{ product.title | escape }}"
+          data-vendor="{{ product.vendor | escape }}"
+          data-tire-size="{{ c_ts | escape }}"
+          data-vehicle-type="{{ c_vtype }}"
+          data-tire-price="{{ c_variant.price }}"
+          data-install-price="{% if card_ip.size >= 5 %}{{ card_ip[0] }}{% else %}{{ product.metafields.custom.install_price.value | default: 30 }}{% endif %}"
+          {%- if card_ip.size >= 5 %} data-install-was="{{ card_ip[1] }}" data-install-promo-id="{{ card_ip[4] }}"{% if card_ip[3] != 'plain' %} data-install-promo-label="{{ card_ip[2] | escape }}"{% endif %} data-install-promo-style="{{ card_ip[3] }}"{% endif %}
+          data-supplier-tier="{{ c_tier | strip }}"
+          data-product-handle="{{ product.handle }}"
+          data-variant-id="{{ c_vid }}"
+          data-levy-in-price="{% render 'pt-levy-in-price', product: product %}"
+          data-is-wheel="{% if c_is_wheel %}true{% elsif c_is_tire %}false{% endif %}"
+          data-max-qty="{{ c_max }}"
+          data-sold-out="false"
+          data-image="{% if product.featured_image %}{{ product.featured_image | image_url: width: 128 }}{% endif %}"
+          onclick="event.preventDefault();event.stopPropagation();if(typeof openBookingModal==='function')openBookingModal(this)"{% if c_v16 %} aria-label="Request install: {{ product.vendor | escape }} {{ c_name | escape }}"{% endif %}>Request install</button>
+        <button type="button" class="rd-iconbtn rd-card__cart rd-hide-sm ptg__card-cart" data-variant="{{ c_vid }}" data-title="{{ product.title | escape }}" aria-label="Add {{ product.title | escape }} to cart">
+          {%- render 'pt-icon', name: 'cart', size: 19, class: 'rd-cart-ico' -%}
+          {%- render 'pt-icon', name: 'check', size: 19, class: 'rd-cart-ok' -%}
+        </button>
+      {%- endif -%}
+    </div>
+    {%- comment -%}
+      Order in (nothing on hand, the product still sells): it stays bookable
+      and buyable exactly like on its product page; the question is offered
+      as a second, quieter way in (States.dc.html wording).
+    {%- endcomment -%}
+    {%- if c_lead == 'order' and c_sold_out == false and c_stock_state != 'call' -%}
+      <a class="rd-card__ask" href="tel:{{ c_tel }}">Ask about this {{ c_unit }}</a>
+    {%- endif -%}
+  </div>
+</article>

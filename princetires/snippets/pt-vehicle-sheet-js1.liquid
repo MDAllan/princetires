@@ -1,0 +1,216 @@
+<style>
+  .ptvs-hide { display: none !important; }
+  .ptvs-trigger--solid { background: #1c1c1e; border-color: #1c1c1e; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ptvs-trigger--solid:hover { background: #2c2c2e; border-color: #2c2c2e; }
+  .pt-scene__meta[data-pt-merged] .pt-scene__wx { display: none !important; }
+  .ptvs-temp { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; padding-left: 10px; border-left: 1px solid rgba(255,255,255,.28); }
+  .ptvs-temp::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #8fd3ff; }
+  .ptvs-temp[hidden] { display: none; }
+  .ptvs__seg { display: flex; gap: 2px; margin: 2px 16px 6px; padding: 3px; border-radius: 10px; background: rgba(118,118,128,.24); flex: 0 0 auto; }
+  .ptvs__seg[hidden] { display: none; }
+  .ptvs__seg button { flex: 1 1 0; min-height: 34px; border: 0; border-radius: 8px; background: transparent; color: rgba(255,255,255,.72); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s ease, color .2s ease; -webkit-tap-highlight-color: transparent; }
+  .ptvs__seg button.is-on { background: #636366; color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+  .ptvs .ptvs__close { background: #dc2626 !important; color: #fff !important; }
+  .ptvs .ptvs__close:hover, .ptvs .ptvs__close:active { background: #b91c1c !important; }
+  .ptvs.is-instant .ptvs__sheet, .ptvs.is-instant .ptvs__backdrop { transition: none !important; animation: none !important; }
+</style>
+<script>
+(function () {
+  if (window.__ptVehicleSheet) return;
+  window.__ptVehicleSheet = true;
+
+  var POPULAR = ['Ford','Toyota','Honda','Chevrolet','RAM','GMC','Hyundai','Kia','Nissan','Jeep','Subaru','Mazda','Dodge','Volkswagen','Tesla','Lexus','BMW','Mercedes-Benz'];
+  var STEPS = ['year','make','model','trim'];
+  var NAMES = { year: 'Year', make: 'Make', model: 'Model', trim: 'Trim' };
+  var SAVE_KEY = 'pt_vehicle_v1';
+  var ICON = {
+    car: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h-1a1 1 0 0 1-1-1v-4l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 7l2 5v4a1 1 0 0 1-1 1h-1"/><path d="M3 12h18"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/></svg>',
+    chev: '<svg width="9" height="15" viewBox="0 0 9 15" fill="none" aria-hidden="true"><path d="M1.5 1.5 7.5 7.5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    back: '<svg width="11" height="18" viewBox="0 0 11 18" fill="none" aria-hidden="true"><path d="M9 2 2 9l7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    close: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M1.5 1.5l9 9m0-9-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    search: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+    check: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#30d158" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17l9-10"/></svg>'
+  };
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function buzz() { try { if (navigator.vibrate) navigator.vibrate(8); } catch (e) {} }
+  function load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
+  function save(v) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(v)); } catch (e) {} }
+  function opts(sel) { return Array.prototype.filter.call(sel.options, function (o) { return o.value !== ''; }).map(function (o) { return { v: o.value, t: o.text }; }); }
+  function clearSel(sel) { while (sel.options.length > 1) sel.remove(1); sel.value = ''; }
+  function fire(sel, v) { sel.value = v; sel.dispatchEvent(new Event('input', { bubbles: true })); sel.dispatchEvent(new Event('change', { bubbles: true })); }
+  async function waitFor(fn, ms) { var t = Date.now(); while (Date.now() - t < ms) { var r = fn(); if (r) return r; await sleep(60); } return fn(); }
+  function sizeOf(text) { var m = String(text).match(/(?:LT|P)?\d{2,3}\/\d{2}Z?R\d{2}(?:\.\d)?(?:\/[A-Z])?(?:C\b)?/i); return m ? m[0] : ''; }
+
+  var COPY = {
+    tires: { title: 'Find your tires', sub: 'Year, make and model. We’ll find your size.' },
+    wheels: { title: 'Find your wheels', sub: 'Wheels that fit, checked for your vehicle.' },
+    packages: { title: 'Build your package', sub: 'Wheels and tires, installed. Fit-checked.' }
+  };
+
+  function setup(o) {
+    var root = o.root, sel = o.sel;
+    if (root.getAttribute('data-ptvs')) return;
+    if (!sel.year || !sel.make || !sel.model) return;
+    root.setAttribute('data-ptvs', '1');
+    var STEPS = ['year', 'make', 'model', 'trim'].filter(function (k) { return sel[k]; });
+    var N = STEPS.length;
+    var section = o.section || root.closest('.shopify-section') || document;
+    var copy = COPY[o.kind] || COPY.tires;
+
+    var phone = '403 452 4283';
+    try {
+      Array.prototype.some.call(document.querySelectorAll('.section-hero-smart-search script'), function (s) {
+        if (s.textContent.indexOf('fallbackPhone') === -1) return false;
+        var cfg = JSON.parse(s.textContent); if (cfg.fallbackPhone) phone = cfg.fallbackPhone; return true;
+      });
+    } catch (e) {}
+
+    /* trigger */
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'ptvs-trigger' + (root.closest('.section-hero-smart-search') ? '' : ' ptvs-trigger--solid');
+    trigger.setAttribute('aria-haspopup', 'dialog');
+    (o.mount || root).appendChild(trigger);
+    function paintTrigger() {
+      var s = load();
+      trigger.innerHTML = '<span class="ptvs-trigger__icon">' + ICON.car + '</span><span class="ptvs-trigger__t"><span class="ptvs-trigger__main">Search by vehicle</span><span class="ptvs-trigger__sub">' +
+        (s ? 'Your ' + esc([s.year, s.make, s.model].join(' ')) : copy.sub) + '</span></span><span class="ptvs-trigger__chev">' + ICON.chev + '</span>';
+    }
+    paintTrigger();
+    (o.hide || []).forEach(function (el) { if (el) el.classList.add('ptvs-hide'); });
+    root.classList.add('ptvs-on');
+
+    /* sheet */
+    var wrap = document.createElement('div');
+    wrap.className = 'ptvs';
+    wrap.hidden = true;
+    wrap.innerHTML = '<div class="ptvs__backdrop" data-close></div>' +
+      '<div class="ptvs__sheet" role="dialog" aria-modal="true" aria-label="Search tires by vehicle">' +
+      '<div class="ptvs__grab"></div>' +
+      '<div class="ptvs__head"><button type="button" class="ptvs__iconbtn ptvs__back" aria-label="Back">' + ICON.back + '</button>' +
+      '<div class="ptvs__title">' + esc(copy.title) + '</div>' +
+      '<button type="button" class="ptvs__iconbtn ptvs__close" aria-label="Close" data-close>' + ICON.close + '</button></div>' +
+      '<div class="ptvs__seg" role="tablist" aria-label="What are you shopping for?" hidden></div><div class="ptvs__chips"></div><div class="ptvs__stage"></div></div>';
+    document.body.appendChild(wrap);
+    var sheet = wrap.querySelector('.ptvs__sheet');
+    var chips = wrap.querySelector('.ptvs__chips');
+    var stage = wrap.querySelector('.ptvs__stage');
+    var backBtn = wrap.querySelector('.ptvs__back');
+    var seg = wrap.querySelector('.ptvs__seg');
+
+    var state = { year: null, make: null, model: null, trim: null };
+    var step = 0, token = 0, lastFocus = null;
+
+    function paintChips() {
+      var h = '';
+      STEPS.forEach(function (k, i) {
+        if (state[k]) h += '<button type="button" class="ptvs__chip" data-go="' + i + '" aria-label="Change ' + NAMES[k] + '">' + esc(state[k]) + '</button>';
+        else h += '<span class="ptvs__chip ptvs__chip--next' + (i === step ? ' is-now' : '') + '">' + NAMES[k] + '</span>';
+      });
+      chips.innerHTML = h;
+      var now = chips.querySelector('.is-now') || chips.lastElementChild;
+      if (now && now.scrollIntoView) now.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+      backBtn.setAttribute('aria-hidden', step === 0 ? 'true' : 'false');
+      backBtn.tabIndex = step === 0 ? -1 : 0;
+    }
+
+    function swap(html, dir) {
+      var old = stage.querySelector('.ptvs__pane:not(.out-fwd):not(.out-back)');
+      var pane = document.createElement('div');
+      pane.className = 'ptvs__pane ' + (dir === 'back' ? 'in-back' : 'in-fwd');
+      pane.innerHTML = html;
+      if (old) { old.className = 'ptvs__pane ' + (dir === 'back' ? 'out-back' : 'out-fwd'); setTimeout(function () { old.remove(); }, 330); }
+      stage.appendChild(pane);
+      Array.prototype.forEach.call(pane.querySelectorAll('.ptvs__tile, .ptvs__list'), function (el, i) { el.style.animationDelay = Math.min(i * 14, 260) + 'ms'; });
+      return pane;
+    }
+
+    function skeleton(dir) {
+      var h = '<div class="ptvs__q">&nbsp;</div>';
+      for (var i = 0; i < 6; i++) h += '<div class="ptvs__skel" style="animation-delay:' + i * 60 + 'ms"></div>';
+      swap(h, dir);
+    }
+
+    function rowsHTML(list) {
+      return '<div class="ptvs__list">' + list.map(function (o) {
+        return '<button type="button" class="ptvs__row" data-v="' + esc(o.v) + '"><span>' + esc(o.t) + '</span>' + ICON.chev + '</button>';
+      }).join('') + '</div>';
+    }
+
+    function bindPicks(pane, level) {
+      pane.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-v]');
+        if (!b) return;
+        b.classList.add('is-picked');
+        buzz();
+        var v = b.getAttribute('data-v');
+        setTimeout(function () { pick(level, v); }, 150);
+      });
+    }
+
+    function bindSearch(pane, all, renderList) {
+      var inp = pane.querySelector('input');
+      if (!inp) return;
+      inp.addEventListener('input', function () {
+        var q = inp.value.trim().toLowerCase();
+        renderList(q ? all.filter(function (o) { return o.t.toLowerCase().indexOf(q) !== -1; }) : null);
+      });
+    }
+
+    async function show(i, dir) {
+      var my = ++token;
+      step = i;
+      paintChips();
+      if (i >= N) return o.kind === 'tires' ? showResult(dir, my) : showDone(dir, my);
+      var k = STEPS[i];
+      var list = opts(sel[k]);
+      if (!list.length) {
+        skeleton(dir);
+        list = await waitFor(function () { var l = opts(sel[k]); return l.length ? l : null; }, k === 'trim' ? 2500 : 6000) || [];
+        if (my !== token) return;
+        if (!list.length) {
+          if (k === 'trim') return show(N, 'fwd');
+          return swap('<div class="ptvs__empty">We couldn’t load the list. Call us at <a href="tel:' + phone.replace(/\D/g, '') + '" style="color:#fff">' + esc(phone) + '</a> and we’ll find your size.</div>', 'fwd');
+        }
+        dir = 'fade';
+      }
+      var pane, html;
+      if (k === 'year') {
+        var saved = load();
+        html = (saved ? '<button type="button" class="ptvs__saved" data-saved>' + '<span class="ptvs-trigger__icon">' + ICON.car + '</span><span style="text-align:left"><small>Your vehicle</small><b>' + esc([saved.year, saved.make, saved.model, saved.trim].filter(Boolean).join(' ')) + '</b></span></button>' : '') +
+          '<div class="ptvs__q">What year is it?</div><div class="ptvs__grid ptvs__grid--years">' +
+          list.map(function (o) { return '<button type="button" class="ptvs__tile" data-v="' + esc(o.v) + '">' + esc(o.t) + '</button>'; }).join('') + '</div>';
+        pane = swap(html, dir);
+        var sv = pane.querySelector('[data-saved]');
+        if (sv) sv.addEventListener('click', function () { buzz(); replay(load()); });
+      } else if (k === 'make') {
+        var have = {}; list.forEach(function (o) { have[o.v] = o; });
+        var pop = POPULAR.filter(function (m) { return have[m]; }).map(function (m) { return have[m]; });
+        var popHTML = pop.length ? '<div class="ptvs__label">Popular</div><div class="ptvs__grid ptvs__grid--makes">' + pop.map(function (o) {
+          return '<button type="button" class="ptvs__tile ptvs__tile--make" data-v="' + esc(o.v) + '"><span class="ptvs__mono">' + esc(o.t.charAt(0)) + '</span>' + esc(o.t) + '</button>';
+        }).join('') + '</div>' : '';
+        html = '<div class="ptvs__q">Which make?</div><label class="ptvs__search">' + ICON.search + '<input type="search" placeholder="Search makes" aria-label="Search makes" autocomplete="off" enterkeyhint="search"></label>' +
+          '<div data-body>' + popHTML + '<div class="ptvs__label">All makes</div>' + rowsHTML(list) + '</div>';
+        pane = swap(html, dir);
+        var body = pane.querySelector('[data-body]');
+        bindSearch(pane, list, function (f) {
+          body.innerHTML = f ? (f.length ? rowsHTML(f) : '<div class="ptvs__empty">No makes match that.</div>') : popHTML + '<div class="ptvs__label">All makes</div>' + rowsHTML(list);
+        });
+      } else {
+        var q = k === 'model' ? 'Which ' + esc(state.make) + '?' : 'Which ' + esc(state.model) + '?';
+        var useSearch = list.length > 12;
+        html = '<div class="ptvs__q">' + q + '</div>' +
+          (k === 'trim' ? '<div style="color:#98989f;font-size:14px;margin:-8px 2px 14px">Trim or package. It’s usually on the back of your vehicle.</div>' : '') +
+          (useSearch ? '<label class="ptvs__search" style="margin-bottom:12px">' + ICON.search + '<input type="search" placeholder="Search" aria-label="Search" autocomplete="off"></label>' : '') +
+          '<div data-body>' + rowsHTML(list) + '</div>';
+        pane = swap(html, dir);
+        var b2 = pane.querySelector('[data-body]');
+        bindSearch(pane, list, function (f) { b2.innerHTML = rowsHTML(f || list); });
+      }
+      bindPicks(pane, i);
+      if (window.matchMedia('(min-width: 750px)').matches) {
+        var first = pane.querySelector('input, [data-v]'); if (first) first.focus({ preventScroll: true });
+      }
+    }

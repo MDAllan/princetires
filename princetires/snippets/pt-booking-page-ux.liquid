@@ -1,0 +1,71 @@
+{%- render 'pt-booking-ymm' -%}
+{%- comment -%} Booking page: focused flow when ?service= is in the URL + bigger fonts {%- endcomment -%}
+<style>
+.pt-bp .bk-label{font-size:14px!important;letter-spacing:.04em}
+.pt-bp .bp-loc-card,.pt-bp .bp-pathway{font-size:15px!important}
+.pt-bp .bp-other-chip__name{font-size:16px!important;font-weight:600}
+.pt-bp .bp-other-chip__price{font-size:14px!important}
+.pt-bp .bp-other-chip__badge{font-size:12px!important}
+.pt-bp .pt-bp__card p,.pt-bp .pt-bp__card button,.pt-bp .pt-bp__card label,.pt-bp .pt-bp__card input,.pt-bp .pt-bp__card select{font-size:max(15px,1em)}
+.pt-bp.ptbq-focus .ptbq-hide{display:none!important}
+.ptbq-sum{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid rgba(0,0,0,.12);border-radius:12px;background:#f6f7f8;margin:0 0 14px}
+.ptbq-sum b{font-size:17px}.ptbq-sum span{display:block;font-size:14px;color:#555;margin-top:2px}
+.ptbq-sum a{font-size:14px;font-weight:600;text-decoration:underline;cursor:pointer;white-space:nowrap}
+.ptbq-note{font-size:14px;line-height:1.45;color:#444;background:#fff8e6;border:1px solid #f1d58a;border-radius:10px;padding:10px 12px;margin:10px 0}
+.pt-bp.ptbq-focus .bp-other-chip:not(.ptbq-keep){display:none!important}
+.pt-bp.ptbq-focus .bp-other-chip__price{display:none!important}
+.pt-bp .bp-loc-card *{font-size:16px!important;line-height:1.35}
+.pt-bp .bp-loc-card *+*{font-size:14px!important}
+.pt-bp .bp-loc-card{padding:16px 18px!important}
+.ptbq-upg{font-size:15px;font-weight:600;margin:6px 0 8px}
+</style>
+<script>
+(function(){
+  var NAMES={balancing:'Wheel balancing',road_force_balancing:'Road Force balancing',rotation:'Tire rotation',flat_repair:'Flat repair',tpms:'TPMS sensor service'};
+  function run(){
+    var bp=document.querySelector('.pt-bp'); if(!bp||bp.dataset.ptbq) return;
+    var svc=new URLSearchParams(location.search).get('service'); if(!svc||!NAMES[svc]) return;
+    var other=bp.querySelector('#bp-other'), chip=bp.querySelector('[data-bp-svc="'+svc+'"]');
+    if(!other||!chip) return;
+    bp.dataset.ptbq=1; bp.classList.add('ptbq-focus');
+    var p1=bp.querySelector('#bp-page-1');
+    var pw=bp.querySelector('.bp-pathways');
+    if(pw){pw.classList.add('ptbq-hide'); var lb=pw.previousElementSibling; if(lb&&/help with/i.test(lb.textContent)) lb.classList.add('ptbq-hide');}
+    ['#bp-buy','#bp-own'].forEach(function(s){var e=bp.querySelector(s); e&&e.classList.add('ptbq-hide');});
+    var otherPath=bp.querySelector('[data-bp-path="other"]'); if(otherPath&&!otherPath.classList.contains('bp-pathway--active')) otherPath.click();
+    if(!chip.classList.contains('bp-other-chip--active')) chip.click();
+    var keep=[svc]; if(svc==='balancing'||svc==='road_force_balancing') keep=['balancing','road_force_balancing'];
+    var mark=function(){other.querySelectorAll('.bp-other-chip').forEach(function(c){ c.classList.toggle('ptbq-keep',keep.indexOf(c.dataset.bpSvc)>=0); });};mark();new MutationObserver(mark).observe(other,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+    var oh=other.querySelector('.bk-label'); if(oh) oh.classList.add('ptbq-hide');
+    var sum=document.createElement('div'); sum.className='ptbq-sum';
+    sum.innerHTML='<div><b>'+NAMES[svc]+'</b><span>Pick your location and any add-ons below.</span></div><a role="button">Change service</a>';
+    sum.querySelector('a').onclick=function(){bp.classList.remove('ptbq-focus');sum.remove();};
+    p1.insertBefore(sum,p1.firstChild);
+    if(keep.length>1){var up=document.createElement('p');up.className='ptbq-upg';up.textContent='Standard or Road Force? (Road Force fixes vibration that regular balancing can’t)';other.insertBefore(up,other.firstChild);}
+    var pb=bp.querySelector('#bp-price-box');
+    if(pb&&!pb.querySelector('.ptbq-note')){var n=document.createElement('div');n.className='ptbq-note';n.textContent='Estimate based on your vehicle type and number of wheels. Final price is confirmed at the shop once we see your tire size and whether Road Force is needed — we ask before any extra charge.';pb.parentNode.insertBefore(n,pb.nextSibling);}
+    var ot=bp.querySelector('#bp-oldtires-section'); ot&&ot.classList.add('ptbq-hide');
+  }
+  var TRUCKS=['truck','dually','largetruck'],busy=false;
+  function money(n){return '$'+(Math.round(n*100)/100).toLocaleString('en-CA',{maximumFractionDigits:2});}
+  function rf(){
+    if(busy) return; var bp=document.querySelector('.pt-bp'); if(!bp) return;
+    var c=bp.querySelector('.bp-other-chip--active'), v=bp.querySelector('.bk-vehicle-card--active');
+    var note=bp.querySelector('#bp-price-note'), sub=bp.querySelector('#bp-price-sub');
+    if(!c||!v||!note||!sub||c.dataset.bpSvc!=='road_force_balancing'||TRUCKS.indexOf(v.dataset.veh)<0) return;
+    var m=note.textContent.match(/\$35\/wheel\s*×\s*(\d+)/); if(!m) return;
+    var q=+m[1], s0=parseFloat(sub.textContent.replace(/[^0-9.]/g,''))||0, s1=s0+5*q;
+    busy=true;
+    note.textContent=note.textContent.replace('$35/wheel','$40/wheel');
+    sub.textContent=money(s1);
+    var g=bp.querySelector('#bp-price-gst'), t=bp.querySelector('#bp-price-amount');
+    g&&(g.textContent=money(s1*0.05)); t&&(t.textContent=money(s1*1.05));
+    busy=false;
+  }
+  function watch(){var pb=document.querySelector('#bp-price-box'); if(!pb||pb.dataset.ptrf) return; pb.dataset.ptrf=1; new MutationObserver(rf).observe(pb,{childList:true,subtree:true,characterData:true}); rf();}
+  document.addEventListener('click',function(){setTimeout(rf,0);setTimeout(rf,150);},true);
+  setTimeout(watch,800);
+  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',run):run();
+  setTimeout(run,800);
+})();
+</script>

@@ -13,7 +13,7 @@
       One of: slug | name | public_name | street | city | region | postal | country |
       phone | phone_href | address | address_full | area_served | is_primary | booking_default | lat | lng |
       maps_url | gbp_url | json |
-      hours_mon_sat_display | hours_sun_display |
+      hours_mon_sat_display | hours_sun_display | hours_line |
       hours_mon_sat_open | hours_mon_sat_close | hours_sun_open | hours_sun_close
       Omit `field` to render the default NAP HTML block.
 
@@ -40,16 +40,17 @@
       assign country = 'CA'
       assign phone = '(825) 395-4024'
       assign phone_href = '+18253954024'
-      # TODO: confirm NE geo + GBP url before schema go-live (NAP must match the live listing).
-      assign lat = ''
-      assign lng = ''
+      # NE geo: OpenStreetMap/Nominatim address point for 3928 Edmonton Trail NE
+      # (node 13388205995), looked up 2026-11-02. GBP url still to confirm.
+      assign lat = 51.08741
+      assign lng = -114.05124
       assign gbp_url = ''
       assign area_served = 'Northeast Calgary'
       assign hours_mon_sat_display = '9:00 AM – 6:00 PM'
-      assign hours_sun_display = '9:00 AM – 4:00 PM'
+      assign hours_sun_display = '10:00 AM – 4:00 PM'
       assign hours_mon_sat_open = '09:00'
       assign hours_mon_sat_close = '18:00'
-      assign hours_sun_open = '09:00'
+      assign hours_sun_open = '10:00'
       assign hours_sun_close = '16:00'
       assign hours_fri_open = '09:00'
       assign hours_fri_close = '13:00'
@@ -81,10 +82,10 @@
       assign gbp_url = ''
       assign area_served = 'Calgary'
       assign hours_mon_sat_display = '9:00 AM – 5:00 PM'
-      assign hours_sun_display = '9:00 AM – 2:00 PM'
+      assign hours_sun_display = '10:00 AM – 2:00 PM'
       assign hours_mon_sat_open = '09:00'
       assign hours_mon_sat_close = '17:00'
-      assign hours_sun_open = '09:00'
+      assign hours_sun_open = '10:00'
       assign hours_sun_close = '14:00'
       assign hours_fri_open = '09:00'
       assign hours_fri_close = '13:00'
@@ -161,6 +162,10 @@
   # Mon-Sat labels mean Mon-Thu + Sat, because Friday is a split shift.
   assign hours_weekday_label = 'Mon–Thu & Sat'
 
+  # One-line week for prose (FAQ answers use the [[hours_sw]] / [[hours_ne]] tokens).
+  assign hours_line = hours_weekday_label | append: ' ' | append: hours_mon_sat_display | append: '; Fri ' | append: hours_fri_display | append: '; Sun ' | append: hours_sun_display
+  assign hours_line = hours_line | replace: ', ', ' and '
+
   # Derived display strings (match the old hardcoded forms exactly).
   assign address = street | append: ', ' | append: city
   assign address_full = street | append: ', ' | append: city | append: ', ' | append: region | append: ' ' | append: postal
@@ -196,6 +201,7 @@
   {%- when 'hours_fri_reopen' -%}{{ hours_fri_reopen }}
   {%- when 'hours_fri_final_close' -%}{{ hours_fri_final_close }}
   {%- when 'hours_weekday_label' -%}{{ hours_weekday_label }}
+  {%- when 'hours_line' -%}{{ hours_line }}
   {%- when 'booking_cutoff_minutes' -%}{{ booking_cutoff_minutes }}
   {%- when 'lat' -%}{{ lat }}
   {%- when 'lng' -%}{{ lng }}

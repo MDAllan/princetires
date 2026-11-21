@@ -1,0 +1,73 @@
+{%- comment -%} Booking page step 2: Year / Make / Model / Trim dropdowns → sets vehicle type + factory tire size. Falls back to the type buttons. {%- endcomment -%}
+<style>
+.ptym{border:1px solid rgba(0,0,0,.12);border-radius:14px;padding:16px;margin:0 0 16px;background:#fafafa}
+.ptym__t{font-size:14px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin:0 0 10px;color:#333}
+.ptym__g{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:750px){.ptym__g{grid-template-columns:repeat(4,1fr)}}
+.ptym select{width:100%;height:50px;border:1px solid #cfd3d8;border-radius:10px;padding:0 12px;font-size:16px;background:#fff;color:#111}
+.ptym select:disabled{opacity:.5}
+.ptym__r{display:none;margin-top:12px;padding:12px 14px;border-radius:10px;background:#eef8f1;border:1px solid #bfe3cb;font-size:15px;line-height:1.45}
+.ptym__r.on{display:block}.ptym__r b{font-size:16px}
+.ptym__sz{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.ptym__sz button{border:1px solid #cfd3d8;background:#fff;border-radius:999px;padding:8px 14px;font-size:15px;cursor:pointer}
+.ptym__sz button.on{border-color:#d62828;background:#fdecec;color:#b11d1d;font-weight:600}
+.ptym__alt{display:inline-block;margin-top:12px;font-size:14px;font-weight:600;text-decoration:underline;cursor:pointer;background:none;border:0;padding:0;color:#333}
+.pt-bp.ptym-on #bp-vehicles,.pt-bp.ptym-on .ptym-typelabel{display:none!important}
+</style>
+<script>
+(function(){
+  // The trim a picker chose, for the booking payload — only while the Model box
+  // still holds the model the picker wrote (a customer who types over it
+  // never sends a stale trim). Shared by pt-popup-ymm and pt-booking-ymm.
+  window.ptPickedTrim = window.ptPickedTrim || function (id) {
+    var el = document.getElementById(id);
+    var t = el && el.getAttribute('data-pt-trim');
+    return t && String(el.value || '').trim() === el.getAttribute('data-pt-model') ? t : '';
+  };
+  var BASE={{ 'pt-vehicle-manifest.json' | asset_url | json }};
+  function url(n){return BASE.split('?')[0].replace('pt-vehicle-manifest.json',n);}
+  var PICKUP=/F-?\d{3}|Super Duty|Silverado|Sierra|\bRam\b|\b[1-5]500\b|Tundra|Tacoma|Titan|Frontier|Colorado|Canyon|Ranger|Ridgeline|Gladiator|Maverick|Santa Cruz|Lightning|Cybertruck|R1T|Hummer EV Pickup|Avalanche|Dakota|Raider|Mark LT|Escalade EXT|Sport Trac|Baja|Hardbody/i;
+  var EV=/^(Tesla|Polestar|Rivian|Lucid)$/i;
+  var cache={};
+  function getYear(y){return cache[y]||(cache[y]=fetch(url('pt-vehicle-'+y+'.json')).then(function(r){return r.json();}));}
+  function opts(sel,list,ph){sel.innerHTML='<option value="">'+ph+'</option>'+list.map(function(x){return '<option>'+String(x).replace(/</g,'&lt;')+'</option>';}).join('');sel.disabled=!list.length;}
+  function setVal(id,v){var e=document.getElementById(id);if(e){e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));}}
+  function init(){
+    var bp=document.querySelector('.pt-bp'), grid=bp&&bp.querySelector('#bp-vehicles');
+    if(!grid||bp.querySelector('.ptym')) return;
+    var lbl=grid.previousElementSibling; if(lbl&&lbl.classList.contains('bk-label')) lbl.classList.add('ptym-typelabel');
+    var box=document.createElement('div'); box.className='ptym';
+    box.innerHTML='<p class="ptym__t">Your vehicle</p><div class="ptym__g"><select data-k="y"></select><select data-k="mk" disabled></select><select data-k="md" disabled></select><select data-k="tr" disabled></select></div><div class="ptym__r"></div><button type="button" class="ptym__alt">Can’t find your vehicle? Pick a type instead</button>';
+    (lbl||grid).parentNode.insertBefore(box,lbl||grid);
+    bp.classList.add('ptym-on');
+    var S={}; box.querySelectorAll('select').forEach(function(s){S[s.dataset.k]=s;});
+    var res=box.querySelector('.ptym__r'), data=null;
+    fetch(BASE).then(function(r){return r.json();}).then(function(m){opts(S.y,m.years.slice().reverse(),'Year');});
+    opts(S.mk,[],'Make');opts(S.md,[],'Model');opts(S.tr,[],'Trim');
+    S.y.onchange=function(){res.classList.remove('on');opts(S.mk,[],'Make');opts(S.md,[],'Model');opts(S.tr,[],'Trim');if(!S.y.value)return;getYear(S.y.value).then(function(d){data=d;opts(S.mk,d.makes,'Make');});};
+    S.mk.onchange=function(){res.classList.remove('on');opts(S.tr,[],'Trim');var m=data&&data.models[S.mk.value]||{};opts(S.md,Object.keys(m).sort(),'Model');};
+    S.md.onchange=function(){res.classList.remove('on');var t=data&&(data.models[S.mk.value]||{})[S.md.value]||{};var k=Object.keys(t).sort();opts(S.tr,k,'Trim');if(k.length===1){S.tr.value=k[0];S.tr.onchange();}};
+    S.tr.onchange=function(){
+      if(!S.tr.value){res.classList.remove('on');return;}
+      var sizes=((data.models[S.mk.value]||{})[S.md.value]||{})[S.tr.value]||[];
+      var lt=sizes.some(function(z){return /^LT|LT\b/i.test(z);});
+      var type='passenger', label='Car / SUV';
+      if(PICKUP.test(S.md.value)||lt){type=/DRW|Dual Rear|Dually/i.test(S.tr.value)?'dually':'truck';label=type==='dually'?'Dually pickup':'Pickup truck';}
+      else if(EV.test(S.mk.value)){type='electric';label='Electric';}
+      var b=grid.querySelector('[data-veh="'+type+'"]'); b&&b.click();
+      var veh=S.y.value+' '+S.mk.value+' '+S.md.value+' '+S.tr.value;
+      res.innerHTML='<b>'+veh.replace(/</g,'&lt;')+'</b> · '+label+(sizes.length?'<div style="margin-top:6px">Factory tire size'+(sizes.length>1?' (tap yours)':'')+':</div><div class="ptym__sz">'+sizes.map(function(z,i){return '<button type="button"'+(i===0?' class="on"':'')+'>'+z+'</button>';}).join('')+'</div>':'');
+      res.classList.add('on');
+      function save(sz){
+        setVal('bp-veh-year',S.y.value);setVal('bp-veh-make',S.mk.value);setVal('bp-veh-model',S.md.value);var mb=document.getElementById('bp-veh-model');if(mb){mb.setAttribute('data-pt-model',S.md.value);if(S.tr.value)mb.setAttribute('data-pt-trim',S.tr.value);else mb.removeAttribute('data-pt-trim');}
+        var n=document.getElementById('bp-notes');if(n){var line='Tire size: '+sz;n.value=n.value.replace(/^Tire size: .*\n?/m,'');n.value=sz?(line+(n.value?'\n'+n.value:'')):n.value;n.dispatchEvent(new Event('input',{bubbles:true}));}
+      }
+      res.querySelectorAll('.ptym__sz button').forEach(function(btn){btn.onclick=function(){res.querySelectorAll('.ptym__sz button').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');save(btn.textContent);};});
+      save(sizes[0]||'');
+    };
+    box.querySelector('.ptym__alt').onclick=function(){bp.classList.toggle('ptym-on');this.textContent=bp.classList.contains('ptym-on')?'Can’t find your vehicle? Pick a type instead':'Use year / make / model instead';};
+  }
+  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init):init();
+  setTimeout(init,900);
+})();
+</script>

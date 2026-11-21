@@ -1,0 +1,625 @@
+{%- comment -%}
+  One-shop landing page (built 2026-11-04 for /pages/tire-shop-ne-calgary).
+  Order: hero (H1 + direct answer + short-answer bullets + shop card with
+  today's hours) → services and prices with booking deep links → buying
+  tires here → finding us (+ lazy map) → why drivers choose us → related
+  links → FAQ → bottom CTA.
+
+  Data rules:
+  - Address, phone and every opening time come from pt-nap (store_hours
+    metaobject). Text settings accept tokens filled from pt-nap:
+    [[hours_sw]] [[hours_ne]] [[address_sw]] [[address_ne]] [[phone_sw]] [[phone_ne]]
+  - Booking buttons are built as /pages/booking?service=<slug>&location=<shop>.
+  - Structured data: NO LocalBusiness node here. The sitewide
+    schema-local-business graph already emits the shop (#business /
+    #business-ne). This section adds a BreadcrumbList that matches the
+    visible Home > page title trail, and one FAQPage (via pt-location-faq)
+    that is the page entity: it carries about -> the shop @id and the
+    breadcrumb. No separate WebPage node (aeo-meta already emits one), no
+    rating or review markup.
+{%- endcomment -%}
+{%- liquid
+  assign ptls_loc = section.settings.location | default: 'ne'
+  if ptls_loc != 'sw'
+    assign ptls_loc = 'ne'
+  endif
+-%}
+{%- capture t_hours_sw %}{% render 'pt-nap', location: 'sw', field: 'hours_line' %}{% endcapture -%}
+{%- capture t_hours_ne %}{% render 'pt-nap', location: 'ne', field: 'hours_line' %}{% endcapture -%}
+{%- capture t_address_sw %}{% render 'pt-nap', location: 'sw', field: 'address_full' %}{% endcapture -%}
+{%- capture t_address_ne %}{% render 'pt-nap', location: 'ne', field: 'address_full' %}{% endcapture -%}
+{%- capture t_phone_sw %}{% render 'pt-nap', location: 'sw', field: 'phone' %}{% endcapture -%}
+{%- capture t_phone_ne %}{% render 'pt-nap', location: 'ne', field: 'phone' %}{% endcapture -%}
+{%- capture ptls_phone %}{% render 'pt-nap', location: ptls_loc, field: 'phone' %}{% endcapture -%}
+{%- capture ptls_phone_href %}{% render 'pt-nap', location: ptls_loc, field: 'phone_href' %}{% endcapture -%}
+{%- capture ptls_area %}{% render 'pt-nap', location: ptls_loc, field: 'area_served' %}{% endcapture -%}
+{%- liquid
+  assign t_hours_sw = t_hours_sw | strip_newlines | strip
+  assign t_hours_ne = t_hours_ne | strip_newlines | strip
+  assign t_address_sw = t_address_sw | strip_newlines | strip
+  assign t_address_ne = t_address_ne | strip_newlines | strip
+  assign t_phone_sw = t_phone_sw | strip_newlines | strip
+  assign t_phone_ne = t_phone_ne | strip_newlines | strip
+  assign ptls_phone = ptls_phone | strip
+  assign ptls_phone_href = ptls_phone_href | strip
+  assign ptls_area = ptls_area | strip
+
+  assign ptls_book_base = '/pages/booking?service='
+  assign ptls_book_loc = '&location=' | append: ptls_loc
+  assign ptls_hero_book = ptls_book_base | append: section.settings.hero_book_service | append: ptls_book_loc
+  assign ptls_cta_book = ptls_book_base | append: section.settings.cta_book_service | append: ptls_book_loc
+
+  assign ptls_facts = section.blocks | where: 'type', 'fact'
+  assign ptls_services = section.blocks | where: 'type', 'service'
+  assign ptls_usps = section.blocks | where: 'type', 'usp'
+  assign ptls_links = section.blocks | where: 'type', 'link'
+  assign ptls_faqs = section.blocks | where: 'type', 'faq'
+
+  if ptls_loc == 'ne'
+    assign ptls_biz_id = request.origin | append: '/#business-ne'
+  else
+    assign ptls_biz_id = request.origin | append: '/#business'
+  endif
+  assign ptls_crumb_id = canonical_url | append: '#breadcrumb'
+-%}
+
+{%- capture ptls_answer -%}{{ section.settings.answer | replace: '[[hours_sw]]', t_hours_sw | replace: '[[hours_ne]]', t_hours_ne | replace: '[[address_sw]]', t_address_sw | replace: '[[address_ne]]', t_address_ne | replace: '[[phone_sw]]', t_phone_sw | replace: '[[phone_ne]]', t_phone_ne }}{%- endcapture -%}
+
+<div class="ptls" data-location="{{ ptls_loc }}">
+
+  <div class="ptls__hero">
+    <div class="ptls__wrap ptls__hero-grid">
+      <div class="ptls__hero-copy">
+        {%- if section.settings.eyebrow != blank -%}
+          <p class="ptls__eyebrow">{{ section.settings.eyebrow }}</p>
+        {%- endif -%}
+        <h1 class="ptls__title aeo-speakable-title">{{ section.settings.heading }}</h1>
+        {%- if section.settings.answer != blank -%}
+          <div class="ptls__answer rte aeo-speakable-summary">{{ ptls_answer }}</div>
+        {%- endif -%}
+        {%- if ptls_facts.size > 0 -%}
+          <div class="ptls__short">
+            {%- if section.settings.short_title != blank -%}
+              <h2 class="ptls__short-title">{{ section.settings.short_title }}</h2>
+            {%- endif -%}
+            <ul class="ptls__facts">
+              {%- for block in ptls_facts -%}
+                <li {{ block.shopify_attributes }}>{{ block.settings.text | replace: '[[hours_sw]]', t_hours_sw | replace: '[[hours_ne]]', t_hours_ne | replace: '[[address_sw]]', t_address_sw | replace: '[[address_ne]]', t_address_ne | replace: '[[phone_sw]]', t_phone_sw | replace: '[[phone_ne]]', t_phone_ne }}</li>
+              {%- endfor -%}
+            </ul>
+          </div>
+        {%- endif -%}
+        <div class="ptls__hero-ctas">
+          <a
+            href="{{ ptls_hero_book }}"
+            class="ptl-btn ptl-btn--primary"
+            data-pt-event="book_cta"
+            data-pt-location="hero"
+            data-pt-label="{{ section.settings.hero_book_label | escape }}"
+          >{{ section.settings.hero_book_label }}</a>
+          <a
+            href="tel:{{ ptls_phone_href }}"
+            class="ptls__btn-ghost ptl-btn"
+            data-pt-event="phone_click"
+            data-pt-location="hero"
+            data-pt-label="call {{ ptls_loc }}"
+          >Call {{ ptls_phone }}</a>
+        </div>
+      </div>
+      <div class="ptls__hero-card">
+        {%- render 'pt-location-card',
+          location: ptls_loc,
+          heading_tag: 'h2',
+          variant: 'dark',
+          book_url: ptls_hero_book,
+          book_label: section.settings.hero_book_label,
+          show_call: false,
+          event_location: 'hero_card',
+          holiday_dates: section.settings.holiday_dates
+        -%}
+      </div>
+    </div>
+  </div>
+
+  {%- if ptls_services.size > 0 -%}
+    <div class="ptls__band ptls__band--white">
+      <div class="ptls__wrap">
+        <h2 class="ptls__h2">{{ section.settings.services_title }}</h2>
+        {%- if section.settings.services_intro != blank -%}
+          <div class="ptls__body rte">{{ section.settings.services_intro }}</div>
+        {%- endif -%}
+        <ul class="ptls__services">
+          {%- for block in ptls_services -%}
+            <li class="ptls__service{% if block.settings.this_shop_only %} ptls__service--only{% endif %}" {{ block.shopify_attributes }}>
+              <div class="ptls__service-head">
+                <h3 class="ptls__service-name">{{ block.settings.name }}</h3>
+                {%- if block.settings.this_shop_only -%}
+                  <span class="ptls__badge">{{ section.settings.only_badge }}</span>
+                {%- endif -%}
+              </div>
+              {%- if block.settings.price != blank -%}
+                <p class="ptls__price">{{ block.settings.price }}{% if block.settings.unit != blank %} <span class="ptls__unit">{{ block.settings.unit }}</span>{% endif %}</p>
+              {%- endif -%}
+              {%- if block.settings.details != blank -%}
+                <p class="ptls__service-text">{{ block.settings.details }}</p>
+              {%- endif -%}
+              <div class="ptls__service-links">
+                {%- if block.settings.book_service != 'none' -%}
+                  <a
+                    href="{{ ptls_book_base }}{{ block.settings.book_service }}{{ ptls_book_loc }}"
+                    class="ptls__service-book"
+                    data-pt-event="book_cta"
+                    data-pt-location="service_list"
+                    data-pt-label="{{ block.settings.book_service }}"
+                  >{{ block.settings.book_label | default: 'Request a time' }}</a>
+                {%- endif -%}
+                {%- if block.settings.info_url != blank -%}
+                  <a href="{{ block.settings.info_url }}" class="ptls__service-more">{{ block.settings.info_label | default: 'Details' }}</a>
+                {%- endif -%}
+              </div>
+            </li>
+          {%- endfor -%}
+        </ul>
+        {%- if section.settings.services_note != blank -%}
+          <div class="ptls__note rte">{{ section.settings.services_note }}</div>
+        {%- endif -%}
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- if section.settings.stock_body != blank -%}
+    <div class="ptls__band ptls__band--light">
+      <div class="ptls__wrap">
+        {%- if section.settings.stock_title != blank -%}
+          <h2 class="ptls__h2">{{ section.settings.stock_title }}</h2>
+        {%- endif -%}
+        <div class="ptls__body rte">{{ section.settings.stock_body | replace: '[[hours_sw]]', t_hours_sw | replace: '[[hours_ne]]', t_hours_ne | replace: '[[address_sw]]', t_address_sw | replace: '[[address_ne]]', t_address_ne | replace: '[[phone_sw]]', t_phone_sw | replace: '[[phone_ne]]', t_phone_ne }}</div>
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- if section.settings.finding_body != blank or section.settings.show_map -%}
+    <div class="ptls__band ptls__band--white">
+      <div class="ptls__wrap ptls__find-grid">
+        <div class="ptls__find-copy">
+          {%- if section.settings.finding_title != blank -%}
+            <h2 class="ptls__h2">{{ section.settings.finding_title }}</h2>
+          {%- endif -%}
+          <div class="ptls__body rte">{{ section.settings.finding_body | replace: '[[hours_sw]]', t_hours_sw | replace: '[[hours_ne]]', t_hours_ne | replace: '[[address_sw]]', t_address_sw | replace: '[[address_ne]]', t_address_ne | replace: '[[phone_sw]]', t_phone_sw | replace: '[[phone_ne]]', t_phone_ne }}</div>
+        </div>
+        {%- if section.settings.show_map -%}
+          {%- liquid
+            if section.settings.map_embed_url != blank
+              assign ptls_map_src = section.settings.map_embed_url
+            else
+              if ptls_loc == 'ne'
+                assign ptls_map_q = t_address_ne | url_encode
+              else
+                assign ptls_map_q = t_address_sw | url_encode
+              endif
+              assign ptls_map_src = 'https://www.google.com/maps?q=' | append: ptls_map_q | append: '&z=15&output=embed'
+            endif
+            capture ptls_maps_url
+              render 'pt-nap', location: ptls_loc, field: 'maps_url'
+            endcapture
+            assign ptls_maps_url = ptls_maps_url | strip
+          -%}
+          <div class="ptls__map-wrap">
+            <div class="ptls__map">
+              <iframe
+                src="{{ ptls_map_src }}"
+                title="Map of {% if ptls_loc == 'ne' %}{{ t_address_ne | escape }}{% else %}{{ t_address_sw | escape }}{% endif %}"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                allowfullscreen
+              ></iframe>
+            </div>
+            <a href="{{ ptls_maps_url }}" class="ptls__map-link" target="_blank" rel="noopener" data-pt-event="directions_click" data-pt-location="map">Open in Google Maps for directions</a>
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- if ptls_usps.size > 0 -%}
+    <div class="ptls__band ptls__band--dark">
+      <div class="ptls__wrap">
+        <h2 class="ptls__h2">{{ section.settings.why_title }}</h2>
+        <ul class="ptls__usps">
+          {%- for block in ptls_usps -%}
+            <li class="ptls__usp" {{ block.shopify_attributes }}>
+              <h3 class="ptls__usp-title">{{ block.settings.title }}</h3>
+              <p class="ptls__usp-text">{{ block.settings.text }}</p>
+            </li>
+          {%- endfor -%}
+        </ul>
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- if ptls_links.size > 0 -%}
+    <div class="ptls__band ptls__band--white">
+      <div class="ptls__wrap">
+        <h2 class="ptls__h2">{{ section.settings.links_title | default: 'Related pages' }}</h2>
+        <ul class="ptls__links">
+          {%- for block in ptls_links -%}
+            <li {{ block.shopify_attributes }}>
+              <a href="{{ block.settings.url }}">{{ block.settings.label }}</a>
+              {%- if block.settings.text != blank %} <span>{{ block.settings.text }}</span>{% endif -%}
+            </li>
+          {%- endfor -%}
+        </ul>
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- if ptls_faqs.size > 0 -%}
+    <div class="ptls__band ptls__band--light">
+      <div class="ptls__wrap">
+        {%- render 'pt-location-faq',
+          faqs: ptls_faqs,
+          heading: section.settings.faq_title,
+          id_prefix: 'ptls-faq',
+          hours_sw: t_hours_sw,
+          hours_ne: t_hours_ne,
+          address_sw: t_address_sw,
+          address_ne: t_address_ne,
+          phone_sw: t_phone_sw,
+          phone_ne: t_phone_ne,
+          schema: section.settings.schema_enabled,
+          about_ids: ptls_biz_id,
+          breadcrumb_id: ptls_crumb_id
+        -%}
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- if section.settings.cta_title != blank -%}
+    <div class="ptls__cta">
+      <div class="ptls__wrap">
+        <h2 class="ptls__cta-title">{{ section.settings.cta_title }}</h2>
+        {%- if section.settings.cta_text != blank -%}
+          <p class="ptls__cta-text">{{ section.settings.cta_text | replace: '[[phone_sw]]', t_phone_sw | replace: '[[phone_ne]]', t_phone_ne }}</p>
+        {%- endif -%}
+        <div class="ptls__cta-btns">
+          <a
+            href="{{ ptls_cta_book }}"
+            class="ptl-btn ptls__cta-primary"
+            data-pt-event="book_cta"
+            data-pt-location="bottom_cta"
+            data-pt-label="{{ section.settings.cta_book_label | escape }}"
+          >{{ section.settings.cta_book_label }}</a>
+          <a
+            href="tel:{{ ptls_phone_href }}"
+            class="ptl-btn ptls__cta-ghost"
+            data-pt-event="phone_click"
+            data-pt-location="bottom_cta"
+            data-pt-label="call {{ ptls_loc }}"
+          >Call {{ ptls_phone }}</a>
+        </div>
+      </div>
+    </div>
+  {%- endif -%}
+</div>
+
+{%- if section.settings.schema_enabled -%}
+  {%- liquid
+    if page.title != blank
+      assign ptls_crumb = page.title
+    else
+      assign ptls_crumb = section.settings.heading
+    endif
+  -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "@id": {{ ptls_crumb_id | json }},
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": {{ request.origin | append: '/' | json }} },
+      { "@type": "ListItem", "position": 2, "name": {{ ptls_crumb | strip_html | json }}, "item": {{ canonical_url | json }} }
+    ]
+  }
+  </script>
+{%- endif -%}
+
+{% stylesheet %}
+  .ptls {
+    --ptls-red: #E8251D;
+    --ptls-red-dark: #c41a14;
+    --ptls-orange: #F5820B;
+    --ptls-black: #111;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.6rem;
+    line-height: 1.6;
+    color: #1a1a1a;
+    overflow-wrap: anywhere;
+  }
+  .ptls__wrap { max-width: 112rem; margin: 0 auto; padding: 0 1.6rem; }
+  .ptls__band { padding: 4.8rem 0; }
+  .ptls__band--white { background: #fff; }
+  .ptls__band--light { background: #f8f8f8; }
+  .ptls__band--dark { background: var(--ptls-black); color: #fff; }
+  .ptls__h2 {
+    margin: 0 0 2rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-transform: uppercase;
+    color: var(--ptls-black);
+  }
+  .ptls__band--dark .ptls__h2 { color: #fff; }
+  .ptls__body { max-width: 72rem; font-size: 1.6rem; line-height: 1.7; color: #333; }
+  .ptls__body p { margin: 0 0 1.6rem; }
+  .ptls__body p:last-child { margin-bottom: 0; }
+  .ptls__body ul { margin: 0 0 1.6rem; padding-left: 2.4rem; list-style: disc; }
+  .ptls__body li { margin-bottom: 0.8rem; }
+  .ptls__body li::marker { color: var(--ptls-red); }
+  .ptls__body strong { color: var(--ptls-black); }
+  .ptls__body a { color: var(--ptls-red); text-decoration: underline; }
+
+  .ptls__hero { background: var(--ptls-black); color: #fff; padding: 4rem 0 4.8rem; }
+  .ptls__hero-grid { display: grid; gap: 3.2rem; }
+  .ptls__hero-copy { min-width: 0; }
+  .ptls__eyebrow {
+    margin: 0 0 1.2rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ptls-orange);
+  }
+  .ptls__title {
+    margin: 0 0 2rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(3.4rem, 7vw, 5.6rem);
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .ptls__answer { font-size: 1.8rem; line-height: 1.6; color: rgba(255, 255, 255, 0.88); margin: 0 0 2.4rem; }
+  .ptls__answer p { margin: 0 0 1.2rem; }
+  .ptls__answer p:last-child { margin-bottom: 0; }
+  .ptls__answer strong { color: #fff; }
+  .ptls__answer a { color: #fff; text-decoration: underline; }
+  .ptls__short { margin: 0 0 2.8rem; padding: 2rem; border-left: 4px solid var(--ptls-red); background: rgba(255, 255, 255, 0.05); border-radius: 0 0.6rem 0.6rem 0; }
+  .ptls__short-title { margin: 0 0 1.2rem; font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 700; text-transform: uppercase; color: var(--ptls-orange); }
+  .ptls__facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 1rem; }
+  .ptls__facts li { position: relative; padding-left: 2.2rem; font-size: 1.6rem; line-height: 1.5; color: rgba(255, 255, 255, 0.9); }
+  .ptls__facts li::before { content: ''; position: absolute; left: 0; top: 0.75rem; width: 0.9rem; height: 0.9rem; border-radius: 50%; background: var(--ptls-red); }
+  .ptls__facts strong { color: #fff; }
+  .ptls__facts a { color: #fff; text-decoration: underline; }
+  .ptls__hero-ctas { display: flex; flex-direction: column; gap: 1.2rem; }
+  .ptls .ptls__btn-ghost { background: transparent; color: #fff; border: 2px solid rgba(255, 255, 255, 0.5); }
+  .ptls .ptls__btn-ghost:hover { border-color: #fff; }
+  .ptls__hero-card { min-width: 0; }
+
+  .ptls__services { margin: 2.4rem 0 0; padding: 0; list-style: none; display: grid; gap: 1.6rem; }
+  .ptls__service { display: flex; flex-direction: column; gap: 0.8rem; min-width: 0; padding: 2rem; border: 1px solid #e5e5e5; border-radius: 0.6rem; background: #fff; }
+  .ptls__service--only { border-color: var(--ptls-orange); box-shadow: inset 0 4px 0 var(--ptls-orange); }
+  .ptls__service-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1.2rem; }
+  .ptls__service-name { margin: 0; font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 700; line-height: 1.15; text-transform: uppercase; color: var(--ptls-black); }
+  .ptls__badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 0.4rem; background: var(--ptls-orange); color: #111; font-size: 1.4rem; font-weight: 600; line-height: 1.3; }
+  .ptls__price { margin: 0; font-family: 'Barlow Condensed', sans-serif; font-size: 2.8rem; font-weight: 800; line-height: 1.1; color: var(--ptls-red); }
+  .ptls__unit { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 400; color: #555; }
+  .ptls__service-text { margin: 0; font-size: 1.5rem; line-height: 1.6; color: #444; }
+  .ptls__service-links { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.6rem; margin-top: auto; padding-top: 0.8rem; }
+  .ptls__service-book { display: inline-flex; align-items: center; justify-content: center; min-height: 4.4rem; padding: 0.8rem 1.8rem; border-radius: 0.4rem; background: var(--ptls-red); color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 1.6rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; text-decoration: none; }
+  .ptls__service-book:hover { background: var(--ptls-red-dark); }
+  .ptls__service-more { font-size: 1.5rem; font-weight: 600; color: var(--ptls-black); text-decoration: underline; text-underline-offset: 0.3rem; }
+  .ptls__note { margin-top: 2.4rem; max-width: 72rem; font-size: 1.5rem; line-height: 1.6; color: #555; }
+  .ptls__note p { margin: 0 0 0.8rem; }
+  .ptls__note a { color: var(--ptls-red); text-decoration: underline; }
+
+  .ptls__find-grid { display: grid; gap: 2.8rem; }
+  .ptls__find-copy { min-width: 0; }
+  .ptls__map-wrap { min-width: 0; display: flex; flex-direction: column; gap: 1rem; }
+  .ptls__map { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 0.6rem; overflow: hidden; background: #e5e5e5; }
+  .ptls__map iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .ptls__map-link { font-size: 1.5rem; font-weight: 600; color: var(--ptls-red); text-decoration: underline; }
+
+  .ptls__usps { margin: 0; padding: 0; list-style: none; display: grid; gap: 1.6rem; }
+  .ptls__usp { padding: 2rem; border-radius: 0.6rem; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14); }
+  .ptls__usp-title { margin: 0 0 0.8rem; font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 700; text-transform: uppercase; color: var(--ptls-orange); }
+  .ptls__usp-text { margin: 0; font-size: 1.6rem; line-height: 1.6; color: rgba(255, 255, 255, 0.85); }
+
+  .ptls__links { margin: 0; padding: 0; list-style: none; display: grid; gap: 1.2rem; }
+  .ptls__links li { padding: 1.6rem 1.8rem; border: 1px solid #e5e5e5; border-radius: 0.6rem; font-size: 1.5rem; line-height: 1.5; color: #555; }
+  .ptls__links a { display: block; margin-bottom: 0.4rem; font-size: 1.6rem; font-weight: 600; color: var(--ptls-red); text-decoration: underline; }
+
+  .ptls__cta { padding: 5.6rem 0; background: var(--ptls-red); color: #fff; text-align: center; }
+  .ptls__cta-title { margin: 0 0 1.2rem; font-family: 'Barlow Condensed', sans-serif; font-size: clamp(2.8rem, 5vw, 4rem); font-weight: 800; line-height: 1.05; text-transform: uppercase; color: #fff; }
+  .ptls__cta-text { max-width: 64rem; margin: 0 auto 2.8rem; font-size: 1.7rem; line-height: 1.6; }
+  .ptls__cta-btns { display: flex; flex-direction: column; gap: 1.2rem; align-items: stretch; max-width: 48rem; margin: 0 auto; }
+  .ptls .ptls__cta-primary { background: #fff; color: var(--ptls-red); border: 2px solid #fff; }
+  .ptls .ptls__cta-primary:hover { background: #f3f3f3; }
+  .ptls .ptls__cta-ghost { background: transparent; color: #fff; border: 2px solid rgba(255, 255, 255, 0.75); }
+  .ptls .ptls__cta-ghost:hover { border-color: #fff; }
+
+  @media screen and (min-width: 750px) {
+    .ptls__wrap { padding: 0 2.4rem; }
+    .ptls__band { padding: 6.4rem 0; }
+    .ptls__hero { padding: 6.4rem 0; }
+    .ptls__hero-ctas { flex-direction: row; flex-wrap: wrap; }
+    .ptls__services { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ptls__usps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ptls__links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ptls__cta-btns { flex-direction: row; justify-content: center; max-width: none; }
+  }
+  @media screen and (min-width: 990px) {
+    .ptls__hero-grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: start; gap: 4.8rem; }
+    .ptls__services { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ptls__find-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 4.8rem; }
+    .ptls__usps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .ptls__links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Location: shop page",
+  "tag": "section",
+  "class": "section-pt-location-shop",
+  "settings": [
+    {
+      "type": "select",
+      "id": "location",
+      "label": "Shop this page is about",
+      "info": "Address, phone, hours, map and booking links all follow this shop (from pt-nap and the Store hours metaobject).",
+      "options": [
+        { "value": "ne", "label": "Edmonton Trail NE" },
+        { "value": "sw", "label": "42 Ave SW" }
+      ],
+      "default": "ne"
+    },
+    { "type": "header", "content": "Hero" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow" },
+    { "type": "text", "id": "heading", "label": "H1 heading", "default": "Tire Shop in NE Calgary" },
+    {
+      "type": "richtext",
+      "id": "answer",
+      "label": "Direct answer (first paragraph)",
+      "info": "Tokens: [[address_ne]] [[address_sw]] [[phone_ne]] [[phone_sw]] [[hours_ne]] [[hours_sw]] are filled from pt-nap."
+    },
+    { "type": "text", "id": "short_title", "label": "Short-answer box title", "default": "The short answer" },
+    {
+      "type": "select",
+      "id": "hero_book_service",
+      "label": "Hero booking button: service",
+      "info": "Booking links always carry ?service= and the shop.",
+      "options": [
+        { "value": "installation_on", "label": "Seasonal swap (on rims)" },
+        { "value": "installation_off", "label": "Tire installation (loose tires)" },
+        { "value": "balancing", "label": "Wheel balancing" },
+        { "value": "road_force_balancing", "label": "Road force balancing (NE only)" },
+        { "value": "rotation", "label": "Tire rotation" },
+        { "value": "flat_repair", "label": "Flat repair" },
+        { "value": "tpms", "label": "TPMS service" }
+      ],
+      "default": "installation_on"
+    },
+    { "type": "text", "id": "hero_book_label", "label": "Hero booking button: text", "default": "Request a time" },
+    { "type": "header", "content": "Services" },
+    { "type": "text", "id": "services_title", "label": "Services heading", "default": "Services and prices" },
+    { "type": "richtext", "id": "services_intro", "label": "Services intro" },
+    { "type": "text", "id": "only_badge", "label": "Badge for this-shop-only services", "default": "This shop only" },
+    { "type": "richtext", "id": "services_note", "label": "Note under the services" },
+    { "type": "header", "content": "Buying tires here" },
+    { "type": "text", "id": "stock_title", "label": "Heading" },
+    { "type": "richtext", "id": "stock_body", "label": "Body", "info": "Tokens work here." },
+    { "type": "header", "content": "Finding us" },
+    { "type": "text", "id": "finding_title", "label": "Heading" },
+    { "type": "richtext", "id": "finding_body", "label": "Body", "info": "Use only directions the shop has confirmed. Tokens work here." },
+    { "type": "checkbox", "id": "show_map", "label": "Show map (loads lazily)", "default": true },
+    { "type": "textarea", "id": "holiday_dates", "label": "Holiday dates (no open/closed status)", "info": "Comma-separated YYYY-MM-DD, Calgary dates. On these days the shop card shows 'Holiday today, call ahead' instead of open/closed from the weekly hours. Prefilled with Alberta holidays to Dec 2027 (incl. Boxing Day, Heritage Day); add or remove as the shop decides.", "default": "2026-11-11,2026-12-25,2026-12-26,2027-01-01,2027-02-15,2027-03-26,2027-05-24,2027-07-01,2027-08-02,2027-09-06,2027-10-11,2027-11-11,2027-12-25,2027-12-26" },
+    {
+      "type": "text",
+      "id": "map_embed_url",
+      "label": "Map embed URL (optional)",
+      "info": "Leave blank to map the shop's address. To use the Google Business Profile pin: Google Maps → Share → Embed a map → copy the iframe src."
+    },
+    { "type": "header", "content": "Why drivers choose us" },
+    { "type": "text", "id": "why_title", "label": "Heading", "default": "Why drivers choose Prince Tires" },
+    { "type": "header", "content": "Related links" },
+    { "type": "text", "id": "links_title", "label": "Heading", "default": "Related pages" },
+    { "type": "header", "content": "FAQ" },
+    { "type": "text", "id": "faq_title", "label": "Heading", "default": "Frequently asked questions" },
+    { "type": "header", "content": "Bottom call to action" },
+    { "type": "text", "id": "cta_title", "label": "Heading", "info": "Leave blank to hide the band." },
+    { "type": "text", "id": "cta_text", "label": "Text", "info": "[[phone_ne]] / [[phone_sw]] work here." },
+    {
+      "type": "select",
+      "id": "cta_book_service",
+      "label": "Booking button: service",
+      "options": [
+        { "value": "installation_on", "label": "Seasonal swap (on rims)" },
+        { "value": "installation_off", "label": "Tire installation (loose tires)" },
+        { "value": "balancing", "label": "Wheel balancing" },
+        { "value": "road_force_balancing", "label": "Road force balancing (NE only)" },
+        { "value": "rotation", "label": "Tire rotation" },
+        { "value": "flat_repair", "label": "Flat repair" },
+        { "value": "tpms", "label": "TPMS service" }
+      ],
+      "default": "installation_on"
+    },
+    { "type": "text", "id": "cta_book_label", "label": "Booking button: text", "default": "Request a time" },
+    { "type": "header", "content": "Structured data" },
+    {
+      "type": "checkbox",
+      "id": "schema_enabled",
+      "label": "Emit BreadcrumbList and FAQPage JSON-LD",
+      "info": "The shop itself is already in the sitewide schema (#business-ne / #business); this only points to it. No rating markup.",
+      "default": true
+    }
+  ],
+  "blocks": [
+    {
+      "type": "fact",
+      "name": "Short-answer bullet",
+      "settings": [
+        { "type": "inline_richtext", "id": "text", "label": "Bullet", "info": "Tokens work here." }
+      ]
+    },
+    {
+      "type": "service",
+      "name": "Service",
+      "settings": [
+        { "type": "text", "id": "name", "label": "Service name" },
+        { "type": "text", "id": "price", "label": "Price shown", "info": "Must match /admin/services (before GST)." },
+        { "type": "text", "id": "unit", "label": "Unit (e.g. per tire)" },
+        { "type": "textarea", "id": "details", "label": "Details" },
+        { "type": "checkbox", "id": "this_shop_only", "label": "Offered at this shop only", "default": false },
+        {
+          "type": "select",
+          "id": "book_service",
+          "label": "Booking link: service",
+          "options": [
+            { "value": "none", "label": "No booking button" },
+            { "value": "installation_on", "label": "Seasonal swap (on rims)" },
+            { "value": "installation_off", "label": "Tire installation (loose tires)" },
+            { "value": "balancing", "label": "Wheel balancing" },
+            { "value": "road_force_balancing", "label": "Road force balancing (NE only)" },
+            { "value": "rotation", "label": "Tire rotation" },
+            { "value": "flat_repair", "label": "Flat repair" },
+            { "value": "tpms", "label": "TPMS service" }
+          ],
+          "default": "none"
+        },
+        { "type": "text", "id": "book_label", "label": "Booking button text", "default": "Request a time" },
+        { "type": "url", "id": "info_url", "label": "Service page" },
+        { "type": "text", "id": "info_label", "label": "Service page link text", "default": "Details" }
+      ]
+    },
+    {
+      "type": "usp",
+      "name": "Reason to choose us",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Title" },
+        { "type": "textarea", "id": "text", "label": "Text" }
+      ]
+    },
+    {
+      "type": "link",
+      "name": "Related link",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Link text" },
+        { "type": "url", "id": "url", "label": "Link" },
+        { "type": "text", "id": "text", "label": "Short description" }
+      ]
+    },
+    {
+      "type": "faq",
+      "name": "FAQ item",
+      "settings": [
+        { "type": "text", "id": "question", "label": "Question" },
+        { "type": "richtext", "id": "answer", "label": "Answer", "info": "Tokens work here, in the page and in the FAQ structured data." }
+      ]
+    }
+  ],
+  "presets": [
+    { "name": "Location: shop page" }
+  ]
+}
+{% endschema %}

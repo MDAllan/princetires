@@ -1,0 +1,37 @@
+{%- assign ptcl = collections['clearance'] -%}
+{%- if ptcl and ptcl.products_count > 0 -%}
+{%- paginate ptcl.products by 250 -%}
+<script>window.__ptClear = { {%- for p in ptcl.products -%}{{ p.handle | json }}:1{%- unless forloop.last -%},{%- endunless -%}{%- endfor -%} };</script>
+{%- endpaginate -%}
+<style>
+  .ptg__card-sale.pt-clear, .pt-clear-badge { background: #dc2626 !important; color: #fff !important; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+  .pt-clear-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; margin: 0 0 8px; }
+  .ptg__card-img .pt-clear-badge { position: absolute; top: 8px; left: 8px; z-index: 3; margin: 0; font-size: 11px; padding: 3px 8px; }
+</style>
+<script>
+(function () {
+  var C = window.__ptClear || {};
+  function handleOf(href) { var m = String(href || '').match(/\/products\/([^/?#]+)/); return m ? decodeURIComponent(m[1]) : ''; }
+  function cards() {
+    Array.prototype.forEach.call(document.querySelectorAll('a.ptg__card:not([data-ptcl])'), function (a) {
+      a.setAttribute('data-ptcl', '1');
+      if (!C[handleOf(a.getAttribute('href'))]) return;
+      var s = a.querySelector('.ptg__card-sale');
+      if (s) { s.textContent = 'Clearance'; s.classList.add('pt-clear'); return; }
+      var img = a.querySelector('.ptg__card-img');
+      if (img) { var b = document.createElement('span'); b.className = 'pt-clear-badge'; b.textContent = 'Clearance'; img.appendChild(b); }
+    });
+  }
+  function pdp() {
+    if (!C[handleOf(location.pathname)]) return;
+    var t = document.querySelector('.ptp__title, .product__title, h1');
+    if (!t || document.querySelector('.pt-clear-badge--pdp')) return;
+    var b = document.createElement('span'); b.className = 'pt-clear-badge pt-clear-badge--pdp'; b.textContent = 'Clearance';
+    t.parentNode.insertBefore(b, t);
+  }
+  function run() { cards(); pdp(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+  try { new MutationObserver(function () { cards(); }).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
+})();
+</script>
+{%- endif -%}

@@ -1,0 +1,159 @@
+<script>
+(function () {
+  if (window.__ptSpecSheet) return;
+  window.__ptSpecSheet = true;
+
+  var BP_FALLBACK = ['4x100','4x108','4x114.3','5x100','5x108','5x110','5x112','5x114.3','5x115','5x120','5x127','5x130','5x139.7','5x150','6x114.3','6x120','6x135','6x139.7','8x165.1','8x170','8x180'];
+  var TIRE_KEY = 'pt_pkg_tire';
+  var I = {
+    wheel: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v6.5M12 14.5V21M3 12h6.5M14.5 12H21"/></svg>',
+    chev: '<svg width="9" height="15" viewBox="0 0 9 15" fill="none" aria-hidden="true"><path d="M1.5 1.5 7.5 7.5l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    back: '<svg width="11" height="18" viewBox="0 0 11 18" fill="none" aria-hidden="true"><path d="M9 2 2 9l7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    close: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M1.5 1.5l9 9m0-9-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    check: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#30d158" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17l9-10"/></svg>'
+  };
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function buzz() { try { if (navigator.vibrate) navigator.vibrate(8); } catch (e) {} }
+  function parseSize(v) {
+    var m = String(v || '').toUpperCase().replace(/\s+/g, '').match(/^(?:P|LT)?(\d{3})[\/\-]?(\d{2})Z?R?F?-?(\d{2}(?:\.5)?)/);
+    return m ? { w: m[1], p: m[2], r: m[3], text: m[1] + '/' + m[2] + 'R' + m[3] } : null;
+  }
+  function specOpts(key) {
+    var s = document.querySelector('[data-pt-ws-spec="' + key + '"]');
+    if (!s) return null;
+    return Array.prototype.filter.call(s.options, function (o) { return o.value !== ''; }).map(function (o) {
+      var m = o.text.match(/^(.*?)\s*\((\d+)\)\s*$/);
+      return { v: o.value, t: m ? m[1] : o.text, n: m ? m[2] : '' };
+    });
+  }
+  function wheelsUrl(f) {
+    var q = [];
+    ['rim_diameter', 'bolt_pattern', 'rim_width', 'rim_offset'].forEach(function (k) { if (f[k]) q.push('filter.p.m.custom.' + k + '=' + encodeURIComponent(f[k])); });
+    return '/collections/wheels' + (q.length ? '?' + q.join('&') : '');
+  }
+  function tiresUrl(t) {
+    return '/collections/tires?filter.p.m.custom.tire_width=' + t.w + '&filter.p.m.custom.tire_profile=' + t.p + '&filter.p.m.custom.rim_diameter=' + t.r;
+  }
+
+  function makeSheet(title) {
+    var wrap = document.createElement('div');
+    wrap.className = 'ptvs';
+    wrap.hidden = true;
+    wrap.innerHTML = '<div class="ptvs__backdrop" data-close></div><div class="ptvs__sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
+      '<div class="ptvs__grab"></div><div class="ptvs__head"><button type="button" class="ptvs__iconbtn ptvs__back" aria-label="Back">' + I.back + '</button>' +
+      '<div class="ptvs__title">' + esc(title) + '</div><button type="button" class="ptvs__iconbtn ptvs__close" aria-label="Close" data-close>' + I.close + '</button></div>' +
+      '<div class="ptvs__chips"></div><div class="ptvs__stage"></div></div>';
+    document.body.appendChild(wrap);
+    return wrap;
+  }
+
+  function flow(cfg) {
+    var wrap = makeSheet(cfg.title);
+    var sheet = wrap.querySelector('.ptvs__sheet'), chips = wrap.querySelector('.ptvs__chips'), stage = wrap.querySelector('.ptvs__stage'), backBtn = wrap.querySelector('.ptvs__back');
+    var steps = cfg.steps, ans = {}, step = 0, lastFocus = null;
+
+    function paintChips() {
+      chips.innerHTML = steps.map(function (s, i) {
+        if (i < step && ans[s.key] !== undefined) return '<button type="button" class="ptvs__chip" data-go="' + i + '">' + esc(ans[s.key + '_label'] || 'Any ' + s.chip.toLowerCase()) + '</button>';
+        return '<span class="ptvs__chip ptvs__chip--next' + (i === step ? ' is-now' : '') + '">' + esc(s.chip) + '</span>';
+      }).join('');
+      backBtn.setAttribute('aria-hidden', step === 0 ? 'true' : 'false');
+      backBtn.tabIndex = step === 0 ? -1 : 0;
+    }
+    function swap(html, dir) {
+      var old = stage.querySelector('.ptvs__pane:not(.out-fwd):not(.out-back)');
+      var pane = document.createElement('div');
+      pane.className = 'ptvs__pane ' + (dir === 'back' ? 'in-back' : 'in-fwd');
+      pane.innerHTML = html;
+      if (old) { old.className = 'ptvs__pane ' + (dir === 'back' ? 'out-back' : 'out-fwd'); setTimeout(function () { old.remove(); }, 330); }
+      stage.appendChild(pane);
+      Array.prototype.forEach.call(pane.querySelectorAll('.ptvs__tile, .ptvs__list'), function (el, i) { el.style.animationDelay = Math.min(i * 14, 260) + 'ms'; });
+      return pane;
+    }
+    function soFar(i) {
+      var a = {}, labels = [];
+      steps.slice(0, i).forEach(function (x) { if (ans[x.key]) { a[x.key] = ans[x.key]; labels.push(ans[x.key + '_label']); } });
+      return { ans: a, labels: labels };
+    }
+    function go(i, dir) {
+      step = i;
+      paintChips();
+      if (i >= steps.length) return done(dir);
+      var s = steps[i], html = '<div class="ptvs__q">' + esc(s.q) + '</div>' + (s.hint ? '<div class="ptvs__hint">' + esc(s.hint) + '</div>' : '');
+      if (s.type === 'input') {
+        html += '<input class="ptvs__field" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="' + esc(s.placeholder) + '" aria-label="' + esc(s.chip) + '" value="' + esc(ans[s.key + '_raw'] || '') + '">' +
+          '<div class="ptvs__err" role="alert"></div><button type="button" class="ptvs__cta" data-next>Next</button>';
+      } else {
+        var list = s.options() || [];
+        html += '<div class="ptvs__grid" style="grid-template-columns:repeat(' + (s.cols || 3) + ',minmax(0,1fr))">' + list.map(function (o) {
+          return '<button type="button" class="ptvs__tile" data-v="' + esc(o.v) + '" data-l="' + esc(o.t) + '">' + esc(o.t) + '</button>';
+        }).join('') + '</div>' + (s.optional ? '<button type="button" class="ptvs__skip" data-v="" data-l="">' + esc(s.skipLabel || 'Not sure, skip') + '</button>' : '');
+        var sofar = soFar(i);
+        if (cfg.anytime && sofar.labels.length) html += '<div class="ptvs__now"><button type="button" class="ptvs__cta" data-now>' + esc(cfg.anytime.label) + '<span>' + esc(sofar.labels.join(' · ')) + '</span></button></div>';
+      }
+      var pane = swap(html, dir);
+      if (s.type === 'input') {
+        var inp = pane.querySelector('input'), err = pane.querySelector('.ptvs__err');
+        var submit = function () {
+          var r = s.parse(inp.value);
+          if (!r) { err.textContent = s.error; inp.focus(); return; }
+          buzz(); ans[s.key] = r; ans[s.key + '_raw'] = inp.value; ans[s.key + '_label'] = r.text;
+          go(i + 1, 'fwd');
+        };
+        inp.addEventListener('input', function () { err.textContent = ''; });
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+        pane.querySelector('[data-next]').addEventListener('click', submit);
+        setTimeout(function () { inp.focus({ preventScroll: true }); }, 380);
+      } else {
+        pane.addEventListener('click', function (e) {
+          var now = e.target.closest('[data-now]');
+          if (now) { buzz(); now.firstChild.textContent = 'Loading… '; window.location.href = cfg.anytime.href(soFar(i).ans); return; }
+          var b = e.target.closest('[data-v]');
+          if (!b) return;
+          b.classList.add('is-picked'); buzz();
+          ans[s.key] = b.getAttribute('data-v'); ans[s.key + '_label'] = b.getAttribute('data-l');
+          setTimeout(function () { go(i + 1, 'fwd'); }, 150);
+        });
+      }
+    }
+    function done(dir) {
+      var r = cfg.result(ans);
+      var pane = swap('<div class="ptvs__result"><div class="ptvs__check">' + I.check + '</div><div class="ptvs__q" style="margin:0 0 14px">' + esc(r.title) + '</div>' +
+        '<div class="ptvs__sum">' + r.rows.map(function (x) { return '<div><small>' + esc(x[0]) + '</small><b>' + esc(x[1]) + '</b></div>'; }).join('') + '</div>' +
+        r.ctas.map(function (c, k) { return '<button type="button" class="' + (k ? 'ptvs__cta2' : 'ptvs__cta') + '" data-cta="' + k + '">' + esc(c.label) + '</button>'; }).join('') +
+        '<div class="ptvs__help">' + esc(r.help || '') + '</div><button type="button" class="ptvs__alt" data-restart>Start over</button></div>', dir);
+      pane.addEventListener('click', function (e) {
+        var c = e.target.closest('[data-cta]');
+        if (c) { buzz(); var t = r.ctas[+c.getAttribute('data-cta')]; if (t.before) t.before(); c.textContent = 'Loading…'; window.location.href = t.href; return; }
+        if (e.target.closest('[data-restart]')) { buzz(); ans = {}; go(0, 'back'); }
+      });
+    }
+    function open() {
+      lastFocus = document.activeElement;
+      ans = {}; stage.innerHTML = '';
+      wrap.hidden = false;
+      document.documentElement.style.overflow = 'hidden';
+      go(0, 'fwd');
+      requestAnimationFrame(function () { requestAnimationFrame(function () { wrap.classList.add('is-open'); }); });
+    }
+    function close() {
+      wrap.classList.remove('is-open'); sheet.style.transform = '';
+      document.documentElement.style.overflow = '';
+      setTimeout(function () { wrap.hidden = true; }, 420);
+      if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+    }
+    wrap.addEventListener('click', function (e) {
+      if (e.target.closest('[data-close]')) { close(); return; }
+      var g = e.target.closest('[data-go]');
+      if (g) { buzz(); go(+g.getAttribute('data-go'), 'back'); }
+    });
+    backBtn.addEventListener('click', function () { if (step > 0) { buzz(); go(Math.min(step, steps.length) - 1, 'back'); } });
+    document.addEventListener('keydown', function (e) { if (!wrap.hidden && e.key === 'Escape') close(); });
+    var y0 = null, dy = 0;
+    [wrap.querySelector('.ptvs__head'), wrap.querySelector('.ptvs__grab')].forEach(function (h) {
+      h.addEventListener('touchstart', function (e) { y0 = e.touches[0].clientY; dy = 0; wrap.classList.add('is-dragging'); }, { passive: true });
+    });
+    window.addEventListener('touchmove', function (e) { if (y0 === null) return; dy = Math.max(0, e.touches[0].clientY - y0); sheet.style.transform = 'translateY(' + dy + 'px)'; }, { passive: true });
+    window.addEventListener('touchend', function () { if (y0 === null) return; y0 = null; wrap.classList.remove('is-dragging'); if (dy > 110) close(); else sheet.style.transform = ''; });
+    return open;
+  }

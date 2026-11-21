@@ -1,0 +1,366 @@
+/* Prince Tires - minimum readable text size.
+
+   WHY
+   theme.liquid sets `html { font-size: 62.5% }`, so 1rem = 10px here, but
+   most section stylesheets were written as if 1rem = 16px. .ptp__faq-a says
+   0.95rem meaning 15.2px, and renders at 9.5px. 256 declarations render
+   below 14px, the smallest at 6px.
+
+   WHAT THIS DOES - and only this
+   Anything rendering under 14px is raised to 14px. Nothing else is touched.
+   No element anywhere gets larger than 14px from this file, so nothing that
+   was already a comfortable size changes at all. 115 declarations are left
+   exactly as they were, including every heading, every clamp() and all
+   display type.
+
+   This replaces an earlier version that scaled sizes up by 1.6x to what
+   their authors intended. That was correct arithmetic and wrong in practice:
+   it pushed a 14px footer link to 22px. Readability was the actual problem,
+   so a floor is the actual fix.
+
+   Every selector is prefixed `:root ` so these win on specificity rather
+   than load order, which Shopify does not guarantee for section
+   {% stylesheet %} bundles. :root is always <html>, so the prefix changes
+   specificity without changing which elements match. No !important.
+
+   To revert: delete the pt-type.css line from layout/theme.liquid. */
+:root { --t-min: 1.4rem; }   /* 14px on this theme's 10px root */
+
+:root .faq-home__answer,
+:root .faq-home__cta,
+:root .faq-home__eyebrow,
+:root .fbp__card-excerpt,
+:root .fbp__card-meta,
+:root .fbp__card-readmore,
+:root .fbp__card-tag,
+:root .fbp__eyebrow,
+:root .fbp__view-all,
+:root .hero-smart-search__btn,
+:root .hero-smart-search__chip,
+:root .hero-smart-search__empty-chip,
+:root .hero-smart-search__empty-chip-icon,
+:root .hero-smart-search__empty-clear,
+:root .hero-smart-search__empty-label,
+:root .hero-smart-search__error,
+:root .hero-smart-search__fallback-chip,
+:root .hero-smart-search__fallback-phone,
+:root .hero-smart-search__fallback-sub,
+:root .hero-smart-search__fallback-title,
+:root .hero-smart-search__guidance-chip,
+:root .hero-smart-search__guidance-sub,
+:root .hero-smart-search__guidance-title,
+:root .hero-smart-search__hint-text,
+:root .hero-smart-search__intent-badge,
+:root .hero-smart-search__loading,
+:root .hero-smart-search__result-meta,
+:root .hero-smart-search__result-tag,
+:root .hero-smart-search__suggest-header-label,
+:root .hero-smart-search__suggest-header-sub,
+:root .hero-smart-search__suggest-hint,
+:root .hero-smart-search__suggest-icon,
+:root .hero-smart-search__suggest-size,
+:root .hero-smart-search__tab,
+:root .hero-smart-search__trim-cue,
+:root .hero-smart-search__trim-cue-icon,
+:root .hero-smart-search__trim-label,
+:root .hero-smart-search__trim-name,
+:root .hero-smart-search__trim-prompt,
+:root .hero-smart-search__trim-prompt::before,
+:root .hero-smart-search__trim-size,
+:root .hero-smart-search__trim-vehicle,
+:root .hsf-wf__chip,
+:root .hsf-wf__cta,
+:root .hsf-wf__cta--primary,
+:root .hsf-wf__row-label,
+:root .hsf-wf__spec-label,
+:root .hsf-wf__spec-value,
+:root .hsf-wf__subtitle,
+:root .hsf-wf__title,
+:root .inv-pulse__label,
+:root .inv-pulse__label-bold,
+:root .inv-pulse__live-text,
+:root .pt-cart-trade-total,
+:root .pt-contact__eyebrow,
+:root .pt-contact__field-label,
+:root .pt-contact__form-error,
+:root .pt-contact__form-success,
+:root .pt-contact__hours,
+:root .pt-contact__info-label,
+:root .pt-contact__info-lead,
+:root .pt-contact__info-link,
+:root .pt-contact__info-text,
+:root .pt-contact__info-text--muted,
+:root .pt-contact__input,
+:root .pt-contact__section-eyebrow,
+:root .pt-contact__send,
+:root .pt-contact__social-label,
+:root .pt-footer__copy,
+:root .pt-footer__legal-link,
+:root .pt-footer__newsletter-fineprint,
+:root .pt-footer__newsletter-input,
+:root .pt-footer__newsletter-msg,
+:root .pt-footer__newsletter-sub,
+:root .pt-footer__newsletter-submit,
+:root .pt-header__cart-count,
+:root .pt-header__garage-count,
+:root .pt-header__garage-label,
+:root .pt-header__icon-label,
+:root .pt-header__link,
+:root .pt-header__mobile-link,
+:root .pt-header__phone-tip,
+:root .pt-header__search-panel-input,
+:root .pt-header__search-panel-submit,
+:root .pt-locs__address,
+:root .pt-locs__btn,
+:root .pt-locs__card-eyebrow,
+:root .pt-locs__eyebrow,
+:root .pt-locs__hours div,
+:root .pt-locs__note,
+:root .pt-search-suggest__empty,
+:root .pt-search-suggest__empty-chip,
+:root .pt-search-suggest__empty-chip-icon,
+:root .pt-search-suggest__empty-clear,
+:root .pt-search-suggest__empty-label,
+:root .pt-search-suggest__item,
+:root .pt-search-suggest__item-icon,
+:root .pt-search-suggest__item-meta,
+:root .pt-search-suggest__item-price,
+:root .pt-search-suggest__quick-bolt,
+:root .pt-search-suggest__section-label,
+:root .pt-search-suggest__view-all,
+:root .pt-stack__eyebrow,
+:root .pt-story__eyebrow,
+:root .pt-story__temp-label,
+:root .pt-trade-info,
+:root .ptcl__card-badge,
+:root .ptcl__card-badge--percent,
+:root .ptcl__card-brand,
+:root .ptcl__card-oos,
+:root .ptcl__card-size,
+:root .ptcl__card-title,
+:root .ptcl__card-view,
+:root .ptcl__card-was,
+:root .ptcl__cta,
+:root .ptcl__empty,
+:root .ptcl__eyebrow,
+:root .ptcl__subtitle,
+:root .ptcl__tab,
+:root .pti__card-brand,
+:root .pti__card-oos,
+:root .pti__card-price,
+:root .pti__card-season,
+:root .pti__card-size,
+:root .pti__card-title,
+:root .pti__card-view,
+:root .pti__card-was,
+:root .pti__cta,
+:root .pti__empty,
+:root .pti__eyebrow,
+:root .pti__subtitle,
+:root .pti__tab,
+:root .ptp-toast,
+:root .ptp__add-btn,
+:root .ptp__bis-btn,
+:root .ptp__bis-email,
+:root .ptp__bis-success,
+:root .ptp__bis-text,
+:root .ptp__book-btn,
+:root .ptp__breadcrumb-list,
+:root .ptp__desc-subheading,
+:root .ptp__description,
+:root .ptp__description li,
+:root .ptp__description p,
+:root .ptp__faq-a,
+:root .ptp__faq-q,
+:root .ptp__faq-q::after,
+:root .ptp__fitment,
+:root .ptp__fitment-change,
+:root .ptp__gallery-video-close,
+:root .ptp__install-btn,
+:root .ptp__install-eyebrow,
+:root .ptp__install-note,
+:root .ptp__install-perk,
+:root .ptp__install-sub,
+:root .ptp__installed-label,
+:root .ptp__installed-note,
+:root .ptp__installed-tax,
+:root .ptp__link,
+:root .ptp__local-note,
+:root .ptp__perf-heading,
+:root .ptp__perf-label,
+:root .ptp__perf-val,
+:root .ptp__price-hero-label,
+:root .ptp__price-per,
+:root .ptp__price-was,
+:root .ptp__qty input,
+:root .ptp__quick-spec-tag,
+:root .ptp__quote-btn,
+:root .ptp__rating,
+:root .ptp__rating-count,
+:root .ptp__rebate-banner,
+:root .ptp__sale-badge,
+:root .ptp__save-tag,
+:root .ptp__season-banner,
+:root .ptp__share-label,
+:root .ptp__shipping-info,
+:root .ptp__shipping-info p,
+:root .ptp__spec-label,
+:root .ptp__spec-val,
+:root .ptp__stat-label,
+:root .ptp__stat-unit,
+:root .ptp__stock,
+:root .ptp__tab,
+:root .ptp__tab-panel li,
+:root .ptp__tab-panel p,
+:root .ptp__trust-text span,
+:root .ptp__trust-text strong,
+:root .ptp__use-case-label,
+:root .ptp__use-tag,
+:root .ptp__vehicle-chip,
+:root .ptp__vendor,
+:root .ptp__warranty-badge,
+:root .ptp__warranty-item span,
+:root .ptp__warranty-item strong,
+:root .ptp__weather-warn,
+:root .ptr__card-cta,
+:root .ptr__card-dates,
+:root .ptr__card-eligibility,
+:root .ptr__card-suffix,
+:root .ptr__disclaimer,
+:root .ptr__empty,
+:root .ptr__eyebrow,
+:root .ptr__subtitle,
+:root .sbc__card-count,
+:root .sbc__card-cta,
+:root .sbc__eyebrow,
+:root .svc__card-title,
+:root .svc__cta,
+:root .svc__eyebrow,
+:root .trust-strip__item,
+:root .trusted-brands__subtitle,
+:root .trusted-brands__tab-text,
+:root .tst__card-date,
+:root .tst__card-name,
+:root .tst__cta,
+:root .tst__eyebrow,
+:root .tst__rating-text,
+:root .wheel-brands__card-brand,
+:root .wheel-brands__card-btn,
+:root .wheel-brands__card-sizes,
+:root .wheel-brands__card-style,
+:root .wheel-brands__tab,
+:root .wheel-brands__tab-text { font-size: var(--t-min); }
+
+@media (max-width: 900px) {
+  :root .pt-story__actions-note,
+  :root .pt-story__btn { font-size: var(--t-min); }
+
+}
+
+@media (max-width: 768px) {
+  :root .pt-footer__legal-link,
+  :root .pt-search-suggest__item-title,
+  :root .pti__tab,
+  :root .svc__card-title,
+  :root .svc__cta,
+  :root .trusted-brands__subtitle { font-size: var(--t-min); }
+
+}
+
+@media (max-width: 749px) {
+  :root .hero-smart-search__btn,
+  :root .hero-smart-search__subtitle,
+  :root .ptp__book-btn,
+  :root .ptp__sticky-add,
+  :root .ptp__sticky-book,
+  :root .ptp__sticky-per,
+  :root .ptp__sticky-set,
+  :root .ptp__sticky-trade { font-size: var(--t-min); }
+
+}
+
+@media (max-width: 480px) {
+  :root .faq-home__answer,
+  :root .faq-home__cta,
+  :root .fbp__card-excerpt,
+  :root .fbp__card-readmore,
+  :root .fbp__view-all,
+  :root .hero-smart-search__btn,
+  :root .hero-smart-search__subtitle,
+  :root .hero-smart-search__tab,
+  :root .inv-pulse__label,
+  :root .inv-pulse__label-bold,
+  :root .inv-pulse__live-text,
+  :root .tst__card-name,
+  :root .tst__card-text,
+  :root .tst__rating-text,
+  :root .wheel-brands__subtitle,
+  :root .wheel-brands__view-all { font-size: var(--t-min); }
+
+}
+
+@media (max-width: 360px) {
+  :root .faq-home__answer,
+  :root .faq-home__question,
+  :root .hero-smart-search__subtitle,
+  :root .inv-pulse__label,
+  :root .inv-pulse__number,
+  :root .svc__card-title,
+  :root .tst__card-text { font-size: var(--t-min); }
+
+}
+
+/* Header: hide the "Show cost / Hide cost" word under the trade-price eye and
+   keep the eye. display:none (not visibility) so the label takes no space and
+   the eye centres on the same line as the nav links and the search icon; the
+   button's padding is evened out so it isn't nudged by the old 6px/4px split.
+   The button keeps its aria-label, so screen readers still announce it. */
+[data-trade-toggle-label] { display: none; }
+.pt-header__trade-toggle.pt-header__icon--stack {
+  padding: 5px 10px;
+  justify-content: center;
+}
+
+/* Hero seam: the hero is 85vh tall, which usually lands on a fraction of a
+   pixel, and the page background behind it is white - so a hairline of white
+   showed between the hero and the black inventory band. A 2px shadow in the
+   band's own black fills that sliver; the next section paints over the rest. */
+.hero-smart-search { box-shadow: 0 2px 0 0 #000; }
+
+/* ── Chrome exceptions to the 14px floor ──────────────────────────────────
+   The floor above exists because body copy was rendering at 6-9px. These are
+   not body copy: they are supplementary UI chrome sitting beside a large
+   number or an icon, where 14px forces wrapping and reads as oversized
+   rather than readable.
+
+   Same `:root ` specificity as the floor rules, declared after them, so these
+   win on order without !important. Everything else keeps the floor. */
+:root .pt-header__icon-label { font-size: 1.2rem; }
+:root .inv-pulse__live-text  { font-size: 1.1rem; }
+:root .inv-pulse__label      { font-size: 1.2rem; }
+@media (max-width: 480px) {
+  :root .inv-pulse__label     { font-size: 1.15rem; }
+  :root .inv-pulse__live-text { font-size: 1.05rem; }
+}
+
+/* ── Footer chrome exceptions (owner: footer reads crowded at the 14px floor) ──
+   The floor exists for body copy people actually read. Footer link columns,
+   fine print and the newsletter sub-line are navigation/legal chrome — they
+   sit below it on purpose so the footer breathes. */
+:root .pt-footer__newsletter-sub      { font-size: 1.25rem; }
+:root .pt-footer__legal-link          { font-size: 1.25rem; }
+:root .pt-footer__copy                { font-size: 1.2rem; }
+:root .pt-footer__newsletter-fineprint { font-size: 1.05rem; }
+@media (max-width: 768px) {
+  :root .pt-footer__newsletter-sub { font-size: 1.2rem; }
+  :root .pt-footer__legal-link     { font-size: 1.2rem; }
+  :root .pt-footer__copy           { font-size: 1.1rem; }
+}
+
+/* ── Text inputs on phones: 16px ──────────────────────────────────────────
+   iOS Safari zooms the whole page when an input under 16px is tapped. The
+   14px floor above caught these two inputs, so lift them to 16px on phones. */
+@media (max-width: 749px) {
+  :root .pt-header__search-panel-input,
+  :root .pt-footer__newsletter-input { font-size: 1.6rem; }
+}

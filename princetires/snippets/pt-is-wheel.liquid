@@ -1,0 +1,49 @@
+{% doc %}
+  Outputs 'true' when the product is a WHEEL, else 'false'. One copy of the
+  wheel test for the product page (sections/pt-product.liquid) and the
+  product-page social band (sections/pt-social-proof.liquid).
+
+  The rule (merged 2026-11-13 with the app's productKind rule; the same test
+  lives in snippets/pt-stock-state.liquid and snippets/geo-meta.liquid - keep
+  them in step):
+    no custom.tire_size, AND one of
+      - a custom.bolt_pattern
+      - a product type naming wheel / rims / alloy (never a type containing
+        'tire' such as "Trailer Tire & Wheel Assembly", never 'accessor'
+        such as "Wheel Accessories")
+      - the Wheels tag (same type exclusions)
+      - a blank type whose title names a wheel / rim (and not a tire)
+  Blank (undrilled) wheels have no bolt pattern, so the bolt pattern alone is
+  not enough.
+
+  @param {product} product - The product
+
+  @example
+    {%- capture is_wheel_raw -%}{% render 'pt-is-wheel', product: product %}{%- endcapture -%}
+    {%- assign is_wheel = false -%}{%- if is_wheel_raw contains 'true' -%}{%- assign is_wheel = true -%}{%- endif -%}
+{% enddoc %}
+{%- liquid
+  assign iw = false
+  assign iw_size = product.metafields.custom.tire_size | default: ''
+  if iw_size == blank
+    if product.metafields.custom.bolt_pattern != blank
+      assign iw = true
+    endif
+    assign iw_type = product.type | downcase
+    if iw_type contains 'accessor'
+      assign iw_type = 'tire'
+    endif
+    unless iw_type contains 'tire'
+      if iw_type contains 'wheel' or iw_type contains 'rims' or iw_type contains 'alloy' or product.tags contains 'Wheels'
+        assign iw = true
+      elsif iw_type == blank
+        assign iw_title = product.title | downcase
+        unless iw_title contains 'tire'
+          if iw_title contains 'wheel' or iw_title contains ' rim'
+            assign iw = true
+          endif
+        endunless
+      endif
+    endunless
+  endif
+-%}{{- iw -}}

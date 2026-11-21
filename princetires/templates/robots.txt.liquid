@@ -19,8 +19,49 @@
 {% comment %}
   Additional rules for AI crawlers — allow them to index product and
   collection pages for AI-powered search visibility.
+
+  Nov 9, 2026: added OAI-SearchBot and ClaudeBot. OAI-SearchBot is NOT the
+  same crawler as GPTBot: GPTBot gathers training data, OAI-SearchBot is the
+  one that fetches a page when ChatGPT shows sources and links. Leaving it
+  unnamed meant the crawler that produces citations was the one we had not
+  addressed. ClaudeBot is Anthropic's equivalent. Both inherited the default
+  wildcard rules before this, so neither was blocked — they are now listed
+  deliberately alongside the rest.
 {% endcomment %}
+# llms.txt: https://princetires.ca/llms.txt
+# llms-full.txt: https://princetires.ca/llms-full.txt
+
 User-agent: GPTBot
+Allow: /collections/
+Allow: /products/
+Allow: /pages/
+Allow: /blogs/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /account
+
+User-agent: OAI-SearchBot
+Allow: /collections/
+Allow: /products/
+Allow: /pages/
+Allow: /blogs/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /account
+
+User-agent: ChatGPT-User
+Allow: /collections/
+Allow: /products/
+Allow: /pages/
+Allow: /blogs/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /account
+
+User-agent: ClaudeBot
 Allow: /collections/
 Allow: /products/
 Allow: /pages/
@@ -32,16 +73,6 @@ Disallow: /account
 
 User-agent: Google-Extended
 Allow: /
-
-User-agent: ChatGPT-User
-Allow: /collections/
-Allow: /products/
-Allow: /pages/
-Allow: /blogs/
-Disallow: /cart
-Disallow: /checkout
-Disallow: /orders
-Disallow: /account
 
 User-agent: PerplexityBot
 Allow: /collections/
@@ -60,5 +91,4 @@ Disallow: /cart
 Disallow: /checkout
 Disallow: /orders
 Disallow: /account
-
-Sitemap: {{ shop.url }}/sitemap.xml
+{% comment %} Nov 8, 2026: removed trailing "Sitemap: {{ shop.url }}/sitemap.xml" — shop.url rendered empty, giving an invalid relative line flagged in Search Console. The default group above already outputs the full sitemap URL. {% endcomment %}

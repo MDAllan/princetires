@@ -1,0 +1,90 @@
+{%- comment -%} PrinceTires - Services hub hero {%- endcomment -%}
+
+<div class="ptsh">
+  <div class="ptsh__inner">
+    {%- if section.settings.eyebrow != blank -%}
+      <span class="ptsh__eyebrow">{{ section.settings.eyebrow }}</span>
+    {%- endif -%}
+    <h1 class="ptsh__title">{{ section.settings.heading | default: page.title }}</h1>
+    {%- if section.settings.subtitle != blank -%}
+      <p class="ptsh__subtitle">{{ section.settings.subtitle }}</p>
+    {%- endif -%}
+
+    {%- if section.settings.rating != blank -%}
+      <p class="ptsh__rating">
+        <span class="ptsh__stars" aria-hidden="true">
+          {%- for i in (1..5) -%}
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="#dc2626"><path d="M12 2l2.9 6 6.6.6-5 4.3 1.5 6.5L12 16.5 5.5 19.4 7 12.9 2 8.6l6.6-.6z"/></svg>
+          {%- endfor -%}
+        </span>
+        <strong>{{ section.settings.rating }}</strong>
+        {%- comment -%} Fallback phrase from snippets/pt-reviews.liquid (single source of truth). {%- endcomment -%}
+        {%- capture ptsh_rev_default %}{% render 'pt-reviews', field: 'count_reviews' %}{% endcapture -%}
+        {%- assign ptsh_rev_default = ptsh_rev_default | strip -%}
+        {%- assign ptsh_rev = section.settings.review_count | default: ptsh_rev_default -%}
+        {%- if ptsh_rev != blank -%}
+          <span class="ptsh__reviews">{{ ptsh_rev }}</span>
+        {%- endif -%}
+      </p>
+    {%- endif -%}
+
+    <div class="ptsh__cta">
+      <a href="{{ section.settings.book_url | default: '/pages/booking' }}" class="ptsh__btn ptsh__btn--primary">
+        {{ section.settings.book_label | default: 'Book a Service' }}
+      </a>
+      {%- if section.settings.phone != blank -%}
+        <a href="tel:{{ section.settings.phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' }}" class="ptsh__btn ptsh__btn--ghost">
+          {{ section.settings.phone_label | default: 'Call' }} {{ section.settings.phone }}
+        </a>
+      {%- endif -%}
+    </div>
+  </div>
+</div>
+
+{%- render 'pt-services-schema' -%}
+
+{% stylesheet %}
+  .ptsh { background: #0e0e0e; padding: 5rem 0; }
+  .ptsh__inner { max-width: 1280px; margin: 0 auto; padding: 0 2.5rem; text-align: center; }
+  .ptsh__eyebrow { display: block; font-family: 'Outfit', sans-serif; font-size: 0.85rem; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: #dc2626; margin-bottom: 0.8rem; }
+  .ptsh__title { font-family: 'Barlow Condensed', sans-serif; font-size: 4rem; font-weight: 700;
+    line-height: 1.05; color: #fff; margin: 0 0 1rem; }
+  .ptsh__subtitle { font-family: 'Outfit', sans-serif; font-size: 1.25rem; font-weight: 300;
+    color: #9ca3af; max-width: 620px; margin: 0 auto 1.4rem; line-height: 1.6; }
+  .ptsh__rating { font-family: 'Outfit', sans-serif; color: #9ca3af; font-size: 1rem; margin: 0 0 2rem; }
+  .ptsh__rating strong { color: #fff; }
+  .ptsh__stars { display: inline-flex; gap: 1px; vertical-align: middle; margin-right: 0.4rem; }
+  .ptsh__cta { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .ptsh__btn { font-family: 'Outfit', sans-serif; font-size: 1.05rem; font-weight: 600;
+    padding: 0.95rem 2.2rem; border-radius: 8px; text-decoration: none; transition: all 0.2s; }
+  .ptsh__btn--primary { background: #dc2626; color: #fff; }
+  .ptsh__btn--primary:hover { background: #b91c1c; }
+  .ptsh__btn--ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.25); }
+  .ptsh__btn--ghost:hover { border-color: rgba(255,255,255,0.6); }
+  @media (max-width: 749px) {
+    .ptsh { padding: 4rem 0; }
+    .ptsh__title { font-size: 2.8rem; }
+    .ptsh__subtitle { font-size: 1.1rem; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Services hero",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Prince Tires - Calgary" },
+    { "type": "text", "id": "heading", "label": "Heading (H1)", "info": "Defaults to the page title.", "default": "Tire Services in Calgary" },
+    { "type": "textarea", "id": "subtitle", "label": "Subtitle", "default": "Winter changeovers, installs, flat repairs and more - booked online, done same-day at our SW and NE Calgary shops." },
+    { "type": "text", "id": "rating", "label": "Rating value", "default": "4.9" },
+    { "type": "text", "id": "review_count", "label": "Review count text", "default": "750+ Google reviews" },
+    { "type": "text", "id": "book_label", "label": "Book button label", "default": "Book a Service" },
+    { "type": "url", "id": "book_url", "label": "Book button link", "info": "Defaults to /pages/booking." },
+    { "type": "text", "id": "phone_label", "label": "Phone button label", "default": "Call" },
+    { "type": "text", "id": "phone", "label": "Phone number", "default": "(403) 452-4283" }
+  ],
+  "presets": [{ "name": "Services hero" }]
+}
+{% endschema %}

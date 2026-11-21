@@ -5,8 +5,6 @@
     --abtsa-text: {{ section.settings.text_color }};
     --abtsa-accent: {{ section.settings.accent_color }};
   "
-  itemscope
-  itemtype="https://schema.org/LocalBusiness"
 >
   <div class="abtsa__container">
 
@@ -31,7 +29,7 @@
               <div class="abtsa__area" {{ block.shopify_attributes }}>
                 <div class="abtsa__area-dot" aria-hidden="true"></div>
                 <div class="abtsa__area-text">
-                  <span class="abtsa__area-name" itemprop="areaServed">{{ block.settings.name }}</span>
+                  <span class="abtsa__area-name">{{ block.settings.name }}</span>
                   {%- if block.settings.note != blank -%}
                     <span class="abtsa__area-note">{{ block.settings.note }}</span>
                   {%- endif -%}
@@ -65,8 +63,8 @@
           <div class="abtsa__cta-icon" aria-hidden="true">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
           </div>
-          <h3 class="abtsa__cta-heading">{{ section.settings.cta_heading | default: "Not sure if we serve your area?" }}</h3>
-          <p class="abtsa__cta-body">{{ section.settings.cta_body | default: "Give us a call or send a message — if you're anywhere near Calgary, chances are we can help." }}</p>
+          <h3 class="abtsa__cta-heading">{{ section.settings.cta_heading | default: "Visit either shop" }}</h3>
+          <p class="abtsa__cta-body">{{ section.settings.cta_body | default: "Call the shop nearest you, or request a time online and we'll confirm it by text or email." }}</p>
 
           {%- if section.settings.phone != blank -%}
             {%- assign pd = section.settings.phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
@@ -82,15 +80,19 @@
             </a>
           {%- endif -%}
 
-          {%- if section.settings.address != blank -%}
+          {%- assign nap_locations = 'sw,ne' | split: ',' -%}
+          {%- for loc in nap_locations -%}
             <div class="abtsa__address">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-              <address itemprop="address" itemscope itemtype="https://schema.org/PostalAddress">
-                <span itemprop="streetAddress">{{ section.settings.address }}</span><br>
-                <span itemprop="addressLocality">Calgary</span>, <span itemprop="addressRegion">AB</span>
+              <address>
+                <strong>{% render 'pt-nap', location: loc, field: 'public_name' %}</strong><br>
+                {% render 'pt-nap', location: loc, field: 'street' %}<br>
+                {% render 'pt-nap', location: loc, field: 'city' %}, {% render 'pt-nap', location: loc, field: 'region' %} {% render 'pt-nap', location: loc, field: 'postal' %}<br>
+                <a href="tel:{% render 'pt-nap', location: loc, field: 'phone_href' %}">{% render 'pt-nap', location: loc, field: 'phone' %}</a>
               </address>
             </div>
-          {%- endif -%}
+          {%- endfor -%}
+          <div class="abtsa__address"><a href="/pages/locations">Hours for both shops</a></div>
         </div>
       </div>
 
@@ -315,6 +317,11 @@
     line-height: 1.5;
   }
 
+  .abtsa__address a {
+    color: inherit;
+    text-decoration: underline;
+  }
+
   @media (max-width: 1100px) {
     .abtsa__body {
       grid-template-columns: 1fr;
@@ -360,19 +367,19 @@
       "type": "text",
       "id": "heading",
       "label": "Heading",
-      "default": "Proudly serving Calgary & surrounding communities"
+      "default": "Proudly serving all of Calgary"
     },
     {
       "type": "textarea",
       "id": "subheading",
       "label": "Subheading",
-      "default": "Whether you're in NE, NW, SE, or SW Calgary — or driving in from Airdrie, Cochrane, or Okotoks — Prince Tires is your local tire expert."
+      "default": "Whether you're in NE, NW, SE, or SW Calgary, one of our two shops is close by."
     },
     {
       "type": "text",
       "id": "disclaimer",
       "label": "Disclaimer text",
-      "default": "* Mobile tire service available in select areas. Call to confirm coverage."
+      "default": "All work is done in the shop at our two Calgary locations."
     },
     {
       "type": "header",
@@ -392,13 +399,13 @@
       "type": "text",
       "id": "cta_heading",
       "label": "CTA heading",
-      "default": "Not sure if we serve your area?"
+      "default": "Visit either shop"
     },
     {
       "type": "textarea",
       "id": "cta_body",
       "label": "CTA body",
-      "default": "Give us a call or message — if you're anywhere near Calgary, chances are we can help."
+      "default": "Call the shop nearest you, or request a time online and we'll confirm it by text or email."
     },
     {
       "type": "text",
@@ -416,12 +423,6 @@
       "type": "url",
       "id": "cta_link",
       "label": "CTA button link"
-    },
-    {
-      "type": "text",
-      "id": "address",
-      "label": "Street address",
-      "default": "123 Main Street NE"
     },
     {
       "type": "header",
@@ -470,19 +471,10 @@
     {
       "name": "About — Service areas",
       "blocks": [
-        { "type": "area", "settings": { "name": "NE Calgary — Edmonton Trail", "note": "Edmonton Trail, Bridgeland, McKnight, 16 Ave NE, Deerfoot, Forest Lawn — second shop on Edmonton Trail NE" } },
         { "type": "area", "settings": { "name": "NE Calgary", "note": "Marlborough, Rundle, Pineridge, Saddle Ridge" } },
         { "type": "area", "settings": { "name": "NW Calgary", "note": "Brentwood, Varsity, Dalhousie, Tuscany" } },
         { "type": "area", "settings": { "name": "SE Calgary", "note": "McKenzie, Auburn Bay, Mahogany, Cranston" } },
-        { "type": "area", "settings": { "name": "SW Calgary", "note": "Shawnessy, Evergreen, Silverado, Midnapore" } },
-        { "type": "area", "settings": { "name": "Downtown Calgary", "note": "Beltline, East Village, Bridgeland" } },
-        { "type": "area", "settings": { "name": "Airdrie", "note": "All neighbourhoods" } },
-        { "type": "area", "settings": { "name": "Cochrane", "note": "All neighbourhoods" } },
-        { "type": "area", "settings": { "name": "Okotoks", "note": "All neighbourhoods" } },
-        { "type": "area", "settings": { "name": "Chestermere", "note": "All neighbourhoods" } },
-        { "type": "area", "settings": { "name": "Crossfield", "note": "" } },
-        { "type": "area", "settings": { "name": "Strathmore", "note": "" } },
-        { "type": "area", "settings": { "name": "High River", "note": "" } }
+        { "type": "area", "settings": { "name": "SW Calgary", "note": "Shawnessy, Evergreen, Silverado, Midnapore" } }
       ]
     }
   ]

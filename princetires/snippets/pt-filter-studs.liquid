@@ -1,0 +1,52 @@
+{%- comment -%}
+  Nov 8, 2026: "Studs" filter on tire collections. The data lives in product metafield
+  custom.stud_option ("Studded" / "Studdable"), which Search & Discovery already exposes, but the
+  custom sidebar in pt-collection-grid never rendered it. This adds the group right under Season,
+  before pt-filter-ux collapses the groups (so it gets the same collapse, badge and phone batching).
+{%- endcomment -%}
+<script>
+(function () {
+  if (window.__ptStudFilter) return;
+  window.__ptStudFilter = true;
+  var KEY = 'filter.p.m.custom.stud_option';
+  function urlFor(p) { var qs = p.toString(); return location.pathname + (qs ? '?' + qs : ''); }
+  function run() {
+    if (!/tire/i.test(location.pathname) || /wheel|rim/i.test(location.pathname)) return;
+    var sb = document.querySelector('aside.ptg__sidebar');
+    if (!sb || sb.querySelector('[data-filter-key="' + KEY + '"]')) return;
+    var groups = Array.prototype.slice.call(sb.querySelectorAll('details.ptg__filter'));
+    if (!groups.length) return;
+    var season = groups.filter(function (d) { var s = d.querySelector('summary'); return s && /season/i.test(s.textContent); })[0] || groups[0];
+    var chev = sb.querySelector('details.ptg__filter summary svg');
+    var cur = new URLSearchParams(location.search);
+    var opts = [['Studded', 'studs installed'], ['Studdable', 'can add studs']];
+    var det = document.createElement('details');
+    det.className = 'ptg__filter';
+    det.innerHTML = '<summary class="ptg__filter-label">Studs</summary><div class="ptg__filter-options">' + opts.map(function (o) {
+      return '<a href="#" class="ptg__filter-link" data-filter-key="' + KEY + '" data-filter-value="' + o[0] + '"><span class="ptg__filter-check"></span>' + o[0] +
+        ' <span style="opacity:.6;font-size:.9em">(' + o[1] + ')</span> <span class="ptg__filter-cnt" data-ptfx-cnt="' + o[0] + '"></span></a>';
+    }).join('') + '</div>';
+    if (chev) det.querySelector('summary').appendChild(chev.cloneNode(true));
+    season.parentNode.insertBefore(det, season.nextSibling);
+    Array.prototype.forEach.call(det.querySelectorAll('[data-filter-key]'), function (a) {
+      var v = a.getAttribute('data-filter-value');
+      if (cur.getAll(KEY).indexOf(v) !== -1) a.classList.add('ptg__filter-link--active');
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var p = new URLSearchParams(location.search), all = p.getAll(KEY);
+        p.delete(KEY); p.delete('page');
+        if (all.indexOf(v) !== -1) all = all.filter(function (x) { return x !== v; }); else all.push(v);
+        all.forEach(function (x) { p.append(KEY, x); });
+        location.href = urlFor(p);
+      });
+      var q = new URLSearchParams(location.search); q.delete(KEY); q.delete('page'); q.append(KEY, v);
+      fetch(urlFor(q)).then(function (r) { return r.text(); }).then(function (h) {
+        var m = h.match(/ptc__count[^>]*>\s*([\d,]+)\s*product/);
+        var c = det.querySelector('[data-ptfx-cnt="' + v + '"]');
+        if (m && c) c.textContent = '(' + m[1] + ')';
+      }).catch(function () {});
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+})();
+</script>

@@ -1,0 +1,126 @@
+{% doc %}
+  The bolt patterns the shopper has chosen, as the Bolt pattern filter group
+  shows them (snippets/pt-rd-results-facet, mode 'bolt'). Outputs one line,
+  patterns joined by ", " (e.g. "5x139.7"), or nothing.
+
+  A pattern counts as chosen when EVERY catalogue value that contains it is
+  applied: ticking 5x139.7 applies "5x139.7", "5x127/5x139.7",
+  "6x135/6x139.7" ..., and that is one choice, not three. Used for the
+  active-filter chip and the Filters badge count so they agree with the
+  ticked boxes. A pattern that only exists inside dual values ("8x170" in
+  "8x165.1/8x170") is not listed when a ticked pattern pulled all of its
+  values in. When the applied values do not make up any whole pattern
+  (a hand-made URL), the applied values themselves are listed.
+
+  @param {filter} filter - The filter.p.m.custom.bolt_pattern storefront filter
+
+  @example
+    {%- capture rd_bolts -%}{% render 'pt-rd-results-bolt', filter: f %}{%- endcapture -%}
+{% enddoc %}
+{%- liquid
+  assign rbo_keys = ','
+  for av in filter.active_values
+    assign rbo_parts = av.value | downcase | split: '/'
+    for part in rbo_parts
+      assign k = part | strip
+      assign k_tok = ',' | append: k | append: ','
+      if k != blank
+        unless rbo_keys contains k_tok
+          assign rbo_keys = rbo_keys | append: k | append: ','
+        endunless
+      endif
+    endfor
+  endfor
+  assign rbo_list = rbo_keys | split: ','
+  # Pass 1: patterns ticked on purpose (own single value applied + all duals).
+  assign rbo_union = '|'
+  for k in rbo_list
+    if k == blank
+      continue
+    endif
+    assign pa_all = true
+    assign pa_exact = false
+    assign pa_vs = ''
+    for v in filter.values
+      if v.count > 0 or v.active
+        assign vparts = v.value | downcase | split: '/'
+        assign pa_hit = false
+        for part in vparts
+          assign ps = part | strip
+          if ps == k
+            assign pa_hit = true
+            break
+          endif
+        endfor
+        if pa_hit
+          if v.active == false
+            assign pa_all = false
+            break
+          endif
+          if vparts.size == 1
+            assign pa_exact = true
+          endif
+          assign pa_vs = pa_vs | append: v.value | append: '|'
+        endif
+      endif
+    endfor
+    if pa_all and pa_exact
+      assign rbo_union = rbo_union | append: pa_vs
+    endif
+  endfor
+  assign rbo_out = ''
+  for k in rbo_list
+    if k == blank
+      continue
+    endif
+    assign rbo_all = true
+    assign rbo_exact = false
+    assign rbo_implied = true
+    assign rbo_label = k
+    for v in filter.values
+      if v.count > 0 or v.active
+        assign vparts = v.value | downcase | split: '/'
+        assign rbo_hit = false
+        for part in vparts
+          assign ps = part | strip
+          if ps == k
+            assign rbo_hit = true
+            break
+          endif
+        endfor
+        if rbo_hit
+          if v.active == false
+            assign rbo_all = false
+            break
+          endif
+          if vparts.size == 1
+            assign rbo_label = v.label | strip
+            assign rbo_exact = true
+          endif
+          assign v_tok = '|' | append: v.value | append: '|'
+          unless rbo_union contains v_tok
+            assign rbo_implied = false
+          endunless
+        endif
+      endif
+    endfor
+    # A dual-only pattern (8x170) pulled in by a ticked one is not a choice.
+    if rbo_all and rbo_exact == false and rbo_implied
+      assign rbo_all = false
+    endif
+    if rbo_all
+      if rbo_out != ''
+        assign rbo_out = rbo_out | append: ', '
+      endif
+      assign rbo_out = rbo_out | append: rbo_label
+    endif
+  endfor
+  if rbo_out == '' and filter.active_values.size > 0
+    for av in filter.active_values
+      if rbo_out != ''
+        assign rbo_out = rbo_out | append: ', '
+      endif
+      assign rbo_out = rbo_out | append: av.label
+    endfor
+  endif
+-%}{{- rbo_out -}}

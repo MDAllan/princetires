@@ -58,36 +58,91 @@
     max-width: 560px;
   }
   .pt-searchbar .search { margin: 0; }
+  /* layout/theme.liquid does not load Dawn's base.css, so its .field
+     positioning never arrives: this block is self-contained on purpose. */
+  .pt-searchbar .field {
+    position: relative;
+    display: flex;
+    width: 100%;
+  }
   .pt-searchbar .field__input {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
     height: 42px !important;
+    margin: 0;
+    padding: 0 9.2rem 0 1.4rem !important;
+    border: 1px solid #E2E8F0;
+    -webkit-appearance: none;
+    appearance: none;
     background: #F8FAFC !important;
     border-color: #E2E8F0 !important;
     color: #0F172A !important;
-    font-size: 0.9375rem !important;
-    border-radius: 4px 0 0 4px !important;
+    font-size: 16px !important; /* under 16px makes iOS Safari zoom on focus */
+    border-radius: 4px !important;
   }
+  .pt-searchbar .field__input::-webkit-search-cancel-button { display: none; }
   .pt-searchbar .field__input:focus {
     border-color: #94A3B8 !important;
     outline: none !important;
     box-shadow: 0 0 0 3px rgba(220,38,38,0.08) !important;
   }
   .pt-searchbar .field__label {
-    background: #F8FAFC !important;
-    color: #94A3B8 !important;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
-  .pt-searchbar .search__button {
-    background: #DC2626 !important;
-    height: 42px !important;
-    border-radius: 0 4px 4px 0 !important;
+  .pt-searchbar .field__button {
+    position: absolute;
+    top: 0;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    -webkit-appearance: none;
+    appearance: none;
     cursor: pointer;
+  }
+  .pt-searchbar .field__button .svg-wrapper,
+  .pt-searchbar .field__button svg { width: 18px; height: 18px; }
+  .pt-searchbar .search__button {
+    right: 0;
+    width: 46px;
+    background: #DC2626 !important;
+    border-radius: 0 4px 4px 0 !important;
     transition: background 0.15s;
   }
   .pt-searchbar .search__button:hover { background: #B91C1C !important; }
   .pt-searchbar .search__button svg,
   .pt-searchbar .search__button .icon { fill: #fff !important; color: #fff !important; }
-  .pt-searchbar .reset__button { color: #94A3B8 !important; }
+  .pt-searchbar .reset__button {
+    right: 46px;
+    width: 42px;
+    background: transparent !important;
+    color: #94A3B8 !important;
+  }
+  .pt-searchbar .reset__button.hidden { display: none; }
+  .pt-searchbar .predictive-search {
+    top: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    max-height: 70vh;
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 4px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+    z-index: 20;
+  }
   .pt-searchbar__count {
-    font-size: 0.875rem;
+    font-size: 1.4rem;
     color: #64748B;
     white-space: nowrap;
     flex-shrink: 0;
@@ -101,6 +156,22 @@
     color: #0F172A;
     font-weight: 700;
   }
+
+  /* ── WHEELS BANNER (wheel-word searches) ───── */
+  .pt-wheels-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.2rem; margin: 1.2rem 1rem 0; padding: 1.4rem 1.6rem; border: 2px solid #DC2626; border-radius: 8px; background: #FEF2F2; color: #0F172A; font-size: 1.5rem; line-height: 1.4; }
+  .pt-wheels-cta__btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1.8rem; background: #DC2626; color: #fff; font-size: 1.5rem; font-weight: 700; border-radius: 6px; text-decoration: none; }
+  .pt-wheels-cta__btn:hover { background: #B91C1C; color: #fff; }
+  /* Same width as the sidebar + results row below it (page width minus its 2rem padding). */
+  @media (min-width: 990px) { .pt-wheels-cta { box-sizing: border-box; width: calc(100% - 4rem); max-width: calc(var(--page-width, 1200px) - 4rem); margin: 1.2rem auto 0; } }
+  .pt-mode-note { margin: 0; padding: 1rem 1.6rem; background: #FFFBEB; border-bottom: 1px solid #FDE68A; color: #92400E; font-size: 1.4rem; line-height: 1.4; }
+  .pt-searchbar__count[hidden] { display: none; }
+  /* base.css isn't loaded on this template: Dawn's screen-reader-only text
+     (e.g. "10 results: 10 products" in the dropdown) needs this to stay hidden. */
+  .pt-searchbar .visually-hidden,
+  .template-search .visually-hidden { position: absolute !important; overflow: hidden; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; clip: rect(0 0 0 0); word-wrap: normal !important; }
+  /* Dawn fixes the vertical filter form at 26rem; the sidebar is 240px. */
+  .pt-sidebar facet-filters-form,
+  .pt-sidebar .facets__form-vertical { width: 100% !important; max-width: 100%; box-sizing: border-box; }
 
   /* ── PAGE LAYOUT (sidebar + results) ───────── */
   .pt-layout {
@@ -232,6 +303,53 @@
     background: #F8FAFC !important;
     cursor: pointer !important;
   }
+
+  /* Desktop sidebar sizes for the 62.5% root (1rem = 10px) */
+  .pt-sidebar .hidden { display: none !important; }
+  .pt-sidebar .facets-vertical .facets__heading,
+  .pt-sidebar .facets__heading--vertical { font-size: 1.2rem !important; font-weight: 800 !important; letter-spacing: 0.14em; text-transform: uppercase; color: #94A3B8 !important; padding: 1.4rem 0 0.6rem !important; margin: 0; }
+  .pt-sidebar .active-facets-vertical-filter { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .pt-sidebar .active-facets-vertical-filter .active-facets__button-remove { font-size: 1.3rem; color: #DC2626; padding-right: 1.6rem; }
+  .pt-sidebar .active-facets-desktop:not(:has(.active-facets__button--light)) .active-facets__button-wrapper { display: none; }
+  .pt-sidebar .active-facets-desktop { display: flex; flex-wrap: wrap; gap: 0.6rem; padding: 0 1.6rem 1rem; }
+  .pt-sidebar .active-facets-desktop .active-facets-vertical-filter { flex: 1 1 100%; }
+  .pt-sidebar .active-facets__button-inner { font-size: 1.2rem !important; padding: 0.5rem 0.9rem; display: inline-flex; align-items: center; gap: 0.5rem; }
+  .pt-sidebar .active-facets__button-inner .svg-wrapper,
+  .pt-sidebar .active-facets__button-inner svg { width: 1.1rem; height: 1.1rem; }
+  .pt-sidebar .facets__summary { padding: 1.2rem 1.6rem !important; font-size: 1.4rem !important; }
+  .pt-sidebar .facets__summary > div { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; width: 100%; }
+  .pt-sidebar .facets__summary .icon-caret,
+  .pt-sidebar .facets__summary svg.icon { width: 1.2rem !important; height: 1.2rem !important; }
+  .pt-sidebar .facets__display-vertical { padding: 0.4rem 1.6rem 1.4rem !important; }
+  .pt-sidebar .facets__list--vertical { margin: 0; padding: 0; list-style: none; }
+  .pt-sidebar .facets__item { margin: 0; }
+  .pt-sidebar .facets__label.facet-checkbox { display: flex; align-items: center; gap: 0.8rem; padding: 0.5rem 0; position: relative; }
+  .pt-sidebar .facet-checkbox input[type="checkbox"] { position: absolute; opacity: 0; width: 1.6rem; height: 1.6rem; margin: 0; }
+  .pt-sidebar .facet-checkbox > svg { flex: 0 0 1.6rem; width: 1.6rem; height: 1.6rem; }
+  .pt-sidebar .facet-checkbox > .svg-wrapper { position: absolute; left: 0.2rem; top: 50%; transform: translateY(-50%); width: 1.2rem; height: 1.2rem; visibility: hidden; }
+  .pt-sidebar .facet-checkbox > .svg-wrapper svg { width: 1.2rem; height: 1.2rem; }
+  .pt-sidebar .facet-checkbox input:checked ~ .svg-wrapper { visibility: visible; }
+  .pt-sidebar .facet-checkbox.disabled { opacity: 0.45; cursor: default; }
+  .pt-sidebar .facet-checkbox__text,
+  .pt-sidebar .facets__label { font-size: 1.4rem !important; }
+  .pt-sidebar .button-show-more { font-size: 1.3rem; margin-top: 0.6rem; background: none; border: 0; padding: 0; color: #DC2626; cursor: pointer; }
+  .pt-sidebar .facets__header-vertical .facets__selected { font-size: 1.3rem; color: #64748B; }
+  .pt-sidebar .facets__price { display: flex; align-items: flex-end; gap: 0.8rem; margin-top: 0.8rem; }
+  .pt-sidebar .facets__price .field-currency { font-size: 1.4rem; padding-bottom: 2.6rem; }
+  .pt-sidebar .facets__price .field { display: flex; flex-direction: column-reverse; flex: 1 1 0; min-width: 0; }
+  .pt-sidebar .facets__price .field__input { width: 100%; min-width: 0; height: 3.6rem; padding: 0 0.8rem; font-size: 1.4rem; border: 1px solid #E2E8F0; border-radius: 4px; background: #F8FAFC; }
+  .pt-sidebar .facets__price .field__label { font-size: 1.2rem; color: #64748B; margin-bottom: 0.4rem; }
+  .pt-sidebar .pt-tire-dims__panel { padding: 0.4rem 1.6rem 1.4rem; }
+  .pt-sidebar .facets__summary-label { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+  /* ── TIRES / WHEELS TOGGLE ──────────────────── */
+  .pt-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; padding: 1.2rem 1.6rem; background: #fff; border-bottom: 1px solid #F1F5F9; }
+  .pt-mode__label { font-size: 1.3rem; color: #64748B; margin-right: 0.4rem; }
+  .pt-mode__btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 1.8rem; border: 1px solid #E2E8F0; border-radius: 999px; background: #fff; color: #0F172A; font-size: 1.5rem; font-weight: 700; text-decoration: none; }
+  .pt-mode__btn:hover { border-color: #DC2626; color: #DC2626; }
+  .pt-mode__btn.is-on { background: #DC2626; border-color: #DC2626; color: #fff; }
+  .pt-mode__all { font-size: 1.3rem; color: #64748B; text-decoration: underline; margin-left: auto; }
+  .pt-results-area #product-grid { position: relative; }
 
   /* ── RESULTS AREA ───────────────────────────── */
   .pt-results-area {
@@ -365,6 +483,8 @@
     text-transform: uppercase;
   }
   .pt-result__availability--out { color: #94A3B8; }
+  .pt-result__availability--order { color: #15803d; }
+  .pt-result__availability--low { color: #b45309; }
   .pt-result__btn {
     display: inline-block;
     background: #0F172A;
@@ -430,6 +550,7 @@
     transition: background 0.15s;
   }
   .pt-empty__cta:hover { background: #B91C1C; color: #ffffff; }
+  .pt-empty__ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; }
   .pt-empty__hints { margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid #E2E8F0; }
   .pt-empty__hints-title {
     font-size: 0.6875rem;
@@ -466,7 +587,60 @@
   /* ── MOBILE ─────────────────────────────────── */
   @media screen and (max-width: 989px) {
     .pt-layout { padding: 0 1rem 3rem; gap: 0; }
-    .pt-sidebar { display: none; }
+    /* Phones + tablets: the sidebar only carries the Dawn filter drawer
+       (base.css isn't loaded, so its small-hide/medium-hide helpers do nothing). */
+    .pt-layout { flex-direction: column; align-items: stretch; }
+    .pt-sidebar { display: block; width: 100%; position: static; max-height: none; overflow: visible; border: 0; background: transparent; }
+    .pt-sidebar facet-filters-form.facets { display: none; }
+    .pt-sidebar .small-hide { display: none; }
+    .pt-sidebar .facets-container { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1.2rem; padding: 1.2rem 0 0.4rem; }
+    .pt-sidebar .mobile-facets__wrapper { margin: 0; }
+    .pt-sidebar .product-count { margin: 0; }
+    .pt-sidebar .product-count__text { margin: 0; font-size: 1.3rem !important; }
+    .pt-sidebar .active-facets-mobile { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 0.6rem; padding: 0; margin: 0; }
+    .pt-sidebar .active-facets-mobile:not(:has(.active-facets__button--light)) { display: none; }
+    .pt-sidebar .active-facets-mobile .active-facets__button-inner { font-size: 1.3rem !important; padding: 0.6rem 1rem; min-height: 3.6rem; display: inline-flex; align-items: center; gap: 0.6rem; }
+    .pt-sidebar .active-facets-mobile .active-facets__button-inner .svg-wrapper,
+    .pt-sidebar .active-facets-mobile .active-facets__button-inner svg { width: 1.2rem; height: 1.2rem; }
+    .pt-sidebar .active-facets-mobile .active-facets__button-remove { font-size: 1.3rem; color: #DC2626; align-self: center; }
+    .pt-sidebar .facets-container > .mobile-facets__wrapper { order: 0; }
+    .pt-sidebar .facets-container > .product-count { order: 1; }
+    .pt-sidebar .facets-container > .active-facets-mobile { order: 2; align-items: center; }
+    .pt-sidebar .active-facets-mobile facet-remove { display: inline-flex; margin: 0; padding: 0; width: auto; }
+    .pt-sidebar .active-facets-mobile .active-facets__button { margin: 0; padding: 0; }
+    .pt-sidebar summary { list-style: none; }
+    .pt-sidebar summary::-webkit-details-marker { display: none; }
+    .pt-sidebar .mobile-facets { background: rgba(15,23,42,.5); z-index: 2147483000; }
+    .pt-sidebar .mobile-facets__inner,
+    .pt-sidebar .mobile-facets__main,
+    .pt-sidebar .mobile-facets__submenu,
+    .pt-sidebar .mobile-facets__footer { background: #fff; color: #0F172A; }
+    .pt-sidebar .mobile-facets__footer { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+    .pt-sidebar .mobile-facets__heading { font-size: 1.8rem; }
+    .pt-sidebar .mobile-facets__count { font-size: 1.3rem; }
+    .pt-sidebar .mobile-facets__summary,
+    .pt-sidebar .mobile-facets__summary span,
+    .pt-sidebar .mobile-facets__close-button,
+    .pt-sidebar .mobile-facets__sort label { font-size: 1.6rem; }
+    .pt-sidebar .mobile-facets__label,
+    .pt-sidebar .mobile-facets__label .facet-checkbox__text,
+    .pt-sidebar .mobile-facets__label .facet-checkbox__text-label { font-size: 1.5rem !important; color: #0F172A !important; }
+    .pt-sidebar .mobile-facets__info,
+    .pt-sidebar .mobile-facets__submenu .field__input,
+    .pt-sidebar .mobile-facets__submenu .field__label,
+    .pt-sidebar .mobile-facets__sort .select__select { font-size: 16px; }
+    .pt-sidebar .mobile-facets__clear { font-size: 1.5rem; }
+    .pt-sidebar .mobile-facets__label { position: relative; align-items: center; }
+    .pt-sidebar .mobile-facets__label > svg:not(.icon) { width: 2rem; height: 2rem; border: 1.5px solid #64748B; border-radius: 3px; background: #fff; box-sizing: border-box; }
+    .pt-sidebar .mobile-facets__label > svg:not(.icon) rect { stroke: none; }
+    .pt-sidebar .mobile-facets__label .icon-checkmark { top: 50%; left: 2.9rem; width: 1.2rem; height: 0.9rem; transform: translateY(-50%); color: #fff; z-index: 3; }
+    .pt-sidebar .mobile-facets__checkbox:checked ~ svg:not(.icon) { background: #DC2626; border-color: #DC2626; }
+    .pt-sidebar .mobile-facets__label.disabled { opacity: 0.45; }
+    .pt-sidebar .mobile-facets__footer .button { font-size: 1.5rem; min-height: 44px; background: #DC2626; color: #fff; border: 0; border-radius: 6px; font-weight: 700; }
+    .pt-sidebar .mobile-facets__open { display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; padding: 0 1.4rem; border: 1px solid #E2E8F0; border-radius: 4px; background: #fff; font-size: 1.5rem; font-weight: 700; color: #0F172A; cursor: pointer; }
+    .pt-sidebar .mobile-facets__open .svg-wrapper,
+    .pt-sidebar .mobile-facets__open svg { width: 1.8rem; height: 1.8rem; }
+    body.overflow-hidden-mobile { overflow: hidden; }
     .pt-results-area { border-left: none; }
     .pt-searchbar__inner { padding: 0 1rem; }
     .pt-searchbar__label { display: none; }
@@ -475,7 +649,20 @@
     .pt-result__right { min-width: 90px; }
     .pt-result__price-now { font-size: 1rem; }
   }
+  @media screen and (min-width: 990px) {
+    .pt-sidebar .mobile-facets__wrapper,
+    .pt-sidebar .active-facets-mobile,
+    .pt-sidebar .facets-container > .product-count { display: none; }
+  }
   @media screen and (max-width: 749px) {
+    /* Search header: input on its own full-width row, count below it.
+       Must stay here (after the base rules above) to win. */
+    .pt-searchbar__inner { flex-wrap: wrap; gap: 0.8rem; }
+    .pt-searchbar__form { flex: 1 1 100%; max-width: none; }
+    .pt-searchbar__count { white-space: normal; font-size: 1.3rem; }
+    /* main-search.js scrolls the box into view on focus on phones; keep it
+       clear of the sticky header instead of sliding under it. */
+    .pt-searchbar main-search { display: block; scroll-margin-top: 76px; }
     .pt-result { flex-wrap: wrap; }
     .pt-result__right {
       flex-direction: row;
@@ -491,8 +678,11 @@
 
 {%- liquid
   assign sort_by = search.sort_by | default: search.default_sort_by
-  assign terms = search.terms | escape
-  assign search_url = '?q=' | append: terms | append: '&options%5Bprefix%5D=last&sort_by=' | append: sort_by
+  # search.terms arrives HTML-escaped (&amp; &quot; &#39; ...). Decode it before
+  # url_encode, or a query like  rtx & 17"  turns into  rtx &amp; 17&quot;  on the next page.
+  assign pt_q_raw = search.terms | replace: '&quot;', '"' | replace: '&#39;', "'" | replace: '&#x27;', "'" | replace: '&lt;', '<' | replace: '&gt;', '>' | replace: '&amp;', '&'
+  assign pt_q_enc = pt_q_raw | url_encode
+  assign search_url = '?q=' | append: pt_q_enc | append: '&type=product&options%5Bprefix%5D=last&sort_by=' | append: sort_by
 -%}
 
 {%- style -%}
@@ -505,6 +695,10 @@
       padding-top: {{ section.settings.padding_top }}px;
       padding-bottom: {{ section.settings.padding_bottom }}px;
     }
+  }
+  /* Phones: no empty band between the search box and the Filter row. */
+  @media screen and (max-width: 749px) {
+    .template-search.section-{{ section.id }}-padding { padding-top: 0.4rem; }
   }
 {%- endstyle -%}
 
@@ -535,13 +729,220 @@
       </div>
       {%- if search.performed and search.results_count > 0 -%}
         <span class="pt-searchbar__count" role="status" aria-live="polite">
-          <em>{{ search.results_count }}</em> result{% if search.results_count != 1 %}s{% endif %} for <strong>&ldquo;{{ search.terms | escape }}&rdquo;</strong>
+          <em>{{ search.results_count }}</em> <span class="pt-searchbar__unit">result{% if search.results_count != 1 %}s{% endif %}</span> for <strong>&ldquo;{{ search.terms | escape }}&rdquo;</strong>
         </span>
       {%- endif -%}
     </div>
   </div>
 
+{%- comment -%}
+  Wheel-word searches. Every wheel matches "wheels" equally and Shopify stops at
+  1,000 results, so a search is the wrong place to browse wheels.
+  - A bare wheel word, optionally with season words ("wheels", "mags",
+    "winter wheels") → straight to /collections/wheels.
+  - Wheel word plus other words ("rtx wheels") → stay here, show the banner.
+  - Accessories/services ("wheel locks", "wheel balancing") → neither.
+  Same pattern as pt-header-search-enhance and pt-collection-grid.
+{%- endcomment -%}
+{%- liquid
+  assign pt_q = search.terms | downcase | strip
+  assign pt_q_words = pt_q | replace: '-', ' ' | replace: ',', ' ' | replace: '+', ' ' | split: ' '
+  assign pt_wheel_q = false
+  assign pt_other_word = false
+  for w in pt_q_words
+    case w
+      when 'wheel', 'wheels', 'rim', 'rims', 'mag', 'mags'
+        assign pt_wheel_q = true
+      when 'winter', 'snow', 'all', 'season', 'weather', ''
+        continue
+      else
+        assign pt_other_word = true
+    endcase
+  endfor
+  if pt_q contains 'balanc' or pt_q contains 'align' or pt_q contains 'lock' or pt_q contains 'nut' or pt_q contains 'lug' or pt_q contains 'spacer' or pt_q contains 'cap' or pt_q contains 'sensor' or pt_q contains 'tpms'
+    assign pt_wheel_q = false
+  endif
+  assign pt_wheel_direct = false
+  if pt_wheel_q and pt_other_word == false
+    assign pt_wheel_direct = true
+  endif
+  assign pt_wheels = collections['wheels']
+-%}
+{%- if search.performed and pt_wheel_q and pt_wheels.all_products_count > 0 -%}
+  {%- if pt_wheel_direct -%}
+    <script>location.replace({{ pt_wheels.url | json }});</script>
+    <div class="pt-wheels-cta" role="note">
+      <span>Taking you to all wheels&hellip;</span>
+      <a class="pt-wheels-cta__btn" href="{{ pt_wheels.url }}">Shop all wheels &rarr;</a>
+    </div>
+  {%- else -%}
+    <div class="pt-wheels-cta" role="note">
+      <span>Looking for wheels? Browse all our wheels with bolt pattern, size and offset filters.</span>
+      <a class="pt-wheels-cta__btn" href="{{ pt_wheels.url }}">Shop all wheels &rarr;</a>
+    </div>
+  {%- endif -%}
+{%- endif -%}
+
 {% paginate search.results by 24 %}
+{%- comment -%}
+  Tires / Wheels mode (search page only). Decides which filters show, in what order.
+  1) An active Product type filter (set by the toggle below) wins.
+  2) Otherwise use the Product type filter counts, which cover ALL results (not
+     just this page), so the mode is the same on every page of one search.
+     A wheel-word search ("rtx wheels") is wheels whenever any wheel matches.
+  3) No Product type filter at all → count the products on this page.
+  4) Neither (accessories, services) → blank = Dawn's unchanged filter list.
+  The toggle pill is highlighted only when a Product type filter is really applied.
+  Tire/wheel type tests match the result rows below.
+{%- endcomment -%}
+{%- liquid
+  assign pt_mode = ''
+  assign pt_active_mode = ''
+  assign pt_wheel_n = 0
+  assign pt_tire_n = 0
+  assign pt_wheels_qs = ''
+  assign pt_tires_qs = ''
+  assign pt_type_active = false
+  assign pt_has_type_filter = false
+  assign pt_has_wheel_vals = false
+  assign pt_has_tire_vals = false
+  assign pt_any_active = false
+  for f in search.filters
+    if f.active_values.size > 0
+      assign pt_any_active = true
+    elsif f.type == 'price_range'
+      if f.min_value.value != blank or f.max_value.value != blank
+        assign pt_any_active = true
+      endif
+    endif
+    if f.param_name != 'filter.p.product_type'
+      continue
+    endif
+    assign pt_has_type_filter = true
+    for v in f.values
+      assign pt_vt = v.value
+      assign pt_v_wheel = false
+      assign pt_v_tire = false
+      if pt_vt contains 'Rims'
+        unless pt_vt contains 'Assembly'
+          assign pt_v_wheel = true
+        endunless
+      else
+        case pt_vt
+          when 'All-Terrain', 'Heavy-Duty', 'Highway-Terrain', 'Light Truck', 'Mud-Terrain', 'Passenger', 'Performance', 'Rugged-Terrain', 'Winter'
+            assign pt_v_tire = true
+        endcase
+        if pt_vt contains 'Tire'
+          assign pt_v_tire = true
+        endif
+      endif
+      # each value encoded on its own, then appended (never encode the joined string)
+      assign pt_v_enc = pt_vt | url_encode
+      # Values stay listed (count 0) when other filters exclude them, so "has
+      # values" means the unfiltered search had that kind of product.
+      if pt_v_wheel
+        assign pt_has_wheel_vals = true
+        assign pt_wheel_n = pt_wheel_n | plus: v.count
+        assign pt_wheels_qs = pt_wheels_qs | append: '&filter.p.product_type=' | append: pt_v_enc
+      elsif pt_v_tire
+        assign pt_has_tire_vals = true
+        assign pt_tire_n = pt_tire_n | plus: v.count
+        assign pt_tires_qs = pt_tires_qs | append: '&filter.p.product_type=' | append: pt_v_enc
+      endif
+      if v.active
+        assign pt_type_active = true
+        if pt_v_wheel
+          if pt_active_mode == '' or pt_active_mode == 'wheels'
+            assign pt_active_mode = 'wheels'
+          else
+            assign pt_active_mode = 'mixed'
+          endif
+        elsif pt_v_tire
+          if pt_active_mode == '' or pt_active_mode == 'tires'
+            assign pt_active_mode = 'tires'
+          else
+            assign pt_active_mode = 'mixed'
+          endif
+        endif
+      endif
+    endfor
+  endfor
+  if pt_active_mode == 'wheels' or pt_active_mode == 'tires'
+    assign pt_mode = pt_active_mode
+  elsif pt_has_type_filter
+    if pt_wheel_q and pt_wheel_n > 0
+      assign pt_mode = 'wheels'
+    elsif pt_wheel_n > pt_tire_n
+      assign pt_mode = 'wheels'
+    elsif pt_tire_n > 0
+      assign pt_mode = 'tires'
+    endif
+  else
+    assign pt_pw = 0
+    assign pt_pt = 0
+    for item in search.results
+      if item.object_type != 'product'
+        continue
+      endif
+      assign pt_ty = item.type
+      if pt_ty contains 'Assembly'
+        continue
+      endif
+      if pt_ty contains 'Rims' or item.tags contains 'Wheels'
+        assign pt_pw = pt_pw | plus: 1
+      else
+        case pt_ty
+          when 'All-Terrain', 'Heavy-Duty', 'Highway-Terrain', 'Light Truck', 'Mud-Terrain', 'Passenger', 'Performance', 'Rugged-Terrain', 'Winter'
+            assign pt_pt = pt_pt | plus: 1
+          else
+            if pt_ty contains 'Tire' or item.metafields.custom.tire_size != blank
+              assign pt_pt = pt_pt | plus: 1
+            endif
+        endcase
+      endif
+    endfor
+    if pt_pw > pt_pt
+      assign pt_mode = 'wheels'
+    elsif pt_pt > 0
+      assign pt_mode = 'tires'
+    endif
+  endif
+  # Filters apply but nothing matches: keep wheel searches in wheels mode.
+  if pt_mode == blank and pt_wheel_q and pt_any_active
+    assign pt_mode = 'wheels'
+  endif
+  assign pt_base = routes.search_url | append: '?q=' | append: pt_q_enc | append: '&type=product&options%5Bprefix%5D=last'
+  # Filters that mean the same for tires and wheels survive a Tires/Wheels switch.
+  assign pt_keep_qs = ''
+  for f in search.filters
+    if f.param_name == 'filter.p.m.custom.rim_diameter' or f.param_name == 'filter.v.availability'
+      for v in f.active_values
+        assign pt_kv = v.value | url_encode
+        assign pt_keep_qs = pt_keep_qs | append: '&' | append: v.param_name | append: '=' | append: pt_kv
+      endfor
+    elsif f.type == 'price_range'
+      if f.min_value.value != blank
+        assign pt_kv = f.min_value.value | money_without_currency | replace: ',', ''
+        assign pt_keep_qs = pt_keep_qs | append: '&' | append: f.min_value.param_name | append: '=' | append: pt_kv
+      endif
+      if f.max_value.value != blank
+        assign pt_kv = f.max_value.value | money_without_currency | replace: ',', ''
+        assign pt_keep_qs = pt_keep_qs | append: '&' | append: f.max_value.param_name | append: '=' | append: pt_kv
+      endif
+    endif
+  endfor
+  # The toggle shows whenever this search has both tires and wheels, even while
+  # other filters narrow the list to one kind. On a tires-only search the normal
+  # Product type filter (Passenger, Light Truck, ...) shows instead.
+  assign pt_show_toggle = false
+  if pt_has_wheel_vals and pt_has_tire_vals
+    assign pt_show_toggle = true
+  endif
+  assign pt_show_type = false
+  if pt_mode == 'tires' and pt_has_wheel_vals == false
+    assign pt_show_type = true
+  endif
+-%}
 <div class="template-search section-{{ section.id }}-padding">
   {%- if search.performed -%}
 
@@ -555,36 +956,56 @@
               enable_filtering: section.settings.enable_filtering,
               enable_sorting: section.settings.enable_sorting,
               filter_type: 'vertical',
-              paginate: paginate
+              paginate: paginate,
+              pt_mode: pt_mode,
+              pt_show_type: pt_show_type
             %}
           </aside>
         {%- endif -%}
       {%- endif -%}
 
       <div class="pt-results-area" id="ProductGridContainer">
+        {%- comment -%} Re-rendered by Dawn's AJAX filters: carries the mode and the new result count for the script at the bottom. {%- endcomment -%}
+        <div hidden data-pt-mode="{{ pt_mode }}" data-pt-type="{{ pt_show_type }}" data-pt-count="{{ search.results_count }}" class="pt-mode-flag"></div>
+        {%- if pt_show_toggle -%}
+          <nav class="pt-mode" aria-label="Show tires or wheels">
+            <span class="pt-mode__label">Show:</span>
+            <a href="{{ pt_base }}{{ pt_tires_qs }}{{ pt_keep_qs }}" class="pt-mode__btn{% if pt_active_mode == 'tires' %} is-on{% endif %}"{% if pt_active_mode == 'tires' %} aria-current="true"{% endif %}>Tires</a>
+            <a href="{{ pt_base }}{{ pt_wheels_qs }}{{ pt_keep_qs }}" class="pt-mode__btn{% if pt_active_mode == 'wheels' %} is-on{% endif %}"{% if pt_active_mode == 'wheels' %} aria-current="true"{% endif %}>Wheels</a>
+            {%- if pt_type_active -%}
+              <a href="{{ pt_base }}{{ pt_keep_qs }}" class="pt-mode__all">Show all results</a>
+            {%- endif -%}
+          </nav>
+        {%- endif -%}
+        {%- if pt_wheel_q and pt_mode == 'tires' and pt_wheel_n == 0 and pt_any_active and search.results_count > 0 -%}
+          <p class="pt-mode-note" role="status">No wheels match these filters, so tires are shown instead.</p>
+        {%- endif -%}
 
         {%- if search.results.size == 0 and search.filters != empty -%}
-          <div id="product-grid" data-id="{{ section.id }}">
+          <div id="product-grid" class="collection" data-id="{{ section.id }}">
             <div class="loading-overlay gradient"></div>
             <div class="pt-empty">
               <div class="pt-empty__icon" aria-hidden="true">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
               </div>
-              <h2 class="pt-empty__heading">No tires match these filters</h2>
+              <h2 class="pt-empty__heading">No products match these filters</h2>
               <p class="pt-empty__sub">{{ 'sections.collection_template.use_fewer_filters_html' | t: link: search_url, class: 'underlined-link link' }}</p>
             </div>
           </div>
 
         {%- elsif search.results.size == 0 -%}
-          <div id="product-grid" data-id="{{ section.id }}">
+          <div id="product-grid" class="collection" data-id="{{ section.id }}">
             <div class="loading-overlay gradient"></div>
             <div class="pt-empty">
               <div class="pt-empty__icon" aria-hidden="true">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               </div>
-              <h2 class="pt-empty__heading">No tires found for &ldquo;{{ search.terms | escape }}&rdquo;</h2>
+              <h2 class="pt-empty__heading">No products found for &ldquo;{{ search.terms | escape }}&rdquo;</h2>
               <p class="pt-empty__sub">Try a different brand, size, or season &mdash; or browse our full inventory.</p>
-              <a href="{{ routes.collections_url }}" class="pt-empty__cta">Browse All Tires</a>
+              <div class="pt-empty__ctas">
+                <a href="{{ routes.collections_url }}/tires" class="pt-empty__cta">Browse all tires</a>
+                <a href="{{ routes.collections_url }}/wheels" class="pt-empty__cta">Browse all wheels</a>
+              </div>
               <div class="pt-empty__hints">
                 <p class="pt-empty__hints-title">Browse by category</p>
                 <div class="pt-empty__hint-links">
@@ -598,7 +1019,7 @@
           </div>
 
         {%- else -%}
-          <div id="product-grid" data-id="{{ section.id }}">
+          <div id="product-grid" class="collection" data-id="{{ section.id }}">
             <div class="loading-overlay gradient"></div>
             <div class="pt-result-list">
               {%- for item in search.results -%}
@@ -614,8 +1035,47 @@
                     tags that overwrote the correct All-Weather/All-Season in
                     the old in-loop reassignment.
                   {%- endcomment -%}
+                  {%- comment -%}
+                    Wheels: product type "Alloy/Steel/Trailer Rims" or the "Wheels"
+                    tag (tag is on wheels only). NB: Liquid's field is product.type;
+                    product.product_type is always nil. Wheels get no tire-season chip;
+                    the "Winter Approved" tag shows a grey "Winter approved" chip.
+                  {%- endcomment -%}
+                  {%- liquid
+                    assign pt_type = item.type
+                    assign is_wheel = false
+                    assign is_tire = false
+                    # 2026-11-13: same wheel test as sections/pt-product.liquid (is_wheel)
+                    # and snippets/pt-collection-card.liquid (card_is_wheel): no tire size
+                    # AND (type has "Rims" OR tag Wheels OR a bolt pattern).
+                    if item.metafields.custom.tire_size == blank
+                      if pt_type contains 'Rims' or item.tags contains 'Wheels' or item.metafields.custom.bolt_pattern != blank
+                        assign is_wheel = true
+                      endif
+                    endif
+                    if pt_type contains 'Assembly'
+                      assign is_wheel = false
+                    elsif is_wheel == false
+                      case pt_type
+                        when 'All-Terrain', 'Heavy-Duty', 'Highway-Terrain', 'Light Truck', 'Mud-Terrain', 'Passenger', 'Performance', 'Rugged-Terrain', 'Winter'
+                          assign is_tire = true
+                      endcase
+                      if pt_type contains 'Tire' or item.metafields.custom.tire_size != blank
+                        assign is_tire = true
+                      endif
+                    endif
+                  -%}
                   {%- assign season_tag = '' -%}
                   {%- assign season_class = '' -%}
+                  {%- if is_wheel -%}
+                    {%- comment -%} Wheels: never a tire season or 3PMSF chip; same tag match as the PDP's wheel_winter_ok. {%- endcomment -%}
+                    {%- for tag in item.tags -%}
+                      {%- assign tag_lower = tag | downcase -%}
+                      {%- if tag_lower contains 'winter approved' or tag_lower contains 'winter-approved' -%}
+                        {%- assign season_tag = 'Winter approved' -%}
+                      {%- endif -%}
+                    {%- endfor -%}
+                  {%- else -%}
                   {%- assign m_season = item.metafields.custom.seasonality | default: '' -%}
                   {%- if m_season != blank -%}
                     {%- assign season_tag = m_season -%}
@@ -642,6 +1102,7 @@
                     {%- when 'Summer' -%}{%- assign season_class = 'pt-result__tag--season-summer' -%}
                     {%- when '3PMSF' -%}{%- assign season_class = 'pt-result__tag--season-winter' -%}
                   {%- endcase -%}
+                  {%- endif -%}
 
                   <div class="pt-result">
 
@@ -691,11 +1152,35 @@
                         <span class="pt-result__price-now{% if item.compare_at_price > item.price %} pt-result__price-sale{% endif %}">{{ item.price | money }}</span>
                       </div>
                       {%- if item.available -%}
-                        <span class="pt-result__availability">In stock</span>
+                        {%- comment -%} Stock wording: snippets/pt-stock-state.liquid. 2026-11-13 owner rule: lead time only ("Ready today" / "Ready in 1–2 business days" / "Order in" / "Sold out"), no counts or "Low stock" colour. {%- endcomment -%}
+                        {%- capture res_stock_raw -%}{% render 'pt-stock-state', product: item %}{%- endcapture -%}
+                        {%- assign res_stock = res_stock_raw | strip | split: '|' -%}
+                        {%- if is_wheel -%}
+                          {%- comment -%}
+                            Wheels: lead time only - no counts ("40+ available") or "Low stock"
+                            (owner rule). "Ready today" only for Tier A, the same-day booking
+                            floor in snippets/pt-supplier-tier.liquid; Tier B = next business day.
+                          {%- endcomment -%}
+                          {%- assign res_lead = 'products.stock.lead_out' | t -%}
+                          {%- if res_stock[0] == 'own' -%}
+                            {%- capture res_tier -%}{% render 'pt-supplier-tier', product: item %}{%- endcapture -%}
+                            {%- assign res_tier = res_tier | strip -%}
+                            {%- if res_tier == 'A' -%}
+                              {%- assign res_lead = 'Ready today' -%}
+                            {%- else -%}
+                              {%- assign res_lead = 'Ready in 1–2 business days' -%}
+                            {%- endif -%}
+                          {%- elsif res_stock[0] == 'supplier' -%}
+                            {%- assign res_lead = 'Ready in 1–2 business days' -%}
+                          {%- endif -%}
+                          <span class="pt-result__availability{% if res_stock[0] == 'supplier' %} pt-result__availability--order{% elsif res_stock[0] == 'out' %} pt-result__availability--out{% endif %}" data-pt-stock-kind="{{ res_stock[0] }}" data-pt-stock-state="lead">{{ res_lead }}</span>
+                        {%- else -%}
+                        <span class="pt-result__availability{% if res_stock[0] == 'supplier' %} pt-result__availability--order{% endif %}" data-pt-stock-kind="{{ res_stock[0] }}" data-pt-stock-state="{{ res_stock[1] }}">{{ res_stock[2] }}</span>
+                        {%- endif -%}
                       {%- else -%}
-                        <span class="pt-result__availability pt-result__availability--out">Out of stock</span>
+                        <span class="pt-result__availability pt-result__availability--out">{{ 'products.stock.lead_out' | t }}</span>
                       {%- endif -%}
-                      <a href="{{ item.url }}" class="pt-result__btn">View Tire</a>
+                      <a href="{{ item.url }}" class="pt-result__btn">{% if is_wheel %}View Wheel{% elsif is_tire %}View Tire{% else %}View Details{% endif %}</a>
                     </div>
 
                   </div>
@@ -715,6 +1200,44 @@
   {%- endif -%}
 </div>
 {% endpaginate %}
+{%- if search.performed -%}
+<script>
+  /* Filters re-render via Dawn's facets.js (AJAX), which replaces
+     #ProductGridContainer but not the search header or the filter list.
+     - Keep the header count ("N results for ...") in step with the list.
+     - If the new results flip the Tires/Wheels mode (or whether the Product
+       type filter shows), the filter list itself must change, so reload the
+       (already updated) URL instead of showing the old list.
+     - After such a reload, Dawn's Back handler would re-render the reloaded
+       URL; when Back lands on an entry Dawn has no state for, load it for real. */
+  (function () {
+    var grid = document.getElementById('ProductGridContainer');
+    if (!grid || !window.MutationObserver) return;
+    var flag = grid.querySelector('.pt-mode-flag');
+    var key = function (f) { return f ? f.getAttribute('data-pt-mode') + '|' + f.getAttribute('data-pt-type') : ''; };
+    var mode = key(flag);
+    var initQs = location.search.slice(1);
+    function syncCount(f) {
+      var n = parseInt(f.getAttribute('data-pt-count'), 10);
+      var el = document.querySelector('.pt-searchbar__count');
+      if (!el || isNaN(n)) return;
+      el.hidden = n === 0;
+      var em = el.querySelector('em'), unit = el.querySelector('.pt-searchbar__unit');
+      if (em) em.textContent = n;
+      if (unit) unit.textContent = n === 1 ? 'result' : 'results';
+    }
+    new MutationObserver(function () {
+      var f = grid.querySelector('.pt-mode-flag');
+      if (!f) return;
+      if (key(f) !== mode) { location.reload(); return; }
+      syncCount(f);
+    }).observe(grid, { childList: true });
+    window.addEventListener('popstate', function (e) {
+      if (!e.state && location.search.slice(1) !== initQs) location.reload();
+    });
+  })();
+</script>
+{%- endif -%}
 
 {% schema %}
 {

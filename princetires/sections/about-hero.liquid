@@ -1,122 +1,8 @@
-{%- liquid
-  assign show_schema = section.settings.enable_schema
--%}
-
-{%- if show_schema -%}
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": ["AutoPartsStore", "LocalBusiness"],
-        "@id": "{{ shop.url }}/#organization",
-        "name": {{ shop.name | json }},
-        "url": {{ shop.url | json }},
-        "description": {{ section.settings.schema_description | json }},
-        "telephone": {{ section.settings.phone | json }},
-        "email": {{ section.settings.email | json }},
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": {{ section.settings.street_address | json }},
-          "addressLocality": "Calgary",
-          "addressRegion": "Alberta",
-          "postalCode": {{ section.settings.postal_code | json }},
-          "addressCountry": "CA"
-        },
-        "geo": {
-          "@type": "GeoCoordinates",
-          "latitude": {{ section.settings.latitude | json }},
-          "longitude": {{ section.settings.longitude | json }}
-        },
-        "openingHoursSpecification": [
-          {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday"],
-            "opens": {{ section.settings.weekday_open | json }},
-            "closes": {{ section.settings.weekday_close | json }}
-          },
-          {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": "Friday",
-            "opens": "{% render 'pt-nap', field: 'hours_fri_open' %}",
-            "closes": "{% render 'pt-nap', field: 'hours_fri_close' %}"
-          },
-          {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": "Friday",
-            "opens": "{% render 'pt-nap', field: 'hours_fri_reopen' %}",
-            "closes": "{% render 'pt-nap', field: 'hours_fri_final_close' %}"
-          },
-          {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": "Saturday",
-            "opens": {{ section.settings.saturday_open | json }},
-            "closes": {{ section.settings.saturday_close | json }}
-          },
-          {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": "Sunday",
-            "opens": {{ section.settings.sunday_open | json }},
-            "closes": {{ section.settings.sunday_close | json }}
-          }
-        ],
-        "priceRange": {{ section.settings.price_range | default: "$$" | json }},
-        "areaServed": [
-          "NE Calgary", "NW Calgary", "SE Calgary", "SW Calgary",
-          "Downtown Calgary", "Airdrie", "Cochrane", "Okotoks",
-          "Chestermere", "Crossfield", "Strathmore", "Calgary Metropolitan Area"
-        ],
-        "hasMap": {{ section.settings.google_maps_url | json }},
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": {{ section.settings.rating_value | default: "4.9" | json }},
-          "reviewCount": {{ section.settings.review_count | default: "562" | json }},
-          "bestRating": "5",
-          "worstRating": "1"
-        },
-        "sameAs": [
-          {{ section.settings.facebook_url | json }},
-          {{ section.settings.instagram_url | json }},
-          {{ section.settings.google_profile_url | json }}
-        ]
-      },
-      {
-        "@type": "AboutPage",
-        "@id": "{{ shop.url }}{{ page.url }}#webpage",
-        "url": "{{ shop.url }}{{ page.url }}",
-        "name": {{ section.settings.heading | json }},
-        "description": {{ section.settings.subtitle | json }},
-        "isPartOf": {
-          "@id": "{{ shop.url }}/#organization"
-        },
-        "speakable": {
-          "@type": "SpeakableSpecification",
-          "cssSelector": [".abth__heading", ".abth__subtitle"]
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "@id": "{{ shop.url }}{{ page.url }}#breadcrumb",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
-            "name": "Home",
-            "item": "{{ shop.url }}"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": {{ section.settings.heading | json }},
-            "item": "{{ shop.url }}{{ page.url }}"
-          }
-        ]
-      }
-    ]
-  }
-  </script>
-{%- endif -%}
-
+{%- comment -%}
+  No JSON-LD here on purpose. The old LocalBusiness block carried a placeholder
+  address and towns we don't serve. Business schema lives in the site-wide
+  LocalBusiness snippet, which reads the real NAP from pt-nap.
+{%- endcomment -%}
 <section
   class="abth"
   style="
@@ -461,137 +347,6 @@
       "id": "accent_color",
       "label": "Accent color",
       "default": "#F5820B"
-    },
-    {
-      "type": "header",
-      "content": "SEO — LocalBusiness Schema"
-    },
-    {
-      "type": "checkbox",
-      "id": "enable_schema",
-      "label": "Enable LocalBusiness JSON-LD schema",
-      "default": true,
-      "info": "Adds structured data for local SEO. Only enable on your About Us page."
-    },
-    {
-      "type": "textarea",
-      "id": "schema_description",
-      "label": "Business description (schema)",
-      "default": "Prince Tires is Calgary's trusted tire shop offering tire sales, tire installation, balancing, rotation, flat repair, TPMS service, and seasonal swaps. Serving all Calgary neighbourhoods and surrounding areas including Airdrie, Cochrane, Okotoks, and Chestermere."
-    },
-    {
-      "type": "text",
-      "id": "phone",
-      "label": "Phone number",
-      "default": "+1-403-452-4283"
-    },
-    {
-      "type": "text",
-      "id": "email",
-      "label": "Email address",
-      "default": "info@princetires.ca"
-    },
-    {
-      "type": "text",
-      "id": "street_address",
-      "label": "Street address",
-      "default": "123 Main Street NE"
-    },
-    {
-      "type": "text",
-      "id": "postal_code",
-      "label": "Postal code",
-      "default": "T2A 0A1"
-    },
-    {
-      "type": "text",
-      "id": "latitude",
-      "label": "GPS Latitude",
-      "default": "51.0447",
-      "info": "Find on Google Maps — right-click your location"
-    },
-    {
-      "type": "text",
-      "id": "longitude",
-      "label": "GPS Longitude",
-      "default": "-114.0719"
-    },
-    {
-      "type": "text",
-      "id": "weekday_open",
-      "label": "Weekday opening time",
-      "default": "09:00",
-      "info": "24-hour format, e.g. 08:00"
-    },
-    {
-      "type": "text",
-      "id": "weekday_close",
-      "label": "Weekday closing time",
-      "default": "17:00"
-    },
-    {
-      "type": "text",
-      "id": "saturday_open",
-      "label": "Saturday opening time",
-      "default": "09:00"
-    },
-    {
-      "type": "text",
-      "id": "saturday_close",
-      "label": "Saturday closing time",
-      "default": "17:00"
-    },
-    {
-      "type": "text",
-      "id": "sunday_open",
-      "label": "Sunday opening time",
-      "default": "09:00",
-      "info": "Set 00:00 if closed"
-    },
-    {
-      "type": "text",
-      "id": "sunday_close",
-      "label": "Sunday closing time",
-      "default": "14:00"
-    },
-    {
-      "type": "text",
-      "id": "price_range",
-      "label": "Price range",
-      "default": "$$",
-      "info": "$, $$, $$$, or $$$$"
-    },
-    {
-      "type": "text",
-      "id": "rating_value",
-      "label": "Average rating (1–5)",
-      "default": "4.9"
-    },
-    {
-      "type": "text",
-      "id": "review_count",
-      "label": "Total review count",
-      "default": "562"
-    },
-    {
-      "type": "url",
-      "id": "google_maps_url",
-      "label": "Google Maps URL"
-    },
-    {
-      "type": "url",
-      "id": "google_profile_url",
-      "label": "Google Business Profile URL"
-    },
-    {
-      "type": "url",
-      "id": "facebook_url",
-      "label": "Facebook page URL"
-    },
-    {
-      "type": "url",
-      "id": "instagram_url",
-      "label": "Instagram profile URL"
     }
   ],
   "blocks": [
@@ -603,13 +358,13 @@
           "type": "text",
           "id": "value",
           "label": "Value",
-          "default": "10+"
+          "default": "2022"
         },
         {
           "type": "text",
           "id": "label",
           "label": "Label",
-          "default": "Years serving Calgary"
+          "default": "Family-owned since"
         }
       ]
     }
@@ -618,10 +373,10 @@
     {
       "name": "About — Hero",
       "blocks": [
-        { "type": "stat", "settings": { "value": "10+", "label": "Years in Calgary" } },
-        { "type": "stat", "settings": { "value": "15,000+", "label": "Vehicles serviced" } },
+        { "type": "stat", "settings": { "value": "2022", "label": "Family-owned since" } },
+        { "type": "stat", "settings": { "value": "2", "label": "Calgary shops" } },
         { "type": "stat", "settings": { "value": "4.9★", "label": "Google rating" } },
-        { "type": "stat", "settings": { "value": "50+", "label": "Tire brands stocked" } }
+        { "type": "stat", "settings": { "value": "60+", "label": "Tire brands" } }
       ]
     }
   ]

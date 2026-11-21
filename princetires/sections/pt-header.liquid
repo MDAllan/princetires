@@ -79,16 +79,8 @@
         {%- if customer -%}
           {%- comment -%} Treat as B2B if either: native Shopify B2B flag (customer.b2b? — true for company-contact customers wired via Markets/Companies) OR the legacy `wholesale` tag. Either alone is enough so a Company contact without the tag still gets the toggle. {%- endcomment -%}
           {%- if customer.b2b? or customer.tags contains 'wholesale' -%}
-            {%- comment -%} Phase 5A · trade-price toggle. Default OFF = retail only (safe to show walk-in customers). {%- endcomment -%}
-            <button type="button" class="pt-header__icon pt-header__icon--stack pt-header__trade-toggle" data-trade-toggle aria-pressed="false" aria-label="Toggle trade price visibility">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              <span class="pt-header__icon-label" data-trade-toggle-label>Show cost</span>
-            </button>
-            <a href="/pages/wholesale-portal" class="pt-header__icon pt-header__garage-link" aria-label="My portal">
-              <span class="pt-header__garage-label">My portal</span>
+            <a href="https://wholesale.princetires.ca/dealer/login" class="pt-header__icon pt-header__garage-link" aria-label="Dealer portal" rel="noopener">
+              <span class="pt-header__garage-label">Dealer portal</span>
             </a>
           {%- else -%}
             <a href="/pages/garage" class="pt-header__icon pt-header__garage-link" aria-label="{{ 'sections.pt_header.garage' | t }}" data-garage-customer-id="{{ customer.id }}">
@@ -111,9 +103,7 @@
             <line x1="3" y1="6" x2="21" y2="6"/>
             <path d="M16 10a4 4 0 0 1-8 0"/>
           </svg>
-          {%- if cart.item_count > 0 -%}
-            <span class="pt-header__cart-count">{{ cart.item_count }}</span>
-          {%- endif -%}
+          <span class="pt-header__cart-count"{% if cart.item_count == 0 %} hidden{% endif %}>{{ cart.item_count }}</span>
           <span class="pt-header__icon-label">Cart</span>
         </a>
     </div>
@@ -143,31 +133,13 @@
         </svg>
       </button>
 
-      {%- if customer and customer.b2b? or customer.tags contains 'wholesale' -%}
-        {%- comment -%} Phase 5A · mobile trade-price toggle. Mirror of the desktop one but lives in the mobile-right stack since .pt-header__icons is display:none on phones. Shares the same `data-trade-toggle` so the existing JS attaches one click handler per button and applyButtons() updates both aria-pressed states together. {%- endcomment -%}
-        <button
-          type="button"
-          class="pt-header__icon pt-header__trade-toggle pt-header__trade-toggle-mobile"
-          data-trade-toggle
-          aria-pressed="false"
-          aria-label="Toggle trade price visibility"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-        </button>
-      {%- endif -%}
-
       <a href="{{ routes.cart_url }}" class="pt-header__icon pt-header__cart pt-header__cart-mobile" aria-label="{{ 'sections.pt_header.cart' | t }}">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
           <line x1="3" y1="6" x2="21" y2="6"/>
           <path d="M16 10a4 4 0 0 1-8 0"/>
         </svg>
-        {%- if cart.item_count > 0 -%}
-          <span class="pt-header__cart-count">{{ cart.item_count }}</span>
-        {%- endif -%}
+        <span class="pt-header__cart-count"{% if cart.item_count == 0 %} hidden{% endif %}>{{ cart.item_count }}</span>
       </a>
     </div>
   </div>
@@ -210,6 +182,8 @@
         </button>
       </form>
       <button type="button" class="pt-header__search-close" aria-label="{{ 'accessibility.close' | t | default: 'Close' }}" data-pt-search-close>&times;</button>
+      {%- comment -%} Opens the Find your size sheet (snippets/pt-size-sheet); without JS it is a link to the Shop by size hub. {%- endcomment -%}
+      <a class="pt-header__search-findsize" href="{{ routes.collections_url }}/all" data-pt-size-sheet>Know your tire size? <span>Find your size</span></a>
     </div>
   </div>
 
@@ -223,9 +197,9 @@
       {%- endfor -%}
       {%- if customer -%}
         {%- if customer.tags contains 'wholesale' -%}
-          <a href="/pages/wholesale-portal" class="pt-header__mobile-link pt-header__mobile-garage">
+          <a href="https://wholesale.princetires.ca/dealer/login" class="pt-header__mobile-link pt-header__mobile-garage" rel="noopener">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M12 12v4"/><path d="M8 12h8"/></svg>
-            My portal
+            Dealer portal
           </a>
         {%- else -%}
           <a href="/pages/garage" class="pt-header__mobile-link pt-header__mobile-garage">
@@ -239,6 +213,8 @@
     </nav>
   </div>
 </header>
+
+{%- render 'pt-size-sheet' -%}
 
 <script>
   /* ── Mobile menu toggle ── */
@@ -570,6 +546,7 @@
   }
 
   /* Cart badge */
+  .pt-header__cart-count[hidden] { display: none !important; }
   .pt-header__cart-count {
     position: absolute;
     top: 4px;
@@ -940,6 +917,23 @@
     outline: 2px solid #dc2626;
     outline-offset: 2px;
   }
+
+  /* "Find your size" under the search box (opens snippets/pt-size-sheet). */
+  .pt-header__search-panel { flex-wrap: wrap; }
+  .pt-header__search-findsize {
+    flex: 1 0 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.78);
+    text-decoration: none;
+  }
+  .pt-header__search-findsize span { color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+  .pt-header__search-findsize:hover span { text-decoration-thickness: 2px; }
+  .pt-header__search-findsize:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 6px; }
 
   .pt-header__search-close {
     background: none;
@@ -1349,193 +1343,6 @@
     }
   })();
 
-  /* ── Phase 5A · trade-price toggle ───────────────────────────────────── */
-  /*
-   * Default OFF: theme displays RETAIL on every [data-pt-price] element so a
-   * B2B shop owner can show their walk-in customer the screen safely.
-   * Toggle ON: reveals a "Your cost: $X · Tier 2 · 15% off retail" badge
-   * next to the main price.
-   *
-   * The cart / checkout price doesn't change — Shopify's B2B catalog still
-   * enforces wholesale at checkout regardless of what the theme shows here.
-   */
-  (function () {
-    if (!document.querySelector('[data-trade-toggle]')) return; // not a B2B page
-
-    var STORAGE_KEY = 'pt-show-trade-price';
-    var cache = {};
-
-    function isVisible() {
-      try { return localStorage.getItem(STORAGE_KEY) === '1'; }
-      catch (e) { return false; }
-    }
-    function setVisible(v) {
-      try { localStorage.setItem(STORAGE_KEY, v ? '1' : '0'); }
-      catch (e) {}
-    }
-    function fmtMoney(amount) {
-      if (typeof amount !== 'number' || !isFinite(amount)) return '$—';
-      return '$' + amount.toLocaleString('en-CA', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-    }
-
-    function applyButtons() {
-      var v = isVisible();
-      document.body.classList.toggle('pt-trade-visible', v);
-      document.querySelectorAll('[data-trade-toggle]').forEach(function (b) {
-        b.setAttribute('aria-pressed', v ? 'true' : 'false');
-        var lab = b.querySelector('[data-trade-toggle-label]');
-        if (lab) lab.textContent = v ? 'Hide cost' : 'Show cost';
-      });
-    }
-
-    function applyBadges() {
-      document.querySelectorAll('[data-pt-trade-info]').forEach(function (badge) {
-        var id = badge.dataset.ptVariantId;
-        var p = cache[id];
-        if (!p || p.wholesale == null) {
-          badge.style.display = 'none';
-          return;
-        }
-        badge.style.display = '';
-        var amt = badge.querySelector('[data-pt-trade-amount]');
-        var tier = badge.querySelector('[data-pt-trade-tier]');
-        var pct = badge.querySelector('[data-pt-trade-pct]');
-        if (amt) amt.textContent = fmtMoney(p.wholesale);
-        if (tier) tier.textContent = p.tierLabel || '';
-        if (pct) pct.textContent = String(p.discountPct);
-      });
-    }
-
-    function applyPrices() {
-      document.querySelectorAll('[data-pt-price][data-pt-variant-id]').forEach(function (el) {
-        var id = el.dataset.ptVariantId;
-        var mult = parseFloat(el.dataset.ptMultiplier || '1');
-        var p = cache[id];
-        if (!p || p.retail == null) return;
-        el.textContent = fmtMoney(p.retail * mult);
-      });
-    }
-
-    // Cart "Your cost total" — walks every [data-pt-price] inside a cart line
-    // and sums (wholesale ?? retail) × multiplier. Ineligible brands quietly
-    // fall back to retail so the total is always meaningful even on mixed
-    // carts. Selects only ELEMENTS INSIDE A CART context (pt-cart page or
-    // the cart drawer) by walking up from each cart-total to find lines.
-    function applyCartTotal() {
-      document.querySelectorAll('[data-pt-cart-wholesale-total]').forEach(function (totalEl) {
-        // Scope: find the nearest cart container, then sum lines inside it.
-        var scope = totalEl.closest('cart-drawer, .ptc__summary, form.cart, .totals, body');
-        var lines = scope ? scope.parentElement.querySelectorAll('[data-pt-price][data-pt-variant-id][data-pt-multiplier]') : [];
-        // If we couldn't narrow the scope, walk the whole document for cart-style
-        // lines (multiplier > 1 OR explicitly cart-classed).
-        var sum = 0;
-        var anyHit = false;
-        for (var i = 0; i < lines.length; i++) {
-          var el = lines[i];
-          // Only include cart line totals (the line-total span carries the line
-          // quantity as multiplier). Skip unit-price spans where multiplier=1.
-          if (!el.classList.contains('price--end') && !el.classList.contains('ptc__line-total')) continue;
-          var id = el.dataset.ptVariantId;
-          var mult = parseFloat(el.dataset.ptMultiplier || '1');
-          var p = cache[id];
-          if (!p || p.retail == null) continue;
-          var unit = p.wholesale != null ? p.wholesale : p.retail;
-          sum += unit * mult;
-          anyHit = true;
-        }
-        var amountEl = totalEl.querySelector('[data-pt-cart-wholesale-amount]') || totalEl.querySelector('strong');
-        if (!amountEl) return;
-        amountEl.textContent = anyHit ? fmtMoney(sum) : '—';
-      });
-    }
-
-    function fetchPrices() {
-      var els = document.querySelectorAll('[data-pt-price][data-pt-variant-id]');
-      if (els.length === 0) return;
-      var idSet = {};
-      els.forEach(function (el) { idSet[el.dataset.ptVariantId] = true; });
-      var ids = Object.keys(idSet);
-      if (!ids.length) return;
-      var idsParam = ids.map(function (id) {
-        return /^\d+$/.test(id) ? 'gid://shopify/ProductVariant/' + id : id;
-      }).join(',');
-      fetch('/apps/api/wholesale/pricing?variant_ids=' + encodeURIComponent(idsParam), {
-        credentials: 'same-origin'
-      })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (data) {
-          if (data && data.isWholesale && Array.isArray(data.prices)) {
-            for (var i = 0; i < data.prices.length; i++) {
-              var p = data.prices[i];
-              var num = String(p.variantId).split('/').pop();
-              var entry = {
-                retail: typeof p.retail === 'number' ? p.retail : null,
-                wholesale: typeof p.wholesale === 'number' ? p.wholesale : null,
-                discountPct: p.discountPct,
-                tierLabel: p.tierLabel,
-              };
-              cache[num] = entry;
-              cache[p.variantId] = entry;
-            }
-            applyPrices();
-          }
-          // Always run applyBadges — when isWholesale=false or a variant came
-          // back with wholesale=null (ineligible brand / no discount in this
-          // tier), the badge gets display:none so we don't show a misleading
-          // placeholder "—" next to the retail price.
-          applyBadges();
-          applyCartTotal();
-        })
-        .catch(function () { /* swallow — Liquid-rendered wholesale stays as fallback */ });
-    }
-
-    document.querySelectorAll('[data-trade-toggle]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        setVisible(!isVisible());
-        applyButtons();
-        // Re-apply badges + cart-total so any with no cached wholesale stay
-        // correct even immediately after the toggle (no placeholder flash).
-        applyBadges();
-        applyCartTotal();
-      });
-    });
-
-    // Re-run on every cart change so the "Your cost total" reflects the new
-    // quantities. cart.js dispatches PUB_SUB_EVENTS.cartUpdate after every
-    // /cart/change.js call (qty +/-, remove, add via drawer). The Section
-    // Rendering API replaces line items wholesale, so the new DOM already
-    // has fresh data-pt-multiplier values from Liquid — we just have to
-    // re-apply our cached prices + re-sum.
-    //
-    // Feature-detect: storefronts that don't include cart.js (rare, but
-    // e.g. the customer account routes) won't expose subscribe / PUB_SUB_EVENTS.
-    if (typeof subscribe === 'function' && typeof PUB_SUB_EVENTS !== 'undefined' && PUB_SUB_EVENTS.cartUpdate) {
-      subscribe(PUB_SUB_EVENTS.cartUpdate, function () {
-        // If new variants appeared in the cart that aren't in the cache yet
-        // (e.g. customer added a new SKU via the drawer), refetch the whole
-        // batch — fetchPrices() also runs applyPrices/Badges/CartTotal at the
-        // end of its .then(). Otherwise just re-apply what we already have.
-        var els = document.querySelectorAll('[data-pt-price][data-pt-variant-id]');
-        var anyMiss = false;
-        els.forEach(function (el) {
-          if (!cache[el.dataset.ptVariantId]) anyMiss = true;
-        });
-        if (anyMiss) {
-          fetchPrices();
-        } else {
-          applyPrices();
-          applyBadges();
-          applyCartTotal();
-        }
-      });
-    }
-
-    applyButtons();
-    fetchPrices();
-  })();
 {% endjavascript %}
 
 {% schema %}

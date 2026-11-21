@@ -742,7 +742,7 @@ class MyGarage extends HTMLElement {
       listEl.innerHTML = '<div class="gbk-empty">'
         + '<p class="gbk-empty-title">No bookings yet</p>'
         + '<p class="gbk-empty-sub">You don’t have any scheduled installations or services.</p>'
-        + '<a href="/pages/services" class="gbk-cta">Book an installation</a>'
+        + '<a href="/pages/booking" class="gbk-cta">Request an appointment</a>'
         + '</div>';
       return;
     }
@@ -806,12 +806,16 @@ class MyGarage extends HTMLElement {
   // (confirmed / tentative / cancelled); other statuses fold into the closest.
   bookingStatusUi(status) {
     switch (status) {
-      case 'pending':     return { cls: 'tentative', label: 'Pending' };
+      // A booking is a request until staff confirm it: only 'confirmed' says
+      // Confirmed; pending, booked and anything unknown read Requested.
+      case 'confirmed':   return { cls: 'confirmed', label: 'Confirmed' };
+      case 'pending':     return { cls: 'tentative', label: 'Requested' };
+      case 'booked':      return { cls: 'tentative', label: 'Requested' };
       case 'cancelled':   return { cls: 'cancelled', label: 'Cancelled' };
       case 'no_show':     return { cls: 'cancelled', label: 'Missed' };
       case 'in_progress': return { cls: 'confirmed', label: 'In progress' };
       case 'completed':   return { cls: 'confirmed', label: 'Completed' };
-      default:            return { cls: 'confirmed', label: 'Confirmed' };
+      default:            return { cls: 'tentative', label: 'Requested' };
     }
   }
 
@@ -819,7 +823,23 @@ class MyGarage extends HTMLElement {
 
   bookInstallForVehicle(id) {
     var vehicle = this.vehicles.find(function(v) { return v.id === id; });
-    if (!vehicle || typeof openBookingModal !== 'function') return;
+    if (!vehicle) return;
+    // 2026-11-13: the customer's own tires — the service modal's Tire Installation
+    // prices by vehicle from the app's catalogue (car/SUV $30, van/truck $35 a tire).
+    // Redesign: the one booking form opens at the job details with this
+    // vehicle (year / make / model / trim) and its tire size filled in.
+    if (window.PTBook && typeof window.PTBook.open === 'function') {
+      window.PTBook.open({
+        service: 'installation_off', from: 'garage', tireSize: vehicle.tireSize || '',
+        vehicle: { year: vehicle.year, make: vehicle.make, model: vehicle.model, trim: vehicle.trim || '', tireSize: vehicle.tireSize || '' }
+      });
+      return;
+    }
+    if (typeof openServiceModal === 'function') {
+      openServiceModal({ dataset: { serviceName: 'Tire Installation' } });
+      return;
+    }
+    if (typeof openBookingModal !== 'function') return;
     var fakeBtn = {
       dataset: {
         tireName: vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model + ' — ' + vehicle.trim,
@@ -1169,7 +1189,7 @@ class MyGarage extends HTMLElement {
       return '<div class="garage__reminder garage__reminder--' + r.urgency + '">'
         + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>'
         + '<span>' + this.escapeHtml(r.label) + '</span>'
-        + '<button type="button" class="garage__reminder-book" data-action="book-install" data-id="' + this.escapeAttr(vehicle.id) + '">Book now</button>'
+        + '<button type="button" class="garage__reminder-book" data-action="book-install" data-id="' + this.escapeAttr(vehicle.id) + '">Request a time</button>'
         + '</div>';
     }.bind(this)).join('');
 
@@ -1235,8 +1255,7 @@ class MyGarage extends HTMLElement {
             + 'Shop tires'
           + '</a>'
           + '<a href="#" class="garage__action-btn garage__action-btn--outline" data-action="book-install" data-id="' + this.escapeAttr(vehicle.id) + '">'
-            + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
-            + 'Book install'
+            + 'Request install'
           + '</a>'
         + '</div>'
 
@@ -1722,16 +1741,16 @@ class MyGarage extends HTMLElement {
         icon: '❄️',
         label: 'Winter tire season approaching',
         sub: 'Calgary roads get icy fast. Book your winter swap early — slots fill up by late October.',
-        cta: 'Book service',
-        href: '/pages/booking'
+        cta: 'Request a swap',
+        href: '/pages/booking?service=installation_on'
       };
     } else if (month === 4 || month === 5) {
       tip = {
         icon: '🌱',
         label: 'Summer swap season',
         sub: 'Temps are holding above 7°C — time to switch back to summer or all-season tires.',
-        cta: 'Book service',
-        href: '/pages/booking'
+        cta: 'Request a swap',
+        href: '/pages/booking?service=installation_on'
       };
     } else if (month === 11 || month === 0 || month === 1 || month === 2) {
       tip = {

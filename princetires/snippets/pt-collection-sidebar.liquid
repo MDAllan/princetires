@@ -1,582 +1,675 @@
 {% doc %}
-  Sidebar filters for the tires collection — Season, Brand, Model,
-  Product type, Tire width / Aspect / Rim pills, Service type,
-  Studdable, Run flat, plus the price-range slider at the top and an
-  active-filters chip bar.
+  Filters for the tire AND wheel results pages (redesign 2026-11-13, mockups
+  Main.dc.html, MobileFilters.dc.html, WheelResults.dc.html).
 
-  Mobile: this same aside slides in as a drawer when the customer taps
-  the floating Filters button.
+  Desktop (>= 990px): a sidebar of dropdown accordions.
+  Phone / tablet: the same aside becomes a full-screen drawer opened by the
+  "Filters" button in the sticky bar; taps are collected and applied with
+  one "Show N tires" button (assets/pt-rd-results.js).
 
-  All filter wiring (toggleFilter, isFilterActive, the price-slider
-  handler, brand/model search, chip rendering) lives in the parent
-  section's {% javascript %} block — this snippet is markup-only.
+  Every option comes from Shopify's storefront filters (collection.filters,
+  set up in Search & Discovery), so the URLs stay the standard
+  filter.p.m.* / filter.v.* ones and an option can never point at zero
+  products. Groups (owner order):
+    Tires:  Ready by, Season, Tire type*, Price per tire, Brand, Studs,
+            Speed rating*, Load*, Tire class, Model, Run flat.
+    Tire type = the Product type filter (Highway / All-terrain / Mud-terrain /
+    Performance / Heavy-duty). Tire class = service_type (P / LT / ST).
+    All-terrain is never offered as a Season (owner 2026-11-15).
+    Wheels: Ready by, Bolt pattern, Width, Offset, Finish*, Price per wheel,
+            Brand, Wheel type, Centre bore.
+    * only when the store exposes that filter (see the report).
+  ALLOW-LIST: only the groups above are shown. A new Search & Discovery
+  filter (e.g. a supplier / location metafield, "Ply rating") does NOT reach
+  customers until it is added here on purpose.
+  The tire-size filters (width / aspect / rim) are not listed: the size is
+  the black header's "Change size" (owner 2026-11-09 hid them already).
+  Wheel diameter is the header's diameter tabs.
 
-  Note: the price slider needs `price_max_rounded` from the parent
-  section. The active-filter values (`active_vendor`, `active_season`,
-  `active_type`, `active_price_min/max`) and the model list are computed
-  in this snippet from `collection.filters`.
+  Ready by: only "Hide sold out", the availability filter the site applies
+  by default (pt-collection-stock); unticking it sends stock=all, exactly as
+  the old "All items" choice did. Today / Ready in 1-2 days / Order in cannot
+  be filtered: no filter holds a lead time. The "Prince Stock" tag is left
+  out on purpose (where stock sits is not a lead time, and a tagged product
+  with nothing on hand reads "Order in"). Needs a lead-time metafield first.
+
+  Finish (wheels) and "Winter approved" (Wheel type): with a Tag filter in
+  Search & Discovery (filter.p.tag) they come from it. Without one (the
+  store today), they are built from the collection's own product tags
+  (collection.all_tags) and filter through the collection tag URL
+  /collections/<handle>/<tag> (snippets/pt-rd-results-tagfacet), which
+  ANDs with every other filter in the query string. Finish only lists tags
+  made of finish words, minus model names (fin_skip below) and supplier /
+  size tags. Wheel type without a Product type filter = the Alloy / Steel
+  tags (one at a time) + Winter approved.
+
+  @param {string} kind - 'tires' | 'wheels' | 'items' (snippets/pt-rd-results-kind)
 
   @example
-  {% render 'pt-collection-sidebar', price_max_rounded: 600 %}
+    {% render 'pt-collection-sidebar', kind: rd_kind %}
 {% enddoc %}
-
-{%- comment -%}
-  Active filter values, read from collection.filters: drives the Stud-option
-  toggle (shown only for Winter or LT), pre-fills the price slider, and lets
-  the Stud / Run-flat links carry the customer's other active filters.
-{%- endcomment -%}
 {%- liquid
-  assign active_vendor = ''
-  assign active_season = ''
-  assign active_type = ''
-  assign active_price_min = ''
-  assign active_price_max = ''
+  assign sb_kind = kind | default: 'tires'
+  assign sb_unit = 'tire'
+  if sb_kind == 'wheels'
+    assign sb_unit = 'wheel'
+  elsif sb_kind == 'items'
+    assign sb_unit = 'item'
+  endif
+
+  assign f_vendor = nil
+  assign f_price = nil
+  assign f_avail = nil
+  assign f_tag = nil
+  assign f_ptype = nil
+  assign f_season = nil
+  assign f_stud = nil
+  assign f_service = nil
+  assign f_model = nil
+  assign f_runflat = nil
+  assign f_bolt = nil
+  assign f_width = nil
+  assign f_offset = nil
+  assign f_bore = nil
+  assign f_speed = nil
+  assign f_load = nil
+  assign sb_active = 0
   for f in collection.filters
     case f.param_name
       when 'filter.p.vendor'
-        if f.active_values.size > 0
-          assign active_vendor = f.active_values.first.value
-        endif
-      when 'filter.p.m.custom.seasonality'
-        if f.active_values.size > 0
-          assign active_season = f.active_values.first.value
-        endif
-      when 'filter.p.m.custom.service_type'
-        if f.active_values.size > 0
-          assign active_type = f.active_values.first.value
-        endif
+        assign f_vendor = f
       when 'filter.v.price'
-        if f.min_value.value != blank
-          assign active_price_min = f.min_value.value
-        endif
-        if f.max_value.value != blank
-          assign active_price_max = f.max_value.value
-        endif
+        assign f_price = f
+      when 'filter.v.availability'
+        assign f_avail = f
+      when 'filter.p.tag'
+        assign f_tag = f
+      when 'filter.p.product_type'
+        assign f_ptype = f
+      when 'filter.p.m.custom.seasonality'
+        assign f_season = f
+      when 'filter.p.m.custom.stud_option'
+        assign f_stud = f
+      when 'filter.p.m.custom.service_type'
+        assign f_service = f
+      when 'filter.p.m.custom.tire_model'
+        assign f_model = f
+      when 'filter.p.m.custom.run_flat'
+        assign f_runflat = f
+      when 'filter.p.m.custom.bolt_pattern'
+        assign f_bolt = f
+      when 'filter.p.m.custom.rim_width'
+        assign f_width = f
+      when 'filter.p.m.custom.rim_offset'
+        assign f_offset = f
+      when 'filter.p.m.custom.center_bore'
+        assign f_bore = f
     endcase
+    if f.param_name contains 'speed_rating'
+      assign f_speed = f
+    elsif f.param_name contains 'load_range' or f.param_name contains 'load_type' or f.param_name contains 'extra_load'
+      assign f_load = f
+    endif
+    assign sb_skip = false
+    if f.param_name == 'filter.v.availability' or f.param_name == 'filter.p.m.custom.tire_width' or f.param_name == 'filter.p.m.custom.tire_profile' or f.param_name == 'filter.p.m.custom.tire_size'
+      assign sb_skip = true
+    endif
+    if f.param_name == 'filter.p.m.custom.rim_diameter'
+      assign sb_skip = true
+    endif
+    unless sb_skip
+      if f.type == 'price_range'
+        if f.min_value.value != blank or f.max_value.value != blank
+          assign sb_active = sb_active | plus: 1
+        endif
+      elsif f.param_name == 'filter.p.m.custom.bolt_pattern'
+        if f.active_values.size > 0
+          capture sb_bolts
+            render 'pt-rd-results-bolt', filter: f
+          endcapture
+          assign sb_bolt_n = sb_bolts | strip | split: ', '
+          assign sb_active = sb_active | plus: sb_bolt_n.size
+        endif
+      else
+        assign sb_active = sb_active | plus: f.active_values.size
+      endif
+    endunless
   endfor
-  # Detect whether this is the wheels collection — drives the sidebar to
-  # hide tire-only filter groups (season, tire-type, aspect ratio, etc.)
-  # and surface wheel-specific groups (bolt pattern, rim width, offset,
-  # center bore) instead. Single source of truth: collection.handle.
-  assign is_wheels = false
-  if collection.handle == 'wheels'
-    assign is_wheels = true
+
+  # Tags applied through the collection tag URL (/collections/wheels/gloss-black).
+  assign sb_cur_tags = '|'
+  for t in current_tags
+    assign sb_th = t | handleize
+    assign sb_cur_tags = sb_cur_tags | append: sb_th | append: '|'
+  endfor
+  assign sb_active = sb_active | plus: current_tags.size
+
+  # Every active filter except price, as a query string, for the price preset
+  # links (so a ctrl/cmd-click or no-JS click keeps the size, season, brand...).
+  assign sb_keep = ''
+  for f in collection.filters
+    unless f.type == 'price_range'
+      for v in f.active_values
+        assign sb_kv = v.value | url_encode
+        assign sb_keep = sb_keep | append: v.param_name | append: '=' | append: sb_kv | append: '&'
+      endfor
+    endunless
+  endfor
+  if collection.sort_by != blank
+    assign sb_keep = sb_keep | append: 'sort_by=' | append: collection.sort_by | append: '&'
+  endif
+
+  # Same plus price: the tag links (pt-rd-results-tagfacet) keep every filter.
+  assign sb_tag_q = sb_keep
+  for f in collection.filters
+    if f.type == 'price_range'
+      if f.min_value.value != blank
+        assign sb_pv = f.min_value.value | divided_by: 100
+        assign sb_tag_q = sb_tag_q | append: 'filter.v.price.gte=' | append: sb_pv | append: '&'
+      endif
+      if f.max_value.value != blank
+        assign sb_pv = f.max_value.value | divided_by: 100
+        assign sb_tag_q = sb_tag_q | append: 'filter.v.price.lte=' | append: sb_pv | append: '&'
+      endif
+    endif
+  endfor
+  assign sb_tag_q = sb_tag_q | remove_last: '&'
+
+  # Clear all = every drawer filter, NOT the tire size / wheel diameter: those
+  # belong to the black header (title + Change size / diameter tabs), so a
+  # shopper clearing "Michelin" keeps 225/65R17 (pt-rd-results.js does the same).
+  assign sb_clear_q = ''
+  for f in collection.filters
+    if f.param_name == 'filter.p.m.custom.tire_width' or f.param_name == 'filter.p.m.custom.tire_profile' or f.param_name == 'filter.p.m.custom.rim_diameter' or f.param_name == 'filter.p.m.custom.tire_size'
+      for v in f.active_values
+        assign sb_cv = v.value | url_encode
+        if sb_clear_q != ''
+          assign sb_clear_q = sb_clear_q | append: '&'
+        endif
+        assign sb_clear_q = sb_clear_q | append: v.param_name | append: '=' | append: sb_cv
+      endfor
+    endif
+  endfor
+  if collection.sort_by != blank
+    if sb_clear_q != ''
+      assign sb_clear_q = sb_clear_q | append: '&'
+    endif
+    assign sb_clear_q = sb_clear_q | append: 'sort_by=' | append: collection.sort_by
+  endif
+  assign sb_clear = collection.url
+  if sb_clear_q != ''
+    assign sb_clear = sb_clear | append: '?' | append: sb_clear_q
+  endif
+
+  # Ready by: "Hide sold out" (availability = 1) only. The "Prince Stock" tag
+  # is not offered: it tracks where stock sits, not when a tire is ready, so
+  # it could return cards that say "Order in" / "Sold out" (owner rule: lead
+  # time only). A real lead-time filter needs a lead-time metafield first.
+  assign rb_avail = nil
+  if f_avail
+    for v in f_avail.values
+      if v.value == '1'
+        assign rb_avail = v
+        break
+      endif
+    endfor
   endif
 -%}
+<div class="rd-fdrawer__backdrop" data-rd-fclose hidden></div>
+<aside class="rd-filters rd-fside" id="rd-filters" data-rd-filters data-kind="{{ sb_kind }}" data-unit="{{ sb_unit }}" aria-labelledby="rd-filters-title">
+  <div class="rd-fside__head">
+    <h2 class="rd-filters__title" id="rd-filters-title">Filters</h2>
+    {%- comment -%} v16 tires: the only desktop Clear all sits beside the applied chips; the sheet keeps its footer one. {%- endcomment -%}
+    {%- unless sb_kind == 'tires' -%}<a class="rd-btn rd-btn--text rd-fside__clear-top" href="{{ sb_clear }}" rel="nofollow" data-rd-clear{% if sb_active == 0 %} hidden{% endif %}>Clear all</a>{%- endunless -%}
+    <button class="rd-iconbtn rd-iconbtn--bare rd-fside__close" type="button" aria-label="Close filters" data-rd-fclose>{% render 'pt-icon', name: 'close', size: 22 %}</button>
+  </div>
 
-      <div class="ptg__sidebar-backdrop" data-filter-backdrop></div>
-      <aside class="ptg__sidebar" data-sidebar>
-        <div class="ptg__sidebar-mobile-head">
-          <span class="ptg__sidebar-mobile-title">Filters</span>
-          <button class="ptg__sidebar-close" data-close-filters>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        {%- comment -%} Tire Size editor — tire-only (parses tire-size syntax) {%- endcomment -%}
-        {%- unless is_wheels -%}
-        <div class="ptg__size-display" data-size-display>
-          <span class="ptg__size-display-label">Tire size</span>
-          <div class="ptg__size-display-row">
-            <input type="text" class="ptg__size-display-input" value="" placeholder="e.g. 225/65R17" data-size-edit>
-            <a href="{{ collection.url }}" class="ptg__size-display-clear" title="Clear size" data-size-clear-link hidden>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </a>
-          </div>
-        </div>
-        {%- endunless -%}
-
-        <div class="ptg__sidebar-head">
-          <span class="ptg__sidebar-title">Filters</span>
-        </div>
-
-        <div class="ptg__active-filters" data-active-filters-sidebar hidden></div>
-
-        {%- comment -%} Price Range Slider {%- endcomment -%}
-        <div class="ptg__filter ptg__filter--open">
-          <span class="ptg__filter-label ptg__filter-label--static">Price range</span>
-          <div class="ptg__price-slider">
-            <div class="ptg__price-values">
-              <span data-price-min-display>${{ active_price_min | default: '0' }}</span>
-              <span data-price-max-display>${{ active_price_max | default: price_max_rounded }}</span>
-            </div>
-            <div class="ptg__price-track">
-              <input type="range" min="0" max="{{ price_max_rounded }}" value="{{ active_price_min | default: 0 }}" step="10" class="ptg__price-range ptg__price-range--min" data-price-min>
-              <input type="range" min="0" max="{{ price_max_rounded }}" value="{{ active_price_max | default: price_max_rounded }}" step="10" class="ptg__price-range ptg__price-range--max" data-price-max>
-            </div>
-          </div>
-        </div>
-
-        {%- comment -%} Tire-only filter groups — hidden on /collections/wheels {%- endcomment -%}
-        {%- unless is_wheels -%}
-
-        {%- comment -%} Season Icons {%- endcomment -%}
-        <details class="ptg__filter" open>
-          <summary class="ptg__filter-label">
-            Season
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </summary>
-          <div class="ptg__filter-options">
-            <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.seasonality" data-filter-value="Summer">
-              <span class="ptg__filter-check"></span>
-              <span class="ptg__season-dot" style="background:#eab308"></span>
-              Summer
-              <span class="ptg__filter-cnt" data-filter-cnt="seasonality:summer"></span>
-            </a>
-            <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.seasonality" data-filter-value="All-Season">
-              <span class="ptg__filter-check"></span>
-              <span class="ptg__season-dot" style="background:#16a34a"></span>
-              All-season
-              <span class="ptg__filter-cnt" data-filter-cnt="seasonality:all-season"></span>
-            </a>
-            <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.seasonality" data-filter-value="All-Weather">
-              <span class="ptg__filter-check"></span>
-              <span class="ptg__season-dot" style="background:#F5820B"></span>
-              All-weather <span class="ptg__filter-symbol">(3PMSF)</span>
-              <span class="ptg__filter-cnt" data-filter-cnt="seasonality:all-weather"></span>
-            </a>
-            <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.seasonality" data-filter-value="Winter">
-              <span class="ptg__filter-check"></span>
-              <span class="ptg__season-dot" style="background:#2563eb"></span>
-              Winter
-              <span class="ptg__filter-cnt" data-filter-cnt="seasonality:winter"></span>
-            </a>
-          </div>
-        </details>
-
-        {%- comment -%} Tire Type {%- endcomment -%}
-        <details class="ptg__filter">
-          <summary class="ptg__filter-label">
-            Tire type
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </summary>
-          <div class="ptg__filter-options">
-            <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.service_type" data-filter-value="P">
-              <span class="ptg__filter-check"></span>
-              Passenger <span class="ptg__filter-symbol">(P)</span>
-            </a>
-            <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.service_type" data-filter-value="LT">
-              <span class="ptg__filter-check"></span>
-              Light Truck <span class="ptg__filter-symbol">(LT)</span>
-            </a>
-            <a href="#" class="ptg__filter-link" data-filter-key="filter.p.m.custom.service_type" data-filter-value="ST">
-              <span class="ptg__filter-check"></span>
-              Trailer <span class="ptg__filter-symbol">(ST)</span>
-            </a>
-          </div>
-        </details>
-
-        {%- endunless -%}{%- comment -%} end tire-only: Season + Tire type {%- endcomment -%}
-
-        {%- comment -%} Brand — scrollable (shared: tires + wheels) {%- endcomment -%}
-        <details class="ptg__filter" open>
-          <summary class="ptg__filter-label">
-            Brand
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </summary>
-          <input type="search" class="ptg__filter-search" data-brand-search placeholder="Search brands..." aria-label="Search brands">
-          <div class="ptg__filter-options ptg__filter-options--scroll" data-brand-list>
-            {%- comment -%}
-              Pulled from collection.filters (Shopify's native filter facet) so
-              every stocked vendor appears, with live product counts.
-              Falls back to a hardcoded list if the native filter isn't
-              available (e.g. on /search results or a metaobject page).
-            {%- endcomment -%}
-            {%- assign vendor_filter = blank -%}
-            {%- for f in collection.filters -%}
-              {%- if f.param_name == 'filter.p.vendor' -%}
-                {%- assign vendor_filter = f -%}
-                {%- break -%}
-              {%- endif -%}
-            {%- endfor -%}
-            {%- if vendor_filter != blank -%}
-              {%- for v in vendor_filter.values -%}
-                <a href="#" class="ptg__filter-link" data-filter-key="filter.p.vendor" data-filter-value="{{ v.label | escape }}">
-                  <span class="ptg__filter-check"></span>
-                  {{ v.label }}
-                  <span class="ptg__filter-cnt" data-filter-cnt="vendor:{{ v.label | handleize }}">({{ v.count }})</span>
-                </a>
-              {%- endfor -%}
-            {%- else -%}
-              {%- assign brand_list = 'BFGoodrich,Bridgestone,CARLSTAR,Continental,Cooper,Falken,Farroad,Firemax,Firestone,Fortune,General,Goodyear,Haida,Kumho,Linglong,Michelin,Mickey Thompson,Pirelli,Radar,Rotalla,Tesche,Toyo,Uniroyal,Yeada,Yokohama' | split: ',' -%}
-              {%- for brand in brand_list -%}
-                <a href="#" class="ptg__filter-link" data-filter-key="filter.p.vendor" data-filter-value="{{ brand }}">
-                  <span class="ptg__filter-check"></span>
-                  {{ brand }}
-                  <span class="ptg__filter-cnt" data-filter-cnt="vendor:{{ brand | handleize }}"></span>
-                </a>
-              {%- endfor -%}
-            {%- endif -%}
-          </div>
-        </details>
-
-        {%- comment -%} Tire-only filter groups: Model + Product Type + Width + Aspect {%- endcomment -%}
-        {%- unless is_wheels -%}
-
-        {%- comment -%}
-          Tire Model — sourced from collection.filters when the
-          custom.tire_model metafield is configured under
-          Shopify admin → Search & Discovery → Filters.
-          Falls back to scanning collection.products for unique values
-          if the storefront filter facet hasn't been set up yet.
-          Hidden entirely when neither source returns any values.
-        {%- endcomment -%}
-        {%- assign model_filter = blank -%}
-        {%- for f in collection.filters -%}
-          {%- if f.param_name == 'filter.p.m.custom.tire_model' -%}
-            {%- assign model_filter = f -%}
-            {%- break -%}
-          {%- endif -%}
-        {%- endfor -%}
-        {%- assign model_values_fallback = '' -%}
-        {%- if model_filter == blank -%}
-          {%- for p in collection.products -%}
-            {%- assign m = p.metafields.custom.tire_model -%}
-            {%- if m != blank and m != nil -%}
-              {%- assign mv = m | strip -%}
-              {%- unless model_values_fallback contains mv -%}
-                {%- assign model_values_fallback = model_values_fallback | append: mv | append: '|' -%}
-              {%- endunless -%}
-            {%- endif -%}
-          {%- endfor -%}
+  <div class="rd-fside__scroll" data-rd-fscroll>
+    {%- if collection.filters.size == 0 -%}
+      <p class="rd-fnote rd-fside__none">
+        {%- if sb_kind == 'wheels' -%}
+          Pick a diameter above to see the wheel filters.
+        {%- else -%}
+          Pick your tire size to see the filters for it.<span class="rd-hide-sm rd-fside__above"> Use the size search above.</span>
         {%- endif -%}
-        {%- if model_filter != blank or model_values_fallback != '' -%}
-          <details class="ptg__filter" open>
-            <summary class="ptg__filter-label">
-              Model
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-            </summary>
-            <input type="search" class="ptg__filter-search" data-model-search placeholder="Search models..." aria-label="Search models">
-            <div class="ptg__filter-options ptg__filter-options--scroll" data-model-list>
-              {%- if model_filter != blank -%}
-                {%- for v in model_filter.values -%}
-                  <a href="{{ collection.url }}?filter.p.m.custom.tire_model={{ v.label | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.tire_model" data-filter-value="{{ v.label | escape }}">
-                    <span class="ptg__filter-check"></span>
-                    {{ v.label }}
-                    <span class="ptg__filter-cnt">({{ v.count }})</span>
-                  </a>
-                {%- endfor -%}
-              {%- else -%}
-                {%- assign mvals = model_values_fallback | split: '|' | uniq | sort -%}
-                {%- for mv in mvals -%}
-                  {%- if mv != '' -%}
-                    <a href="{{ collection.url }}?filter.p.m.custom.tire_model={{ mv | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.tire_model" data-filter-value="{{ mv | escape }}">
-                      <span class="ptg__filter-check"></span>
-                      {{ mv }}
-                    </a>
-                  {%- endif -%}
-                {%- endfor -%}
-              {%- endif -%}
-            </div>
-          </details>
-        {%- endif -%}
+      </p>
+      {%- if sb_kind != 'wheels' -%}
+        <button type="button" class="rd-btn rd-btn--line rd-btn--block" data-rd-panel-open data-pt-size-sheet>Find your size</button>
+      {%- endif -%}
+    {%- endif -%}
 
-        {%- comment -%} Product Type {%- endcomment -%}
-        <details class="ptg__filter">
-          <summary class="ptg__filter-label">
-            Product type
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </summary>
-          <div class="ptg__filter-options">
-            {%- assign ptypes = 'Heavy Duty,Performance,All-Terrain,Mud-Terrain,Highway Terrain' | split: ',' -%}
-            {%- for pt in ptypes -%}
-              <a href="#" class="ptg__filter-link" data-filter-key="filter.p.product_type" data-filter-value="{{ pt }}">
-                <span class="ptg__filter-check"></span>
-                {{ pt }}
-                <span class="ptg__filter-cnt" data-filter-cnt="type:{{ pt | handleize }}"></span>
+    {%- comment -%} ── Ready by (wheels; tires: the "Show sold-out tires" switch at the bottom, v16) ── {%- endcomment -%}
+    {%- if rb_avail and sb_kind != 'tires' -%}
+      {%- liquid
+        assign rb_sum = ''
+        if rb_avail.active
+          assign rb_sum = 'Hide sold out'
+        endif
+        if rb_avail
+          if rb_avail.active
+            assign rb_av_href = rb_avail.url_to_remove
+            if rb_av_href contains '?'
+              assign rb_av_href = rb_av_href | append: '&stock=all'
+            else
+              assign rb_av_href = rb_av_href | append: '?stock=all'
+            endif
+          else
+            assign rb_av_href = rb_avail.url_to_add
+          endif
+        endif
+      -%}
+      <div class="rd-acc rd-fgroup" data-rd-group="ready">
+        <button class="rd-acc__head" type="button" id="rdf-ready-h" aria-expanded="true" aria-controls="rdf-ready">
+          <span class="rd-fgroup__title">Ready by</span>
+          <span class="rd-acc__sum" data-rd-sum data-any="Any">{% if rb_sum != '' %}{{ rb_sum }}{% else %}Any{% endif %}</span>
+          {%- render 'pt-icon', name: 'chevron-down', size: 18, class: 'rd-acc__chev' -%}
+        </button>
+        <div class="rd-acc__body" id="rdf-ready" role="group" aria-labelledby="rdf-ready-h">
+          <div class="rd-fopts" data-rd-opts>
+            {%- if rb_avail -%}
+              <a class="rd-fopt" href="{{ rb_av_href | escape }}" rel="nofollow" role="checkbox" aria-checked="{{ rb_avail.active }}" data-rd-instock data-label="Hide sold out">
+                <span class="rd-fbox" aria-hidden="true">{% render 'pt-icon', name: 'check', size: 14 %}</span>
+                <span class="rd-opt__text">Hide sold out</span>
               </a>
-            {%- endfor -%}
-          </div>
-        </details>
-
-        {%- comment -%} Tire Width {%- endcomment -%}
-        <details class="ptg__filter">
-          <summary class="ptg__filter-label">
-            Tire width
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </summary>
-          <div class="ptg__filter-options ptg__filter-options--wrap">
-            {%- assign widths = '155,165,175,185,195,205,215,225,235,245,255,265,275,285,295,305,315,325' | split: ',' -%}
-            {%- for w in widths -%}
-              <a href="#" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.tire_width" data-filter-set-value="{{ w }}">{{ w }}</a>
-            {%- endfor -%}
-          </div>
-        </details>
-
-        {%- comment -%} Aspect Ratio {%- endcomment -%}
-        <details class="ptg__filter">
-          <summary class="ptg__filter-label">
-            Aspect ratio
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </summary>
-          <div class="ptg__filter-options ptg__filter-options--wrap">
-            {%- assign aspects = '30,35,40,45,50,55,60,65,70,75,80,85' | split: ',' -%}
-            {%- for a in aspects -%}
-              <a href="#" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.tire_profile" data-filter-set-value="{{ a }}">{{ a }}</a>
-            {%- endfor -%}
-          </div>
-        </details>
-
-        {%- endunless -%}{%- comment -%} end tire-only: Model + Type + Width + Aspect {%- endcomment -%}
-
-        {%- comment -%} ════════════════════════════════════════════
-             WHEEL-ONLY FILTERS — only render on /collections/wheels.
-             Pull facet values from collection.filters (storefront
-             filter, configured in Search & Discovery) when available;
-             fall back to scanning collection.products[].metafields.custom
-             so the filter still works before the admin step is done.
-             ════════════════════════════════════════════ {%- endcomment -%}
-        {%- if is_wheels -%}
-
-        {%- comment -%} Bolt pattern (5x114.3, 6x139.7, etc.) {%- endcomment -%}
-        {%- assign bolt_filter = blank -%}
-        {%- for f in collection.filters -%}
-          {%- if f.param_name == 'filter.p.m.custom.bolt_pattern' -%}
-            {%- assign bolt_filter = f -%}
-            {%- break -%}
-          {%- endif -%}
-        {%- endfor -%}
-        {%- assign bolt_fallback = '' -%}
-        {%- if bolt_filter == blank -%}
-          {%- for p in collection.products -%}
-            {%- assign bp = p.metafields.custom.bolt_pattern -%}
-            {%- if bp != blank -%}
-              {%- assign bpv = bp | strip -%}
-              {%- unless bolt_fallback contains bpv -%}
-                {%- assign bolt_fallback = bolt_fallback | append: bpv | append: '|' -%}
-              {%- endunless -%}
             {%- endif -%}
-          {%- endfor -%}
-        {%- endif -%}
-        {%- if bolt_filter != blank or bolt_fallback != '' -%}
-          <details class="ptg__filter" open>
-            <summary class="ptg__filter-label">
-              Bolt pattern
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-            </summary>
-            <div class="ptg__filter-options">
-              {%- if bolt_filter != blank -%}
-                {%- for v in bolt_filter.values -%}
-                  <a href="{{ collection.url }}?filter.p.m.custom.bolt_pattern={{ v.label | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.bolt_pattern" data-filter-value="{{ v.label | escape }}">
-                    <span class="ptg__filter-check"></span>
-                    {{ v.label }}
-                    <span class="ptg__filter-cnt">({{ v.count }})</span>
-                  </a>
-                {%- endfor -%}
-              {%- else -%}
-                {%- assign bvals = bolt_fallback | split: '|' | uniq | sort -%}
-                {%- for bv in bvals -%}
-                  {%- if bv != '' -%}
-                    <a href="{{ collection.url }}?filter.p.m.custom.bolt_pattern={{ bv | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.bolt_pattern" data-filter-value="{{ bv | escape }}">
-                      <span class="ptg__filter-check"></span>
-                      {{ bv }}
-                    </a>
-                  {%- endif -%}
-                {%- endfor -%}
-              {%- endif -%}
-            </div>
-          </details>
-        {%- endif -%}
-
-        {%- comment -%} Rim width (the second number in 17x7.5) {%- endcomment -%}
-        {%- assign width_filter = blank -%}
-        {%- for f in collection.filters -%}
-          {%- if f.param_name == 'filter.p.m.custom.rim_width' -%}
-            {%- assign width_filter = f -%}
-            {%- break -%}
-          {%- endif -%}
-        {%- endfor -%}
-        {%- assign width_fallback = '' -%}
-        {%- if width_filter == blank -%}
-          {%- for p in collection.products -%}
-            {%- assign rw = p.metafields.custom.rim_width -%}
-            {%- if rw != blank -%}
-              {%- assign rwv = rw | strip -%}
-              {%- unless width_fallback contains rwv -%}
-                {%- assign width_fallback = width_fallback | append: rwv | append: '|' -%}
-              {%- endunless -%}
-            {%- endif -%}
-          {%- endfor -%}
-        {%- endif -%}
-        {%- if width_filter != blank or width_fallback != '' -%}
-          <details class="ptg__filter">
-            <summary class="ptg__filter-label">
-              Rim width
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-            </summary>
-            <div class="ptg__filter-options ptg__filter-options--wrap">
-              {%- if width_filter != blank -%}
-                {%- for v in width_filter.values -%}
-                  <a href="{{ collection.url }}?filter.p.m.custom.rim_width={{ v.label | url_encode }}" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.rim_width" data-filter-set-value="{{ v.label | escape }}">{{ v.label }}"</a>
-                {%- endfor -%}
-              {%- else -%}
-                {%- assign wvals = width_fallback | split: '|' | uniq | sort -%}
-                {%- for wv in wvals -%}
-                  {%- if wv != '' -%}
-                    <a href="{{ collection.url }}?filter.p.m.custom.rim_width={{ wv | url_encode }}" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.rim_width" data-filter-set-value="{{ wv | escape }}">{{ wv }}"</a>
-                  {%- endif -%}
-                {%- endfor -%}
-              {%- endif -%}
-            </div>
-          </details>
-        {%- endif -%}
-
-        {%- comment -%} Rim offset / ET — can be negative {%- endcomment -%}
-        {%- assign offset_filter = blank -%}
-        {%- for f in collection.filters -%}
-          {%- if f.param_name == 'filter.p.m.custom.rim_offset' -%}
-            {%- assign offset_filter = f -%}
-            {%- break -%}
-          {%- endif -%}
-        {%- endfor -%}
-        {%- assign offset_fallback = '' -%}
-        {%- if offset_filter == blank -%}
-          {%- for p in collection.products -%}
-            {%- assign ro = p.metafields.custom.rim_offset -%}
-            {%- if ro != blank -%}
-              {%- assign rov = ro | strip -%}
-              {%- unless offset_fallback contains rov -%}
-                {%- assign offset_fallback = offset_fallback | append: rov | append: '|' -%}
-              {%- endunless -%}
-            {%- endif -%}
-          {%- endfor -%}
-        {%- endif -%}
-        {%- if offset_filter != blank or offset_fallback != '' -%}
-          <details class="ptg__filter">
-            <summary class="ptg__filter-label">
-              Offset (ET)
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-            </summary>
-            <div class="ptg__filter-options ptg__filter-options--wrap">
-              {%- if offset_filter != blank -%}
-                {%- for v in offset_filter.values -%}
-                  <a href="{{ collection.url }}?filter.p.m.custom.rim_offset={{ v.label | url_encode }}" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.rim_offset" data-filter-set-value="{{ v.label | escape }}">ET{{ v.label }}</a>
-                {%- endfor -%}
-              {%- else -%}
-                {%- assign ovals = offset_fallback | split: '|' | uniq | sort -%}
-                {%- for ov in ovals -%}
-                  {%- if ov != '' -%}
-                    <a href="{{ collection.url }}?filter.p.m.custom.rim_offset={{ ov | url_encode }}" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.rim_offset" data-filter-set-value="{{ ov | escape }}">ET{{ ov }}</a>
-                  {%- endif -%}
-                {%- endfor -%}
-              {%- endif -%}
-            </div>
-          </details>
-        {%- endif -%}
-
-        {%- comment -%} Center bore (hub bore, mm — matters for hub-centric fitment) {%- endcomment -%}
-        {%- assign cb_filter = blank -%}
-        {%- for f in collection.filters -%}
-          {%- if f.param_name == 'filter.p.m.custom.center_bore' -%}
-            {%- assign cb_filter = f -%}
-            {%- break -%}
-          {%- endif -%}
-        {%- endfor -%}
-        {%- assign cb_fallback = '' -%}
-        {%- if cb_filter == blank -%}
-          {%- for p in collection.products -%}
-            {%- assign cb = p.metafields.custom.center_bore -%}
-            {%- if cb != blank -%}
-              {%- assign cbv = cb | strip -%}
-              {%- unless cb_fallback contains cbv -%}
-                {%- assign cb_fallback = cb_fallback | append: cbv | append: '|' -%}
-              {%- endunless -%}
-            {%- endif -%}
-          {%- endfor -%}
-        {%- endif -%}
-        {%- if cb_filter != blank or cb_fallback != '' -%}
-          <details class="ptg__filter">
-            <summary class="ptg__filter-label">
-              Center bore (mm)
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-            </summary>
-            <div class="ptg__filter-options">
-              {%- if cb_filter != blank -%}
-                {%- for v in cb_filter.values -%}
-                  <a href="{{ collection.url }}?filter.p.m.custom.center_bore={{ v.label | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.center_bore" data-filter-value="{{ v.label | escape }}">
-                    <span class="ptg__filter-check"></span>
-                    {{ v.label }} mm
-                    <span class="ptg__filter-cnt">({{ v.count }})</span>
-                  </a>
-                {%- endfor -%}
-              {%- else -%}
-                {%- assign cbvals = cb_fallback | split: '|' | uniq | sort -%}
-                {%- for cv in cbvals -%}
-                  {%- if cv != '' -%}
-                    <a href="{{ collection.url }}?filter.p.m.custom.center_bore={{ cv | url_encode }}" class="ptg__filter-link" data-filter-key="filter.p.m.custom.center_bore" data-filter-value="{{ cv | escape }}">
-                      <span class="ptg__filter-check"></span>
-                      {{ cv }} mm
-                    </a>
-                  {%- endif -%}
-                {%- endfor -%}
-              {%- endif -%}
-            </div>
-          </details>
-        {%- endif -%}
-
-        {%- endif -%}{%- comment -%} end wheel-only filters {%- endcomment -%}
-
-        {%- comment -%} Rim Diameter — shared (tires + wheels both use rim_diameter) {%- endcomment -%}
-        <details class="ptg__filter">
-          <summary class="ptg__filter-label">
-            Rim diameter
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </summary>
-          <div class="ptg__filter-options ptg__filter-options--wrap">
-            {%- assign rims = '13,14,15,16,17,18,19,20,22,24' | split: ',' -%}
-            {%- for r in rims -%}
-              <a href="#" class="ptg__filter-pill" data-filter-set-key="filter.p.m.custom.rim_diameter" data-filter-set-value="{{ r }}">{{ r }}"</a>
-            {%- endfor -%}
           </div>
-        </details>
+          <p class="rd-fnote">Each {{ sb_unit }} shows when it can be ready: today, in 1–2 business days, {% if sb_kind == 'wheels' %}or sold out (call us){% else %}or order in{% endif %}.</p>
+        </div>
+      </div>
+    {%- endif -%}
 
-        {%- comment -%} Availability {%- endcomment -%}
-        <details class="ptg__filter">
-          <summary class="ptg__filter-label">
-            Availability
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </summary>
-          <div class="ptg__filter-options">
-            <a href="#" class="ptg__filter-link" data-filter-set-key="filter.v.availability" data-filter-set-value="1">In stock</a>
-            <a href="#" class="ptg__filter-link" data-filter-set-key="filter.v.availability" data-filter-set-value="0">Out of stock</a>
-          </div>
-        </details>
-
-        {%- comment -%} Stud Option — tire-only (Winter or LT) {%- endcomment -%}
+    {%- capture sb_price -%}
+      {%- if f_price -%}
         {%- liquid
-          assign show_stud = false
-          unless is_wheels
-            if active_season == 'Winter'
-              assign show_stud = true
+          assign p_max = f_price.range_max | plus: 99 | divided_by: 100 | floor
+          assign p_gte = ''
+          assign p_lte = ''
+          if f_price.min_value.value != blank
+            assign p_gte = f_price.min_value.value | divided_by: 100 | floor
+          endif
+          if f_price.max_value.value != blank
+            assign p_lte = f_price.max_value.value | divided_by: 100 | floor
+          endif
+          assign p_sum = 'Any'
+          if p_gte != '' and p_lte != ''
+            assign p_sum = '$' | append: p_gte | append: ' – $' | append: p_lte
+          elsif p_gte != ''
+            assign p_sum = '$' | append: p_gte | append: ' and up'
+          elsif p_lte != ''
+            if sb_kind == 'tires'
+              assign p_sum = 'Up to $' | append: p_lte
+            else
+              assign p_sum = 'Under $' | append: p_lte
             endif
-            if active_type == 'LT'
-              assign show_stud = true
+          endif
+          if sb_kind == 'tires'
+            if p_gte == '' and p_lte == 150
+              assign p_sum = 'Under $150'
             endif
-          endunless
+          endif
+          assign p_open = false
+          if sb_kind == 'tires' or p_sum != 'Any'
+            assign p_open = true
+          endif
         -%}
-        {%- if show_stud -%}
-          <details class="ptg__filter" open>
-            <summary class="ptg__filter-label">
-              Stud option
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-            </summary>
-            <div class="ptg__filter-options">
-              <a href="{{ collection.url }}?filter.p.m.custom.stud_option=Studdable{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}{% if active_type != blank %}&filter.p.m.custom.service_type={{ active_type | url_encode }}{% endif %}" class="ptg__filter-link">Studdable</a>
-              <a href="{{ collection.url }}?filter.p.m.custom.stud_option=Non-Studdable{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}{% if active_type != blank %}&filter.p.m.custom.service_type={{ active_type | url_encode }}{% endif %}" class="ptg__filter-link">Non-studdable</a>
-            </div>
-          </details>
-        {%- endif -%}
-
-        {%- comment -%} Run Flat — tire-only {%- endcomment -%}
-        {%- unless is_wheels -%}
-        <details class="ptg__filter">
-          <summary class="ptg__filter-label">
-            Run flat
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </summary>
-          <div class="ptg__filter-options">
-            <a href="{{ collection.url }}?filter.p.m.custom.run_flat=Yes{% if active_vendor != blank %}&filter.p.vendor={{ active_vendor | url_encode }}{% endif %}{% if active_season != blank %}&filter.p.m.custom.seasonality={{ active_season | url_encode }}{% endif %}" class="ptg__filter-link">Run flat only</a>
+        <div class="rd-acc rd-fgroup" data-rd-group="price">
+          <button class="rd-acc__head" type="button" id="rdf-price-h" aria-expanded="{{ p_open }}" aria-controls="rdf-price">
+            <span class="rd-fgroup__title">Price per {{ sb_unit }}</span>
+            <span class="rd-acc__sum" data-rd-sum data-any="Any">{% if p_sum == 'Any' %}<span class="rd-acc__any">Any</span>{% else %}{{ p_sum }}{% endif %}</span>
+            {%- render 'pt-icon', name: 'chevron-down', size: 18, class: 'rd-acc__chev' -%}
+          </button>
+          <div class="rd-acc__body" id="rdf-price" role="group" aria-labelledby="rdf-price-h">
+            {%- if sb_kind == 'tires' -%}
+              {%- comment -%}
+                v16: one visible way to filter by price - four single-select
+                presets, then "Custom range" reveals Min / Max with Apply.
+              {%- endcomment -%}
+              {%- assign pr_list = ',150|150,225|225,275|275,' | split: '|' -%}
+              {%- assign pr_labels = 'Under $150|$150 – $225|$225 – $275|$275 and up' | split: '|' -%}
+              {%- assign pr_any_on = false -%}
+              <div class="rd-fopts rd-fprice__presets" data-rd-opts role="radiogroup" aria-label="Price per tire">
+                {%- for pr in pr_list -%}
+                  {%- assign pr_b = pr | split: ',' -%}
+                  {%- assign pr_g = pr_b[0] | default: '' -%}
+                  {%- assign pr_l = pr_b[1] | default: '' -%}
+                  {%- assign pr_g_num = pr_g | plus: 0 -%}
+                  {%- if pr_g == '' or pr_g_num < p_max -%}
+                    {%- liquid
+                      assign pr_on = false
+                      assign pr_gs = p_gte | append: ''
+                      assign pr_ls = p_lte | append: ''
+                      if pr_gs == pr_g and pr_ls == pr_l
+                        if pr_g != '' or pr_l != ''
+                          assign pr_on = true
+                          assign pr_any_on = true
+                        endif
+                      endif
+                      assign pr_href = request.path | default: collection.url | append: '?' | append: sb_keep
+                      if pr_g != ''
+                        assign pr_href = pr_href | append: 'filter.v.price.gte=' | append: pr_g | append: '&'
+                      endif
+                      if pr_l != ''
+                        assign pr_href = pr_href | append: 'filter.v.price.lte=' | append: pr_l
+                      endif
+                    -%}
+                    <a class="rd-fopt rd-fopt--radio" href="{{ pr_href | escape }}" rel="nofollow" role="radio" aria-checked="{{ pr_on }}" data-rd-preset data-gte="{{ pr_g }}" data-lte="{{ pr_l }}" data-label="{{ pr_labels[forloop.index0] | escape }}">
+                      <span class="rd-fbox rd-fbox--r" aria-hidden="true"></span>
+                      <span class="rd-opt__text">{{ pr_labels[forloop.index0] }}</span>
+                    </a>
+                  {%- endif -%}
+                {%- endfor -%}
+              </div>
+              {%- assign pr_custom = false -%}
+              {%- if p_sum != 'Any' and pr_any_on == false -%}{%- assign pr_custom = true -%}{%- endif -%}
+              <button type="button" class="rd-fmore rd-fprice__custom" aria-expanded="{{ pr_custom }}" aria-controls="rdf-price-range" data-rd-custom>Custom range</button>
+            {%- endif -%}
+            <form class="rd-fprice" action="{{ request.path | default: collection.url }}" method="get" data-rd-price{% if sb_kind == 'tires' %} id="rdf-price-range"{% unless pr_custom %} hidden{% endunless %}{% endif %}>
+              {%- for f in collection.filters -%}
+                {%- unless f.type == 'price_range' -%}
+                  {%- for v in f.active_values -%}
+                    <input type="hidden" name="{{ v.param_name | escape }}" value="{{ v.value | escape }}">
+                  {%- endfor -%}
+                {%- endunless -%}
+              {%- endfor -%}
+              {%- if collection.sort_by != blank -%}<input type="hidden" name="sort_by" value="{{ collection.sort_by | escape }}">{%- endif -%}
+              <div class="rd-range">
+                <label>
+                  <span class="rd-range__lab">Min</span>
+                  <input class="rd-input" type="text" inputmode="numeric" autocomplete="off" name="filter.v.price.gte" value="{{ p_gte }}" placeholder="$0" aria-label="Lowest price per {{ sb_unit }}, dollars" data-rd-pmin>
+                </label>
+                <span class="rd-range__dash" aria-hidden="true">–</span>
+                <label>
+                  <span class="rd-range__lab">Max</span>
+                  <input class="rd-input" type="text" inputmode="numeric" autocomplete="off" name="filter.v.price.lte" value="{{ p_lte }}" placeholder="${{ p_max }}" aria-label="Highest price per {{ sb_unit }}, dollars" data-rd-pmax>
+                </label>
+                <button class="rd-btn rd-btn--line rd-fprice__go" type="submit">{% if sb_kind == 'tires' %}Apply{% else %}Go{% endif %}</button>
+              </div>
+            </form>
+            {%- if false -%}
+              {%- comment -%} Pre-v16 tire presets under the Min / Max form (kept for rollback; v16 draws them above). {%- endcomment -%}
+              {%- assign pr_list = ',150|150,225|225,275|275,' | split: '|' -%}
+              {%- assign pr_labels = 'Under $150|$150 – $225|$225 – $275|$275 and up' | split: '|' -%}
+              <div class="rd-fopts rd-fprice__presets" data-rd-opts>
+                {%- for pr in pr_list -%}
+                  {%- assign pr_b = pr | split: ',' -%}
+                  {%- assign pr_g = pr_b[0] | default: '' -%}
+                  {%- assign pr_l = pr_b[1] | default: '' -%}
+                  {%- assign pr_g_num = pr_g | plus: 0 -%}
+                  {%- if pr_g == '' or pr_g_num < p_max -%}
+                    {%- liquid
+                      assign pr_on = false
+                      assign pr_gs = p_gte | append: ''
+                      assign pr_ls = p_lte | append: ''
+                      if pr_gs == pr_g and pr_ls == pr_l
+                        if pr_g != '' or pr_l != ''
+                          assign pr_on = true
+                        endif
+                      endif
+                      assign pr_href = request.path | default: collection.url | append: '?' | append: sb_keep
+                      if pr_g != ''
+                        assign pr_href = pr_href | append: 'filter.v.price.gte=' | append: pr_g | append: '&'
+                      endif
+                      if pr_l != ''
+                        assign pr_href = pr_href | append: 'filter.v.price.lte=' | append: pr_l
+                      endif
+                    -%}
+                    <a class="rd-fopt" href="{{ pr_href | escape }}" rel="nofollow" role="checkbox" aria-checked="{{ pr_on }}" data-rd-preset data-gte="{{ pr_g }}" data-lte="{{ pr_l }}" data-label="{{ pr_labels[forloop.index0] | escape }}">
+                      <span class="rd-fbox" aria-hidden="true">{% render 'pt-icon', name: 'check', size: 14 %}</span>
+                      <span class="rd-opt__text">{{ pr_labels[forloop.index0] }}</span>
+                    </a>
+                  {%- endif -%}
+                {%- endfor -%}
+              </div>
+            {%- endif -%}
           </div>
-        </details>
-        {%- endunless -%}
+        </div>
+      {%- endif -%}
+    {%- endcapture -%}
 
-      </aside>
+    {%- capture sb_brand -%}
+      {%- if f_vendor and sb_kind == 'tires' -%}
+        {%- comment -%} v16: same order as the brand row (logo brands in the owner's order, then A to Z); "Show all brands" (no number). {%- endcomment -%}
+        {% render 'pt-rd-results-facet', filter: f_vendor, title: 'Brand', id: 'brand', limit: 6, more_noun: 'brands', more_kind: 'plain', search: 'Find a brand', active_closed: true, brand_keys: 'michelin|bridgestone|continental|kumho|pirelli|hankook|yokohama|toyo|bfgoodrich|general|goodyear|cooper|firestone|uniroyal' %}
+      {%- elsif f_vendor -%}{% render 'pt-rd-results-facet', filter: f_vendor, title: 'Brand', id: 'brand', limit: 6, more_noun: 'brands', search: 'Find a brand' %}{%- endif -%}
+    {%- endcapture -%}
+
+    {%- if sb_kind == 'wheels' -%}
+      {%- if f_bolt -%}{% render 'pt-rd-results-facet', filter: f_bolt, title: 'Bolt pattern', id: 'bolt', mode: 'bolt', open: true, limit: 8, more_kind: 'all', more_noun: 'patterns', search: 'Find a bolt pattern' %}{%- endif -%}
+      {%- if f_width -%}{% render 'pt-rd-results-facet', filter: f_width, title: 'Width', id: 'width', mode: 'width' %}{%- endif -%}
+      {%- if f_offset -%}{% render 'pt-rd-results-facet', filter: f_offset, title: 'Offset', id: 'offset', mode: 'offset' %}{%- endif -%}
+      {%- liquid
+        # Model names that contain a finish word ("Black Widow") are not
+        # finishes. A tag is a model name when it sits in a product title
+        # before the first number (the size); the known one is seeded.
+        # (Shared by the Tag-filter path and the tag-URL fallback.)
+        assign fin_words = 'black,gloss,matte,satin,chrome,polished,machined,milled,bronze,silver,grey,gray,gunmetal,white,anthracite,graphite,titanium' | split: ','
+      -%}
+      {%- if f_tag -%}
+        {%- liquid
+          # Model names that contain a finish word ("Black Widow") are not
+          # finishes. A tag is a model name when it sits in a product title
+          # before the first number (the size); the known one is seeded.
+          assign fin_skip = '|Black Widow|'
+          assign fin_digits = '0,1,2,3,4,5,6,7,8,9' | split: ','
+          assign fin_words = 'black,gloss,matte,satin,chrome,polished,machined,milled,bronze,silver,grey,gray,gunmetal,white,anthracite,graphite,titanium' | split: ','
+          for p in collection.products
+            for t in p.tags
+              assign t_low = t | downcase
+              assign t_fin = false
+              for w in fin_words
+                if t_low contains w
+                  assign t_fin = true
+                  break
+                endif
+              endfor
+              unless t_fin
+                continue
+              endunless
+              unless p.title contains t
+                continue
+              endunless
+              assign t_pre = p.title | split: t | first | default: ''
+              assign t_num = false
+              for dg in fin_digits
+                if t_pre contains dg
+                  assign t_num = true
+                  break
+                endif
+              endfor
+              unless t_num
+                assign t_tok = '|' | append: t | append: '|'
+                unless fin_skip contains t_tok
+                  assign fin_skip = fin_skip | append: t | append: '|'
+                endunless
+              endunless
+            endfor
+          endfor
+        -%}
+        {% render 'pt-rd-results-facet', filter: f_tag, title: 'Finish', id: 'finish', only: 'black,gloss,matte,satin,chrome,polished,machined,milled,bronze,silver,grey,gray,gunmetal,white,anthracite,graphite,titanium', skip: fin_skip, limit: 6, more_noun: 'finishes' %}
+      {%- else -%}
+        {%- comment -%}
+          No Tag filter yet: Finish from the collection's product tags,
+          filtered by the collection tag URL (snippets/pt-rd-results-tagfacet).
+          Left out: supplier / stock / type tags, size and model tags (any tag
+          with a digit, e.g. "wheel-rim-20", "RS01"), and model names that
+          contain a finish word (fin_skip: seeded + found on this page).
+        {%- endcomment -%}
+        {%- liquid
+          assign fin_skip = '|Black Widow|'
+          assign fin_digits = '0,1,2,3,4,5,6,7,8,9' | split: ','
+          for p in collection.products
+            for t in p.tags
+              assign t_low = t | downcase
+              assign t_fin = false
+              for w in fin_words
+                if t_low contains w
+                  assign t_fin = true
+                  break
+                endif
+              endfor
+              unless t_fin
+                continue
+              endunless
+              unless p.title contains t
+                continue
+              endunless
+              assign t_pre = p.title | split: t | first | default: ''
+              assign t_num = false
+              for dg in fin_digits
+                if t_pre contains dg
+                  assign t_num = true
+                  break
+                endif
+              endfor
+              unless t_num
+                assign t_tok = '|' | append: t | append: '|'
+                unless fin_skip contains t_tok
+                  assign fin_skip = fin_skip | append: t | append: '|'
+                endunless
+              endunless
+            endfor
+          endfor
+
+          assign fin_excl = '|atw|thibert|supplier stock|prince stock|wheels|alloy|aluminum|steel|winter approved|hero-wheel|no-image|'
+          assign fin_first = 'Gloss Black|Matte Black|Satin Black|Black|Gloss Black Milled|Black Machined|Gloss Black Machined|Bronze|Gloss Bronze|Silver|Hyper Silver|Chrome|Full Polished|Polished|Gunmetal|Grey|White' | split: '|'
+          assign fin_ok = '|'
+          for t in collection.all_tags
+            assign t_low = t | downcase
+            assign t_tok = '|' | append: t_low | append: '|'
+            if fin_excl contains t_tok
+              continue
+            endif
+            assign t_tok2 = '|' | append: t | append: '|'
+            if fin_skip contains t_tok2
+              continue
+            endif
+            assign t_dig = false
+            for dg in fin_digits
+              if t contains dg
+                assign t_dig = true
+                break
+              endif
+            endfor
+            if t_dig
+              continue
+            endif
+            for w in fin_words
+              if t_low contains w
+                assign fin_ok = fin_ok | append: t | append: '|'
+                break
+              endif
+            endfor
+          endfor
+          # Common finishes first, then the rest (all_tags is alphabetical).
+          assign fin_tags = ''
+          assign fin_done = '|'
+          for t in fin_first
+            assign t_tok = '|' | append: t | append: '|'
+            if fin_ok contains t_tok
+              assign fin_tags = fin_tags | append: t | append: '|'
+              assign fin_done = fin_done | append: t | append: '|'
+            endif
+          endfor
+          assign fin_rest = fin_ok | split: '|'
+          for t in fin_rest
+            if t == blank
+              continue
+            endif
+            assign t_tok = '|' | append: t | append: '|'
+            unless fin_done contains t_tok
+              assign fin_tags = fin_tags | append: t | append: '|'
+            endunless
+          endfor
+        -%}
+        {% render 'pt-rd-results-tagfacet', tags: fin_tags, title: 'Finish', id: 'finish', cur: sb_cur_tags, base: collection.url, q: sb_tag_q, exclusive: true, note: 'Pick one finish.', limit: 6, more_noun: 'finishes', search: 'Find a finish' %}
+      {%- endif -%}
+      {{ sb_price }}
+      {{ sb_brand }}
+      {%- liquid
+        # Wheel-type tags that exist in this collection (tag-URL fallback).
+        assign wt_has_alloy = false
+        assign wt_has_steel = false
+        assign wt_has_winter = false
+        if f_tag == nil
+          for t in collection.all_tags
+            case t
+              when 'Alloy'
+                assign wt_has_alloy = true
+              when 'Steel'
+                assign wt_has_steel = true
+              when 'Winter Approved'
+                assign wt_has_winter = true
+            endcase
+          endfor
+        endif
+      -%}
+      {%- if f_ptype -%}
+        {% render 'pt-rd-results-facet', filter: f_ptype, title: 'Wheel type', id: 'wtype', map: 'Alloy Rims=>Alloy;;Steel Rims=>Steel', extra: f_tag, extra_values: 'Winter Approved=>Winter approved' %}
+        {%- if f_tag == nil and wt_has_winter -%}
+          {% render 'pt-rd-results-tagfacet', tags: 'Winter Approved', labels: 'Winter Approved=>Winter approved', title: 'Winter approved', id: 'winter', cur: sb_cur_tags, base: collection.url, q: sb_tag_q, min_values: 1 %}
+        {%- endif -%}
+      {%- elsif f_tag == nil -%}
+        {%- liquid
+          assign wt_tags = ''
+          if wt_has_alloy
+            assign wt_tags = wt_tags | append: 'Alloy|'
+          endif
+          if wt_has_steel
+            assign wt_tags = wt_tags | append: 'Steel|'
+          endif
+          if wt_has_winter
+            assign wt_tags = wt_tags | append: 'Winter Approved|'
+          endif
+        -%}
+        {% render 'pt-rd-results-tagfacet', tags: wt_tags, labels: 'Winter Approved=>Winter approved', title: 'Wheel type', id: 'wtype', cur: sb_cur_tags, base: collection.url, q: sb_tag_q, exclusive: true, free: '|winter-approved|' %}
+      {%- endif -%}
+      {%- if f_bore -%}{% render 'pt-rd-results-facet', filter: f_bore, title: 'Centre bore', id: 'bore', mode: 'bore', suffix: ' mm', limit: 8, more_kind: 'all', more_noun: 'sizes', note: "A bore bigger than your hub still fits with a hub ring, so we don't filter by it when you shop by vehicle." %}{%- endif -%}
+    {%- else -%}
+      {%- comment -%} All-terrain is a tire type, not a season (DT Tire's catalogue has only Winter / All Weather / All Season / Summer), so it is skipped here and lives under Tire type. {%- endcomment -%}
+      {%- if f_season -%}{% render 'pt-rd-results-facet', filter: f_season, title: 'Season', id: 'season', open: true, icons: true, map: 'All-Weather=>All-weather;;All-Season=>All-season;;All Season=>All-season;;All Weather=>All-weather', order: 'Winter,All-Weather,All Weather,All-Season,All Season,Summer', skip: '|All-Terrain|All Terrain|All-terrain|' %}{%- endif -%}
+      {%- if f_ptype and sb_kind == 'tires' -%}{% render 'pt-rd-results-facet', filter: f_ptype, title: 'Tire type', id: 'ttype', only: 'heavy-duty,performance,all-terrain,mud-terrain,highway-terrain', map: 'Highway-Terrain=>Highway;;All-Terrain=>All-terrain;;Mud-Terrain=>Mud-terrain;;Heavy-Duty=>Heavy-duty', order: 'Highway-Terrain,All-Terrain,Mud-Terrain,Performance,Heavy-Duty', min_values: 1 %}{%- endif -%}
+      {{ sb_price }}
+      {{ sb_brand }}
+      {%- if f_stud -%}{% render 'pt-rd-results-facet', filter: f_stud, title: 'Studs', id: 'studs', map: 'Non-Studdable=>No studs', order: 'Studded,Studdable,Non-Studdable' %}{%- endif -%}
+      {%- if f_speed -%}{% render 'pt-rd-results-facet', filter: f_speed, title: 'Speed rating', id: 'speed', map: 'Q=>Q · up to 160 km/h;;R=>R · up to 170 km/h;;S=>S · up to 180 km/h;;T=>T · up to 190 km/h;;U=>U · up to 200 km/h;;H=>H · up to 210 km/h;;V=>V · up to 240 km/h;;W=>W · up to 270 km/h;;Y=>Y · up to 300 km/h;;ZR=>ZR · over 240 km/h', order: 'L,M,N,P,Q,R,S,T,U,H,V,Z,ZR,W,Y' %}{%- endif -%}
+      {%- if f_load -%}{% render 'pt-rd-results-facet', filter: f_load, title: 'Load', id: 'load', map: 'SL=>Standard load;;Standard=>Standard load;;XL=>Extra load (XL);;Extra Load=>Extra load (XL);;C=>Load range C;;D=>Load range D;;E=>Load range E;;F=>Load range F', order: 'SL,Standard,XL,Extra Load,C,D,E,F' %}{%- endif -%}
+      {%- if f_service -%}{% render 'pt-rd-results-facet', filter: f_service, title: 'Tire class', id: 'tclass', map: 'P=>Passenger (P);;LT=>Light truck (LT);;ST=>Trailer (ST)', order: 'P,LT,ST', skip: '|All-Terrain|All Terrain|All-terrain|' %}{%- endif -%}
+      {%- if f_model -%}{% render 'pt-rd-results-facet', filter: f_model, title: 'Model', id: 'model', limit: 8, more_noun: 'models', search: 'Find a model' %}{%- endif -%}
+      {%- if f_runflat -%}{% render 'pt-rd-results-facet', filter: f_runflat, title: 'Run flat', id: 'runflat', min_values: 1 %}{%- endif -%}
+      {%- if rb_avail and sb_kind == 'tires' -%}
+        {%- comment -%}
+          v16: "Show sold-out tires" switch (replaces "Ready by / Hide sold
+          out"). Off = today's default (filter.v.availability=1); on =
+          stock=all. Same links and the same [data-rd-instock] handling.
+        {%- endcomment -%}
+        {%- liquid
+          if rb_avail.active
+            assign so_on = false
+            assign so_href = rb_avail.url_to_remove
+            if so_href contains '?'
+              assign so_href = so_href | append: '&stock=all'
+            else
+              assign so_href = so_href | append: '?stock=all'
+            endif
+          else
+            assign so_on = true
+            assign so_href = rb_avail.url_to_add
+          endif
+        -%}
+        <div class="rd-fgroup rd-fsold" data-rd-group="soldout">
+          <a class="rd-fswitch" href="{{ so_href | escape }}" rel="nofollow" role="switch" aria-checked="{{ so_on }}" data-rd-instock data-rd-switch data-label="Show sold-out tires" aria-describedby="rdf-sold-note">
+            <span class="rd-fswitch__t">Show sold-out tires</span>
+            <span class="rd-fswitch__i" aria-hidden="true"></span>
+          </a>
+          <p class="rd-fnote rd-fsold__note" id="rdf-sold-note">Every tire shows when it can be ready: today, in 1–2 business days, or order in.</p>
+        </div>
+      {%- endif -%}
+    {%- endif -%}
+
+  </div>
+
+  <div class="rd-fside__foot">
+    <a class="rd-btn rd-btn--line" href="{{ sb_clear }}" rel="nofollow" data-rd-clear>Clear all</a>
+    <button class="rd-btn rd-btn--dark rd-btn--grow" type="button" data-rd-apply>Show {{ collection.products_count }} {% if collection.products_count == 1 %}result{% else %}results{% endif %}</button>
+  </div>
+</aside>

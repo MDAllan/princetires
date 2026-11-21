@@ -1,0 +1,146 @@
+{%- comment -%}
+  Year / Make / Model / Trim dropdowns for the two booking POPUPS
+  (pt-booking-modal = product "book install", pt-service-booking-modal).
+
+  Why: most bookings come from the website, and in these popups the vehicle was
+  typed freely ("Chevy Bolt", "Subaru Forest"), so it matched no vehicle and the
+  shop never saw the torque, lug nuts or tire size. The booking PAGE already has
+  dropdowns (pt-booking-ymm); this gives the popups the same, from the same data
+  (pt-vehicle-manifest.json + pt-vehicle-<year>.json).
+
+  Deliberately an ADD-ON, not an edit to the popups: it finds their existing
+  vehicle boxes (#bk-vyear/#bk-vmake/#bk-vmodel, #sb-…) and puts a "Pick your
+  vehicle" row above them. Picking FILLS those boxes; they stay visible and
+  editable, so a car that is not listed can still be typed. A box already
+  filled from the customer's saved garage vehicle is never overwritten until
+  they pick something themselves. The boxes are optional in both popups, so
+  nothing here can block a booking.
+
+  The Model box gets the model only; the trim rides on the box as data-pt-trim
+  and each popup sends it as vehicleTrim via window.ptPickedTrim (2026-11-13).
+  Older bookings stored "Model Trim"; the app still splits those (app #405).
+{%- endcomment -%}
+<style>
+  .ptpy{margin:0 0 .75rem}
+  .ptpy__t{font-weight:600;margin:0 0 .4rem}
+  .ptpy__g{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem}
+  @media (min-width:600px){.ptpy__g{grid-template-columns:repeat(4,1fr)}}
+  .ptpy select{width:100%;height:44px;border:1.5px solid #e5e7eb;border-radius:7px;padding:0 .6rem;font:inherit;font-size:16px;background:#fff;color:#111}
+  .ptpy select:focus{outline:none;border-color:#dc2626}
+  .ptpy select:disabled{opacity:.5}
+  .ptpy__h{margin:.4rem 0 0;font-size:.85em;color:#6b7280}
+</style>
+<script>
+(function () {
+  // The trim a picker chose, for the booking payload — only while the Model box
+  // still holds the model the picker wrote (a customer who types over it
+  // never sends a stale trim). Shared by pt-popup-ymm and pt-booking-ymm.
+  window.ptPickedTrim = window.ptPickedTrim || function (id) {
+    var el = document.getElementById(id);
+    var t = el && el.getAttribute('data-pt-trim');
+    return t && String(el.value || '').trim() === el.getAttribute('data-pt-model') ? t : '';
+  };
+  var BASE = {{ 'pt-vehicle-manifest.json' | asset_url | json }};
+  function fileUrl(name) { return BASE.split('?')[0].replace('pt-vehicle-manifest.json', name); }
+  var manifestP = null, years = {};
+  function getManifest() {
+    return manifestP || (manifestP = fetch(BASE).then(function (r) { if (!r.ok) throw new Error('manifest'); return r.json(); }));
+  }
+  function getYear(y) {
+    return years[y] || (years[y] = fetch(fileUrl('pt-vehicle-' + y + '.json')).then(function (r) { if (!r.ok) throw new Error('year'); return r.json(); }));
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function opts(sel, list, ph) {
+    sel.innerHTML = '<option value="">' + ph + '</option>' + list.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('');
+    sel.disabled = list.length === 0;
+  }
+  function keys(o) { return o ? Object.keys(o).filter(Boolean).sort(function (a, b) { return a.localeCompare(b); }) : []; }
+
+  function enhance(p) {
+    var yearBox = document.getElementById(p + '-vyear');
+    var makeBox = document.getElementById(p + '-vmake');
+    var modelBox = document.getElementById(p + '-vmodel');
+    if (!yearBox || !makeBox || !modelBox) return;
+    var row = yearBox.closest('.bk-form-row');
+    if (!row || row.parentNode.querySelector('.ptpy[data-p="' + p + '"]')) return;
+
+    var box = document.createElement('div');
+    box.className = 'ptpy';
+    box.setAttribute('data-p', p);
+    box.innerHTML =
+      '<p class="ptpy__t">Pick your vehicle</p>' +
+      '<div class="ptpy__g">' +
+      '<select aria-label="Year"></select><select aria-label="Make"></select>' +
+      '<select aria-label="Model"></select><select aria-label="Trim"></select>' +
+      '</div>' +
+      '<p class="ptpy__h">This fills in the boxes below — or type your vehicle there if it isn’t listed.</p>';
+    row.parentNode.insertBefore(box, row);
+    var sel = box.querySelectorAll('select');
+    var S = { y: sel[0], mk: sel[1], md: sel[2], tr: sel[3] };
+    opts(S.y, [], 'Year'); opts(S.mk, [], 'Make'); opts(S.md, [], 'Model'); opts(S.tr, [], 'Trim');
+
+    // What WE last wrote, so changing the year only clears boxes we filled —
+    // never something the customer typed or the garage pre-filled.
+    var mine = { make: null, model: null };
+    function put(el, v) {
+      el.value = v;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    function markTrim(model, trim) {
+      modelBox.setAttribute('data-pt-model', model);
+      if (trim) modelBox.setAttribute('data-pt-trim', trim); else modelBox.removeAttribute('data-pt-trim');
+    }
+    function clearIfMine(el, key) { if (mine[key] !== null && el.value === mine[key]) put(el, ''); mine[key] = null; }
+
+    var loaded = false, data = null, seq = 0;
+    function loadYears() {
+      if (loaded) return;
+      loaded = true;
+      getManifest().then(function (m) { opts(S.y, (m.years || []).slice().reverse(), 'Year'); })
+        .catch(function () { box.hidden = true; }); // no data: the boxes still work as before
+    }
+    // Popups sit on every page; only fetch the year list once this row is on screen.
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (es) {
+        if (es.some(function (e) { return e.isIntersecting; })) { loadYears(); io.disconnect(); }
+      });
+      io.observe(box);
+    } else loadYears();
+
+    S.y.addEventListener('change', function () {
+      var y = S.y.value, mineSeq = ++seq;
+      data = null;
+      opts(S.mk, [], 'Make'); opts(S.md, [], 'Model'); opts(S.tr, [], 'Trim');
+      clearIfMine(makeBox, 'make'); clearIfMine(modelBox, 'model');
+      if (!y) return;
+      put(yearBox, y);
+      getYear(y).then(function (d) {
+        if (mineSeq !== seq) return;
+        data = d;
+        opts(S.mk, keys(d.models), 'Make');
+      }).catch(function () { if (mineSeq === seq) opts(S.mk, [], 'Make'); });
+    });
+    S.mk.addEventListener('change', function () {
+      opts(S.md, [], 'Model'); opts(S.tr, [], 'Trim');
+      clearIfMine(modelBox, 'model');
+      if (!S.mk.value || !data) return;
+      put(makeBox, S.mk.value); mine.make = S.mk.value;
+      opts(S.md, keys(data.models[S.mk.value]), 'Model');
+    });
+    S.md.addEventListener('change', function () {
+      opts(S.tr, [], 'Trim');
+      if (!S.md.value || !data) return;
+      put(modelBox, S.md.value); mine.model = S.md.value; markTrim(S.md.value, '');
+      opts(S.tr, keys((data.models[S.mk.value] || {})[S.md.value]), 'Trim');
+    });
+    S.tr.addEventListener('change', function () {
+      if (!S.md.value) return;
+      put(modelBox, S.md.value); mine.model = S.md.value; markTrim(S.md.value, S.tr.value);
+    });
+  }
+
+  function init() { enhance('bk'); enhance('sb'); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>

@@ -1,30 +1,81 @@
+{%- comment -%}
+  "Calgary trusts Prince Tires" band under the product page (templates/product.json).
+  2026-11-13 redesign: the canvas look (heading left, four facts in black on the
+  paper band). On WHEEL pages the 3rd fact is swapped (owner default #4):
+  "Same day - Installation available" does not hold for wheels (almost all are
+  1-2 business days), so wheels show "2 shops - SW and NE Calgary". Both wheel
+  texts are settings. The wheel test is snippets/pt-is-wheel.liquid (same as
+  the product page).
+  Owner 11-13 (2nd pass, "add orange and green in the middle of the page"):
+  each fact gets an orange icon tile (icon picked per fact in the settings,
+  from the site icon set) and the fact itself is in brand green; the heading
+  has an orange accent strip. Same four facts, no new claims.
+  Owner 11-14 ("you are using less orange and green - I like the colours in
+  the old design"): the live band's colours are back - the orange "Why choose
+  us" eyebrow and every fact in orange (live: #F5820B 22px/700). Facts use
+  #dc750a, the same hue a step darker, so the large text reaches 3:1 on white
+  (#F5820B is 2.6:1); the eyebrow is small text, so it uses #a95a08 (5.1:1).
+{%- endcomment -%}
+{%- liquid
+  assign sp_is_wheel = false
+  if product != blank
+    capture sp_w
+      render 'pt-is-wheel', product: product
+    endcapture
+    if sp_w contains 'true'
+      assign sp_is_wheel = true
+    endif
+  endif
+  assign sp3_value = section.settings.stat_3_value
+  assign sp3_label = section.settings.stat_3_label
+  if sp_is_wheel and section.settings.wheel_stat_3_value != blank
+    assign sp3_value = section.settings.wheel_stat_3_value
+    assign sp3_label = section.settings.wheel_stat_3_label
+  endif
+  assign sp3_icon = section.settings.stat_3_icon
+  if sp_is_wheel and section.settings.wheel_stat_3_value != blank
+    assign sp3_icon = section.settings.wheel_stat_3_icon
+  endif
+-%}
 <div class="pt-sp">
   <div class="pt-sp__inner">
-    <p class="pt-sp__eyebrow">{{ section.settings.eyebrow | default: 'Why choose us' }}</p>
+    {%- if section.settings.eyebrow != blank -%}<p class="pt-sp__eyebrow">{{ section.settings.eyebrow }}</p>{%- endif -%}
     <h2 class="pt-sp__heading">{{ section.settings.heading | default: 'Calgary trusts Prince Tires' }}</h2>
     <div class="pt-sp__grid">
       {%- if section.settings.stat_1_value != blank -%}
         <div class="pt-sp__item">
-          <span class="pt-sp__value">{{ section.settings.stat_1_value }}</span>
-          <span class="pt-sp__label">{{ section.settings.stat_1_label }}</span>
+          {%- if section.settings.stat_1_icon != blank and section.settings.stat_1_icon != 'none' -%}<span class="pt-sp__tile">{% render 'pt-icon', name: section.settings.stat_1_icon, size: 24 %}</span>{%- endif -%}
+          <span class="pt-sp__text">
+            <span class="pt-sp__value">{{ section.settings.stat_1_value | escape | replace: '★', '<span class="pt-sp__star">★</span>' }}</span>
+            <span class="pt-sp__label">{{ section.settings.stat_1_label }}</span>
+          </span>
         </div>
       {%- endif -%}
       {%- if section.settings.stat_2_value != blank -%}
         <div class="pt-sp__item">
-          <span class="pt-sp__value">{{ section.settings.stat_2_value }}</span>
-          <span class="pt-sp__label">{{ section.settings.stat_2_label }}</span>
+          {%- if section.settings.stat_2_icon != blank and section.settings.stat_2_icon != 'none' -%}<span class="pt-sp__tile">{% render 'pt-icon', name: section.settings.stat_2_icon, size: 24 %}</span>{%- endif -%}
+          <span class="pt-sp__text">
+            <span class="pt-sp__value">{{ section.settings.stat_2_value | escape | replace: '★', '<span class="pt-sp__star">★</span>' }}</span>
+            <span class="pt-sp__label">{{ section.settings.stat_2_label }}</span>
+          </span>
         </div>
       {%- endif -%}
-      {%- if section.settings.stat_3_value != blank -%}
+      {%- if sp3_value != blank -%}
         <div class="pt-sp__item">
-          <span class="pt-sp__value">{{ section.settings.stat_3_value }}</span>
-          <span class="pt-sp__label">{{ section.settings.stat_3_label }}</span>
+          {%- if sp3_icon != blank and sp3_icon != 'none' -%}<span class="pt-sp__tile">{% render 'pt-icon', name: sp3_icon, size: 24 %}</span>{%- endif -%}
+          <span class="pt-sp__text">
+            <span class="pt-sp__value">{{ sp3_value | escape | replace: '★', '<span class="pt-sp__star">★</span>' }}</span>
+            <span class="pt-sp__label">{{ sp3_label }}</span>
+          </span>
         </div>
       {%- endif -%}
       {%- if section.settings.stat_4_value != blank -%}
         <div class="pt-sp__item">
-          <span class="pt-sp__value">{{ section.settings.stat_4_value }}</span>
-          <span class="pt-sp__label">{{ section.settings.stat_4_label }}</span>
+          {%- if section.settings.stat_4_icon != blank and section.settings.stat_4_icon != 'none' -%}<span class="pt-sp__tile">{% render 'pt-icon', name: section.settings.stat_4_icon, size: 24 %}</span>{%- endif -%}
+          <span class="pt-sp__text">
+            <span class="pt-sp__value">{{ section.settings.stat_4_value | escape | replace: '★', '<span class="pt-sp__star">★</span>' }}</span>
+            <span class="pt-sp__label">{{ section.settings.stat_4_label }}</span>
+          </span>
         </div>
       {%- endif -%}
     </div>
@@ -32,39 +83,43 @@
 </div>
 
 {% stylesheet %}
-  .pt-sp { background: #fff; color: #111; border-top: 1px solid #f3f4f6; }
-  .pt-sp__inner { max-width: 1200px; margin: 0 auto; padding: 3.5rem 2rem; text-align: center; }
-  .pt-sp__eyebrow {
-    font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 400;
-    color: #F5820B; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 0.4rem;
-  }
+  .pt-sp { background: #faf9f7; color: #111; border-top: 1px solid #ecebe7; border-bottom: 1px solid #ecebe7; font-family: 'Outfit', sans-serif; }
+  .pt-sp__inner { max-width: 1320px; margin: 0 auto; padding: 2.4rem 1.6rem; }
   .pt-sp__heading {
-    font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 2rem; line-height: 1.1; color: #111;
+    display: flex; align-items: center; gap: 1rem;
+    font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 700; text-transform: none;
+    letter-spacing: 0; margin: 0 0 1.6rem; line-height: 1.2; color: #111;
   }
-  .pt-sp__grid { display: flex; justify-content: center; gap: 0; }
+  .pt-sp__heading::before { content: ""; flex: none; width: .4rem; height: 2rem; border-radius: 2px; background: #F5820B; }
+  .pt-sp__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
   .pt-sp__item {
-    flex: 1; max-width: 16rem; display: flex; flex-direction: column; align-items: center;
-    padding: 1.2rem 1.5rem; gap: 0.3rem;
+    display: flex; flex-direction: column; align-items: flex-start; gap: .8rem; min-width: 0;
+    padding: 1.2rem; background: #fff; border: 1px solid #ecebe7; border-radius: 12px;
   }
-  .pt-sp__item + .pt-sp__item { border-left: 1px solid #e5e7eb; }
-  .pt-sp__value {
-    font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 700;
-    color: #F5820B; line-height: 1;
+  /* Orange icon tile in the live orange #F5820B (icons are decorative). */
+  .pt-sp__tile {
+    flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 4rem; height: 4rem; border-radius: 10px; background: #fff7ed; border: 1px solid #fed7aa; color: #F5820B;
+    --rd-icon-bg: #fff7ed;
   }
-  .pt-sp__label {
-    font-family: 'Outfit', sans-serif; font-size: 0.85rem; font-weight: 400;
-    color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em;
-  }
-
-  @media (max-width: 749px) {
-    .pt-sp__inner { padding: 2.5rem 1.6rem; }
-    .pt-sp__heading { font-size: 1.6rem; }
-    .pt-sp__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
-    .pt-sp__item + .pt-sp__item { border-left: none; }
-    .pt-sp__item:nth-child(even) { border-left: 1px solid #e5e7eb; }
-    .pt-sp__item:nth-child(n+3) { border-top: 1px solid #e5e7eb; }
-    .pt-sp__value { font-size: 1.8rem; }
+  .pt-sp__tile svg { display: block; }
+  .pt-sp__text { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+  /* Live's orange eyebrow: small text, so #F5820B's darker shade #a95a08 (5.1:1 on #faf9f7: 4.6:1). */
+  .pt-sp__eyebrow { margin: 0 0 .4rem; font-family: 'Outfit', sans-serif; font-size: 1.2rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #a95a08; }
+  /* Facts in the live page's orange (owner 11-14). Large bold text (22px+/700):
+     #dc750a = #F5820B a step darker, 3.2:1 on the white card (#F5820B itself is 2.6:1). */
+  .pt-sp__value { font-family: 'Barlow Condensed', sans-serif; font-size: 2.4rem; font-weight: 700; color: #dc750a; line-height: 1.1; overflow-wrap: anywhere; }
+  .pt-sp__star { color: #F5820B; }
+  .pt-sp__label { font-family: 'Outfit', sans-serif; font-size: 1.4rem; font-weight: 400; color: #57534e; line-height: 1.35; }
+  @media (min-width: 750px) {
+    .pt-sp__inner { padding: 3.6rem 3.2rem; }
+    .pt-sp__heading { font-size: 2.2rem; margin-bottom: 2rem; }
+    .pt-sp__heading::before { height: 2.4rem; }
+    .pt-sp__grid { grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: 1.6rem; }
+    .pt-sp__item { flex-direction: row; align-items: center; gap: 1.4rem; padding: 1.6rem 1.8rem; }
+    .pt-sp__tile { width: 4.8rem; height: 4.8rem; border-radius: 12px; }
+    .pt-sp__value { font-size: 2.8rem; }
+    .pt-sp__label { font-size: 1.5rem; }
   }
 {% endstylesheet %}
 
@@ -74,16 +129,24 @@
   "tag": "section",
   "class": "section-pt-social-proof",
   "settings": [
-    { "type": "text", "id": "eyebrow", "default": "Why choose us", "label": "t:sections.social_proof.settings.eyebrow.label" },
+    { "type": "text", "id": "eyebrow", "default": "Why choose us", "label": "t:sections.social_proof.settings.eyebrow.label", "info": "Small orange line above the heading (as on the live page). Leave empty to hide it." },
     { "type": "text", "id": "heading", "default": "Calgary trusts Prince Tires", "label": "t:sections.social_proof.settings.heading.label" },
-    { "type": "text", "id": "stat_1_value", "label": "t:sections.social_proof.settings.stat_1_value.label" },
-    { "type": "text", "id": "stat_1_label", "default": "Tires installed", "label": "t:sections.social_proof.settings.stat_1_label.label" },
+    { "type": "text", "id": "stat_1_value", "default": "Since 2022", "label": "t:sections.social_proof.settings.stat_1_value.label" },
+    { "type": "text", "id": "stat_1_label", "default": "Family-owned in Calgary", "label": "t:sections.social_proof.settings.stat_1_label.label" },
+    { "type": "select", "id": "stat_1_icon", "label": "Fact 1 icon", "default": "calendar", "options": [{"value":"none","label":"No icon"},{"value":"calendar","label":"Calendar"},{"value":"star","label":"Star"},{"value":"clock","label":"Clock"},{"value":"compare","label":"Compare"},{"value":"map-pin","label":"Map pin"},{"value":"tire","label":"Tire"},{"value":"wheel","label":"Wheel"},{"value":"check","label":"Tick"},{"value":"phone","label":"Phone"},{"value":"ready-today","label":"Ready today"}] },
     { "type": "text", "id": "stat_2_value", "default": "4.9 ★", "label": "t:sections.social_proof.settings.stat_2_value.label" },
     { "type": "text", "id": "stat_2_label", "default": "Google rating", "label": "t:sections.social_proof.settings.stat_2_label.label" },
+    { "type": "select", "id": "stat_2_icon", "label": "Fact 2 icon", "default": "star", "options": [{"value":"none","label":"No icon"},{"value":"calendar","label":"Calendar"},{"value":"star","label":"Star"},{"value":"clock","label":"Clock"},{"value":"compare","label":"Compare"},{"value":"map-pin","label":"Map pin"},{"value":"tire","label":"Tire"},{"value":"wheel","label":"Wheel"},{"value":"check","label":"Tick"},{"value":"phone","label":"Phone"},{"value":"ready-today","label":"Ready today"}] },
     { "type": "text", "id": "stat_3_value", "default": "Same day", "label": "t:sections.social_proof.settings.stat_3_value.label" },
     { "type": "text", "id": "stat_3_label", "default": "Installation available", "label": "t:sections.social_proof.settings.stat_3_label.label" },
-    { "type": "text", "id": "stat_4_value", "label": "t:sections.social_proof.settings.stat_4_value.label" },
-    { "type": "text", "id": "stat_4_label", "default": "Satisfaction guaranteed", "label": "t:sections.social_proof.settings.stat_4_label.label" }
+    { "type": "select", "id": "stat_3_icon", "label": "Fact 3 icon", "default": "clock", "options": [{"value":"none","label":"No icon"},{"value":"calendar","label":"Calendar"},{"value":"star","label":"Star"},{"value":"clock","label":"Clock"},{"value":"compare","label":"Compare"},{"value":"map-pin","label":"Map pin"},{"value":"tire","label":"Tire"},{"value":"wheel","label":"Wheel"},{"value":"check","label":"Tick"},{"value":"phone","label":"Phone"},{"value":"ready-today","label":"Ready today"}] },
+    { "type": "text", "id": "stat_4_value", "default": "Price match", "label": "t:sections.social_proof.settings.stat_4_value.label" },
+    { "type": "text", "id": "stat_4_label", "default": "With local independent shops", "label": "t:sections.social_proof.settings.stat_4_label.label" },
+    { "type": "select", "id": "stat_4_icon", "label": "Fact 4 icon", "default": "compare", "options": [{"value":"none","label":"No icon"},{"value":"calendar","label":"Calendar"},{"value":"star","label":"Star"},{"value":"clock","label":"Clock"},{"value":"compare","label":"Compare"},{"value":"map-pin","label":"Map pin"},{"value":"tire","label":"Tire"},{"value":"wheel","label":"Wheel"},{"value":"check","label":"Tick"},{"value":"phone","label":"Phone"},{"value":"ready-today","label":"Ready today"}] },
+    { "type": "header", "content": "Wheel product pages" },
+    { "type": "text", "id": "wheel_stat_3_value", "default": "2 shops", "label": "3rd fact on wheel pages", "info": "Replaces the 3rd fact on wheel pages. Leave empty to show the 3rd fact above on wheels too." },
+    { "type": "text", "id": "wheel_stat_3_label", "default": "SW and NE Calgary", "label": "3rd fact label on wheel pages" },
+    { "type": "select", "id": "wheel_stat_3_icon", "label": "3rd fact icon on wheel pages", "default": "map-pin", "options": [{"value":"none","label":"No icon"},{"value":"calendar","label":"Calendar"},{"value":"star","label":"Star"},{"value":"clock","label":"Clock"},{"value":"compare","label":"Compare"},{"value":"map-pin","label":"Map pin"},{"value":"tire","label":"Tire"},{"value":"wheel","label":"Wheel"},{"value":"check","label":"Tick"},{"value":"phone","label":"Phone"},{"value":"ready-today","label":"Ready today"}] }
   ],
   "presets": [{ "name": "t:sections.social_proof.name" }]
 }

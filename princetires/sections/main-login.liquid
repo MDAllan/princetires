@@ -108,12 +108,13 @@
             </span>
             My Garage
           </button>
-          <button type="button" class="auth-type-toggle__btn" data-type="shop" id="AuthTypeShop">
+          {%- comment -%} 2026-11-12: dealers sign in at the dealer portal, not here. This is a link now, not a tab. {%- endcomment -%}
+          <a class="auth-type-toggle__btn" href="https://wholesale.princetires.ca/dealer/login" rel="noopener" id="AuthDealerPortalLink" style="text-decoration:none">
             <span class="auth-type-toggle__icon">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="9" y1="22" x2="9" y2="12"/><line x1="15" y1="22" x2="15" y2="12"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
             </span>
-            Dealer Access
-          </button>
+            Dealer login
+          </a>
         </div>
 
         <div class="auth-page__form-header">
@@ -222,7 +223,7 @@
         </div>
         <div class="auth-page__switch" id="AuthShopRegisterNote" style="display:none;margin-top:8px;">
           <span>Need dealer access?</span>
-          <a href="/pages/wholesale-register">Apply for dealer account →</a>
+          <a href="/pages/wholesale-register">Apply for a wholesale account</a>
         </div>
 
         {%- if shop.checkout.guest_login -%}
@@ -964,7 +965,7 @@
 
     // ── Account type toggle (Customer ↔ Shop) ──
     var toggleCustomer = document.getElementById('AuthTypeCustomer');
-    var toggleShop     = document.getElementById('AuthTypeShop');
+    var toggleShop     = null; // dealer tab removed 2026-11-12: dealers sign in at the dealer portal
     var returnToInput  = document.getElementById('AuthReturnTo');
     var titleEl        = document.getElementById('AuthTitle');
     var subtitleEl     = document.getElementById('AuthSubtitle');
@@ -986,13 +987,13 @@
 
       // Toggle button active state
       toggleCustomer.classList.toggle('auth-type-toggle__btn--active', !isShop);
-      toggleShop.classList.toggle('auth-type-toggle__btn--active', isShop);
+      if (toggleShop) toggleShop.classList.toggle('auth-type-toggle__btn--active', isShop);
 
       // Visual mode class on root
       section.classList.toggle('auth-page--shop-mode', isShop);
 
       // return_to destination
-      if (returnToInput) returnToInput.value = isShop ? '/pages/wholesale-portal' : '/account';
+      if (returnToInput) returnToInput.value = '/account';
 
       // Badge icon
       if (iconCustomer) iconCustomer.style.display = isShop ? 'none' : 'block';
@@ -1027,8 +1028,9 @@
     if (toggleShop)     toggleShop.addEventListener('click',     function() { setMode('shop'); });
 
     // Initialise — if URL has ?type=shop, pre-select shop tab
+    // 2026-11-12: old links with ?type=shop go to the dealer portal login.
     if (window.location.search.indexOf('type=shop') !== -1) {
-      setMode('shop');
+      window.location.replace('https://wholesale.princetires.ca/dealer/login');
     }
 
     // Submit button loading state
@@ -1090,7 +1092,7 @@
       "type": "text",
       "id": "trust_text",
       "label": "Trust badge text",
-      "default": "4.9 on Google (500+ reviews)"
+      "default": "4.9 on Google (750+ reviews)"
     },
     {
       "type": "checkbox",

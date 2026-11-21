@@ -1,8 +1,22 @@
 {% doc %}
-  "See it on your car" rim visualizer for WHEEL product pages. The shopper enters
+  "See it on your car" rim visualizer for WHEEL product pages. The shopper picks
   year / make / model and we render their vehicle wearing THIS rim using the
   Wheel Configurator API (via the Prince Tires app /api/configurator/render).
   Only renders for products that carry a custom.bolt_pattern (i.e. wheels).
+
+  Year / make / model are SELECTS driven by the same pt-vehicle-{year}.json
+  assets as every other vehicle surface, so a shopper can't mistype a car we
+  don't have. They are pre-filled from the vehicle the shopper already gave us
+  (localStorage `pt-tire-search-vehicle`, written by the tire search, the
+  collection research strip and My Garage) — filled in, but NOT auto-rendered:
+  a render is an upstream API call, and firing one per page view is what got the
+  key suspended in July 2026.
+
+  RIM IMAGE SIZE MATTERS. The configurator rejects source images over 1000 kB
+  ("File is larger than > 1000.0kB") and our app turns that into {image:null},
+  which the widget used to report as "we couldn't find that vehicle" — blaming
+  the shopper for a file-size limit. A 1000px Shopify rendition of a wheel photo
+  is routinely ~1.2 MB, so ask for 600px (~460 kB, comfortably under the cap).
 
   @param {product} product - The wheel product.
 
@@ -13,19 +27,41 @@
 {%- liquid
   assign api_base = settings.chat_api_base | default: 'https://app.princetires.ca'
   assign rv_bolt = product.metafields.custom.bolt_pattern | default: ''
+  assign rv_min = settings.smart_search_min_year | default: 1990
+  assign rv_max = settings.smart_search_max_year | default: 2027
 -%}
 
 {%- if rv_bolt != blank and product.featured_image != blank -%}
-  <div class="ptp-viz" data-ptp-viz data-api="{{ api_base }}/api/configurator/render" data-rim="{{ product.featured_image | image_url: width: 1000 }}">
+  {% render 'pt-vehicle-manifest-loader' %}
+  <div
+    class="ptp-viz"
+    data-ptp-viz
+    data-api="{{ api_base }}/api/configurator/render"
+    data-rim="{{ product.featured_image | image_url: width: 600 }}"
+    data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}"
+    data-asset-version="{%- assign _au = 'pt-vehicle-2025.json' | asset_url -%}{%- if _au contains '?' -%}{{ _au | split: '?' | last }}{%- endif -%}"
+    data-manifest-url="{{ 'pt-vehicle-manifest.json' | asset_url }}"
+  >
     <div class="ptp-viz__head">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2"/></svg>
+      {% render 'pt-icon', name: 'car', size: 20 %}
       <strong>See these on your car</strong>
     </div>
     <div class="ptp-viz__form">
-      <input class="ptp-viz__in" data-ptp-viz-year type="number" inputmode="numeric" placeholder="Year" min="1990" max="2027" aria-label="Vehicle year" />
-      <input class="ptp-viz__in" data-ptp-viz-make type="text" placeholder="Make (e.g. Honda)" autocomplete="off" aria-label="Vehicle make" />
-      <input class="ptp-viz__in" data-ptp-viz-model type="text" placeholder="Model (e.g. Civic)" autocomplete="off" aria-label="Vehicle model" />
-      <button class="ptp-viz__btn" type="button" data-ptp-viz-go>Visualize</button>
+      <select class="ptp-viz__in" data-ptp-viz-year aria-label="Vehicle year">
+        <option value="">Year</option>
+        {%- assign rv_y = rv_max | times: 1 -%}
+        {%- assign rv_lo = rv_min | times: 1 -%}
+        {%- for i in (rv_lo..rv_y) reversed -%}
+          <option value="{{ i }}">{{ i }}</option>
+        {%- endfor -%}
+      </select>
+      <select class="ptp-viz__in" data-ptp-viz-make aria-label="Vehicle make" disabled>
+        <option value="">Make</option>
+      </select>
+      <select class="ptp-viz__in" data-ptp-viz-model aria-label="Vehicle model" disabled>
+        <option value="">Model</option>
+      </select>
+      <button class="ptp-viz__btn" type="button" data-ptp-viz-go disabled>Show on my car</button>
     </div>
     <div class="ptp-viz__out" data-ptp-viz-out hidden></div>
     <div class="ptp-viz__msg" data-ptp-viz-msg hidden></div>
@@ -39,6 +75,10 @@
     var api = el.getAttribute('data-api');
     var rim = el.getAttribute('data-rim');
     if (rim && rim.indexOf('//') === 0) rim = 'https:' + rim; // protocol-relative -> absolute
+    var assetBase = el.dataset.assetBase || '';
+    var assetVersion = el.dataset.assetVersion || '';
+    var manifestUrl = el.dataset.manifestUrl || '';
+
     var yearI = el.querySelector('[data-ptp-viz-year]');
     var makeI = el.querySelector('[data-ptp-viz-make]');
     var modelI = el.querySelector('[data-ptp-viz-model]');
@@ -46,13 +86,79 @@
     var out = el.querySelector('[data-ptp-viz-out]');
     var msg = el.querySelector('[data-ptp-viz-msg]');
 
+    var yearData = null;       // the loaded pt-vehicle-{year}.json
+    var manifest = null;
+    var loadingYear = null;    // guards out-of-order year fetches
+
     function show(m) { msg.textContent = m; msg.hidden = !m; }
 
+    function fill(sel, placeholder, values, keep) {
+      var current = keep && values.indexOf(keep) !== -1 ? keep : '';
+      sel.innerHTML = '';
+      var o = document.createElement('option');
+      o.value = ''; o.textContent = placeholder;
+      sel.appendChild(o);
+      values.forEach(function (v) {
+        var opt = document.createElement('option');
+        opt.value = v; opt.textContent = v;
+        sel.appendChild(opt);
+      });
+      sel.value = current;
+      sel.disabled = values.length === 0;
+    }
+
+    function reset(sel, placeholder) {
+      sel.innerHTML = '<option value="">' + placeholder + '</option>';
+      sel.disabled = true;
+    }
+
+    function syncBtn() {
+      btn.disabled = !(yearI.value && makeI.value && modelI.value);
+    }
+
+    // Loads the year's catalogue, then fills makes (and, when restoring a saved
+    // car, the model too). Returns a promise so the prefill can chain on it.
+    function loadYear(year, wantMake, wantModel) {
+      yearData = null;
+      reset(makeI, 'Make');
+      reset(modelI, 'Model');
+      syncBtn();
+      if (!year) return Promise.resolve();
+      loadingYear = year;
+      var url = window.PTVehicleManifest
+        ? window.PTVehicleManifest.yearUrl(assetBase, year, manifest, assetVersion)
+        : assetBase + 'pt-vehicle-' + year + '.json' + (assetVersion ? '?' + assetVersion : '');
+      return fetch(url, { cache: 'force-cache' })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (data) {
+          if (loadingYear !== year) return; // a newer year won the race
+          yearData = data;
+          var makes = (data.makes || Object.keys(data.models || {})).slice().sort();
+          fill(makeI, 'Make', makes, wantMake);
+          if (makeI.value) fillModels(makeI.value, wantModel);
+          syncBtn();
+        })
+        .catch(function () {
+          if (loadingYear !== year) return;
+          show("Couldn't load vehicles for " + year + '.');
+        });
+    }
+
+    function fillModels(make, wantModel) {
+      reset(modelI, 'Model');
+      if (!make || !yearData) { syncBtn(); return; }
+      var models = Object.keys((yearData.models || {})[make] || {}).sort();
+      fill(modelI, 'Model', models, wantModel);
+      syncBtn();
+    }
+
+    yearI.addEventListener('change', function () { show(''); loadYear(yearI.value); });
+    makeI.addEventListener('change', function () { show(''); fillModels(makeI.value); });
+    modelI.addEventListener('change', function () { show(''); syncBtn(); });
+
     function go() {
-      var year = (yearI.value || '').trim();
-      var make = (makeI.value || '').trim();
-      var model = (modelI.value || '').trim();
-      if (!year || !make || !model) { show('Enter your year, make, and model.'); return; }
+      var year = yearI.value, make = makeI.value, model = modelI.value;
+      if (!year || !make || !model) { show('Pick your year, make and model.'); return; }
       show('Rendering your vehicle…'); out.hidden = true; out.innerHTML = '';
       btn.disabled = true;
       var qs = 'year=' + encodeURIComponent(year) + '&make=' + encodeURIComponent(make) + '&model=' + encodeURIComponent(model) + '&rim=' + encodeURIComponent(rim);
@@ -67,14 +173,50 @@
             img.onerror = function () { show("Couldn't load the preview — try again."); };
             img.src = d.image;
           } else {
-            show("We couldn't find that exact vehicle — double-check the spelling, or ask us in chat.");
+            // The car came from OUR dropdown, so it is not a typo: either the
+            // configurator has no template for it or the render failed.
+            show("We don't have a preview for that vehicle yet — ask us in chat and we'll show you.");
           }
         })
         .catch(function () { show("Couldn't render just now — please try again."); })
-        .finally(function () { btn.disabled = false; });
+        .finally(syncBtn);
     }
     btn.addEventListener('click', go);
-    [yearI, makeI, modelI].forEach(function (i) { i.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); }); });
+
+    // The car the shopper already told us about, from any surface.
+    function savedVehicle() {
+      try {
+        var raw = localStorage.getItem('pt-tire-search-vehicle');
+        if (!raw) return null;
+        var v = JSON.parse(raw);
+        return v && v.year && v.make && v.model ? v : null;
+      } catch (e) { return null; }
+    }
+
+    function start() {
+      var saved = savedVehicle();
+      if (!saved) return;
+      var y = String(saved.year);
+      // only if the year is actually offered on this select
+      if (!Array.prototype.some.call(yearI.options, function (o) { return o.value === y; })) return;
+      yearI.value = y;
+      loadYear(y, String(saved.make), String(saved.model)).then(function () {
+        if (yearI.value && makeI.value && modelI.value) {
+          // Filled in, deliberately NOT rendered — a render is an upstream call.
+          show('Showing for your ' + saved.year + ' ' + saved.make + ' ' + saved.model + ' — tap Show on my car.');
+        }
+      });
+    }
+
+    if (window.PTVehicleManifest) {
+      window.PTVehicleManifest.ready(manifestUrl, 1500).then(function (m) {
+        manifest = m;
+        if (m) window.PTVehicleManifest.fillYearSelect(yearI, window.PTVehicleManifest.yearsDesc(m));
+        start();
+      });
+    } else {
+      start();
+    }
   })();
 {% endjavascript %}
 
@@ -83,8 +225,9 @@
   .ptp-viz__head { display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; color: #1f2a33; margin-bottom: 0.7rem; }
   .ptp-viz__head svg { color: #b9221a; }
   .ptp-viz__form { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-  .ptp-viz__in { flex: 1 1 90px; min-width: 0; height: 40px; padding: 0 0.7rem; border: 1px solid #cdd6dd; border-radius: 8px; font-size: 1.4rem; font-family: inherit; }
+  .ptp-viz__in { flex: 1 1 90px; min-width: 0; height: 40px; padding: 0 0.7rem; border: 1px solid #cdd6dd; border-radius: 8px; font-size: 1.4rem; font-family: inherit; background: #fff; color: #1f2a33; }
   .ptp-viz__in:focus { outline: none; border-color: #b9221a; }
+  .ptp-viz__in:disabled { background: #f1f4f6; color: #8a97a1; }
   .ptp-viz__btn { flex: 0 0 auto; height: 40px; padding: 0 1.2rem; border: 0; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #DA291C, #b9221a); color: #fff; font-family: inherit; font-weight: 700; font-size: 1.4rem; }
   .ptp-viz__btn:disabled { opacity: 0.6; cursor: default; }
   .ptp-viz__out { margin-top: 0.8rem; }

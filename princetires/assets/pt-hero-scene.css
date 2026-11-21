@@ -1,0 +1,358 @@
+.pt-scene {
+  --sc-red: #DC2626;
+  --sc-orange: #F5820B;
+  --sc-sky:   url('//princetires.ca/cdn/shop/files/pt-cine-sky.png?v=1027143888062086600');
+  --sc-road-summer: url('//princetires.ca/cdn/shop/files/pt-cine-road-summer.png?v=1857013350564478352');
+  --sc-road-winter: url('//princetires.ca/cdn/shop/files/pt-cine-road-winter.png?v=17531420997286514861');
+  --sc-tire-winter:     url('//princetires.ca/cdn/shop/files/pt-cine-tire-winter.png?v=11174539363296440788');
+  --sc-tire-allweather: url('//princetires.ca/cdn/shop/files/pt-cine-tire-allweather.png?v=17534807867195563736');
+  --sc-tire-allseason:  url('//princetires.ca/cdn/shop/files/pt-cine-tire-allseason.png?v=14962904257687392334');
+  --sc-tire-allterrain: url('//princetires.ca/cdn/shop/files/pt-cine-tire-allterrain.png?v=7213411973594125178');
+  --sc-tire-size: 44vh;
+  --sc-tire-x: 34%;
+  --sc-lean: -7deg;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* The scene replaces the photo slideshow. The slides stay in the markup so the
+   section is untouched and one line here brings them back. */
+.pt-scene .hero-smart-search__slideshow,
+.pt-scene .hero-smart-search__slideshow-overlay { display: none !important; }
+
+/* The hero's own content sits above every scene layer. */
+.pt-scene .hero-smart-search__container { position: relative; z-index: 10; }
+
+/* pt-motion.js injects its own atmospheric layers into this same hero. With a
+   real scene behind the copy they double up - two glows, two floor gradients -
+   so they stand down here. Its scroll parallax on the content is kept. */
+.pt-scene .hero-smart-search__atmo,
+.pt-scene .hero-smart-search__bokeh,
+.pt-scene .hero-smart-search__floor { display: none !important; }
+
+/* ── Sky plate ─────────────────────────────────────────────────────────── */
+.pt-scene__sky {
+  position: absolute; inset: -4% 0 0 0; z-index: 0;
+  background: var(--sc-sky) center 42% / cover no-repeat;
+  transform: scale(1.04);
+}
+
+/* ── Road plates: drawn twice, so the tires sit IN the surface ─────────── */
+.pt-scene__road { position: absolute; left: 0; right: 0; pointer-events: none; }
+.pt-scene--road-summer .pt-scene__road { background-image: var(--sc-road-summer); }
+.pt-scene--road-winter .pt-scene__road { background-image: var(--sc-road-winter); }
+.pt-scene__road--far {
+  bottom: 0; height: 62%; z-index: 1; opacity: 0.96;
+  background-position: center bottom; background-size: cover; background-repeat: no-repeat;
+}
+.pt-scene__road--near {
+  bottom: -2px; height: 17%; z-index: 5;
+  background-position: center bottom; background-size: cover; background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 58%);
+          mask-image: linear-gradient(to bottom, transparent, #000 58%);
+}
+
+/* ── Tire cut-out planes ───────────────────────────────────────────────── */
+.pt-scene__tires { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.pt-scene__tire {
+  position: absolute;
+  left: var(--tx, 50%); top: var(--ty, 86%);
+  width: var(--ts, 44vh); height: var(--ts, 44vh);
+  background-position: center; background-size: contain; background-repeat: no-repeat;
+  transform: translate(-50%, -50%) rotate(var(--sc-lean));
+  filter: brightness(var(--tb, 1)) drop-shadow(0 26px 30px rgba(0,0,0,0.55));
+  opacity: 0;
+  animation: pt-scene-tire-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) var(--td, 0.4s) forwards;
+}
+.pt-scene__tire--winter     { background-image: var(--sc-tire-winter); }
+.pt-scene__tire--allweather { background-image: var(--sc-tire-allweather); }
+.pt-scene__tire--allseason  { background-image: var(--sc-tire-allseason); }
+.pt-scene__tire--allterrain { background-image: var(--sc-tire-allterrain); }
+@keyframes pt-scene-tire-in {
+  from { opacity: 0; transform: translate(-50%, -38%) rotate(var(--sc-lean)) scale(0.94); }
+  to   { opacity: 1; transform: translate(-50%, -50%) rotate(var(--sc-lean)) scale(1); }
+}
+
+/* Plane 1 leads. 3 and 4 sit deeper and dimmer so the eye reads distance.
+   All of them live on the right so the copy and the search keep the left. */
+.pt-scene__tire--1 { --tx: calc(50% + var(--sc-tire-x) * 0.62); --ty: 82%; --ts: var(--sc-tire-size);              --tb: 1;    --td: 0.35s; z-index: 4; }
+.pt-scene__tire--2 { --tx: calc(50% + var(--sc-tire-x) * 1.28); --ty: 86%; --ts: calc(var(--sc-tire-size) * 0.88); --tb: 0.9;  --td: 0.5s;  z-index: 3; }
+.pt-scene__tire--3 { --tx: calc(50% + var(--sc-tire-x) * 0.14); --ty: 90%; --ts: calc(var(--sc-tire-size) * 0.72); --tb: 0.72; --td: 0.65s; z-index: 2; }
+.pt-scene__tire--4 { --tx: calc(50% + var(--sc-tire-x) * 1.74); --ty: 92%; --ts: calc(var(--sc-tire-size) * 0.64); --tb: 0.6;  --td: 0.8s;  z-index: 1; }
+
+/* ── Snow: two planes so it falls THROUGH the scene ────────────────────── */
+.pt-scene__snow {
+  position: absolute; inset: -25% 0 0 0; pointer-events: none;
+  background-repeat: repeat; will-change: transform;
+}
+.pt-scene__snow--far {
+  z-index: 2;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 10%, rgba(255,255,255,0.55) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 62% 34%, rgba(255,255,255,0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px   at 84% 12%, rgba(255,255,255,0.40) 50%, transparent 51%),
+    radial-gradient(1px 1px   at 37% 68%, rgba(255,255,255,0.40) 50%, transparent 51%);
+  background-size: 340px 340px;
+  animation: pt-scene-fall 22s linear infinite;
+  opacity: 0.5;
+}
+.pt-scene__snow--near {
+  z-index: 4;
+  background-image:
+    radial-gradient(3px 3px     at 18% 44%, rgba(255,255,255,0.85) 50%, transparent 51%),
+    radial-gradient(2.5px 2.5px at 88% 24%, rgba(255,255,255,0.75) 50%, transparent 51%),
+    radial-gradient(2px 2px     at 52% 74%, rgba(255,255,255,0.70) 50%, transparent 51%);
+  background-size: 420px 420px;
+  animation: pt-scene-fall 9s linear infinite;
+  opacity: 0.45;
+  filter: blur(0.4px);
+}
+@keyframes pt-scene-fall {
+  from { transform: translate3d(0, -25%, 0); }
+  to   { transform: translate3d(-46px, 25%, 0); }
+}
+/* Genuinely snowing in Calgary right now - heavier and faster. */
+.pt-scene.is-snowing .pt-scene__snow--far  { animation-duration: 14s; opacity: 0.72; }
+.pt-scene.is-snowing .pt-scene__snow--near { animation-duration: 6s;  opacity: 0.68; }
+
+/* ── Scrim + glow + vignette ───────────────────────────────────────────── */
+.pt-scene::after {
+  content: ""; position: absolute; inset: 0; z-index: 6; pointer-events: none;
+  background:
+    linear-gradient(100deg, rgba(5,6,8,0.94) 0%, rgba(5,6,8,0.72) 32%, rgba(5,6,8,0.26) 62%, rgba(5,6,8,0.10) 100%),
+    linear-gradient(to bottom, rgba(5,6,8,0.60) 0%, transparent 20%);
+}
+.pt-scene__glow {
+  position: absolute; z-index: 6; left: -12%; top: 14%; width: 62%; height: 72%;
+  pointer-events: none; filter: blur(18px);
+  background: radial-gradient(ellipse at center, rgba(220,38,38,0.22) 0%, rgba(220,38,38,0.07) 42%, transparent 70%);
+  animation: pt-scene-glow 11s ease-in-out infinite alternate;
+}
+.pt-scene--warm .pt-scene__glow {
+  background: radial-gradient(ellipse at center, rgba(245,130,11,0.22) 0%, rgba(245,130,11,0.07) 42%, transparent 70%);
+}
+@keyframes pt-scene-glow {
+  from { opacity: 0.85; transform: scale(0.97); }
+  to   { opacity: 1;    transform: scale(1.05); }
+}
+.pt-scene__vignette {
+  position: absolute; inset: 0; z-index: 7; pointer-events: none;
+  box-shadow: inset 0 0 170px 44px rgba(0,0,0,0.55);
+}
+
+/* ── Season pill + live conditions pill ────────────────────────────────── */
+.pt-scene__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; margin-bottom: 1.4rem; }
+.pt-scene__eyebrow,
+.pt-scene__wx {
+  display: inline-flex; align-items: center; gap: 0.6rem; margin: 0;
+  padding: 0.5rem 1.05rem 0.5rem 0.85rem;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-radius: 999px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.18rem; font-weight: 600;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  color: rgba(255,255,255,0.94);
+}
+.pt-scene__pulse {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: var(--sc-red);
+  animation: pt-scene-pulse 2.2s ease-out infinite;
+}
+@keyframes pt-scene-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.65); }
+  70%  { box-shadow: 0 0 0 9px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+/* The live pill reads cooler than the season pill so the two don't compete. */
+.pt-scene__wx { letter-spacing: 0.05em; font-weight: 500; color: rgba(255,255,255,0.86); }
+.pt-scene__wx[hidden] { display: none; }
+.pt-scene__wx-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: #7dd3fc; box-shadow: 0 0 10px rgba(125,211,252,0.8);
+}
+.pt-scene.is-freezing .pt-scene__wx-dot { background: #bae6fd; }
+.pt-scene__wx-sep { width: 1px; height: 11px; background: rgba(255,255,255,0.28); }
+.pt-scene__wx-note { color: #bae6fd; }
+.pt-scene__wx-note[hidden] { display: none; }
+.pt-scene__wx-sep:has(+ [hidden]) { display: none; }
+
+/* ── Fix 1: headline reads as one sentence ─────────────────────────────────
+   hero-smart-search lays its H1 out as `display:flex` with the white half and
+   the red half as two flex children. That balances "CALGARY'S TRUSTED / TIRE
+   SHOP", but a longer seasonal headline makes each half wrap inside its own
+   column - two stacks of text side by side with a gap down the middle.
+   Letting them flow as inline text puts the sentence back together and keeps
+   the accent colour on the last two words.
+
+   This does switch off the two halves' slide-in-from-the-sides animation:
+   that effect needs them to be separate blocks. Delete this rule to get it
+   back. The trade felt right - the slide was built for two short phrases. */
+.pt-scene .hero-smart-search__heading {
+  display: block;
+  overflow: visible;
+  /* em, not ch: ch is the width of "0", which is far narrower than the average
+     uppercase glyph in Barlow Condensed, so a ch cap reads much tighter than
+     its number suggests - that is what forced the headline onto three lines.
+     17em holds the whole sentence on two lines at this size. */
+  max-width: 17em;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.04;
+  font-size: clamp(2.4rem, 3.5vw, 3.5rem);
+  text-wrap: balance;
+}
+.pt-scene .hero-smart-search__heading-left,
+.pt-scene .hero-smart-search__heading-right {
+  display: inline;
+  opacity: 1;
+  transform: none;
+  filter: none;
+  animation: none !important;
+}
+/* the markup strips whitespace between the two spans */
+.pt-scene .hero-smart-search__heading-left::after { content: " "; }
+
+/* ── Aurora accent ────────────────────────────────────────────────────
+   Ported technique, not code: Magic UI's Aurora Text is React + Tailwind +
+   Framer Motion and cannot drop into a Liquid theme, but the effect underneath
+   it is plain CSS - a wide gradient clipped to the glyphs, scrolled sideways.
+   Rebuilt here in the theme palette so it costs nothing and adds no
+   dependency. This is what gives the headline motion back after the alignment
+   fix above had to switch off the two halves' slide-in.
+
+   Magic UI's Shine Border was the other candidate, for the search field - but
+   hero-smart-search already ships that exact effect on
+   .hero-smart-search__input-wrapper::before, so it would have doubled up. */
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .pt-scene .hero-smart-search__heading-right {
+    background-image: linear-gradient(
+      110deg,
+      #DC2626  0%,
+      #F5820B 18%,
+      #FCA5A5 32%,
+      #DC2626 48%,
+      #F5820B 68%,
+      #DC2626 100%
+    );
+    background-size: 280% 100%;
+    background-position: 0% 0%;
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
+            text-fill-color: transparent;
+    /* !important: the rule above zeroes both halves' animations to kill the
+       slide-in, and this has to win against it. */
+    animation: pt-scene-aurora 8s linear infinite !important;
+    will-change: background-position;
+  }
+}
+@keyframes pt-scene-aurora {
+  to { background-position: -280% 0%; }
+}
+
+/* ── Fix 2: soften the sky/road seam ───────────────────────────────────────
+   The road plate is a hard-edged box sitting on top of the sky, so its top
+   edge draws a straight dark line across the middle of the frame. Feathering
+   it over the top fifth lets the road rise out of the horizon instead, and a
+   thin band of haze at the join does what distance haze does in a real photo. */
+.pt-scene__road--far {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 9%, #000 24%);
+          mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 9%, #000 24%);
+}
+.pt-scene__haze {
+  position: absolute; left: 0; right: 0; bottom: 56%; height: 16%;
+  z-index: 2; pointer-events: none;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(120, 130, 150, 0.06) 45%,
+    transparent 100%);
+  filter: blur(6px);
+}
+@media (max-width: 989px) {
+  .pt-scene__haze { bottom: 42%; height: 14%; }
+  .pt-scene .hero-smart-search__heading {
+    font-size: clamp(2rem, 4.6vw, 2.7rem);
+    max-width: 15em;
+  }
+}
+
+/* ── Responsive: tires drop to a shallow row so the copy keeps the top ─── */
+@media (max-width: 989px) {
+  .pt-scene__tire--1 { --tx: 74%; --ty: 90%; --ts: calc(var(--sc-tire-size) * 0.68); }
+  .pt-scene__tire--2 { --tx: 96%; --ty: 93%; --ts: calc(var(--sc-tire-size) * 0.58); }
+  .pt-scene__tire--3 { --tx: 52%; --ty: 95%; --ts: calc(var(--sc-tire-size) * 0.48); }
+  .pt-scene__tire--4 { display: none; }
+  .pt-scene__road--far { height: 46%; }
+  .pt-scene::after {
+    background: linear-gradient(to top, rgba(5,6,8,0.94) 0%, rgba(5,6,8,0.68) 46%, rgba(5,6,8,0.34) 100%);
+  }
+}
+@media (max-width: 600px) {
+  .pt-scene__tire--1 { --tx: 78%; --ty: 94%; --ts: calc(var(--sc-tire-size) * 0.56); }
+  .pt-scene__tire--2 { --tx: 100%; --ty: 97%; --ts: calc(var(--sc-tire-size) * 0.46); }
+  .pt-scene__tire--3 { display: none; }
+  .pt-scene__vignette { box-shadow: inset 0 0 100px 26px rgba(0,0,0,0.5); }
+  .pt-scene__snow--far { opacity: 0.4; }
+  /* phone: the hero has to hold a two-pill row, a four-line headline, a
+     subtitle, the tab row and the search field above the fold. Everything
+     below buys back vertical space and stops the pills from colliding. */
+  .pt-scene__eyebrow, .pt-scene__wx {
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    padding: 0.32rem 0.66rem 0.32rem 0.56rem;
+  }
+  .pt-scene__meta {
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+  .pt-scene .hero-smart-search__heading {
+    font-size: clamp(1.75rem, 7.4vw, 2.2rem);
+    max-width: 13em;
+    line-height: 1.02;
+  }
+  .pt-scene .hero-smart-search__subtitle {
+    font-size: 0.92rem;
+    line-height: 1.45;
+    max-width: 30em;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pt-scene__tire { animation: none; opacity: 1; }
+  .pt-scene__glow, .pt-scene__pulse, .pt-scene__snow { animation: none !important; }
+  /* the gradient holds still, so the accent words keep their colour */
+  .pt-scene .hero-smart-search__heading-right {
+    animation: none !important;
+    background-position: 22% 0%;
+  }
+}
+
+/* ── First paint ─────────────────────────────────────────────────────────────────────
+   The rules above only apply once pt-hero-scene.js has added .pt-scene, and
+   that script is deferred. The section's first slide is fetchpriority="high",
+   so the old photo painted first and was only swapped out a moment later -
+   or for seconds on a slow phone. These two rules are not gated on .pt-scene:
+   the stylesheet is in <head>, so they apply before the first frame.
+     1. The old slideshow never shows.
+     2. The hero gets the new sky plate as its own background, so the first
+        frame already looks like the scene. When the script runs, its layers
+        sit on top of this with the same image, so there is no visible swap.
+        If the script never runs, the hero still has a proper background. */
+.hero-smart-search__slideshow,
+.hero-smart-search__slideshow-overlay { display: none !important; }
+.hero-smart-search {
+  background-color: #050608;
+  background-image:
+    linear-gradient(to bottom, rgba(5,6,8,0.45) 0%, rgba(5,6,8,0.25) 45%, rgba(5,6,8,0.85) 100%),
+    url('//princetires.ca/cdn/shop/files/pt-cine-sky.png?v=1027143888062086600');
+  background-size: cover;
+  background-position: center 42%;
+  background-repeat: no-repeat;
+}

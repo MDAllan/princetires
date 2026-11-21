@@ -1,0 +1,118 @@
+{%- comment -%}
+  Nov 8, 2026:
+  1) While a shopper types in the hero search, hide the whole vehicle-picker block (and the
+     package/specs links), and pin the suggestions dropdown to the bottom of the search box itself,
+     so nothing below the box can push the suggestions down (phones showed a big gap).
+  2) Phones: the hero's keepInputVisible() scrolls the input to 50px from the top, which tucks it
+     under the 73px sticky header. We nudge that scroll so the box lands just below the header.
+  3) Make tiles in the vehicle popup show the make's first letter, replaced by a logo when one exists:
+     first https://app.princetires.ca/api/make-logo/<make-slug>.png (wheel-size.com /makes/ logo,
+     licensed through the Wheel Fitment API subscription), then theme asset make-<make-slug>.png.
+  4) Trim step in the vehicle popup: show each trim's factory tire size under its name (small, orange),
+     read from the same pt-vehicle-<year>.json data the picker already uses.
+{%- endcomment -%}
+<style>
+  .section-hero-smart-search:has([data-smart-search-input]:focus) .hero-smart-search__picker,
+  .section-hero-smart-search:has([data-smart-search-input][aria-expanded="true"]) .hero-smart-search__picker,
+  .section-hero-smart-search:has([data-smart-search-input]:focus) .ptvs-alt,
+  .section-hero-smart-search:has([data-smart-search-input][aria-expanded="true"]) .ptvs-alt { display: none !important; }
+  .ptvs__mono.has-logo { background: #fff; }
+  .ptvs__mono img { width: 76%; height: 76%; object-fit: contain; display: block; }
+  .ptvs__row .ptvs-size { display: block; margin-top: 3px; font-size: 13px; font-weight: 500; color: #f5820b; letter-spacing: .01em; animation: ptvs-rise .3s cubic-bezier(.32,.72,0,1) both; }
+  .ptvs__row.is-picked .ptvs-size { color: #ffe0c2; }
+</style>
+<script>
+(function () {
+  if (window.__ptSearchFocus) return;
+  window.__ptSearchFocus = true;
+  var origScrollBy = window.scrollBy.bind(window);
+  window.scrollBy = function (a, b) {
+    try {
+      var ae = document.activeElement;
+      if (a && typeof a === 'object' && window.innerWidth <= 768 && ae && ae.matches && ae.matches('[data-smart-search-input]')) {
+        var h = document.querySelector('header.pt-header');
+        var hb = h ? Math.max(0, h.getBoundingClientRect().bottom) : 0;
+        var target = Math.max(50, hb + 14);
+        a = { top: (a.top || 0) - (target - 50), left: a.left || 0, behavior: a.behavior };
+        if (Math.abs(a.top) < 6) return;
+      }
+    } catch (e) {}
+    return origScrollBy(a, b);
+  };
+  function pin() {
+    Array.prototype.forEach.call(document.querySelectorAll('.hero-smart-search__results'), function (res) {
+      var box = res.parentElement && res.parentElement.querySelector('.hero-smart-search__input-wrapper');
+      if (!box || box.offsetParent !== res.offsetParent) return;
+      res.style.setProperty('top', (box.offsetTop + box.offsetHeight + 6) + 'px', 'important');
+    });
+  }
+  function soon() { requestAnimationFrame(function () { requestAnimationFrame(pin); }); }
+  ['focusin', 'input', 'click', 'keyup'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { if (e.target && e.target.closest && e.target.closest('.hero-smart-search__search')) soon(); }, true);
+  });
+  window.addEventListener('resize', soon);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', soon);
+  try {
+    new MutationObserver(soon).observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['hidden', 'aria-expanded'] });
+  } catch (e) {}
+})();
+(function () {
+  if (window.__ptMakeLogos) return;
+  window.__ptMakeLogos = true;
+  var asset = {{ 'make-logo.png' | asset_url | json }}.split('make-logo.png')[0];
+  var dataBase = {{ 'pt-vehicle-manifest.json' | asset_url | json }}.split('pt-vehicle-manifest.json')[0];
+  var API = 'https://app.princetires.ca/api/make-logo/';
+  var miss = {}, years = {};
+  function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+  function load(m, s, srcs) {
+    if (!srcs.length) { miss[s] = 1; return; }
+    var img = new Image();
+    img.alt = '';
+    img.decoding = 'async';
+    img.onload = function () { if (img.naturalWidth < 8) return load(m, s, srcs.slice(1)); m.textContent = ''; m.appendChild(img); m.classList.add('has-logo'); };
+    img.onerror = function () { load(m, s, srcs.slice(1)); };
+    img.src = srcs[0];
+  }
+  function yearData(y) {
+    if (!years[y]) years[y] = fetch(dataBase + 'pt-vehicle-' + encodeURIComponent(y) + '.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+    return years[y];
+  }
+  function sizes(pane) {
+    var sheet = pane.closest('.ptvs__sheet'); if (!sheet) return;
+    var chips = Array.prototype.map.call(sheet.querySelectorAll('.ptvs__chips button.ptvs__chip'), function (c) { return c.textContent.trim(); });
+    if (chips.length < 3) return;
+    var y = chips[0], mk = chips[1], md = chips[2];
+    yearData(y).then(function (d) {
+      var trims = d && d.models && d.models[mk] && d.models[mk][md];
+      if (!trims) return;
+      Array.prototype.forEach.call(pane.querySelectorAll('.ptvs__row[data-v]'), function (row) {
+        if (row.querySelector('.ptvs-size')) return;
+        var list = trims[row.getAttribute('data-v')];
+        if (!list || !list.length) return;
+        var seen = {}, out = [];
+        list.forEach(function (s) { s = String(s).replace(/\/[A-Z]$/, ''); if (!seen[s]) { seen[s] = 1; out.push(s); } });
+        var lab = row.querySelector('span'); if (!lab) return;
+        var sm = document.createElement('small');
+        sm.className = 'ptvs-size';
+        sm.textContent = out.slice(0, 3).join(' · ');
+        lab.appendChild(sm);
+      });
+    });
+  }
+  function apply(root) {
+    if (!root.querySelectorAll) return;
+    Array.prototype.forEach.call(root.querySelectorAll('.ptvs__mono:not([data-logo])'), function (m) {
+      m.setAttribute('data-logo', '1');
+      var tile = m.closest('[data-v]'); if (!tile) return;
+      var s = slug(tile.getAttribute('data-v'));
+      if (miss[s]) return;
+      load(m, s, [API + s + '.png', asset + 'make-' + s + '.png']);
+    });
+    var pane = root.classList && root.classList.contains('ptvs__pane') ? root : (root.closest ? root.closest('.ptvs__pane') : null);
+    if (pane && /trim or package/i.test(pane.textContent)) sizes(pane);
+  }
+  new MutationObserver(function (ms) {
+    ms.forEach(function (x) { Array.prototype.forEach.call(x.addedNodes, function (n) { if (n.nodeType === 1) apply(n); }); });
+  }).observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>

@@ -1,0 +1,650 @@
+{% doc %}
+  Wheel search for WHEEL collections — the counterpart to
+  pt-collection-research-strip, which searches TIRES.
+
+  Why this exists: the tire strip was rendering on wheel collections, where it
+  can only ever return nothing. Wheels carry custom.bolt_pattern / rim_diameter
+  / rim_width / rim_offset / center_bore and NOT custom.tire_width or
+  tire_profile (measured 2026-09-27: 0 of 2,061 wheel products have a tire
+  metafield), so a tire-size search there is zero results by construction.
+
+  Two tabs:
+    - By vehicle: year / make / model off the same pt-vehicle-{year}.json assets
+      every other vehicle surface uses, then /api/wheel-fitment for the car's
+      bolt pattern and OE rim diameters, then a facet URL.
+    - By wheel specs: diameter / bolt pattern / width / offset, with every
+      option and count taken from `collection.filters` so an option can never
+      show zero results and the strings always match what Shopify indexed.
+
+  BOLT PATTERNS ARE MULTI-VALUE. A wheel drilled for two patterns is stored as
+  one string, "6x135/6x139.7". Shopify facets match the WHOLE string, so asking
+  for "6x139.7" finds 20 wheels when 219 actually fit. Every canonical PCD is
+  therefore expanded to every catalogue string containing it, and the list of
+  catalogue strings comes from the live facet rather than a hardcoded array —
+  the hardcoded-list mistake is what limited the homepage search to a handful
+  of results.
+
+  CENTRE BORE IS DELIBERATELY NOT FILTERED. A wheel fits when its bore is >=
+  the hub; a centring ring covers the difference. Filtering on it excluded
+  valid wheels and was the other half of the homepage under-matching.
+
+  USABLE OFF A COLLECTION PAGE TOO. Only a collection page has
+  `collection.filters`, so when none is passed (the homepage hero) the spec
+  options are fetched once, lazily, from /collections/wheels?view=facets — the
+  JSON view of Shopify's own facet index. Same data, one source; copying the
+  catalogue's values into a second surface is how the old hardcoded bore list
+  rotted until it hid ~1,100 of ~1,400 wheels.
+
+  @param {collection} [collection] - The current collection, when on one.
+  @param {string} [target] - Collection path to search. Defaults to /collections/wheels
+                             so a brand collection still searches the whole catalogue.
+  @param {string} [facets_url] - Where to fetch facets when there is no collection.
+  @param {boolean} [compact] - Tighter styling for the hero.
+  @param {boolean} [show_counts] - false: spec options print no product counts and
+                                   options with 0 products are left out (the results
+                                   header, owner decision 5). Default true.
+  @param {string} [msg_target] - CSS selector of an element OUTSIDE any collapsible
+                                 panel; the "Need tires too?" box and the "we don't
+                                 stock that bolt pattern" message go there instead of
+                                 next to the widget, so a closed panel can't hide them.
+  @param {string} [package_url] - Package mode (the hero's Packages tab): vehicle only,
+                                  no spec tab or collapse toggle, an extra Trim select,
+                                  and the button goes to this URL with ?y=&mk=&md=&tr=
+                                  instead of searching wheels.
+
+  @example
+  {% render 'pt-wheel-search', collection: collection %}
+  {% render 'pt-wheel-search', compact: true %}
+  {% render 'pt-wheel-search', compact: true, package_url: '/pages/wheel-package' %}
+{% enddoc %}
+
+{%- liquid
+  assign target_path = target | default: '/collections/wheels'
+  assign ws_counts = true
+  if show_counts == false
+    assign ws_counts = false
+  endif
+  assign f_bolt = ''
+  assign f_dia = ''
+  assign f_width = ''
+  assign f_offset = ''
+  for f in collection.filters
+    if f.param_name == 'filter.p.m.custom.bolt_pattern'
+      assign f_bolt = f
+    elsif f.param_name == 'filter.p.m.custom.rim_diameter'
+      assign f_dia = f
+    elsif f.param_name == 'filter.p.m.custom.rim_width'
+      assign f_width = f
+    elsif f.param_name == 'filter.p.m.custom.rim_offset'
+      assign f_offset = f
+    endif
+  endfor
+  assign has_specs = false
+  if f_bolt != '' and f_dia != ''
+    assign has_specs = true
+  endif
+  comment
+    No collection to read filters from (the hero): render the spec tab anyway
+    and let the script fill its dropdowns from ?view=facets on first click.
+  endcomment
+  assign facets_src = facets_url | default: '/collections/wheels?view=facets'
+  assign lazy_specs = false
+  if has_specs == false
+    assign lazy_specs = true
+    assign has_specs = true
+  endif
+  comment
+    Package mode needs only the car: the builder works out wheels and tires
+    itself, so no spec tab and no facet fetch.
+  endcomment
+  assign pkg_mode = false
+  if package_url != blank
+    assign pkg_mode = true
+    assign has_specs = false
+    assign lazy_specs = false
+  endif
+-%}
+
+{% render 'pt-vehicle-manifest-loader' %}
+
+<div
+  class="pt-ws{% if compact %} pt-ws--compact{% endif %}{% if pkg_mode %} pt-ws--package{% endif %}"
+  data-pt-ws
+  data-target="{{ target_path }}"
+  data-facets-url="{{ facets_src }}"
+  {% if lazy_specs %}data-lazy-specs="1"{% endif %}{% unless ws_counts %} data-no-counts="1"{% endunless %}{% if msg_target != blank %} data-msg-target="{{ msg_target | escape }}"{% endif %}{% if pkg_mode %} data-package-url="{{ package_url | escape }}"{% endif %}
+  data-api-base="{{ settings.chat_api_base | default: 'https://app.princetires.ca' }}"
+  data-asset-base="{{ 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first }}"
+  data-asset-version="{%- assign _au = 'pt-vehicle-2025.json' | asset_url -%}{%- if _au contains '?' -%}{{ _au | split: '?' | last }}{%- endif -%}"
+  data-manifest-url="{{ 'pt-vehicle-manifest.json' | asset_url }}"
+>
+  {%- comment -%}
+    Every bolt_pattern string Shopify has indexed for this collection, so the
+    expansion below is always in step with the catalogue.
+  {%- endcomment -%}
+  <script type="application/json" data-pt-ws-bolts>
+    [
+      {%- if f_bolt != '' -%}
+        {%- for v in f_bolt.values -%}
+          {"v": {{ v.label | json }}, "n": {{ v.count }}}{%- unless forloop.last -%},{%- endunless -%}
+        {%- endfor -%}
+      {%- endif -%}
+    ]
+  </script>
+
+  {% unless pkg_mode or compact %}<button type="button" class="pt-ws__toggle" data-pt-ws-toggle aria-expanded="false">Find wheels ▾</button>{% endunless %}
+
+  <div class="pt-ws__body" data-pt-ws-body>
+    {% unless pkg_mode %}<div class="pt-ws__tabs" role="tablist">
+      <button type="button" class="pt-ws__tab is-active" data-pt-ws-tab="vehicle" role="tab" aria-selected="true">By vehicle</button>
+      {%- if has_specs -%}
+        <button type="button" class="pt-ws__tab" data-pt-ws-tab="specs" role="tab" aria-selected="false">By wheel specs</button>
+      {%- endif -%}
+    </div>{% endunless %}
+
+    <div class="pt-ws__panel is-active" data-pt-ws-panel="vehicle">
+      <div class="pt-ws__row">
+        <label class="pt-ws__field">
+          <span class="pt-ws__label">Year</span>
+          <select class="pt-ws__select" data-pt-ws-year>
+            <option value="">{% if pkg_mode %}Year{% else %}—{% endif %}</option>
+            {%- assign ws_max = settings.smart_search_max_year | default: 2027 | times: 1 -%}
+            {%- assign ws_min = settings.smart_search_min_year | default: 1990 | times: 1 -%}
+            {%- for i in (ws_min..ws_max) reversed -%}
+              <option value="{{ i }}">{{ i }}</option>
+            {%- endfor -%}
+          </select>
+        </label>
+        <label class="pt-ws__field">
+          <span class="pt-ws__label">Make</span>
+          <select class="pt-ws__select" data-pt-ws-make disabled{% if pkg_mode %} data-pt-ws-ph="Make"{% endif %}><option value="">{% if pkg_mode %}Make{% else %}—{% endif %}</option></select>
+        </label>
+        <label class="pt-ws__field">
+          <span class="pt-ws__label">Model</span>
+          <select class="pt-ws__select" data-pt-ws-model disabled{% if pkg_mode %} data-pt-ws-ph="Model"{% endif %}><option value="">{% if pkg_mode %}Model{% else %}—{% endif %}</option></select>
+        </label>{% if pkg_mode %}
+        {%- comment -%}
+          The builder only shows packages once it has a trim (it asks for one
+          otherwise), so package mode collects it here: same year file, same
+          trim names the builder matches against.
+        {%- endcomment -%}
+        <label class="pt-ws__field">
+          <span class="pt-ws__label">Trim</span>
+          <select class="pt-ws__select" data-pt-ws-trim disabled data-pt-ws-ph="Trim"><option value="">Trim</option></select>
+        </label>{% endif %}
+      </div>
+      <div class="pt-ws__actions">
+        <button type="button" class="pt-ws__submit" data-pt-ws-submit-vehicle disabled>{% if pkg_mode %}See my packages{% else %}Find wheels{% endif %}</button>
+        <span class="pt-ws__status" data-pt-ws-status></span>
+      </div>
+    </div>
+
+    {%- if has_specs -%}
+      <div class="pt-ws__panel" data-pt-ws-panel="specs">
+        <p class="pt-ws__hint" data-pt-ws-specs-hint{% unless lazy_specs %} hidden{% endunless %}>Pick any of these — leave the rest on Any.</p>
+        <div class="pt-ws__row">
+          <label class="pt-ws__field">
+            <span class="pt-ws__label">Diameter</span>
+            <select class="pt-ws__select" data-pt-ws-spec="rim_diameter" data-unit="&quot;">
+              <option value="">Any</option>
+              {%- unless lazy_specs -%}{%- for v in f_dia.values -%}{%- if ws_counts -%}<option value="{{ v.label | escape }}">{{ v.label }}" ({{ v.count }})</option>{%- elsif v.count > 0 or v.active -%}<option value="{{ v.label | escape }}">{{ v.label }}"</option>{%- endif -%}{%- endfor -%}{%- endunless -%}
+            </select>
+          </label>
+          <label class="pt-ws__field">
+            <span class="pt-ws__label">Bolt pattern</span>
+            <select class="pt-ws__select" data-pt-ws-spec="bolt_pattern">
+              <option value="">Any</option>
+              {%- unless lazy_specs -%}{%- for v in f_bolt.values -%}{%- if ws_counts -%}<option value="{{ v.label | escape }}">{{ v.label }} ({{ v.count }})</option>{%- elsif v.count > 0 or v.active -%}<option value="{{ v.label | escape }}">{{ v.label }}</option>{%- endif -%}{%- endfor -%}{%- endunless -%}
+            </select>
+          </label>
+          <label class="pt-ws__field">
+            <span class="pt-ws__label">Width</span>
+            <select class="pt-ws__select" data-pt-ws-spec="rim_width" data-unit="&quot;">
+              <option value="">Any</option>
+              {%- unless lazy_specs -%}{%- for v in f_width.values -%}{%- if ws_counts -%}<option value="{{ v.label | escape }}">{{ v.label }}" ({{ v.count }})</option>{%- elsif v.count > 0 or v.active -%}<option value="{{ v.label | escape }}">{{ v.label }}"</option>{%- endif -%}{%- endfor -%}{%- endunless -%}
+            </select>
+          </label>
+          <label class="pt-ws__field">
+            <span class="pt-ws__label">Offset</span>
+            <select class="pt-ws__select" data-pt-ws-spec="rim_offset" data-prefix="ET ">
+              <option value="">Any</option>
+              {%- unless lazy_specs -%}{%- for v in f_offset.values -%}{%- if ws_counts -%}<option value="{{ v.label | escape }}">ET {{ v.label }} ({{ v.count }})</option>{%- elsif v.count > 0 or v.active -%}<option value="{{ v.label | escape }}">ET {{ v.label }}</option>{%- endif -%}{%- endfor -%}{%- endunless -%}
+            </select>
+          </label>
+        </div>
+        <div class="pt-ws__actions">
+          <button type="button" class="pt-ws__submit" data-pt-ws-submit-specs>Search</button>
+        </div>
+      </div>
+    {%- endif -%}
+  </div>
+</div>
+
+{% javascript %}
+  (function () {
+    // One closure per instance: the homepage hero renders this snippet twice
+    // (Wheels tab + Packages tab), and a page-wide querySelector would leave
+    // the second one dead. Everything below is scoped to its own root.
+    document.querySelectorAll('[data-pt-ws]').forEach(init);
+
+    function init(root) {
+      var target = root.dataset.target || '/collections/wheels';
+      var apiBase = root.dataset.apiBase || '';
+      var assetBase = root.dataset.assetBase || '';
+      var assetVersion = root.dataset.assetVersion || '';
+      var manifestUrl = root.dataset.manifestUrl || '';
+      var facetsUrl = root.dataset.facetsUrl || '/collections/wheels?view=facets';
+      var lazySpecs = root.dataset.lazySpecs === '1';
+      var pkgUrl = root.dataset.packageUrl || '';
+      var noCounts = root.dataset.noCounts === '1';
+      // Where the cross-sell / bolt-hint message goes (outside a collapsible panel).
+      function msgSlot() {
+        var sel = root.dataset.msgTarget;
+        if (!sel) return null;
+        try { return document.querySelector(sel); } catch (e) { return null; }
+      }
+      var F = 'filter.p.m.custom.';
+
+      var catalogBolts = [];
+      try {
+        var node = root.querySelector('[data-pt-ws-bolts]');
+        catalogBolts = node ? JSON.parse(node.textContent) : [];
+      } catch (e) { catalogBolts = []; }
+
+      var elYear = root.querySelector('[data-pt-ws-year]');
+      var elMake = root.querySelector('[data-pt-ws-make]');
+      var elModel = root.querySelector('[data-pt-ws-model]');
+      var elTrim = root.querySelector('[data-pt-ws-trim]'); // package mode only
+      var elGo = root.querySelector('[data-pt-ws-submit-vehicle]');
+      var elStatus = root.querySelector('[data-pt-ws-status]');
+      var elToggle = root.querySelector('[data-pt-ws-toggle]');
+      var elBody = root.querySelector('[data-pt-ws-body]');
+
+      var yearData = null, manifest = null, loadingYear = null;
+
+      function status(m) { if (elStatus) elStatus.textContent = m || ''; }
+
+      function fill(sel, placeholder, values) {
+        sel.innerHTML = '';
+        var o = document.createElement('option');
+        o.value = ''; o.textContent = placeholder;
+        sel.appendChild(o);
+        values.forEach(function (v) {
+          var opt = document.createElement('option');
+          opt.value = v; opt.textContent = v;
+          sel.appendChild(opt);
+        });
+        sel.disabled = values.length === 0;
+      }
+      // Package mode names its empty selects (its labels are hidden on phones).
+      function reset(sel) { sel.innerHTML = '<option value="">' + (sel.getAttribute('data-pt-ws-ph') || '—') + '</option>'; sel.disabled = true; }
+      // A trim is required only when the year file lists some (package mode).
+      function sync() { elGo.disabled = !(elYear.value && elMake.value && elModel.value && (!elTrim || elTrim.disabled || elTrim.value)); }
+
+      // Off a collection page there is no collection.filters, so pull the same
+      // data from Shopify's facet index as JSON. Once per page, cached for the
+      // session; a failure leaves the tab usable with "Any" everywhere.
+      var facetsPromise = null;
+      function loadFacets() {
+        if (facetsPromise) return facetsPromise;
+        var cached = null;
+        try { cached = JSON.parse(sessionStorage.getItem('pt-ws-facets') || 'null'); } catch (e) {}
+        facetsPromise = cached
+          ? Promise.resolve(cached)
+          // NO Accept: application/json here — that header makes Shopify return its
+          // own built-in collection JSON instead of rendering the ?view= template.
+          : fetch(facetsUrl)
+              .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+              .then(function (j) { try { sessionStorage.setItem('pt-ws-facets', JSON.stringify(j)); } catch (e) {} return j; })
+              .catch(function () { return null; });
+        return facetsPromise;
+      }
+
+      function applyFacets(j) {
+        if (!j || !Array.isArray(j.filters)) return;
+        var by = {};
+        j.filters.forEach(function (f) { by[f.param] = f.values || []; });
+        root.querySelectorAll('[data-pt-ws-spec]').forEach(function (sel) {
+          if (sel.options.length > 1) return; // already filled
+          var vals = by[F + sel.dataset.ptWsSpec] || [];
+          var prefix = sel.dataset.prefix || '';
+          var unit = sel.dataset.unit || '';
+          vals.forEach(function (v) {
+            if (noCounts && !(Number(v.n) > 0)) return;
+            var o = document.createElement('option');
+            o.value = v.v;
+            o.textContent = prefix + v.v + unit + (noCounts ? '' : ' (' + v.n + ')');
+            sel.appendChild(o);
+          });
+          sel.disabled = vals.length === 0;
+        });
+        // the bolt list the vehicle search expands against
+        if (!catalogBolts.length) catalogBolts = (by[F + 'bolt_pattern'] || []).slice();
+        var hint = root.querySelector('[data-pt-ws-specs-hint]');
+        if (hint) hint.hidden = false;
+      }
+
+      if (lazySpecs) loadFacets().then(applyFacets);
+
+      if (elToggle) elToggle.addEventListener('click', function () {
+        var open = root.classList.toggle('is-open');
+        elToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+
+      root.querySelectorAll('[data-pt-ws-tab]').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var name = tab.dataset.ptWsTab;
+          root.querySelectorAll('[data-pt-ws-tab]').forEach(function (t) {
+            var on = t === tab;
+            t.classList.toggle('is-active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+          });
+          root.querySelectorAll('[data-pt-ws-panel]').forEach(function (p) {
+            p.classList.toggle('is-active', p.dataset.ptWsPanel === name);
+          });
+        });
+      });
+
+      function loadYear(year, wantMake, wantModel, wantTrim) {
+        yearData = null; reset(elMake); reset(elModel); if (elTrim) reset(elTrim); sync();
+        if (!year) return Promise.resolve();
+        loadingYear = year;
+        var url = window.PTVehicleManifest
+          ? window.PTVehicleManifest.yearUrl(assetBase, year, manifest, assetVersion)
+          : assetBase + 'pt-vehicle-' + year + '.json' + (assetVersion ? '?' + assetVersion : '');
+        return fetch(url, { cache: 'force-cache' })
+          .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(function (data) {
+            if (loadingYear !== year) return;
+            yearData = data;
+            fill(elMake, 'Make', (data.makes || Object.keys(data.models || {})).slice().sort());
+            if (wantMake) { elMake.value = wantMake; if (elMake.value) fillModels(wantMake, wantModel, wantTrim); }
+            sync();
+          })
+          .catch(function () { if (loadingYear === year) status("Couldn't load vehicles for " + year + '.'); });
+      }
+
+      function fillModels(make, wantModel, wantTrim) {
+        reset(elModel);
+        if (elTrim) reset(elTrim);
+        if (!make || !yearData) { sync(); return; }
+        fill(elModel, 'Model', Object.keys((yearData.models || {})[make] || {}).sort());
+        if (wantModel) { elModel.value = wantModel; if (elTrim && elModel.value) fillTrims(make, wantModel, wantTrim); }
+        sync();
+      }
+
+      // Package mode: trims in the year file's own order (the builder's
+      // order); a single trim is picked for the shopper.
+      function fillTrims(make, model, wantTrim) {
+        reset(elTrim);
+        if (make && model && yearData) {
+          var trims = Object.keys(((yearData.models || {})[make] || {})[model] || {});
+          fill(elTrim, 'Trim', trims);
+          if (trims.length === 1) elTrim.value = trims[0];
+          else if (wantTrim) elTrim.value = wantTrim;
+        }
+        sync();
+      }
+
+      elYear.addEventListener('change', function () { status(''); loadYear(elYear.value); });
+      elMake.addEventListener('change', function () { status(''); fillModels(elMake.value); });
+      elModel.addEventListener('change', function () { status(''); if (elTrim) fillTrims(elMake.value, elModel.value); else sync(); });
+      if (elTrim) elTrim.addEventListener('change', sync);
+
+      // "6x139.7" -> every catalogue string drilled for it, e.g.
+      // ["6x139.7", "6x135/6x139.7", "6x120/6x139.7"].
+      function expandBolt(pcd) {
+        if (!pcd) return [];
+        var want = String(pcd).trim().toLowerCase();
+        return catalogBolts
+          .filter(function (b) {
+            return String(b.v).toLowerCase().split('/').some(function (part) { return part.trim() === want; });
+          })
+          .map(function (b) { return b.v; });
+      }
+
+      function goVehicle() {
+        var year = elYear.value, make = elMake.value, model = elModel.value;
+        if (!year || !make || !model) return;
+        if (pkgUrl) {
+          // Package mode: the builder looks the car up itself. Hand over the
+          // names exactly as pt-vehicle-{year}.json spells them — the builder
+          // reads the same files and matches y / mk / md / tr case-insensitively.
+          var trim = elTrim ? elTrim.value : '';
+          window.location.href = pkgUrl + (pkgUrl.indexOf('?') === -1 ? '?' : '&') +
+            'y=' + encodeURIComponent(year) + '&mk=' + encodeURIComponent(make) + '&md=' + encodeURIComponent(model) +
+            (trim ? '&tr=' + encodeURIComponent(trim) : '');
+          return;
+        }
+        elGo.disabled = true;
+        status('Finding wheels for your ' + year + ' ' + make + ' ' + model + '…');
+        // Off a collection page the catalogue's bolt strings arrive with the
+        // facets, so make sure they are here before expanding the car's PCD —
+        // otherwise every car looks like one we stock nothing for.
+        var ready = catalogBolts.length ? Promise.resolve() : loadFacets().then(applyFacets);
+        ready
+          .then(function () { return fetch(apiBase + '/api/wheel-fitment?year=' + encodeURIComponent(year) + '&make=' + encodeURIComponent(make) + '&model=' + encodeURIComponent(model)); })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var bolts = expandBolt(d && d.bolt_pattern);
+            if (!bolts.length) {
+              // Either we have no spec for the car, or we stock nothing in its
+              // pattern. Say which — never send the shopper to an empty grid.
+              status(d && d.bolt_pattern
+                ? "We don't stock wheels in your " + d.bolt_pattern + " bolt pattern — ask us and we can order them."
+                : "We don't have wheel specs for that vehicle yet — ask us in chat.");
+              elGo.disabled = false;
+              return;
+            }
+            var qs = [];
+            bolts.forEach(function (b) { qs.push(F + 'bolt_pattern=' + encodeURIComponent(b)); });
+            var dias = [];
+            (d.wheel_sizes || []).forEach(function (w) {
+              if (w && w.diameter && dias.indexOf(String(w.diameter)) === -1) dias.push(String(w.diameter));
+            });
+            dias.forEach(function (x) { qs.push(F + 'rim_diameter=' + encodeURIComponent(x)); });
+            var oeTire = (d.tire_sizes || [])[0] || '';
+            try {
+              localStorage.setItem('pt-tire-search-vehicle', JSON.stringify({
+                year: year, make: make, model: model, trim: '',
+                tireSize: oeTire, savedAt: new Date().toISOString()
+              }));
+              // Tells the results page to offer tires for the car just searched.
+              sessionStorage.setItem('pt-ws-crosssell', JSON.stringify({
+                year: year, make: make, model: model, tireSize: oeTire
+              }));
+              // Lets the results page confirm the fit ("Showing wheels with the
+              // 5x114.3 bolt pattern your 2021 Honda CR-V uses") while these
+              // exact bolt filters stay applied (assets/pt-rd-results.js).
+              sessionStorage.setItem('pt-ws-fit', JSON.stringify({
+                label: year + ' ' + make + ' ' + model, bolt: d.bolt_pattern, bolts: bolts
+              }));
+            } catch (e) {}
+            window.location.href = target + '?' + qs.join('&');
+          })
+          .catch(function () { status("Couldn't look that up just now — please try again."); elGo.disabled = false; });
+      }
+      elGo.addEventListener('click', goVehicle);
+
+      var elSpecGo = root.querySelector('[data-pt-ws-submit-specs]');
+      if (elSpecGo) {
+        elSpecGo.addEventListener('click', function () {
+          var qs = [];
+          root.querySelectorAll('[data-pt-ws-spec]').forEach(function (sel) {
+            if (sel.value) qs.push(F + sel.dataset.ptWsSpec + '=' + encodeURIComponent(sel.value));
+          });
+          window.location.href = qs.length ? target + '?' + qs.join('&') : target;
+        });
+      }
+
+      // ?pt_bolt=6x139.7 — a raw vehicle bolt pattern handed over by another
+      // surface (the homepage "wheels that fit" CTA). Expand it against the live
+      // facet here, where the catalogue list lives, and rewrite the URL to real
+      // filters. Keeps ONE expansion implementation; a copy elsewhere would go
+      // stale, which is exactly how the old hardcoded bore list broke.
+      function applyBoltHint() {
+        var p = new URLSearchParams(window.location.search);
+        var hint = p.get('pt_bolt');
+        if (!hint) return false;
+        var bolts = expandBolt(hint);
+        p.delete('pt_bolt');
+        if (!bolts.length) {
+          // Nothing in stock drilled that way — say so rather than showing an
+          // unfiltered grid that looks like it answered the question.
+          root.classList.add('is-open');
+          var noBolt = "We don't stock wheels in your " + hint + ' bolt pattern — ask us and we can order them.';
+          status(noBolt);
+          var slot = msgSlot();
+          if (slot) {
+            var m = document.createElement('div');
+            m.className = 'pt-ws__crosssell pt-ws__nobolt';
+            m.setAttribute('role', 'status');
+            m.textContent = noBolt;
+            slot.appendChild(m);
+          }
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, '', window.location.pathname + (p.toString() ? '?' + p : ''));
+          }
+          return false;
+        }
+        bolts.forEach(function (b) { p.append(F + 'bolt_pattern', b); });
+        window.location.replace(window.location.pathname + '?' + p.toString());
+        return true;
+      }
+
+      // Prefill from the car the shopper already gave us on another surface.
+      function start() {
+        var saved = null;
+        try {
+          var raw = localStorage.getItem('pt-tire-search-vehicle');
+          saved = raw ? JSON.parse(raw) : null;
+        } catch (e) { saved = null; }
+        if (!saved || !saved.year || !saved.make || !saved.model) return;
+        var y = String(saved.year);
+        if (!Array.prototype.some.call(elYear.options, function (o) { return o.value === y; })) return;
+        elYear.value = y;
+        loadYear(y, String(saved.make), String(saved.model), saved.trim ? String(saved.trim) : '').then(function () {
+          // Package mode skips this line: the filled selects already show the
+          // car, and the extra line made the always-open panel taller.
+          if (pkgUrl) return;
+          if (elYear.value && elMake.value && elModel.value) status('Your ' + y + ' ' + saved.make + ' ' + saved.model + ' — hit Find wheels.');
+        });
+      }
+
+      // "Want tires too?" — shown on the RESULTS page, after a by-vehicle wheel
+      // search, because that is the moment the shopper has the car in mind and
+      // has seen the wheels. One-click, using the OE size we already looked up.
+      function offerTires() {
+        var raw = null;
+        try { raw = sessionStorage.getItem('pt-ws-crosssell'); } catch (e) { return; }
+        if (!raw) return;
+        try { sessionStorage.removeItem('pt-ws-crosssell'); } catch (e) {}
+        var v;
+        try { v = JSON.parse(raw); } catch (e) { return; }
+        if (!v || !v.year || !v.make || !v.model) return;
+        var label = v.year + ' ' + v.make + ' ' + v.model;
+        var href = v.tireSize
+          ? '/collections/tires?' + F + 'tire_size=' + encodeURIComponent(v.tireSize)
+          : '/collections/tires';
+        var box = document.createElement('div');
+        box.className = 'pt-ws__crosssell';
+        box.innerHTML =
+          '<span>Need tires for your <strong></strong> too?' +
+          (v.tireSize ? ' Factory size <strong class="pt-ws__xs-size"></strong>.' : '') +
+          '</span><a class="pt-ws__xs-cta" href="' + href + '">Find tires →</a>' +
+          '<button type="button" class="pt-ws__xs-no" aria-label="Dismiss">No thanks</button>';
+        box.querySelector('strong').textContent = label;
+        var sz = box.querySelector('.pt-ws__xs-size');
+        if (sz) sz.textContent = v.tireSize;
+        box.querySelector('.pt-ws__xs-no').addEventListener('click', function () { box.remove(); });
+        var slot = msgSlot();
+        if (slot) slot.appendChild(box);
+        else root.parentNode.insertBefore(box, root.nextSibling);
+      }
+
+      // The bolt hint is a redirect, so resolve it before anything else loads.
+      // Neither applies to package mode (no wheel results page behind it).
+      if (!pkgUrl) {
+        if (applyBoltHint()) return;
+        offerTires();
+      }
+
+      if (window.PTVehicleManifest) {
+        window.PTVehicleManifest.ready(manifestUrl, 1500).then(function (m) {
+          manifest = m;
+          if (m) window.PTVehicleManifest.fillYearSelect(elYear, window.PTVehicleManifest.yearsDesc(m));
+          start();
+        });
+      } else { start(); }
+    }
+  })();
+{% endjavascript %}
+
+{% stylesheet %}
+  .pt-ws { margin: 0 0 1.6rem; border: 1px solid #e2e8ed; border-radius: 12px; background: #fff; }
+  .pt-ws__toggle { display: none; width: 100%; padding: 1.1rem 1.2rem; border: 0; background: none; font: inherit; font-weight: 600; text-align: left; cursor: pointer; color: #1f2a33; }
+  .pt-ws__body { padding: 1.1rem 1.2rem 1.2rem; }
+  .pt-ws__tabs { display: flex; gap: 1.6rem; border-bottom: 1px solid #e8edf1; margin-bottom: 1.1rem; }
+  .pt-ws__tab { border: 0; background: none; padding: 0 0 0.8rem; font: inherit; font-size: 1.4rem; color: #5a6873; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .pt-ws__tab.is-active { color: #b9221a; font-weight: 700; border-bottom-color: #b9221a; }
+  .pt-ws__panel { display: none; }
+  .pt-ws__panel.is-active { display: block; }
+  .pt-ws__row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; }
+  .pt-ws__field { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+  .pt-ws__label { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #5a6873; }
+  .pt-ws__select { height: 44px; padding: 0 0.7rem; border: 1px solid #cdd6dd; border-radius: 8px; font-family: inherit; font-size: 1.4rem; background: #fff; color: #1f2a33; }
+  .pt-ws__select:disabled { background: #f1f4f6; color: #8a97a1; }
+  .pt-ws__select:focus { outline: none; border-color: #b9221a; }
+  /* iOS Safari zooms the page when a control under 16px is tapped. */
+  @media (max-width: 749px) { .pt-ws__select { font-size: 16px; } }
+  .pt-ws__actions { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+  .pt-ws__submit { height: 44px; padding: 0 2rem; border: 0; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, #DA291C, #b9221a); color: #fff; font-family: inherit; font-weight: 700; font-size: 1.4rem; }
+  .pt-ws__submit:disabled { opacity: 0.55; cursor: default; }
+  .pt-ws__status { font-size: 1.3rem; color: #5a6873; }
+  .pt-ws__hint { margin: 0 0 0.8rem; font-size: 1.25rem; color: #5a6873; }
+  .pt-ws__crosssell { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin: 0 0 1.6rem; padding: 1rem 1.2rem; border: 1px solid #f0d8a8; background: #fffaf0; border-radius: 10px; font-size: 1.35rem; color: #5a4a2f; }
+  .pt-ws__xs-cta { font-weight: 700; color: #b9221a; text-decoration: none; white-space: nowrap; }
+  .pt-ws__xs-cta:hover { text-decoration: underline; }
+  .pt-ws__xs-no { margin-left: auto; border: 0; background: none; color: #8a97a1; font: inherit; font-size: 1.2rem; cursor: pointer; }
+  /* Hero: the panel sits on a dark photo, so invert the chrome. */
+  .pt-ws--compact { border: 0; background: transparent; margin: 0; }
+  .pt-ws--compact .pt-ws__body { padding: 0; }
+  .pt-ws--compact .pt-ws__tab { color: rgba(255,255,255,0.72); }
+  .pt-ws--compact .pt-ws__tab.is-active { color: #fff; border-bottom-color: #fff; }
+  .pt-ws--compact .pt-ws__tabs { border-bottom-color: rgba(255,255,255,0.22); justify-content: center; }
+  .pt-ws--compact .pt-ws__label { color: rgba(255,255,255,0.75); }
+  .pt-ws--compact .pt-ws__hint { color: rgba(255,255,255,0.75); text-align: center; }
+  .pt-ws--compact .pt-ws__status { color: rgba(255,255,255,0.85); }
+  .pt-ws--compact .pt-ws__actions { justify-content: center; }
+  /* Package mode: always open (no toggle). One grid for the four selects AND
+     the button, so the trim costs no extra row: Year / Make / Model, then Trim
+     beside "See my packages". Three across keeps names readable. */
+  .pt-ws--package .pt-ws__body { display: block; }
+  .pt-ws--package .pt-ws__panel.is-active { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem; align-items: end; }
+  .pt-ws--package .pt-ws__row { display: contents; }
+  .pt-ws--package .pt-ws__field:nth-child(4) { grid-column: span 2; }
+  .pt-ws--package .pt-ws__actions { margin-top: 0; }
+  .pt-ws--package .pt-ws__submit { width: 100%; padding: 0 1rem; }
+  /* Phones: a narrow Year beside a wide Make, then Model and Trim side by side
+     (three or four across clips make and model names), then the button. The
+     selects name themselves ("Year", "Make"…), so the labels go visually. */
+  @media (max-width: 600px) {
+    .pt-ws--package .pt-ws__panel.is-active { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+    .pt-ws--package .pt-ws__field,
+    .pt-ws--package .pt-ws__field:nth-child(4) { grid-column: span 5; }
+    .pt-ws--package .pt-ws__field:first-child { grid-column: span 3; }
+    .pt-ws--package .pt-ws__field:nth-child(2) { grid-column: span 7; }
+    .pt-ws--package .pt-ws__actions { grid-column: 1 / -1; }
+    .pt-ws--package .pt-ws__label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  }
+
+  @media (max-width: 768px) {
+    .pt-ws__toggle { display: block; }
+    .pt-ws__body { display: none; }
+    .pt-ws.is-open .pt-ws__body { display: block; }
+    /* Hero (compact): the WHEELS pill is already the opener, so no second
+       dark-on-dark collapse. The /collections/wheels card keeps its toggle. */
+    .pt-ws--compact .pt-ws__toggle { display: none; }
+    .pt-ws--compact .pt-ws__body { display: block; }
+  }
+{% endstylesheet %}

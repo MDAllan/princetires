@@ -1,0 +1,77 @@
+{% doc %}
+  Single source of truth for the Prince Tires Google review count and rating.
+
+  Before this snippet existed the count was a string literal in 44 theme files,
+  and it drifted: the same site was simultaneously claiming three different
+  totals. Every consumer that CAN read Liquid now reads from HERE.
+
+  (Numerals are kept out of this comment on purpose, so an audit grepping for
+  a stale count does not match the explanation of why this file exists.)
+
+  IMPORTANT: update the count in THIS FILE. The literals in the `assign` block
+  below are the live values — there is no shop metafield or metaobject for
+  reviews today (checked 2026-11-09: this store has only the `store_hours` and
+  `service_prices` metaobjects), so this file is the single place to edit. If a
+  `custom.google_review_count` / `custom.google_rating` shop metafield is added
+  later it overrides these literals automatically and nothing else changes.
+
+  Verify against the Google Business Profile before changing, and round DOWN for
+  the "+" and "more than" phrasings — never claim more reviews than exist.
+
+  NOT reachable from here, still needs a manual edit (Liquid cannot run in
+  these): theme-editor content (the prose bylines in templates/page-*.json),
+  section `presets` blocks (sections/about-values.liquid), and section schema
+  `default:` values — Shopify schema JSON cannot contain Liquid.
+
+  @param {string} [field] - Output one value instead of the default phrase.
+      One of: count | count_plus | rating | count_reviews | phrase | json
+      Omit `field` to render the default phrase.
+
+  @example
+  {% render 'pt-reviews' %}                          {# "4.9 stars from 750+ Google reviews" #}
+  {% render 'pt-reviews', field: 'count' %}          {# "648" #}
+  {% render 'pt-reviews', field: 'count_plus' %}     {# "648+" #}
+  {% render 'pt-reviews', field: 'rating' %}         {# "4.9" #}
+  {% render 'pt-reviews', field: 'count_reviews' %}  {# "750+ Google reviews" #}
+{% enddoc %}
+
+{%- liquid
+  # ── The ONLY place these values live. Verified against the Google Business
+  #    Profiles on 2026-11-15: SW 660 + NE 94 = 754 reviews, both 4.9.
+  #    Shown rounded down as 750+ so it stays true between refreshes. ──
+  assign rev_count = '750'
+  assign rev_rating = '4.9'
+
+  # ── Optional override: a shop metafield wins if one is ever added, and a
+  # missing metafield keeps the literals above, so the storefront never
+  # breaks. No such metafield exists today. ──
+  if shop.metafields.custom.google_review_count != blank
+    assign rev_count = shop.metafields.custom.google_review_count.value
+  endif
+  if shop.metafields.custom.google_rating != blank
+    assign rev_rating = shop.metafields.custom.google_rating.value
+  endif
+
+  # Derived display strings (match the previously hardcoded forms exactly).
+  assign rev_count = rev_count | append: ''
+  assign rev_count_plus = rev_count | append: '+'
+  assign rev_count_reviews = rev_count_plus | append: ' Google reviews'
+  assign rev_phrase = rev_rating | append: ' stars from ' | append: rev_count_reviews
+-%}
+
+{%- case field -%}
+  {%- when 'count' -%}{{ rev_count }}
+  {%- when 'count_plus' -%}{{ rev_count_plus }}
+  {%- when 'rating' -%}{{ rev_rating }}
+  {%- when 'count_reviews' -%}{{ rev_count_reviews }}
+  {%- when 'phrase' -%}{{ rev_phrase }}
+  {%- when 'json' -%}
+    {
+      "count": {{ rev_count | json }},
+      "count_plus": {{ rev_count_plus | json }},
+      "rating": {{ rev_rating | json }},
+      "count_reviews": {{ rev_count_reviews | json }},
+      "phrase": {{ rev_phrase | json }}
+    }
+  {%- else -%}{{ rev_phrase }}
+{%- endcase -%}

@@ -11,6 +11,16 @@
   if perf_dry > 0 or perf_wet > 0 or perf_ice > 0 or perf_snow > 0 or perf_tread > 0 or perf_comfort > 0 or perf_noise > 0
     assign has_data = true
   endif
+
+  comment
+    A tire rating: never on a wheel page (same wheel test as the product section).
+  endcomment
+  capture radar_is_wheel_raw
+    render 'pt-is-wheel', product: product
+  endcapture
+  if radar_is_wheel_raw contains 'true'
+    assign has_data = false
+  endif
 -%}
 
 {%- if has_data -%}
@@ -42,7 +52,7 @@
   .pt-radar__header { text-align: center; margin-bottom: 2.5rem; }
   .pt-radar__eyebrow {
     font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 400;
-    color: #F5820B; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 0.3rem;
+    color: #a95a08; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 0.3rem; /* live #F5820B is 2.6:1 at 10px; same hue, AA shade (polygon keeps #F5820B) */
   }
   .pt-radar__heading {
     font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 700;

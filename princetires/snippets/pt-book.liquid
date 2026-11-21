@@ -1,0 +1,197 @@
+{% doc %}
+  The ONE booking form (redesign 2026-11-13) - loader.
+
+  Rendered once from layout/theme.liquid, in place of pt-booking-modal and
+  pt-service-booking-modal (both files stay in the theme for rollback; they
+  are simply no longer rendered).
+
+  What ships on every page is small: a data island (customer, store hours per
+  shop, asset URLs) and a stub that answers every old entry point at once:
+    PTBook.open(ctx) / PTBook.openFrom(el) / PTBook.mount(host, ctx)
+    openBookingModal(btn) / openServiceModal(btn) / closeBookingModal() / closeServiceModal()
+    clicks on [data-book], [data-book-install], [data-book-service], [data-book-set]
+  The form itself (assets/pt-book.js + assets/pt-book.css) loads on the first
+  hover / focus / tap of a booking button, or right away on /pages/booking.
+
+  Confirmation channel (owner decision 1, pending): "confirmBy" below is the
+  ONE string the form uses in "We'll confirm ..." / "Nothing is final until
+  we confirm ...". Today the shop confirms by email.
+
+  @example
+  {% render 'pt-book' %}
+{% enddoc %}
+{%- liquid
+  assign ptb_slugs = 'sw,ne' | split: ','
+  assign ptb_fields = 'hours_mon_sat_open,hours_mon_sat_close,hours_sun_open,hours_sun_close,hours_fri_open,hours_fri_close,hours_fri_reopen,hours_fri_final_close,booking_cutoff_minutes' | split: ','
+-%}
+<script id="pt-book-data" type="application/json">
+{
+  "confirmBy": "by email",
+  "js": {{ 'pt-book.js' | asset_url | json }},
+  "css": {{ 'pt-book.css' | asset_url | json }},
+  "core": {{ 'pt-booking-core.js' | asset_url | json }},
+  "vehicleManifest": {{ 'pt-vehicle-manifest.json' | asset_url | json }},
+  "shops": [
+  {%- for s in ptb_slugs %}
+    {%- capture ptb_n %}{% render 'pt-nap', location: s, field: 'name' %}{% endcapture %}
+    {%- capture ptb_p %}{% render 'pt-nap', location: s, field: 'phone' %}{% endcapture %}
+    {%- capture ptb_h %}{% render 'pt-nap', location: s, field: 'phone_href' %}{% endcapture %}
+    { "name": {{ ptb_n | strip | json }}, "phone": {{ ptb_p | strip | json }}, "href": {{ ptb_h | strip | json }} }{% unless forloop.last %},{% endunless %}
+  {%- endfor %}
+  ],
+  "customer": {
+    "name": {{ customer.name | default: '' | json }},
+    "email": {{ customer.email | default: '' | json }},
+    "phone": {{ customer.phone | default: '' | json }}
+  },
+  "hours": {
+  {%- for s in ptb_slugs %}
+    {{ s | json }}: {
+    {%- for f in ptb_fields -%}
+      {%- capture v %}{% render 'pt-nap', location: s, field: f %}{% endcapture %}
+      {{ f | json }}: {{ v | strip | json }}{% unless forloop.last %},{% endunless %}
+    {%- endfor %}
+    }{% unless forloop.last %},{% endunless %}
+  {%- endfor %}
+  }
+}
+</script>
+{%- comment -%}
+  The form's own stylesheet (the shell is pt-rd.css, already in <head>).
+  Non-blocking: it applies once loaded, long before anyone opens the form.
+{%- endcomment -%}
+<link rel="stylesheet" href="{{ 'pt-book.css' | asset_url }}" media="print" onload="this.media='all'" data-ptb-css>
+<noscript>{{ 'pt-book.css' | asset_url | stylesheet_tag }}</noscript>
+<script>
+  window.__bkCustomer = window.__bkCustomer || {
+    name: {{ customer.name | default: '' | json }},
+    email: {{ customer.email | default: '' | json }},
+    phone: {{ customer.phone | default: '' | json }}
+  };
+  // Staggered sets (2026-11-15): this theme's pt-book.js takes set requests
+  // ([data-book-set] buttons, PTBook.open({ set })). The results page shows a
+  // set card's "Request install" only when this is true. It ships in the same
+  // theme push as the set-capable form; the server still gates each request
+  // (GET /api/services features.staggeredSets).
+  window.PTBookSets = true;
+  (function () {
+    if (window.PTBook && window.PTBook.__real) return;
+    var D = {};
+    try { D = JSON.parse(document.getElementById('pt-book-data').textContent); } catch (e) {}
+    var Q = window.__ptbQ = window.__ptbQ || [];
+    var started = false;
+    function add(tag, attrs, cb) {
+      var el = document.createElement(tag);
+      for (var k in attrs) el.setAttribute(k, attrs[k]);
+      if (cb) { el.onload = cb; el.onerror = cb; }
+      document.head.appendChild(el);
+    }
+    // Load the form once: its stylesheet, the shared core (when the deferred
+    // copy has not run yet) and the form script. Queued calls run on load.
+    function load() {
+      if (started) return;
+      started = true;
+      if (D.css && !document.querySelector('link[data-ptb-css]')) add('link', { rel: 'stylesheet', href: D.css, 'data-ptb-css': '' });
+      // The form script: if it fails to load (blocked, network, bad deploy)
+      // or loads without installing the real form, every queued call runs
+      // its fallback instead of silently doing nothing.
+      var go = function () {
+        if (document.querySelector('script[data-ptb-js]')) return;
+        var el = document.createElement('script');
+        el.src = D.js; el.setAttribute('data-ptb-js', '');
+        el.onload = function () { if (!(window.PTBook && window.PTBook.__real)) fail(); };
+        el.onerror = fail;
+        document.head.appendChild(el);
+      };
+      if (!window.PTBookingCore && D.core) add('script', { src: D.core }, go); else go();
+    }
+    var FB = [], failed = false;
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function shopLinks() {
+      return (D.shops || []).filter(function (s) { return s && s.phone; }).map(function (s) {
+        return '<a href="' + esc('tel:' + (s.href || String(s.phone).replace(/[^0-9+]/g, '')).replace(/^tel:/, '')) + '" style="display:block;min-height:44px;line-height:44px;font-weight:600;color:inherit">Call ' + esc(s.name) + ' · ' + esc(s.phone) + '</a>';
+      }).join('');
+    }
+    var MSG = 'Online requests aren’t loading right now. Please call us and we’ll book it for you.';
+    // Fallback when the form cannot load: one small dialog with both shops'
+    // phone numbers (the old modals are no longer on the page).
+    function callPanel() {
+      if (document.getElementById('ptb-fallback')) return;
+      var d = document.createElement('div');
+      d.id = 'ptb-fallback'; d.setAttribute('role', 'alertdialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'ptb-fallback-h');
+      d.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+      d.innerHTML = '<div style="background:#fff;color:#111;border-radius:12px;max-width:420px;width:100%;padding:20px 20px 12px;font:16px/1.45 system-ui,sans-serif">' +
+        '<h2 id="ptb-fallback-h" style="margin:0 0 8px;font-size:18px">Call to book</h2><p style="margin:0 0 8px">' + MSG + '</p>' + shopLinks() +
+        '<button type="button" data-ptb-fb-close style="min-height:44px;margin-top:4px;padding:0 16px;border:1px solid #ccc;border-radius:8px;background:#fff;font:inherit;cursor:pointer">Close</button></div>';
+      var close = function () { if (d.parentNode) d.parentNode.removeChild(d); };
+      d.addEventListener('click', function (e) { if (e.target === d || (e.target.closest && e.target.closest('[data-ptb-fb-close]'))) close(); });
+      d.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+      document.body.appendChild(d);
+      try { d.querySelector('a,button').focus(); } catch (e) {}
+    }
+    function hostNote(host) {
+      if (!host) return callPanel();
+      host.innerHTML = '<div role="alert" style="padding:16px 0"><p style="margin:0 0 8px">' + MSG + '</p>' + shopLinks() + '</div>';
+    }
+    function fail() {
+      if (failed) return;
+      failed = true;
+      if (window.PTBook && !window.PTBook.__real) window.PTBook.__failed = true;
+      var fbs = FB.slice(); FB.length = 0;
+      if (window.__ptbQ && typeof window.__ptbQ.splice === 'function') window.__ptbQ.length = 0;
+      fbs.forEach(function (fb) { try { fb(); } catch (e) { if (window.console) console.error(e); } });
+    }
+    // Queue a call until the form loads; fb runs instead if it cannot load.
+    function later(fn, fb) {
+      fb = fb || callPanel;
+      if (failed) { fb(); return; }
+      if (window.__ptbQ && typeof window.__ptbQ.push === 'function') window.__ptbQ.push(fn);
+      FB.push(fb);
+      load();
+    }
+    window.PTBook = window.PTBook || {
+      open: function (ctx) { later(function () { window.PTBook.open(ctx); }); },
+      openFrom: function (el) { later(function () { window.PTBook.openFrom(el); }); },
+      mount: function (host, ctx) { later(function () { window.PTBook.mount(host, ctx); }, function () { hostNote(host); }); },
+      renderCallback: function (host, o) {
+        later(function () { window.PTBook.renderCallback(host, o); }, function () {
+          // pt-booking-core's own request panel (it draws itself while PTBook is not real).
+          if (window.PTBookingCore && typeof window.PTBookingCore.renderRequestPanel === 'function') window.PTBookingCore.renderRequestPanel(host, o); else hostNote(host);
+        });
+      },
+      // whenReady(ok, fallback): ok once the real form is installed, or
+      // fallback if it cannot load (the package builder's legacy dialogs).
+      whenReady: function (ok, fb) { later(function () { ok(); }, fb || callPanel); },
+      close: function () {},
+      preload: load
+    };
+    // Old entry points, kept as thin aliases (pt-product, pt-collection-card,
+    // pt-cart, my-garage.js, service sections call these by name).
+    window.openBookingModal = function (btn) { window.PTBook.openFrom(btn && btn.dataset ? btn : { dataset: {} }); };
+    window.openServiceModal = function (btn) {
+      var d = (btn && btn.dataset) || {};
+      window.PTBook.open({ serviceName: d.serviceName || '', service: d.service || '', location: d.location || '', from: 'service_button' });
+    };
+    window.closeBookingModal = function () { window.PTBook.close(); };
+    window.closeServiceModal = function () { window.PTBook.close(); };
+    var SEL = '[data-book],[data-book-install],[data-book-service],[data-book-set]';
+    if (!window.__ptbDelegated) {
+      window.__ptbDelegated = true;
+      document.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest(SEL);
+        if (!b || b.closest('.ptb')) return;
+        e.preventDefault();
+        window.PTBook.openFrom(b);
+      });
+    }
+    // Warm up on intent: hover, focus or touch on anything that books.
+    var WARM = SEL + ',[data-tire-name],[data-product-handle][onclick],.ptc__install-btn,[data-ptpb-app]';
+    ['pointerover', 'focusin', 'touchstart'].forEach(function (ev) {
+      document.addEventListener(ev, function (e) {
+        if (!started && e.target.closest && e.target.closest(WARM)) load();
+      }, { passive: true, capture: true });
+    });
+    if (document.querySelector('[data-ptb-page],[data-ptpb-app]')) load();
+    else document.addEventListener('DOMContentLoaded', function () { if (document.querySelector('[data-ptb-page],[data-ptpb-app]')) load(); });
+  })();
+</script>

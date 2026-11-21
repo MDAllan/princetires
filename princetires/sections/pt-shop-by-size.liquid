@@ -1,0 +1,331 @@
+{%- comment -%}
+  Shop by size hub (owner 2026-11-10).
+
+  Replaces "All products" / /collections/all: Shopify drops every storefront
+  filter on a collection with more than 5,000 products, so customers are sent
+  to a size first. Rim tiles open the rim collections (tires-NN-inch,
+  wheels-NN-inch — smart collections on the tag rim-NN) where filters work.
+
+  Safe before those collections exist: a tile whose collection is missing or
+  empty links to today's /collections/tires?filter...rim_diameter=NN (or
+  /collections/wheels…) and shows no count. Extra rims (13", 23", 24") only
+  appear once their collection has products.
+
+  The size box takes a typed size ("235/55R17", "33x12.50R20"); anything that
+  is not a size (a brand, "winter tires") goes to normal search. The size and
+  vehicle dropdowns are the shared pt-tire-search snippet. Both route through
+  window.PTRim.route (snippets/pt-rim-route.liquid).
+
+  Used by templates/collection.json (setting "only_on_all": renders only on
+  /collections/all, where the grid sections step aside) and
+  templates/page.shop-tires.json.
+{%- endcomment -%}
+{%- liquid
+  assign show = true
+  if section.settings.only_on_all
+    assign show = false
+    if collection and collection.handle == 'all'
+      assign show = true
+    endif
+  endif
+-%}
+{%- if show -%}
+{%- liquid
+  assign tire_base = section.settings.tire_rims | default: '14,15,16,17,18,19,20,21,22' | remove: ' ' | split: ','
+  assign wheel_base = section.settings.wheel_rims | default: '15,16,17,18,20,22' | remove: ' ' | split: ','
+  assign extras = '13,23,24' | split: ','
+  assign all_rims = '13,14,15,16,17,18,19,20,21,22,23,24' | split: ','
+-%}
+<section class="ptsbs" data-pt-sbs aria-labelledby="ptsbs-title-{{ section.id }}">
+  <div class="ptsbs__wrap">
+    <header class="ptsbs__head">
+      <p class="ptsbs__eyebrow">{{ 'sections.pt_shop_by_size.eyebrow' | t }}</p>
+      <h1 class="ptsbs__title" id="ptsbs-title-{{ section.id }}">{{ 'sections.pt_shop_by_size.heading' | t }}</h1>
+      <p class="ptsbs__sub">{{ 'sections.pt_shop_by_size.subheading' | t }}</p>
+    </header>
+
+    <form class="ptsbs__size" action="{{ routes.search_url }}" method="get" role="search" data-ptsbs-form novalidate>
+      <label class="ptsbs__size-label" for="ptsbs-q-{{ section.id }}">{{ 'sections.pt_shop_by_size.size_label' | t }}</label>
+      <div class="ptsbs__size-row">
+        <input
+          class="ptsbs__size-input"
+          id="ptsbs-q-{{ section.id }}"
+          type="search"
+          name="q"
+          inputmode="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="{{ 'sections.pt_shop_by_size.size_placeholder' | t }}"
+          data-ptsbs-input
+        >
+        <input type="hidden" name="type" value="product">
+        <button class="ptsbs__size-btn" type="submit">{{ 'sections.pt_shop_by_size.size_button' | t }}</button>
+      </div>
+      <p class="ptsbs__size-help">{{ 'sections.pt_shop_by_size.size_help' | t }}</p>
+    </form>
+
+    <div class="ptsbs__block">
+      <h2 class="ptsbs__h2">{{ 'sections.pt_shop_by_size.rim_heading' | t }}</h2>
+      <ul class="ptsbs__tiles" role="list" data-ptsbs-tiles="tires">
+        {%- for r in all_rims -%}
+          {%- liquid
+            assign h = 'tires-' | append: r | append: '-inch'
+            assign c = collections[h]
+            assign n = c.products_count | default: 0
+            assign listed = false
+            if tire_base contains r
+              assign listed = true
+            elsif extras contains r and n > 0
+              assign listed = true
+            endif
+          -%}
+          {%- if listed -%}
+            {%- if n > 0 -%}
+              {%- assign href = c.url -%}
+            {%- else -%}
+              {%- assign href = '/collections/tires?filter.p.m.custom.rim_diameter=' | append: r -%}
+            {%- endif -%}
+            <li>
+              <a class="ptsbs__tile" href="{{ href }}" data-ptsbs-rim="{{ r }}" data-ptsbs-live="{% if n > 0 %}true{% else %}false{% endif %}">
+                <span class="ptsbs__tile-rim">{{ r }}<span aria-hidden="true">&Prime;</span></span>
+                <span class="ptsbs__tile-kind">{{ 'sections.pt_shop_by_size.tile_tires' | t: rim: r }}</span>
+                <span class="ptsbs__tile-count">
+                  {%- if n > 0 -%}{{ 'sections.pt_shop_by_size.count_tires' | t: count: n }}{%- else -%}{{ 'sections.pt_shop_by_size.browse' | t }}{%- endif -%}
+                </span>
+              </a>
+            </li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    </div>
+
+    <div class="ptsbs__block ptsbs__block--search">
+      <h2 class="ptsbs__h2">{{ 'sections.pt_shop_by_size.vehicle_heading' | t }}</h2>
+      <p class="ptsbs__note">{{ 'sections.pt_shop_by_size.vehicle_note' | t }}</p>
+      <div class="ptsbs__ts">{% render 'pt-tire-search' %}</div>
+    </div>
+
+    {%- if section.blocks.size > 0 -%}
+      <div class="ptsbs__block">
+        <h2 class="ptsbs__h2">{{ 'sections.pt_shop_by_size.shortcuts_heading' | t }}</h2>
+        <ul class="ptsbs__shortcuts" role="list">
+          {%- for block in section.blocks -%}
+            {%- liquid
+              assign sc = block.settings.collection
+              assign sc_url = block.settings.url
+              if sc != blank
+                assign sc_url = sc.url
+              endif
+              assign key = 'sections.pt_shop_by_size.shortcut_' | append: block.settings.kind
+            -%}
+            {%- if sc_url != blank -%}
+              <li {{ block.shopify_attributes }}>
+                <a class="ptsbs__shortcut ptsbs__shortcut--{{ block.settings.kind }}" href="{{ sc_url }}" data-ptsbs-shortcut="{{ block.settings.kind }}">
+                  <span class="ptsbs__shortcut-label">{{ key | t }}</span>
+                  {%- if sc != blank and sc.products_count > 0 -%}
+                    <span class="ptsbs__shortcut-count">{{ 'sections.pt_shop_by_size.count_items' | t: count: sc.products_count }}</span>
+                  {%- endif -%}
+                </a>
+              </li>
+            {%- endif -%}
+          {%- endfor -%}
+        </ul>
+      </div>
+    {%- endif -%}
+
+    {%- if section.settings.show_wheels -%}
+      <div class="ptsbs__block">
+        <h2 class="ptsbs__h2">{{ 'sections.pt_shop_by_size.wheels_heading' | t }}</h2>
+        <ul class="ptsbs__tiles ptsbs__tiles--wheels" role="list" data-ptsbs-tiles="wheels">
+          {%- for r in all_rims -%}
+            {%- liquid
+              assign h = 'wheels-' | append: r | append: '-inch'
+              assign c = collections[h]
+              assign n = c.products_count | default: 0
+              assign listed = false
+              if wheel_base contains r
+                assign listed = true
+              elsif n > 0
+                assign listed = true
+              endif
+            -%}
+            {%- if listed -%}
+              {%- if n > 0 -%}
+                {%- assign href = c.url -%}
+              {%- else -%}
+                {%- assign href = '/collections/wheels?filter.p.m.custom.rim_diameter=' | append: r -%}
+              {%- endif -%}
+              <li>
+                <a class="ptsbs__tile ptsbs__tile--wheel" href="{{ href }}" data-ptsbs-rim="{{ r }}" data-ptsbs-live="{% if n > 0 %}true{% else %}false{% endif %}">
+                  <span class="ptsbs__tile-rim">{{ r }}<span aria-hidden="true">&Prime;</span></span>
+                  <span class="ptsbs__tile-kind">{{ 'sections.pt_shop_by_size.tile_wheels' | t: rim: r }}</span>
+                  <span class="ptsbs__tile-count">
+                    {%- if n > 0 -%}{{ 'sections.pt_shop_by_size.count_wheels' | t: count: n }}{%- else -%}{{ 'sections.pt_shop_by_size.browse' | t }}{%- endif -%}
+                  </span>
+                </a>
+              </li>
+            {%- endif -%}
+          {%- endfor -%}
+        </ul>
+      </div>
+    {%- endif -%}
+
+    {%- liquid
+      assign phone = settings.shop_phone | default: '(403) 452-4283'
+      assign tel = phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-'
+    -%}
+    <p class="ptsbs__help">{{ 'sections.pt_shop_by_size.help_html' | t: phone: phone, tel: tel }}</p>
+  </div>
+</section>
+
+<script>
+(function () {
+  var forms = document.querySelectorAll('[data-ptsbs-form]');
+  Array.prototype.forEach.call(forms, function (form) {
+    if (form._ptsbs) return;
+    form._ptsbs = true;
+    form.addEventListener('submit', function (e) {
+      var input = form.querySelector('[data-ptsbs-input]');
+      var q = (input && input.value || '').trim();
+      if (!q) { e.preventDefault(); if (input) input.focus(); return; }
+      var P = window.PTTireParse;
+      var parsed = P && P.parseSize(q);
+      // Not a full size (brand, model, "winter tires") → normal product search.
+      if (!parsed || !parsed.width || !parsed.rim) return;
+      e.preventDefault();
+      var url = '/collections/tires?' + P.sizeFilterParams(parsed).toString();
+      if (window.PTRim) url = window.PTRim.route(url);
+      try { P.track({ surface: 'shop_by_size', method: 'typed', outcome: 'size', size: parsed.canonical }); } catch (err) {}
+      if (window.PTTrack && typeof window.PTTrack.go === 'function') window.PTTrack.go(url);
+      else window.location.href = url;
+    });
+  });
+})();
+</script>
+{%- endif -%}
+
+{% stylesheet %}
+.ptsbs { background: #fff; color: #050505; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 28px 0 48px; }
+.ptsbs__wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+.ptsbs__head { margin-bottom: 18px; }
+.ptsbs__eyebrow { margin: 0 0 6px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #DA291C; }
+.ptsbs__title { margin: 0 0 8px; font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 40px; line-height: 1.05; text-transform: uppercase; color: #050505; }
+.ptsbs__sub { margin: 0; font-size: 17px; line-height: 1.5; color: #3a3a3a; max-width: 680px; }
+
+.ptsbs__size { background: #050505; color: #fff; border-radius: 16px; padding: 18px 16px; margin: 0 0 28px; border-top: 4px solid #F5820B; }
+.ptsbs__size-label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.ptsbs__size-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.ptsbs__size-input { flex: 1 1 220px; min-width: 0; height: 54px; border: 0; border-radius: 12px; padding: 0 16px; font-size: 18px; font-family: inherit; color: #050505; background: #fff; }
+.ptsbs__size-input:focus { outline: 3px solid #F5820B; outline-offset: 2px; }
+.ptsbs__size-btn { flex: 0 0 auto; height: 54px; padding: 0 26px; border: 0; border-radius: 12px; background: #DA291C; color: #fff; font-size: 17px; font-weight: 700; font-family: inherit; cursor: pointer; }
+.ptsbs__size-btn:hover { background: #b8200f; }
+.ptsbs__size-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.ptsbs__size-help { margin: 10px 0 0; font-size: 14px; opacity: .8; }
+
+.ptsbs__block { margin: 0 0 32px; }
+.ptsbs__h2 { margin: 0 0 12px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 26px; text-transform: uppercase; color: #050505; }
+.ptsbs__note { margin: -4px 0 12px; font-size: 15px; color: #3a3a3a; }
+
+.ptsbs__tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 600px) { .ptsbs__tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 990px) { .ptsbs__tiles { grid-template-columns: repeat(9, minmax(0, 1fr)); } }
+.ptsbs__tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 104px; padding: 12px 6px; border: 2px solid #050505; border-radius: 14px; background: #fff; color: #050505; text-decoration: none; text-align: center; transition: background .15s, color .15s, border-color .15s, transform .15s; }
+.ptsbs__tile:hover, .ptsbs__tile:focus-visible { background: #DA291C; border-color: #DA291C; color: #fff; transform: translateY(-2px); }
+.ptsbs__tile:focus-visible { outline: 3px solid #F5820B; outline-offset: 2px; }
+.ptsbs__tile-rim { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 38px; line-height: 1; }
+.ptsbs__tile-kind { font-size: 13px; font-weight: 600; }
+.ptsbs__tile-count { font-size: 12px; opacity: .75; }
+.ptsbs__tile--wheel { border-color: #3a3a3a; }
+
+.ptsbs__ts { border: 1px solid #e3e3e3; border-radius: 16px; padding: 16px; background: #fafafa; }
+
+.ptsbs__shortcuts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 750px) { .ptsbs__shortcuts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ptsbs__shortcut { display: flex; flex-direction: column; gap: 2px; padding: 16px; border-radius: 14px; background: #050505; color: #fff; text-decoration: none; border-left: 5px solid #F5820B; min-height: 72px; justify-content: center; }
+.ptsbs__shortcut:hover, .ptsbs__shortcut:focus-visible { background: #DA291C; border-left-color: #050505; }
+.ptsbs__shortcut:focus-visible { outline: 3px solid #F5820B; outline-offset: 2px; }
+.ptsbs__shortcut-label { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 22px; text-transform: uppercase; line-height: 1.1; }
+.ptsbs__shortcut-count { font-size: 13px; opacity: .8; }
+
+.ptsbs__help { margin: 8px 0 0; font-size: 15px; color: #3a3a3a; }
+.ptsbs__help a { color: #DA291C; font-weight: 700; }
+
+@media (min-width: 750px) {
+  .ptsbs { padding: 40px 0 64px; }
+  .ptsbs__title { font-size: 54px; }
+  .ptsbs__size { padding: 22px 24px; }
+}
+@media (prefers-reduced-motion: reduce) { .ptsbs__tile { transition: none; } .ptsbs__tile:hover { transform: none; } }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Shop by size",
+  "tag": "div",
+  "class": "pt-shop-by-size",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "only_on_all",
+      "label": "Only on /collections/all",
+      "info": "On in the collection template: the hub then replaces the product grid on /collections/all and stays hidden on every other collection.",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "tire_rims",
+      "label": "Tire rim tiles (always shown)",
+      "info": "Comma-separated. 13, 23 and 24 also appear once their tires-NN-inch collection has products.",
+      "default": "14,15,16,17,18,19,20,21,22"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_wheels",
+      "label": "Show wheel sizes",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "wheel_rims",
+      "label": "Wheel rim tiles (always shown)",
+      "info": "Comma-separated. Any other wheels-NN-inch collection with products also appears.",
+      "default": "15,16,17,18,20,22"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "shortcut",
+      "name": "Shortcut",
+      "settings": [
+        {
+          "type": "select",
+          "id": "kind",
+          "label": "Shortcut",
+          "options": [
+            { "value": "winter", "label": "Winter tires" },
+            { "value": "all_weather", "label": "All-weather tires" },
+            { "value": "light_truck", "label": "Light truck tires" },
+            { "value": "wheels", "label": "Wheels" },
+            { "value": "all_terrain", "label": "All-terrain tires" },
+            { "value": "trailer", "label": "Trailer tires" }
+          ],
+          "default": "winter"
+        },
+        { "type": "collection", "id": "collection", "label": "Collection" },
+        { "type": "url", "id": "url", "label": "Link (if no collection)" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Shop by size",
+      "blocks": [
+        { "type": "shortcut", "settings": { "kind": "winter" } },
+        { "type": "shortcut", "settings": { "kind": "all_weather" } },
+        { "type": "shortcut", "settings": { "kind": "light_truck" } },
+        { "type": "shortcut", "settings": { "kind": "wheels" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

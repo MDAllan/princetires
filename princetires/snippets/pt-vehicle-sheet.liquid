@@ -1,0 +1,145 @@
+{%- comment -%}
+  Prince Tires — "Search by vehicle" popup (Nov 8, 2026).
+  Replaces the 4 small Year/Make/Model/Submodel dropdowns in the hero with one
+  button that opens an iPhone-style sheet. Each choice slides in the next step.
+  It drives the ORIGINAL (now hidden) selects, so the existing vehicle data,
+  search input and results panel keep working exactly as before.
+  Script is split across pt-vehicle-sheet-js1 / -js2 (Shopify upload size limit).
+{%- endcomment -%}
+<style>
+  .ptvs-on .hero-smart-search__picker-selects,
+  .ptvs-on .hero-smart-search__picker-label { display: none !important; }
+
+  .ptvs-trigger { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 14px;
+    width: 100%; max-width: 560px; margin: 4px auto 0; padding: 12px 16px 12px 12px; min-height: 66px; border-radius: 20px;
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.20); color: #fff; font-family: inherit;
+    -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), background .25s, border-color .25s; -webkit-tap-highlight-color: transparent; }
+  .ptvs-trigger:hover { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.32); }
+  .ptvs-trigger:active { transform: scale(.975); }
+  .ptvs-trigger:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  .ptvs-trigger__icon { flex: 0 0 42px; height: 42px; border-radius: 14px; background: #dc2626; display: grid; place-items: center; }
+  .ptvs-trigger__icon svg { width: 24px; height: 24px; }
+  .ptvs-trigger__t { flex: 1; display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; }
+  .ptvs-trigger__main { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+  .ptvs-trigger__sub { font-size: 13px; color: rgba(255,255,255,.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ptvs-trigger__chev { flex: 0 0 auto; opacity: .8; transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+  .ptvs-trigger:hover .ptvs-trigger__chev { transform: translateX(3px); }
+
+  .ptvs { position: fixed; inset: 0; z-index: 2147483000; display: flex; align-items: flex-end; justify-content: center; font-family: inherit; }
+  .ptvs[hidden] { display: none; }
+  .ptvs__backdrop { position: absolute; inset: 0; background: var(--rd-scrim, rgba(0,0,0,.45)); opacity: 0; transition: opacity .38s ease;
+    -webkit-backdrop-filter: blur(var(--rd-scrim-blur, 6px)); backdrop-filter: blur(var(--rd-scrim-blur, 6px)); }
+  .ptvs.is-open .ptvs__backdrop { opacity: 1; }
+  .ptvs__sheet { position: relative; width: 100%; height: min(680px, 88vh); height: min(680px, 88dvh); background: #1c1c1e; color: #fff;
+    border-radius: 22px 22px 0 0; display: flex; flex-direction: column; overflow: hidden; transform: translateY(100%);
+    transition: transform .46s cubic-bezier(.32,.72,0,1); box-shadow: 0 -10px 40px rgba(0,0,0,.35); padding-bottom: env(safe-area-inset-bottom); }
+  .ptvs.is-open .ptvs__sheet { transform: translateY(0); }
+  .ptvs.is-dragging .ptvs__sheet { transition: none; }
+  @media (min-width: 750px) {
+    .ptvs { align-items: center; }
+    .ptvs__sheet { width: 540px; height: min(660px, 86vh); border-radius: 24px; transform: translateY(24px) scale(.96); opacity: 0;
+      transition: transform .38s cubic-bezier(.32,.72,0,1), opacity .25s ease; }
+    .ptvs.is-open .ptvs__sheet { transform: none; opacity: 1; }
+    .ptvs__grab { display: none; }
+  }
+  .ptvs__grab { width: 38px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.28); margin: 8px auto 0; flex: 0 0 auto; }
+  .ptvs__head { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 10px 14px 6px; flex: 0 0 auto; touch-action: none; }
+  .ptvs__title { text-align: center; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+  .ptvs__iconbtn { all: unset; cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+    background: rgba(255,255,255,.12); color: #fff; transition: transform .2s, background .2s, opacity .2s; }
+  .ptvs__iconbtn:active { transform: scale(.88); }
+  .ptvs__iconbtn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .ptvs__iconbtn[aria-hidden="true"] { opacity: 0; pointer-events: none; }
+  .ptvs__close { justify-self: end; }
+
+  .ptvs__chips { display: flex; gap: 8px; padding: 6px 16px 12px; overflow-x: auto; scrollbar-width: none; flex: 0 0 auto; min-height: 44px; box-sizing: border-box; }
+  .ptvs__chips::-webkit-scrollbar { display: none; }
+  .ptvs__chip { all: unset; cursor: pointer; flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; font-size: 14px; font-weight: 500;
+    background: rgba(220,38,38,.18); color: #ffb4b4; animation: ptvs-pop .38s cubic-bezier(.34,1.56,.64,1) both; transition: transform .2s; }
+  .ptvs__chip:active { transform: scale(.94); }
+  .ptvs__chip--next { background: rgba(255,255,255,.08); color: rgba(255,255,255,.55); cursor: default; animation: none; }
+  .ptvs__chip--next.is-now { background: #fff; color: #1c1c1e; }
+
+  .ptvs__stage { position: relative; flex: 1 1 auto; overflow: hidden; }
+  .ptvs__pane { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 16px 28px; box-sizing: border-box; }
+  .ptvs__pane.in-fwd { animation: ptvs-in-fwd .42s cubic-bezier(.32,.72,0,1) both; }
+  .ptvs__pane.in-back { animation: ptvs-in-back .42s cubic-bezier(.32,.72,0,1) both; }
+  .ptvs__pane.out-fwd { animation: ptvs-out-fwd .32s cubic-bezier(.32,.72,0,1) both; pointer-events: none; }
+  .ptvs__pane.out-back { animation: ptvs-out-back .32s cubic-bezier(.32,.72,0,1) both; pointer-events: none; }
+  @keyframes ptvs-in-fwd { from { transform: translateX(28%); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes ptvs-in-back { from { transform: translateX(-28%); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes ptvs-out-fwd { to { transform: translateX(-18%); opacity: 0; } }
+  @keyframes ptvs-out-back { to { transform: translateX(18%); opacity: 0; } }
+  @keyframes ptvs-pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes ptvs-rise { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes ptvs-shimmer { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+
+  .ptvs__q { font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin: 6px 2px 14px; }
+  .ptvs__label { font-size: 13px; font-weight: 500; color: #98989f; text-transform: uppercase; letter-spacing: .04em; margin: 18px 4px 8px; }
+  .ptvs__grid { display: grid; gap: 8px; }
+  .ptvs__grid--years { grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .ptvs__grid--makes { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .ptvs__tile { all: unset; box-sizing: border-box; cursor: pointer; text-align: center; padding: 15px 6px; border-radius: 14px; background: #2c2c2e;
+    font-size: 17px; font-weight: 500; color: #fff; transition: transform .22s cubic-bezier(.2,.8,.2,1), background .18s; -webkit-tap-highlight-color: transparent;
+    animation: ptvs-rise .4s cubic-bezier(.32,.72,0,1) both; }
+  .ptvs__tile:hover { background: #3a3a3c; }
+  .ptvs__tile:active { transform: scale(.94); }
+  .ptvs__tile:focus-visible, .ptvs__row:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .ptvs__tile.is-picked, .ptvs__row.is-picked { background: #dc2626 !important; transform: scale(.97); }
+  .ptvs__mono { width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 8px; display: grid; place-items: center; font-size: 17px; font-weight: 700;
+    background: rgba(255,255,255,.1); color: #fff; }
+  .ptvs__tile--make { padding: 14px 4px 12px; font-size: 14px; }
+  .ptvs__list { background: #2c2c2e; border-radius: 14px; overflow: hidden; animation: ptvs-rise .4s cubic-bezier(.32,.72,0,1) both; }
+  .ptvs__row { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+    padding: 15px 16px; font-size: 17px; color: #fff; position: relative; transition: background .15s; -webkit-tap-highlight-color: transparent; }
+  .ptvs__row + .ptvs__row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: rgba(255,255,255,.08); }
+  .ptvs__row:hover { background: #3a3a3c; }
+  .ptvs__row:active { background: #48484a; }
+  .ptvs__row svg { flex: 0 0 auto; opacity: .45; }
+  .ptvs__search { display: flex; align-items: center; gap: 8px; background: #2c2c2e; border-radius: 12px; padding: 0 12px; height: 44px; margin-bottom: 4px; }
+  .ptvs__search svg { opacity: .55; flex: 0 0 auto; }
+  .ptvs__search input { all: unset; flex: 1; font-size: 17px; color: #fff; font-family: inherit; min-width: 0; }
+  .ptvs__search input::placeholder { color: #8e8e93; }
+  .ptvs__saved { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; border-radius: 16px;
+    background: rgba(220,38,38,.14); border: 1px solid rgba(220,38,38,.35); margin-bottom: 6px; transition: transform .22s cubic-bezier(.2,.8,.2,1); }
+  .ptvs__saved:active { transform: scale(.97); }
+  .ptvs__saved small { display: block; font-size: 13px; color: #ffb4b4; }
+  .ptvs__saved b { font-size: 16px; font-weight: 600; }
+  .ptvs__skel { height: 52px; border-radius: 14px; margin-bottom: 8px; background: linear-gradient(90deg,#2c2c2e 0,#3a3a3c 60px,#2c2c2e 120px) #2c2c2e;
+    background-size: 400px 100%; animation: ptvs-shimmer 1.1s linear infinite; }
+  .ptvs__empty { text-align: center; color: #98989f; font-size: 15px; padding: 26px 8px; line-height: 1.5; }
+
+  .ptvs__result { text-align: center; padding: 10px 4px 0; animation: ptvs-rise .5s cubic-bezier(.32,.72,0,1) both; }
+  .ptvs__check { width: 64px; height: 64px; border-radius: 50%; background: rgba(48,209,88,.16); display: grid; place-items: center; margin: 8px auto 12px;
+    animation: ptvs-pop .5s cubic-bezier(.34,1.56,.64,1) .05s both; }
+  .ptvs__veh { font-size: 15px; color: #98989f; margin-bottom: 18px; }
+  .ptvs__sizecard { background: #2c2c2e; border-radius: 18px; padding: 16px; margin-bottom: 10px; text-align: left; animation: ptvs-rise .5s cubic-bezier(.32,.72,0,1) .08s both; }
+  .ptvs__sizecard small { display: block; font-size: 13px; color: #98989f; }
+  .ptvs__size { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin: 2px 0 12px; }
+  .ptvs__cta { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; text-align: center; padding: 15px; border-radius: 14px;
+    background: #dc2626; color: #fff; font-size: 17px; font-weight: 600; transition: transform .22s cubic-bezier(.2,.8,.2,1), background .2s; }
+  .ptvs__cta:hover { background: #ef4444; }
+  .ptvs__cta:active { transform: scale(.97); }
+  .ptvs__cta:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .ptvs__alt { all: unset; cursor: pointer; display: inline-block; margin-top: 12px; padding: 8px; font-size: 15px; color: #ff8a8a; }
+  .ptvs__help { font-size: 14px; color: #98989f; margin-top: 10px; }
+  .ptvs__help a { color: #fff; }
+  /* Staggered set card (2026-11-15): front + rear rows, one main action, two half-set links. */
+  .ptvs__tag { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.12); color: #fff; font-size: 12px; font-weight: 600; vertical-align: 1px; }
+  .ptvs__note { font-size: 14px; color: #98989f; margin: -10px 0 16px; }
+  .ptvs__axles { background: #1c1c1e; border-radius: 12px; margin: 8px 0 12px; }
+  .ptvs__axle { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 11px 14px; }
+  .ptvs__axle + .ptvs__axle { border-top: 1px solid rgba(255,255,255,.08); }
+  .ptvs__axle span { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #98989f; }
+  .ptvs__axle b { font-size: 22px; font-weight: 700; letter-spacing: -.02em; color: #fff; }
+  .ptvs__halves { display: flex; justify-content: center; flex-wrap: wrap; gap: 0 22px; margin-top: 4px; }
+  .ptvs__halves a { padding: 11px 4px 3px; font-size: 15px; color: #ff8a8a; text-decoration: none; }
+  .ptvs__halves a:hover { text-decoration: underline; }
+  .ptvs__halves a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce) {
+    .ptvs *, .ptvs__sheet, .ptvs__backdrop, .ptvs-trigger { animation: none !important; transition: none !important; }
+  }
+</style>
+{%- render 'pt-vehicle-sheet-js1' -%}
+{%- render 'pt-vehicle-sheet-js2' -%}

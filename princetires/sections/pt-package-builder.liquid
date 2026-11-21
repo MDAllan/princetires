@@ -1,0 +1,171 @@
+{%- comment -%}
+  Wheel + tire PACKAGE BUILDER (/pages/wheel-package, and /pages/wheel-quote).
+
+  One page with a live summary, NO stepper (the owner-approved guided UX,
+  2026-10-23; docs/package-builder-v1-spec.md §7): "Find your wheels" first
+  (question chips answered in any order + a whole-package budget slider, with
+  "Not sure? Start with our picks" as a shortcut), then "Now pick tires for
+  these wheels" with a "Your set" card (wheel + tire side by side, "See it on
+  my car" on click only), what's included, and ONE request form.
+  Progressive disclosure (owner 2026-10-27): every wheel pick folds the answers
+  into one summary line ("Edit answers") and the wheel list into one "Your
+  wheel" row ("Change wheel"), and brings the tires into view; arrow keys only
+  select, Space / Enter commits. A link that restores a wheel opens folded.
+  Prices update in the browser instantly from the vehicle bundle; the app's
+  POST /api/package/price is the authority and is re-checked before a request.
+  A request is a REQUEST: staff confirm it ("Request sent — we'll confirm").
+
+  The app answers `available: false` until the owner turns the builder on, and
+  for vehicles outside v1 (staggered, EV, lug bolts, dually, lifted). In those
+  cases this section shows the quote form, which posts `mode: "quote"` and
+  works while the builder is off, so /pages/wheel-quote never loses its form.
+
+  Everything the page renders comes from assets/pt-package-builder.js into the
+  [data-ptpb] root. This file holds the two data islands (config + per-shop
+  hours from pt-nap / the store_hours metaobject), the static skeleton and the
+  no-JS fallback.
+
+  HARNESS: the markup between the ptpb:markup-start / ptpb:markup-end comments
+  is copied into ../.pt-harness/package-builder.html by .pt-harness/build.mjs.
+  Keep Liquid inside that region to the plain {{ outputs }} build.mjs maps
+  (no tags), or update build.mjs alongside.
+
+  Not touched by this section: layout/theme.liquid (the script tag below is
+  deferred in the body, so it runs after the head's deferred
+  pt-booking-core.js), pt-booking-core.js, the booking surfaces.
+{%- endcomment -%}
+
+{{ 'pt-package-builder.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  # chat_api_base is not defined in settings_schema.json; it only ever resolves
+  # to its default. Same pattern as pt-rim-visualizer / pt-fits-vehicles.
+  assign api_base = settings.chat_api_base | default: 'https://app.princetires.ca'
+  assign entry_mode = section.settings.entry_mode | default: 'builder'
+  assign vehicle_asset_base = 'pt-vehicle-2025.json' | asset_url | split: 'pt-vehicle-2025.json' | first
+-%}
+{%- capture sw_phone -%}{%- render 'pt-nap', location: 'sw', field: 'phone' -%}{%- endcapture -%}
+{%- capture sw_phone_href -%}{%- render 'pt-nap', location: 'sw', field: 'phone_href' -%}{%- endcapture -%}
+{%- capture sw_name -%}{%- render 'pt-nap', location: 'sw', field: 'name' -%}{%- endcapture -%}
+{%- capture sw_address -%}{%- render 'pt-nap', location: 'sw', field: 'address_full' -%}{%- endcapture -%}
+{%- capture ne_phone -%}{%- render 'pt-nap', location: 'ne', field: 'phone' -%}{%- endcapture -%}
+{%- capture ne_phone_href -%}{%- render 'pt-nap', location: 'ne', field: 'phone_href' -%}{%- endcapture -%}
+{%- capture ne_name -%}{%- render 'pt-nap', location: 'ne', field: 'name' -%}{%- endcapture -%}
+{%- capture ne_address -%}{%- render 'pt-nap', location: 'ne', field: 'address_full' -%}{%- endcapture -%}
+{%- assign sw_phone = sw_phone | strip -%}
+{%- assign sw_phone_href = sw_phone_href | strip -%}
+{%- assign ne_phone = ne_phone | strip -%}
+{%- assign ne_phone_href = ne_phone_href | strip -%}
+
+{%- render 'pt-vehicle-manifest-loader' -%}
+
+{%- comment -%}
+  Per-shop hours, from the same store_hours metaobject pt-nap reads (the loop
+  pt-booking-page.liquid renders as BP_HOURS). JSON island, not a JS literal.
+{%- endcomment -%}
+{%- assign pb_slugs = 'sw,ne' | split: ',' -%}
+{%- assign pb_fields = 'hours_mon_sat_open,hours_mon_sat_close,hours_sun_open,hours_sun_close,hours_fri_open,hours_fri_close,hours_fri_reopen,hours_fri_final_close,booking_cutoff_minutes' | split: ',' -%}
+<script type="application/json" id="pt-pkg-hours">
+{
+{%- for pb_s in pb_slugs %}
+  {{ pb_s | json }}: {
+  {%- for pb_f in pb_fields -%}
+    {%- capture pb_v %}{% render 'pt-nap', location: pb_s, field: pb_f %}{% endcapture %}
+    {{ pb_f | json }}: {{ pb_v | strip | json }}{% unless forloop.last %},{% endunless %}
+  {%- endfor %}
+  }{% unless forloop.last %},{% endunless %}
+{%- endfor %}
+}
+</script>
+
+<script type="application/json" id="ptpb-config">
+{
+  "apiBase": {{ api_base | json }},
+  "previewToken": {{ section.settings.preview_token | default: '' | json }},
+  "entryMode": {{ entry_mode | json }},
+  "vehicleAssetBase": {{ vehicle_asset_base | json }},
+  "manifestUrl": {{ 'pt-vehicle-manifest.json' | asset_url | json }},
+  "loggedIn": {% if customer %}true{% else %}false{% endif %},
+  "shops": {
+    "sw": { "slug": "sw", "name": {{ sw_name | strip | json }}, "phone": {{ sw_phone | json }}, "phoneHref": {{ sw_phone_href | json }}, "address": {{ sw_address | strip | json }} },
+    "ne": { "slug": "ne", "name": {{ ne_name | strip | json }}, "phone": {{ ne_phone | json }}, "phoneHref": {{ ne_phone_href | json }}, "address": {{ ne_address | strip | json }} }
+  }
+}
+</script>
+
+<section class="ptpb" data-ptpb id="ptpb-{{ section.id }}" aria-labelledby="ptpb-title">
+  <!-- ptpb:markup-start -->
+  <div class="ptpb__wrap ptpb__intro">
+    <p class="ptpb__kicker">Wheel + tire packages</p>
+    <h1 class="ptpb__title" id="ptpb-title">{{ section.settings.heading | escape }}</h1>
+    <p class="ptpb__lede">{{ section.settings.intro | escape }}</p>
+    <ul class="ptpb__proof" aria-label="Every package">
+      <li><svg class="ptpb__i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Fit-checked</li>
+      <li><svg class="ptpb__i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Lug nuts + rings included</li>
+      <li><svg class="ptpb__i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>One installed price</li>
+    </ul>
+  </div>
+  <div class="ptpb__app" data-ptpb-app>
+    <div class="ptpb__wrap ptpb__boot" data-ptpb-boot>
+      <p class="ptpb__boot-msg">Loading the package builder…</p>
+    </div>
+  </div>
+  <noscript>
+    <div class="ptpb__wrap">
+      <div class="ptpb__panel">
+        <p>The package builder needs JavaScript. Call us and we'll put a wheel and tire package together for you:</p>
+        <p><a class="ptpb__link" href="tel:{{ sw_phone_href }}">42 Ave SW · {{ sw_phone }}</a></p>
+        <p><a class="ptpb__link" href="tel:{{ ne_phone_href }}">Edmonton Trail NE · {{ ne_phone }}</a></p>
+      </div>
+    </div>
+  </noscript>
+  <div class="ptpb__live ptpb__vh" role="status" aria-live="polite" aria-atomic="true" data-ptpb-live></div>
+  <!-- ptpb:markup-end -->
+</section>
+
+<script src="{{ 'pt-package-builder.js' | asset_url }}" defer="defer"></script>
+
+{% schema %}
+{
+  "name": "Wheel package builder",
+  "tag": "div",
+  "class": "section-pt-package-builder",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Your next set, installed."
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro",
+      "info": "One short line. The long explanation lives in the builder itself.",
+      "default": "One price for wheels, tires, hardware and install. GST in."
+    },
+    {
+      "type": "select",
+      "id": "entry_mode",
+      "label": "Mode",
+      "info": "Quote form only skips the builder and shows the quote request form.",
+      "options": [
+        { "value": "builder", "label": "Package builder" },
+        { "value": "quote_only", "label": "Quote form only" }
+      ],
+      "default": "builder"
+    },
+    {
+      "type": "text",
+      "id": "preview_token",
+      "label": "Preview token",
+      "info": "Leave blank on the live theme. For a preview, add ?preview=TOKEN to the page URL instead."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Wheel package builder"
+    }
+  ]
+}
+{% endschema %}

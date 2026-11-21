@@ -1,0 +1,95 @@
+  function wheelSpecFlow() {
+    return flow({
+      title: 'Search by wheel specs',
+      anytime: { label: 'Show wheels now', href: wheelsUrl },
+      steps: [
+        { key: 'rim_diameter', chip: 'Diameter', q: 'What wheel size?', hint: 'The last number of your tire size. 225/65R17 = 17".', cols: 4, optional: true, options: function () { return specOpts('rim_diameter'); } },
+        { key: 'bolt_pattern', chip: 'Bolt pattern', q: 'Bolt pattern?', hint: 'Lug count × circle size, like 5×114.3.', cols: 3, optional: true, options: function () { return specOpts('bolt_pattern'); } },
+        { key: 'rim_width', chip: 'Width', q: 'Wheel width?', cols: 4, optional: true, skipLabel: 'Any width', options: function () { return specOpts('rim_width'); } },
+        { key: 'rim_offset', chip: 'Offset', q: 'Offset?', cols: 3, optional: true, skipLabel: 'Any offset', options: function () { return specOpts('rim_offset'); } }
+      ],
+      result: function (a) {
+        return {
+          title: 'Your wheel specs',
+          rows: [['Diameter', a.rim_diameter_label || 'Any'], ['Bolt pattern', a.bolt_pattern_label || 'Any'], ['Width', a.rim_width_label || 'Any'], ['Offset', a.rim_offset_label || 'Any']],
+          ctas: [{ label: 'Show matching wheels', href: wheelsUrl(a) }],
+          help: 'Not sure about a spec? Skip it, or search by vehicle instead.'
+        };
+      }
+    });
+  }
+
+  function packageSizeFlow() {
+    return flow({
+      title: 'Package by size',
+      steps: [
+        { key: 'tire', chip: 'Tire size', type: 'input', q: 'What’s your tire size?', hint: 'It’s on the side of your tire, like 225/65R17.', placeholder: '225/65R17',
+          error: 'Enter a size like 225/65R17.', parse: parseSize },
+        { key: 'bolt_pattern', chip: 'Bolt pattern', q: 'Bolt pattern?', hint: 'Lug count × circle size, like 5×114.3.', cols: 3, optional: true, skipLabel: 'Not sure, show all',
+          options: function () { return specOpts('bolt_pattern') || BP_FALLBACK.map(function (b) { return { v: b, t: b }; }); } }
+      ],
+      result: function (a) {
+        var t = a.tire, f = { rim_diameter: t.r, bolt_pattern: a.bolt_pattern };
+        return {
+          title: 'Let’s build your package',
+          rows: [['Tire size', t.text], ['Wheel', t.r + '" ' + (a.bolt_pattern_label || '')]],
+          ctas: [
+            { label: 'Shop wheels that fit', href: wheelsUrl(f), before: function () { try { sessionStorage.setItem(TIRE_KEY, JSON.stringify(t)); } catch (e) {} } },
+            { label: 'Shop ' + t.text + ' tires', href: tiresUrl(t) }
+          ],
+          help: 'Pick your wheels, then add tires in your size. Want us to build it? Call 403 452 4283.'
+        };
+      }
+    });
+  }
+
+  function floatTire() {
+    if (!/^\/collections\/wheels/.test(location.pathname)) return;
+    var t; try { t = JSON.parse(sessionStorage.getItem(TIRE_KEY) || 'null'); } catch (e) {}
+    if (!t || !t.w || document.querySelector('.ptvs-float')) return;
+    var d = document.createElement('div');
+    d.className = 'ptvs-float';
+    d.innerHTML = '<span>Your tires: <b>' + esc(t.text) + '</b></span><a href="' + tiresUrl(t) + '">Shop tires</a><button type="button" aria-label="Dismiss">×</button>';
+    d.querySelector('button').addEventListener('click', function () { try { sessionStorage.removeItem(TIRE_KEY); } catch (e) {} d.remove(); });
+    document.body.appendChild(d);
+  }
+
+  function altButton(mount, label, solid, onClick) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ptvs-alt' + (solid ? ' ptvs-alt--solid' : '');
+    b.innerHTML = esc(label) + ' ' + I.chev;
+    b.addEventListener('click', function () { buzz(); onClick(); });
+    mount.appendChild(b);
+    return b;
+  }
+
+  function init() {
+    floatTire();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-pt-ws]'), function (w) {
+      if (w.getAttribute('data-ptss')) return;
+      w.setAttribute('data-ptss', '1');
+      var inHero = !!w.closest('.section-hero-smart-search');
+      if (w.classList.contains('pt-ws--package')) {
+        var vp = w.querySelector('[data-pt-ws-panel="vehicle"]');
+        if (vp) { var openP = packageSizeFlow(); altButton(vp, 'I know my tire size and bolt pattern', !inHero, openP); }
+        return;
+      }
+      var sp = w.querySelector('[data-pt-ws-panel="specs"]');
+      if (!sp || !sp.querySelector('[data-pt-ws-spec]')) return;
+      Array.prototype.forEach.call(sp.querySelectorAll('.pt-ws__row'), function (r) { if (r.querySelector('select')) r.classList.add('ptvs-hide'); });
+      var sub = sp.querySelector('[data-pt-ws-submit-specs]');
+      if (sub) (sub.closest('.pt-ws__actions') || sub).classList.add('ptvs-hide');
+      var openW = wheelSpecFlow();
+      var t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'ptvs-trigger' + (inHero ? '' : ' ptvs-trigger--solid');
+      t.innerHTML = '<span class="ptvs-trigger__icon">' + I.wheel + '</span><span class="ptvs-trigger__t"><span class="ptvs-trigger__main">Search by wheel specs</span><span class="ptvs-trigger__sub">Diameter, bolt pattern, width and offset.</span></span><span class="ptvs-trigger__chev">' + I.chev + '</span>';
+      t.addEventListener('click', function () { buzz(); openW(); });
+      sp.appendChild(t);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  document.addEventListener('shopify:section:load', init);
+})();
+</script>

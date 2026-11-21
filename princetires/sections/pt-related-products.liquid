@@ -15,6 +15,80 @@
             if tire_size != blank
               assign card_title = product.title | remove: tire_size | strip
             endif
+
+            comment
+              Unit + one detail line, as in the mockups: tires "season", wheels
+              "19×8.5 · 5x114.3". Wheel test = snippets/pt-is-wheel (the same
+              one the product page uses). Season source = the product page's:
+              custom.seasonality, then tags, then product type. Wheels get no
+              season (a season is a tire rating).
+            endcomment
+            capture rp_is_wheel_raw
+              render 'pt-is-wheel', product: product
+            endcapture
+            assign rp_is_wheel = false
+            if rp_is_wheel_raw contains 'true'
+              assign rp_is_wheel = true
+            endif
+            assign rp_type_down = product.type | downcase
+            assign rp_unit = '/tire'
+            assign rp_detail = ''
+            if rp_is_wheel
+              assign rp_unit = '/wheel'
+              assign rp_rd = product.metafields.custom.rim_diameter | append: '' | strip
+              assign rp_rw = product.metafields.custom.rim_width | append: '' | strip
+              assign rp_bolt = product.metafields.custom.bolt_pattern | append: '' | strip
+              if rp_rd != blank and rp_rw != blank
+                assign rp_detail = rp_rd | append: '×' | append: rp_rw
+              elsif rp_rd != blank
+                assign rp_detail = rp_rd | append: '″'
+              endif
+              if rp_bolt != blank
+                if rp_detail != blank
+                  assign rp_detail = rp_detail | append: ' · '
+                endif
+                assign rp_detail = rp_detail | append: rp_bolt
+              endif
+            elsif tire_size == blank and rp_type_down contains 'accessor'
+              assign rp_unit = ' each'
+            else
+              assign rp_season = product.metafields.custom.seasonality | default: ''
+              if rp_season == blank
+                for tag in product.tags
+                  assign rp_tag = tag | downcase
+                  if rp_tag contains 'winter'
+                    assign rp_season = 'Winter'
+                  elsif rp_tag contains 'all-weather' or rp_tag contains 'all weather'
+                    assign rp_season = 'All-Weather'
+                  elsif rp_tag contains 'all-season' or rp_tag contains 'all season'
+                    assign rp_season = 'All-Season'
+                  elsif rp_tag contains 'summer'
+                    assign rp_season = 'Summer'
+                  endif
+                endfor
+              endif
+              if rp_season == blank
+                if rp_type_down contains 'winter'
+                  assign rp_season = 'Winter'
+                elsif rp_type_down contains 'passenger'
+                  assign rp_season = 'All-Season'
+                elsif rp_type_down contains 'trailer'
+                  assign rp_season = 'Trailer'
+                endif
+              endif
+              assign rp_s = rp_season | downcase
+              if rp_s contains 'winter'
+                assign rp_detail = 'Winter'
+              elsif rp_s contains 'weather'
+                assign rp_detail = 'All-weather'
+              elsif rp_s contains 'season'
+                assign rp_detail = 'All-season'
+              elsif rp_s contains 'summer'
+                assign rp_detail = 'Summer'
+              elsif rp_s contains 'trailer'
+                assign rp_detail = 'Trailer'
+              endif
+            endif
           -%}
           <a href="{{ product.url }}" class="pt-rp__card">
             <div class="pt-rp__img">
@@ -32,6 +106,9 @@
               {%- if tire_size != blank -%}
                 <span class="pt-rp__size">{{ tire_size }}</span>
               {%- endif -%}
+              {%- if rp_detail != blank -%}
+                <span class="pt-rp__meta">{{ rp_detail }}</span>
+              {%- endif -%}
               <div class="pt-rp__price">
                 {%- if product.compare_at_price > product.price -%}
                   <span class="pt-rp__price-sale">${{ product.price | money_without_currency }}</span>
@@ -39,7 +116,7 @@
                 {%- else -%}
                   <span>${{ product.price | money_without_currency }}</span>
                 {%- endif -%}
-                <span class="pt-rp__price-per">/tire</span>
+                <span class="pt-rp__price-per">{{ rp_unit }}</span>
               </div>
             </div>
           </a>
@@ -155,6 +232,12 @@
     font-size: 1.05rem;
     font-weight: 500;
     color: #F5820B;
+  }
+  .pt-rp__meta {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 400;
+    color: #3f3f3f;
   }
   .pt-rp__price {
     font-family: 'Outfit', sans-serif;

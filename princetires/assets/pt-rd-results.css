@@ -1,0 +1,1432 @@
+/* =====================================================================
+   pt-rd-results.css - tire + wheel RESULTS pages (redesign 2026-11-13)
+   Mockups: Main / Mobile / MobileFilters / States / WheelResults /
+   WheelMobile .dc.html.
+
+   Builds on assets/pt-rd.css (tokens, .rd-btn, .rd-acc, .rd-card, .rd-price,
+   .rd-tabs, .rd-sortbar, .rd-chip, .rd-lead ...). Only results-page pieces
+   live here, all under .rd-rh (header), .rd-res (grid), .rd-fside (filters),
+   .rd-cmp (compare), .rd-empty, .rd-res-pill, .rd-fopt / .rd-fbox.
+   Root is 62.5% (1rem = 10px). Breakpoints: 750px (phone), 990px (sidebar).
+   ===================================================================== */
+
+/* ---------- Header: toggle + search panel ---------------------------- */
+.rd-rh { font-family: var(--rd-font); }
+.rd-rh__toggle {
+  display: inline-flex; align-items: center; min-height: 4.4rem; padding: 0;
+  background: none; border: 0; color: #fff; cursor: pointer;
+  font: 600 1.4rem var(--rd-font); text-decoration: underline; text-underline-offset: 4px;
+  -webkit-tap-highlight-color: transparent; white-space: nowrap;
+}
+.rd-rh__toggle:hover { color: #fff; text-decoration-thickness: 2px; }
+.rd-rh__toggle:focus-visible { outline: none; box-shadow: var(--rd-focus-dark); border-radius: 6px; }
+@media (min-width: 750px) {
+  .rd-rh__toggle {
+    min-height: 4.4rem; padding: 0 1.6rem; border: 1px solid var(--rd-on-dark-line); border-radius: var(--rd-r);
+    text-decoration: none;
+  }
+  .rd-rh__toggle:hover { border-color: #fff; }
+  .rd-rh__toggle[aria-expanded="true"] { background: #fff; color: var(--rd-ink); border-color: #fff; }
+}
+.rd-rh__tabs { margin-bottom: 0; }
+@media (max-width: 749px) {
+  .rd-rhead__title { font-size: 3.2rem; }
+  .rd-rhead__row { flex-wrap: nowrap; }
+  .rd-rhead__title { min-width: 0; }
+  .rd-rhead__count { white-space: nowrap; }
+}
+
+.rd-rh__panel { background: var(--rd-paper); border-bottom: 1px solid var(--rd-line); }
+.rd-rh__panel[hidden] { display: none; }
+.rd-rh__panel-in { max-width: var(--rd-max); margin: 0 auto; padding: 1.6rem var(--rd-gutter); }
+.rd-rh__panel .pt-rs, .rd-rh__panel .pt-ws { margin: 0; }
+.rd-rh__panel .pt-rs__toggle, .rd-rh__panel .pt-ws__toggle { display: none !important; }
+.rd-rh__panel .pt-rs__body, .rd-rh__panel .pt-ws__body { display: block !important; }
+
+/* ---------- Page frame ------------------------------------------------ */
+.rd-res { background: var(--rd-bg); }
+.rd-res__layout { padding-top: 1.2rem; padding-bottom: 4rem; }
+.rd-res__main { min-width: 0; display: flex; flex-direction: column; gap: 1.4rem; }
+.rd-res__bar { top: var(--rd-res-sticky-top, 0px); }
+.rd-res__bar select { text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+@media (min-width: 990px) {
+  .rd-res__bar { display: none; }
+  .rd-res__layout { display: flex; align-items: flex-start; gap: 4rem; padding-top: 2.4rem; padding-bottom: 7.2rem; }
+  .rd-res__main { flex: 1 1 56rem; gap: 1.8rem; }
+}
+
+/* Toolbar: count, chips, sort (desktop) */
+.rd-res__toolbar { gap: 1rem 1.2rem; }
+.rd-res__chips { flex: 1 1 auto; min-width: 0; }
+.rd-chip--link { text-decoration: none; color: var(--rd-ink); }
+.rd-chip--link:hover { border-color: var(--rd-line-hover); color: var(--rd-ink); }
+.rd-chip--link:hover .rd-chip__x { background: var(--rd-line); }
+.rd-chip--link:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+.rd-chip--link .rd-chip__x { width: 2.8rem; height: 2.8rem; }
+.rd-res__sort { display: none; }
+@media (max-width: 989px) {
+  .rd-res__toolbar .rd-toolbar__count { display: none; }
+  .rd-res__toolbar { min-height: 0; }
+  .rd-res__toolbar:not(:has(.rd-chip)) { display: none; }
+}
+@media (min-width: 990px) {
+  .rd-res__sort { display: flex; }
+}
+
+.rd-res__clear { margin: 0; }
+
+/* ---------- Filters: sidebar (>= 990) / full-screen drawer (< 990) ---- */
+.rd-fside { font-family: var(--rd-font); color: var(--rd-ink); }
+.rd-fside__head { display: flex; align-items: center; gap: 1rem; }
+.rd-fside__head .rd-filters__title { margin: 0; }
+.rd-fside__clear-top { margin-left: auto; min-height: 4rem; }
+.rd-fside__close { margin-left: auto; }
+.rd-fside__none { margin: 0 0 1.2rem; }
+.rd-fdrawer__backdrop { display: none; }
+
+@media (max-width: 989px) {
+  .rd-fside { display: none; }
+  .rd-fside.is-open {
+    display: flex; flex-direction: column;
+    position: fixed; inset: 0; z-index: 2147482000;
+    background: var(--rd-bg); height: 100%; height: 100dvh;
+  }
+  .rd-fside__head { flex: none; height: 5.6rem; padding: 0 .6rem 0 var(--rd-gutter); border-bottom: 1px solid #ecebe7; }
+  .rd-fside__head .rd-filters__title { font-size: 1.9rem; }
+  .rd-fside__clear-top { display: none; }
+  .rd-fside__scroll { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0 var(--rd-gutter) 2rem; }
+  .rd-fside__scroll > .rd-acc:first-child, .rd-fside__scroll > .rd-fside__none + .rd-btn + .rd-acc { border-top: 0; }
+  .rd-fside__foot {
+    flex: none; display: flex; gap: 1rem; padding: 1.2rem var(--rd-gutter) calc(1.6rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid #ecebe7; background: var(--rd-bg);
+  }
+  .rd-fside__foot .rd-btn { min-height: 5rem; font-size: 1.5rem; }
+  .rd-fside__foot .rd-btn--dark { font-size: 1.6rem; }
+  .rd-fside__foot .rd-btn--dark.is-zero { background: var(--rd-line-2); color: var(--rd-muted); }
+  .rd-fside__none { padding-top: 1.6rem; }
+}
+@media (min-width: 990px) {
+  .rd-fside { flex: 0 0 23.6rem; width: 23.6rem; min-width: 0; }
+  .rd-fside__head { margin-bottom: .8rem; justify-content: space-between; }
+  .rd-fside__close, .rd-fside__foot { display: none; }
+  .rd-fside .rd-acc__sum { display: none; }
+  .rd-fside .rd-acc__chev { margin-left: auto; }
+  /* Filters stay in view while the results scroll (owner 2026-11-14). A
+     long filter list scrolls inside its own column. */
+  .rd-fside {
+    position: sticky; top: calc(var(--rd-res-sticky-top, 0px) + 1.6rem);
+    max-height: calc(100vh - var(--rd-res-sticky-top, 0px) - 3.2rem);
+    overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+    padding-right: .6rem; transition: top .2s ease;
+  }
+}
+html.rd-filters-open .pt-tabbar { display: none !important; }
+
+.rd-fgroup__title { flex: 0 1 auto; min-width: 0; }
+.rd-fnote { margin: .4rem 0 .8rem; font: 400 1.3rem/1.45 var(--rd-font); color: var(--rd-muted); }
+.rd-fsearch { margin-bottom: .6rem; }
+.rd-fsearch::-webkit-search-cancel-button { cursor: pointer; }
+.rd-fmore { padding-left: 0; }
+.rd-fopts { display: flex; flex-direction: column; }
+.rd-fopts--pills { flex-direction: row; flex-wrap: wrap; gap: .8rem; padding-top: .2rem; }
+
+/* One option = a link marked up as a checkbox */
+.rd-fopt {
+  display: flex; align-items: center; gap: 1.2rem; min-height: 4.4rem; padding: .4rem 0;
+  font: 400 1.5rem/1.3 var(--rd-font); color: var(--rd-ink-2); text-decoration: none; cursor: pointer;
+  border-radius: 6px; -webkit-tap-highlight-color: transparent;
+}
+.rd-fopt:hover { color: var(--rd-ink); }
+.rd-fopt:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+.rd-fopt.is-hidden, .rd-res-pill.is-hidden { display: none; }
+.rd-fbox {
+  width: 2rem; height: 2rem; flex: none; display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid #8a8580; border-radius: 4px; background: var(--rd-bg); color: transparent;
+  transition: background-color .12s ease, border-color .12s ease;
+}
+.rd-fopt:hover .rd-fbox { border-color: var(--rd-ink); }
+.rd-fopt[aria-checked="true"] .rd-fbox { background: var(--rd-ink); border-color: var(--rd-ink); color: #fff; }
+.rd-fopt[aria-checked="true"] { color: var(--rd-ink); font-weight: 500; }
+.rd-fopt .rd-opt__hint { font-weight: 400; }
+@media (min-width: 750px) {
+  .rd-fopt { font-size: 1.4rem; min-height: 4rem; gap: 1rem; }
+  .rd-fbox { width: 1.8rem; height: 1.8rem; }
+}
+
+.rd-res-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 4.4rem; min-width: 4.8rem; padding: 0 1.2rem; border-radius: var(--rd-r-sm);
+  border: 1px solid var(--rd-line-2); background: var(--rd-bg); color: var(--rd-ink);
+  font: 400 1.4rem var(--rd-font); text-decoration: none; cursor: pointer;
+}
+.rd-res-pill:hover { border-color: var(--rd-ink); color: var(--rd-ink); }
+.rd-res-pill[aria-checked="true"] { border: 2px solid var(--rd-ink); padding: 0 1.1rem; font-weight: 600; }
+.rd-res-pill:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+@media (min-width: 750px) { .rd-res-pill { min-height: 3.6rem; } }
+
+.rd-fprice .rd-range { align-items: flex-end; }
+.rd-fprice .rd-range > label { flex: 1 1 0; }
+.rd-fprice__go { flex: none; min-height: 4.4rem; padding: 0 1.2rem; font-size: 1.4rem; }
+@media (min-width: 750px) { .rd-fprice__go { min-height: 4rem; } }
+.rd-fprice__presets { margin-top: .8rem; }
+
+/* ---------- Card additions ------------------------------------------- */
+.rd-card__ph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem; color: #a8a29e; text-align: center; padding: 1rem; }
+.rd-card__ph-ico { width: 5.6rem; height: 5.6rem; }
+.rd-card__ph-brand { font-size: 1.3rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--rd-muted); }
+.rd-card__ph-note { font-size: 1.2rem; color: var(--rd-muted-2); }
+.rd-card__badge--dark { background: var(--rd-ink); }
+.rd-card__rating { display: flex; align-items: center; gap: .5rem; font-size: 1.3rem; color: var(--rd-ink-3); }
+.rd-card__rsrc { color: var(--rd-muted-2); }
+.rd-card__note { font-size: 1.3rem; color: var(--rd-muted); }
+.rd-card__fit { display: inline-flex; align-items: center; gap: .4rem; font-size: 1.3rem; font-weight: 600; color: var(--rd-green); }
+.rd-card__fit[hidden] { display: none; }
+.rd-card__rebate { font-size: 1.3rem; font-weight: 600; color: var(--rd-note-ink); background: var(--rd-note-bg); border: 1px solid var(--rd-note-line); border-radius: 6px; padding: .3rem .7rem; align-self: flex-start; }
+.rd-card__trade { display: none; gap: .6rem; align-items: baseline; flex-wrap: wrap; font-size: 1.3rem; color: var(--rd-ink-3); background: var(--rd-tile); border-radius: 8px; padding: .6rem .8rem; }
+body.pt-trade-visible .rd-card__trade { display: flex; }
+.rd-card__trade-amt { color: var(--rd-red); font-weight: 700; }
+.rd-card__trade-pct { margin-left: auto; color: var(--rd-muted); }
+.rd-card__actions { align-items: stretch; }
+.rd-card__book { flex: 1 1 auto; }
+.rd-card__book[disabled] { opacity: 1; }
+a.rd-card__book { text-decoration: none; }
+.rd-card__cart { position: relative; }
+.rd-card--wheel .rd-card__tile { background: var(--rd-tile); }
+
+/* Cart button states (set by assets/pt-rd-results.js) */
+.ptg__card-cart .rd-cart-ok { display: none; }
+.ptg__card-cart.ptg__card-cart--success { border-color: var(--rd-green); color: var(--rd-green); background: var(--rd-green-tint); }
+.ptg__card-cart.ptg__card-cart--success .rd-cart-ico { display: none; }
+.ptg__card-cart.ptg__card-cart--success .rd-cart-ok { display: inline-block; }
+.ptg__card-cart.ptg__card-cart--error { border-color: var(--rd-red); color: var(--rd-red); background: var(--rd-err-bg); }
+.ptg__card-cart[disabled] { cursor: default; }
+
+/* Phone card: full-width button, smaller title (MobileWheel / Mobile) */
+@media (max-width: 749px) {
+  .rd-card__actions .rd-btn { min-height: 4.4rem; font-size: 1.4rem; }
+  .rd-card__lead .rd-lead { font-size: 1.3rem; }
+  /* The round cart button sits bottom-right on the photo: keep the
+     "Photo coming soon" text clear of it. */
+  .rd-card__ph { align-self: stretch; width: 100%; padding: .8rem .8rem 5.2rem; }
+  .rd-card__ph-ico { width: 4.4rem; height: 4.4rem; }
+}
+/* Order in: a quiet "Ask about this tire" call under the buttons (States). */
+.rd-card__ask {
+  position: relative; z-index: 1; /* above the card's stretched title link */
+  display: inline-flex; align-items: center; align-self: flex-start; min-height: 4.4rem; margin-top: -.6rem;
+  font-size: 1.3rem; font-weight: 600; color: var(--rd-ink-3); text-decoration: underline; text-underline-offset: 3px;
+}
+.rd-card__ask:hover { color: var(--rd-ink); }
+.rd-card__ask:focus-visible { outline: none; box-shadow: var(--rd-focus); border-radius: 6px; }
+/* Vehicle fit confirmation after a by-vehicle wheel search (WheelResults). */
+.rd-rh__fit {
+  display: flex; align-items: center; gap: 1rem; margin: 0 0 .8rem; padding: 1rem 1.4rem;
+  border: 1px solid #bbf7d0; border-radius: var(--rd-r); background: #f0fdf4;
+  font: 400 1.4rem/1.45 var(--rd-font); color: var(--rd-ink);
+}
+.rd-rh__fit svg { flex: none; color: var(--rd-green); }
+@media (min-width: 750px) { .rd-rh__fit { font-size: 1.5rem; } }
+
+/* ---------- Under the grid -------------------------------------------- */
+.rd-res__more { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding-top: .6rem; }
+.rd-res__more[hidden] { display: none; }
+.rd-res__more-count { font-size: 1.4rem; color: var(--rd-muted); }
+.rd-res__more .rd-btn { min-height: 4.8rem; }
+
+.rd-pages { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .6rem; font: 400 1.5rem var(--rd-font); margin-top: .4rem; }
+.rd-pages__num { min-width: 4.4rem; height: 4.4rem; padding: 0 .6rem; border-radius: var(--rd-r); display: inline-flex; align-items: center; justify-content: center; color: var(--rd-ink); text-decoration: none; }
+a.rd-pages__num:hover { background: var(--rd-tile); color: var(--rd-ink); }
+.rd-pages__num.is-on { background: var(--rd-ink); color: #fff; font-weight: 600; }
+.rd-pages__gap { color: var(--rd-muted-2); padding: 0 .4rem; }
+.rd-pages__step { min-height: 4.4rem; display: inline-flex; align-items: center; padding: 0 1rem; color: var(--rd-ink); text-decoration: none; }
+.rd-pages__step--next { font-weight: 600; }
+.rd-pages__step.is-off { color: var(--rd-faint); }
+a.rd-pages__num:focus-visible, a.rd-pages__step:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+.rd-res.has-more .rd-pages { display: none; }
+@media (min-width: 750px) { .rd-res.has-more .rd-pages { display: flex; } }
+
+.rd-res__foot { margin: .4rem 0 0; font-size: 1.3rem; line-height: 1.5; color: var(--rd-muted-2); }
+@media (max-width: 749px) { .rd-res__foot { text-align: center; } }
+
+.rd-res__box {
+  display: flex; flex-direction: column; gap: 1rem;
+  border: 1px solid var(--rd-line); border-radius: var(--rd-r-lg); padding: 1.6rem;
+}
+.rd-res__box--help { background: var(--rd-paper); }
+.rd-res__box-text { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.rd-res__box-h { font-size: 1.6rem; font-weight: 600; }
+.rd-res__box-sub { font-size: 1.5rem; color: var(--rd-muted); }
+.rd-res__box > .rd-btn { align-self: flex-start; }
+.rd-res__calls { display: flex; gap: 1rem; }
+.rd-res__call {
+  flex: 1 1 0; min-width: 0; min-height: 4.8rem; border-radius: var(--rd-r);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--rd-black); color: #fff; text-decoration: none; line-height: 1.2; padding: .4rem .8rem;
+}
+.rd-res__call:hover { background: #2a2a2a; color: #fff; }
+.rd-res__call:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+.rd-res__call-k { font-size: 1.4rem; font-weight: 600; }
+.rd-res__call-n { font-size: 1.2rem; color: var(--rd-on-dark-2); }
+@media (min-width: 750px) {
+  .rd-res__box { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.6rem 3.2rem; padding: 2.4rem 2.8rem; }
+  .rd-res__box-h { font-size: 1.8rem; }
+  .rd-res__box > .rd-btn { align-self: center; }
+  .rd-res__calls { gap: 2.8rem; flex-wrap: wrap; }
+  .rd-res__call { flex: none; align-items: flex-start; background: none; color: var(--rd-ink); padding: 0; min-height: 4.4rem; }
+  .rd-res__call:hover { background: none; color: var(--rd-red); }
+  .rd-res__call-k { order: -1; font-size: 1.2rem; letter-spacing: .1em; text-transform: uppercase; color: var(--rd-muted-2); }
+  .rd-res__call-n { font-size: 1.5rem; font-weight: 600; color: inherit; }
+}
+
+/* ---------- Empty state ------------------------------------------------ */
+.rd-empty {
+  border: 1px dashed var(--rd-line-2); border-radius: var(--rd-r-lg); padding: 3.2rem 1.6rem;
+  display: flex; flex-direction: column; align-items: center; gap: 1.2rem; text-align: center;
+  font-family: var(--rd-font); color: var(--rd-ink);
+}
+.rd-empty__title { margin: 0; font-size: 1.8rem; font-weight: 600; }
+.rd-empty__sub { margin: 0; font-size: 1.5rem; color: var(--rd-muted); max-width: 48rem; }
+.rd-empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .8rem 1.2rem; }
+.rd-empty__missing { width: 100%; max-width: 48rem; margin-top: .8rem; padding-top: 1.6rem; border-top: 1px solid var(--rd-line); text-align: left; }
+.rd-empty__missing-h { display: block; font-size: 1.5rem; font-weight: 600; margin-bottom: .8rem; }
+.rd-empty__form { display: flex; gap: .8rem; }
+.rd-empty__form .rd-input { flex: 1 1 auto; min-width: 0; height: 4.4rem; font-size: 1.6rem; }
+.rd-empty__form .rd-btn { flex: none; min-height: 4.4rem; }
+.rd-empty__status { margin: .8rem 0 0; font-size: 1.4rem; }
+.rd-empty__status.is-success { color: var(--rd-green); }
+.rd-empty__status.is-error { color: var(--rd-err-ink); }
+@media (min-width: 750px) { .rd-empty { padding: 4.8rem 2.4rem; } }
+
+/* ---------- Compare: tray + table ------------------------------------- */
+.rd-cmp-tray {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(2rem + env(safe-area-inset-bottom, 0px)); z-index: 1001;
+  display: flex; align-items: center; gap: 1.6rem; max-width: calc(100vw - 3.2rem);
+  background: var(--rd-black); color: #fff; border-radius: 999px; padding: .8rem .8rem .8rem 2.2rem;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .25); font-family: var(--rd-font);
+}
+.rd-cmp-tray[hidden] { display: none; }
+.rd-cmp-tray__label { font-size: 1.5rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.rd-cmp-tray__clear { background: none; border: 0; color: var(--rd-on-dark-2); font: 600 1.4rem var(--rd-font); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: 4.4rem; padding: 0 .4rem; }
+.rd-cmp-tray__clear:hover { color: #fff; }
+.rd-cmp-tray__go { min-height: 4.4rem; padding: 0 2.2rem; border: 0; border-radius: 999px; background: #fff; color: var(--rd-ink); font: 600 1.5rem var(--rd-font); cursor: pointer; white-space: nowrap; }
+.rd-cmp-tray__go[disabled] { background: #3a3a3a; color: #bdbdbd; cursor: default; }
+.rd-cmp-tray button:focus-visible { outline: none; box-shadow: var(--rd-focus-dark); }
+@media (max-width: 749px) { .rd-cmp-tray { display: none !important; } }
+
+.rd-cmp { position: fixed; inset: 0; z-index: 2147482500; }
+.rd-cmp[hidden] { display: none; }
+.rd-cmp__backdrop { position: absolute; inset: 0; background: rgba(17, 17, 17, .55); }
+.rd-cmp__panel {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(96rem, calc(100vw - 4.8rem)); max-height: calc(100vh - 4.8rem); overflow: auto;
+  background: var(--rd-bg); border-radius: var(--rd-r-xl); box-shadow: var(--rd-shadow-sheet); outline: none;
+}
+.rd-cmp__head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.4rem 1.4rem 1.4rem 2.6rem; background: var(--rd-bg); border-bottom: 1px solid #ecebe7; }
+.rd-cmp__title { margin: 0; font: 700 2rem var(--rd-font); letter-spacing: 0; }
+.rd-cmp__body { padding: 1.6rem 2.6rem 0; }
+.rd-cmp__scroll { overflow-x: auto; }
+.rd-cmp__table { width: 100%; border-collapse: collapse; font-size: 1.4rem; }
+.rd-cmp__table th, .rd-cmp__table td { padding: 1rem 1.2rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--rd-line-3); }
+.rd-cmp__table tbody th { width: 14rem; color: var(--rd-muted-2); font-weight: 500; white-space: nowrap; }
+.rd-cmp__table thead th { font-weight: 600; vertical-align: bottom; }
+.rd-cmp__table thead img { width: 9.6rem; height: 9.6rem; object-fit: contain; background: var(--rd-tile); border-radius: var(--rd-r); margin-bottom: .8rem; display: block; }
+.rd-cmp__name { display: block; font-size: 1.5rem; line-height: 1.3; }
+.rd-cmp__price { font-weight: 700; }
+.rd-cmp__link { font-weight: 600; color: var(--rd-ink); }
+.rd-cmp__link:hover { color: var(--rd-red); }
+.rd-cmp__note { margin: 0; padding: 1.2rem 2.6rem 2.2rem; font-size: 1.3rem; color: var(--rd-muted-2); }
+
+/* ---------- Navigation progress (filter / sort / page clicks) ---------- */
+.rd-navprog { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 2147483600; overflow: hidden; pointer-events: none; }
+.rd-navprog::after { content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; background: var(--rd-orange); animation: rd-navprog 1s ease-in-out infinite; }
+@keyframes rd-navprog { to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .rd-navprog::after { animation: none; left: 0; width: 100%; opacity: .6; } }
+
+/* ---------- [hidden] always wins --------------------------------------
+   .rd-btn { display:inline-flex } in pt-rd.css beat the hidden attribute
+   ("Show more" options, the top "Clear all", the phone "Show more tires"
+   button after the last page). Scoped to the redesigned results blocks. */
+.rd [hidden], .rd[hidden] { display: none !important; }
+
+/* ---------- Wheel search messages, outside the search panel ---------- */
+.rd-rh__msg { max-width: var(--rd-max); margin: 1.2rem auto 0; padding: 0 var(--rd-gutter); }
+.rd-rh__msg:empty { display: none; }
+.rd-rh__msg .pt-ws__crosssell {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .2rem 1.2rem;
+  margin: 0 0 .8rem; padding: .6rem 1.4rem; border: 1px solid var(--rd-line); border-radius: var(--rd-r);
+  background: var(--rd-tile); font: 400 1.4rem/1.45 var(--rd-font); color: var(--rd-ink);
+}
+.rd-rh__msg .pt-ws__nobolt { padding-top: 1.2rem; padding-bottom: 1.2rem; }
+.rd-rh__msg .pt-ws__xs-cta, .rd-rh__msg .pt-ws__xs-no { min-height: 4.4rem; display: inline-flex; align-items: center; }
+.rd-rh__msg .pt-ws__xs-cta { font-weight: 700; color: var(--rd-ink); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.rd-rh__msg .pt-ws__xs-no { margin-left: auto; padding: 0 .4rem; border: 0; background: none; font: inherit; font-size: 1.3rem; color: var(--rd-muted); cursor: pointer; }
+.rd-rh__msg .pt-ws__xs-no:focus-visible, .rd-rh__msg .pt-ws__xs-cta:focus-visible { outline: none; box-shadow: var(--rd-focus); border-radius: 6px; }
+
+/* ---------- Old collection overlay (snippets/pt-collection-stock) -----
+   Words only on the search tabs (owner rule: icons only where needed) and
+   the redesign's own focus ring instead of the old red one. */
+.rd-rh__panel .pt-rs__tab::before, .rd-rh__panel .pt-ws__tab::before { content: none !important; display: none !important; }
+.rd-rh__panel .pt-rs__tab, .rd-rh__panel .pt-ws__tab { gap: 0; }
+.rd-rh__panel .ptcs-ws .pt-ws__select:focus { border-color: var(--rd-ink) !important; box-shadow: none; }
+.rd-rh__panel .ptcs-ws .pt-ws__select:focus-visible { box-shadow: var(--rd-focus); }
+/* Phones keep the vehicle / spec sheet buttons: their icon tile is ink, not
+   red (red = main action button and sale only). */
+.rd-rh__panel .ptvs-trigger__icon { background: var(--rd-ink) !important; color: #fff; }
+
+/* ---------- "About" block under the grid (collection description) ---- */
+.rd-about { font-family: var(--rd-font); }
+.rd-about__in { max-width: var(--rd-max); margin: 0 auto; padding: 1.6rem var(--rd-gutter) 0; }
+.rd-about__box { border-top: 1px solid var(--rd-line); }
+.rd-about__sum {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  min-height: 4.8rem; cursor: pointer; list-style: none;
+  font: 600 1.5rem var(--rd-font); color: var(--rd-ink);
+}
+.rd-about__sum::-webkit-details-marker { display: none; }
+.rd-about__sum:focus-visible { outline: none; box-shadow: var(--rd-focus); border-radius: 6px; }
+.rd-about__box[open] .rd-acc__chev { transform: rotate(180deg); }
+.rd-about__body { padding: 0 0 1.6rem; font-size: 1.4rem; line-height: 1.6; color: var(--rd-ink-3); max-width: 76rem; }
+.rd-about__body h2, .rd-about__body h3 { font-size: 1.6rem; margin: 1.6rem 0 .6rem; color: var(--rd-ink); }
+.rd-about__body p, .rd-about__body ul, .rd-about__body ol { margin: 0 0 1rem; }
+.rd-about__body a { color: var(--rd-ink); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---------- Phones / tablets: floating Filters · N | Sort pill -------- */
+/* (SizeSheet.dc.html board 2). Shown by pt-rd-results.js, which also adds
+   .rd-res--fab and sets --rd-fab-bottom to the mobile tab bar's height. */
+.rd-fab { display: none; }
+@media (max-width: 989px) {
+  .rd-res--fab .rd-res__bar { display: none; }
+  .rd-res--fab .rd-res__layout { padding-bottom: 9.6rem; }
+  .rd-fab:not([hidden]) {
+    position: fixed; z-index: 999; left: 50%; transform: translateX(-50%);
+    bottom: calc(var(--rd-fab-bottom, 0px) + 1.6rem + env(safe-area-inset-bottom, 0px));
+    display: flex; align-items: center; height: 5rem; max-width: calc(100vw - 3.2rem);
+    background: var(--rd-black); color: #fff; border-radius: 999px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .35); font: 600 1.5rem var(--rd-font);
+  }
+  html.rd-filters-open .rd-fab, html.pss-lock .rd-fab { display: none !important; }
+  .rd-fab__f {
+    position: relative; display: inline-flex; align-items: center; gap: .8rem; height: 100%; min-width: 4.4rem;
+    padding: 0 1.4rem 0 2rem; border: 0; border-radius: 999px 0 0 999px; background: none; color: #fff;
+    font: inherit; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .rd-fab__dot { position: absolute; top: 1.1rem; left: 3.2rem; width: .9rem; height: .9rem; border-radius: 50%; background: var(--rd-orange); box-shadow: 0 0 0 2px var(--rd-black); }
+  .rd-fab__sep { width: 1px; height: 2rem; background: #57534e; flex: none; }
+  .rd-fab__s { position: relative; display: inline-flex; align-items: center; height: 100%; min-width: 4.4rem; padding: 0 2rem 0 1.4rem; border-radius: 0 999px 999px 0; cursor: pointer; }
+  .rd-fab__s select {
+    position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+    -webkit-appearance: none; appearance: none; border: 0; font-size: 1.6rem; /* 16px: no zoom on iOS */
+  }
+  .rd-fab__f:focus-visible, .rd-fab__s:focus-within { outline: none; box-shadow: var(--rd-focus-dark); }
+}
+
+/* ---------- Drawer: options that would give 0 with the pending picks ---- */
+.rd-fopt.is-zero, .rd-res-pill.is-zero { color: var(--rd-faint); cursor: default; }
+.rd-fopt.is-zero .rd-fbox { border-color: var(--rd-line-2); background: var(--rd-tile); }
+.rd-fopt.is-zero:hover { color: var(--rd-faint); }
+.rd-res-pill.is-zero { border-color: var(--rd-line); background: var(--rd-tile); }
+.rd-fgroup.is-none .rd-fgroup__title, .rd-fgroup.is-none .rd-acc__sum { color: var(--rd-faint); }
+
+/* ---------- Desktop size bar (tires, 990px+) -------------------------- */
+.rd-rh__bar { background: var(--rd-paper, #faf9f7); border-bottom: 1px solid var(--rd-line); }
+.rd-rh__bar[hidden] { display: none; }
+.rd-rh__bar-in { max-width: var(--rd-max); margin: 0 auto; padding: 1.6rem var(--rd-gutter) 1.8rem; }
+@media (min-width: 990px) {
+  .rd-rh--bar .rd-rhead__end { display: none; }
+}
+/* With the size bar open above, the filter column's own "Find your size"
+   button (a popup) is not needed on desktop. */
+@media (min-width: 990px) {
+  html:has(.rd-rh--bar) .rd-fside [data-rd-panel-open][data-pt-size-sheet] { display: none; }
+}
+.rd-fside__above { display: none; }
+@media (min-width: 990px) { html:has(.rd-rh--bar) .rd-fside__above { display: inline; } }
+
+/* ---------- Colour accents from the old design (owner 2026-11-14) ----
+   Red bar before each filter heading, and the season colour dot next
+   to each season option, as on the old filter column. */
+.rd-fgroup .rd-fgroup__title { display: inline-flex; align-items: center; gap: 1rem; }
+.rd-fgroup .rd-fgroup__title::before {
+  content: ""; flex: none; width: 4px; height: 1.8rem; border-radius: 2px; background: var(--rd-red);
+}
+.rd-fgroup[data-rd-group="season"] .rd-fopt[data-v] .rd-opt__text::before {
+  content: ""; display: inline-block; width: 1rem; height: 1rem; border-radius: 50%;
+  margin-right: .8rem; vertical-align: .05em; background: var(--rd-faint);
+}
+.rd-fgroup[data-rd-group="season"] .rd-fopt[data-v="Winter"] .rd-opt__text::before { background: var(--rd-winter); }
+.rd-fgroup[data-rd-group="season"] .rd-fopt[data-v="All-Weather"] .rd-opt__text::before { background: var(--rd-all-weather); }
+.rd-fgroup[data-rd-group="season"] .rd-fopt[data-v="All-Season"] .rd-opt__text::before,
+.rd-fgroup[data-rd-group="season"] .rd-fopt[data-v="All Season"] .rd-opt__text::before,
+.rd-fgroup[data-rd-group="season"] .rd-fopt[data-label="All Season"] .rd-opt__text::before,
+.rd-fgroup[data-rd-group="season"] .rd-fopt[data-label="All-season"] .rd-opt__text::before { background: var(--rd-all-season); }
+.rd-fgroup[data-rd-group="season"] .rd-fopt[data-v="Summer"] .rd-opt__text::before { background: var(--rd-summer-tag, #eab308); }
+
+/* ---------- Tire pages: compact header (owner 2026-11-15, after DT's hub) --
+   No black band: the H1 (size or collection title), the tire count and the
+   phone "Change size" button sit on the results toolbar line, left of Sort.
+   Markup: sections/pt-collection-grid.liquid .rd-toolbar__head. */
+.rd-toolbar__head { display: flex; align-items: baseline; flex-wrap: wrap; gap: .2rem 1.2rem; min-width: 0; }
+.rd-toolbar__title {
+  margin: 0; font-family: var(--rd-display); font-weight: 800; font-size: 2.6rem;
+  line-height: 1.05; letter-spacing: .01em; color: var(--rd-ink); overflow-wrap: anywhere;
+}
+.rd-toolbar__head .rd-toolbar__count { white-space: nowrap; }
+.rd-toolbar__size {
+  display: inline-flex; align-items: center; min-height: 4.4rem; padding: 0; margin-left: auto;
+  background: none; border: 0; color: var(--rd-ink); cursor: pointer; white-space: nowrap;
+  font: 600 1.4rem var(--rd-font); text-decoration: underline; text-underline-offset: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+.rd-toolbar__size:hover { text-decoration-thickness: 2px; }
+.rd-toolbar__size:focus-visible { outline: none; box-shadow: var(--rd-focus); border-radius: 6px; }
+@media (max-width: 989px) {
+  .rd-res__toolbar:has(.rd-toolbar__head) { display: flex; }
+  .rd-res__toolbar .rd-toolbar__head .rd-toolbar__count { display: inline; }
+  .rd-toolbar__head { flex: 1 1 100%; flex-wrap: nowrap; align-items: center; }
+  .rd-toolbar__title { font-size: 2.2rem; min-width: 0; }
+}
+@media (min-width: 990px) {
+  .rd-toolbar__head { flex: 0 1 auto; }
+  html:has(.rd-rh--bar) .rd-toolbar__size { display: none; }
+}
+
+/* ---------- Staggered sets: pair mode (?rear=, assets/pt-rd-results.js) --
+   Tabs Sets (front + rear) | Front only | Rear only (no numbers), set cards
+   (photo + brand / model / season, Front and Rear rows, the slower lead,
+   "Set of 4 (2 + 2)" before GST, Request install). Red only on the main
+   button; season tags reuse the card's season colours. */
+.rd-pair { display: flex; flex-direction: column; gap: 1.4rem; min-width: 0; font-family: var(--rd-font); color: var(--rd-ink); }
+.rd-pair__status { margin: 0; padding: 2.4rem 0; font-size: 1.5rem; color: var(--rd-muted); text-align: center; }
+.rd-pair__status.is-busy::before {
+  content: ""; display: inline-block; width: 1.4rem; height: 1.4rem; margin-right: 1rem; vertical-align: -.2rem;
+  border: 2px solid var(--rd-line-2); border-top-color: var(--rd-ink); border-radius: 50%;
+  animation: rd-pair-spin .8s linear infinite;
+}
+@keyframes rd-pair-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .rd-pair__status.is-busy::before { animation: none; } }
+.rd-pair__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
+.rd-pair__tabs { flex-wrap: nowrap; overflow-x: auto; }
+.rd-pair__tabs .rd-tab { white-space: nowrap; }
+@media (max-width: 749px) {
+  .rd-pair__tabs { gap: 1.8rem; }
+  .rd-pair__tabs .rd-tab { font-size: 1.5rem; padding-left: 0; padding-right: 0; }
+}
+.rd-pair__panel:focus { outline: none; }
+.rd-pair__note { margin: 0 0 1.2rem; font-size: 1.4rem; line-height: 1.45; color: var(--rd-muted); }
+.rd-pair__more { display: flex; justify-content: center; padding-top: 1.6rem; }
+.rd-pair__more .rd-btn { max-width: 32rem; min-height: 4.8rem; }
+.rd-pair__calls { display: flex; flex-wrap: wrap; justify-content: center; gap: .8rem 1.2rem; }
+.rd-pair__calls .rd-btn { min-height: 4.4rem; }
+.rd-pair__fallback { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.2rem; }
+.rd-pair__retry { min-height: 4.4rem; }
+
+.rd-sets { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.2rem; }
+@media (min-width: 750px) { .rd-sets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.6rem; } }
+
+.rd-set {
+  display: grid; grid-template-columns: 8.8rem minmax(0, 1fr); align-content: start; gap: 1rem 1.2rem;
+  padding: 1.2rem; background: var(--rd-bg); border: 1px solid var(--rd-line); border-radius: var(--rd-r-md);
+}
+.rd-set:hover { border-color: var(--rd-line-hover); box-shadow: var(--rd-shadow-card); }
+@media (min-width: 750px) { .rd-set { grid-template-columns: 12rem minmax(0, 1fr); gap: 1.2rem 1.6rem; padding: 1.6rem; border-radius: var(--rd-r-lg); } }
+.rd-set__body { display: contents; }
+.rd-set__img {
+  grid-column: 1; grid-row: 1; aspect-ratio: 1 / 1; border-radius: var(--rd-r); background: var(--rd-tile);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.rd-set__pic { width: 88%; height: 88%; object-fit: contain; mix-blend-mode: multiply; }
+.rd-set__ph { padding: .6rem; font-size: 1.1rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--rd-muted); text-align: center; overflow-wrap: anywhere; }
+.rd-set__head { grid-column: 2; grid-row: 1; align-self: center; display: flex; flex-direction: column; align-items: flex-start; gap: .4rem; min-width: 0; }
+.rd-set__title { margin: 0; font-family: var(--rd-font); font-size: 1.6rem; font-weight: 600; line-height: 1.25; letter-spacing: 0; overflow-wrap: anywhere; }
+@media (min-width: 750px) { .rd-set__title { font-size: 1.8rem; } }
+.rd-set__link { color: var(--rd-ink); text-decoration: none; }
+.rd-set__link:hover { text-decoration: underline; text-underline-offset: 3px; color: var(--rd-ink); }
+.rd-set__link:focus-visible, .rd-set__size a:focus-visible { outline: none; box-shadow: var(--rd-focus); border-radius: 4px; }
+.rd-set__season { display: inline-flex; align-items: center; padding: .3rem .7rem; border-radius: 5px; font: 600 1.1rem/1.2 var(--rd-font); letter-spacing: .02em; white-space: nowrap; }
+:where(.rd-set__season) { background: #4b5563; color: #fff; }
+.rd-set__rows, .rd-set__lead, .rd-set__total, .rd-set__actions { grid-column: 1 / -1; }
+.rd-set__rows { display: flex; flex-direction: column; border-top: 1px solid var(--rd-line-soft); border-bottom: 1px solid var(--rd-line-soft); }
+.rd-set__row {
+  display: grid; grid-template-columns: 4.6rem minmax(0, 1fr) auto; align-items: baseline; gap: .4rem 1rem;
+  padding: .8rem 0; font-variant-numeric: tabular-nums;
+}
+.rd-set__row + .rd-set__row { border-top: 1px solid var(--rd-line-soft); }
+.rd-set__pos { font-size: 1.1rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--rd-muted-2); }
+.rd-set__size { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .8rem; }
+.rd-set__size a { font-size: 1.5rem; font-weight: 700; color: var(--rd-ink); text-decoration: none; }
+.rd-set__size a:hover { text-decoration: underline; text-underline-offset: 3px; color: var(--rd-ink); }
+.rd-set__spec { font-size: 1.3rem; color: var(--rd-ink-3); }
+.rd-set__each { font-size: 1.5rem; font-weight: 600; white-space: nowrap; text-align: right; }
+.rd-set__unit { margin-left: .2rem; font-size: 1.2rem; font-weight: 400; color: var(--rd-muted); }
+.rd-set__lead { font-size: 1.3rem; }
+@media (min-width: 750px) { .rd-set__lead { font-size: 1.4rem; } }
+.rd-set__total { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .8rem; font-variant-numeric: tabular-nums; }
+.rd-set__total-k { font-size: 1.4rem; color: var(--rd-ink-3); }
+.rd-set__total-v { font-size: 2.2rem; font-weight: 800; color: var(--rd-ink); }
+.rd-set__total-n { font-size: 1.3rem; color: var(--rd-muted); }
+.rd-set__actions { display: flex; gap: 1rem; }
+.rd-set__book { flex: 1 1 auto; min-width: 0; min-height: 4.8rem; }
+a.rd-set__book { text-decoration: none; }
+.rd-set__cart { flex: none; width: 4.8rem; height: 4.8rem; }
+/* Not bookable (either tire cannot supply 2): greyed like a sold-out card;
+   the call link stays readable. */
+.rd-set--call { background: var(--rd-paper); }
+.rd-set--call:hover { box-shadow: none; }
+.rd-set--call .rd-set__img, .rd-set--call .rd-set__head, .rd-set--call .rd-set__rows, .rd-set--call .rd-set__total { opacity: .62; }
+
+/* ---------- Shop by brand (owner 2026-11-15, design board Option B) ----
+   Logo tiles from the Brand facet, snippets/pt-rd-brand-row. Desktop: one
+   sliding row on the results line between the count and Sort by, with
+   round Previous / Next arrows and a soft fade on the side that has more
+   (assets/pt-rd-results.js shows the arrows; trackpad, shift+wheel and
+   click-and-drag slide it too). Phones / tablets: one row under the
+   results line that the shopper swipes, never stacked. No numbers anywhere.
+   Picked tile: 2px black border + small red tick. */
+.rd-brands { flex: 1 1 100%; min-width: 0; font-family: var(--rd-font); }
+.rd-brands[hidden], .rd-brands .rd-brand.is-out { display: none; }
+.rd-brands__label {
+  font-size: 1.2rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--rd-muted); line-height: 1.2;
+}
+.rd-brands__track { position: relative; display: flex; gap: .8rem; }
+.rd-brand {
+  position: relative; flex: none; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 10.4rem; height: 5.2rem; padding: 0 1rem;
+  border: 1px solid #e2ded7; border-radius: var(--rd-r); background: var(--rd-bg);
+  color: var(--rd-ink); text-decoration: none; -webkit-tap-highlight-color: transparent;
+}
+.rd-brand:hover { border-color: var(--rd-line-hover); color: var(--rd-ink); }
+.rd-brand:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+.rd-brand.is-on, .rd-brand.is-on:hover { border: 2px solid var(--rd-ink); }
+.rd-brand__logo { display: block; width: auto; height: auto; max-width: 8rem; max-height: 2.4rem; object-fit: contain; }
+.rd-brand--word { width: auto; min-width: 10.4rem; padding: 0 1.4rem; }
+.rd-brand__word {
+  font-size: 1.3rem; font-weight: 800; letter-spacing: .03em; line-height: 1;
+  text-transform: uppercase; white-space: nowrap;
+}
+.rd-brand__tick {
+  position: absolute; top: -.7rem; right: -.7rem; width: 1.8rem; height: 1.8rem;
+  border-radius: 50%; background: var(--rd-red); pointer-events: none;
+}
+.rd-brand__tick::after {
+  content: ""; position: absolute; left: .62rem; top: .36rem; width: .42rem; height: .82rem;
+  border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+
+@media (max-width: 989px) {
+  .rd-brands__sep, .rd-brands__arrow { display: none; }
+  .rd-brands__label { margin-top: .4rem; }
+  /* One row, swiped; bleeds to the screen edges like the season pills. */
+  .rd-brands__track {
+    flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    margin: 0 calc(var(--rd-gutter) * -1); padding: .8rem var(--rd-gutter);
+    scroll-padding: 0 var(--rd-gutter); overscroll-behavior-x: contain;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .rd-brands__track::-webkit-scrollbar { display: none; }
+}
+
+@media (min-width: 990px) {
+  .rd-res__toolbar:has(.rd-brands) .rd-res__chips { order: 2; flex-basis: 100%; }
+  /* Basis 0: the brands take only the room the count and Sort leave, so
+     Sort never wraps under them; the row slides inside that room. */
+  .rd-brands { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: .8rem; }
+  .rd-brands[hidden] { display: none; }
+  /* Less than about two tiles of room beside a long title (narrow desktop,
+     staggered sizes): the row gets its own line under the title and Sort. */
+  .rd-brands.is-wrap { order: 1; flex: 1 1 100%; }
+  .rd-brands.is-wrap .rd-brands__sep { display: none; }
+  .rd-res__toolbar:has(.rd-brands) .rd-res__sort { flex: none; }
+  .rd-brands__label, .rd-brands__track .rd-brand--all { display: none; }
+  .rd-brands__sep { flex: none; width: 1px; height: 3rem; margin-right: .6rem; background: var(--rd-line); }
+  .rd-brand { width: 9.2rem; height: 4.2rem; border-radius: var(--rd-r-sm); }
+  .rd-brand--word { width: auto; min-width: 9.2rem; padding: 0 1.2rem; }
+  .rd-brand__logo { max-width: 7.6rem; max-height: 2.2rem; }
+  .rd-brand__word { font-size: 1.2rem; }
+  .rd-brand__tick { top: -.6rem; right: -.6rem; width: 1.6rem; height: 1.6rem; }
+  .rd-brand__tick::after { left: .55rem; top: .3rem; width: .38rem; height: .74rem; }
+
+  /* The slider. The rail is as wide as the tiles (up to the room left);
+     the arrows sit over its ends. The track's padding keeps room for the
+     tick and the focus ring inside the scroll box (margin gives it back). */
+  .rd-brands__rail { position: relative; flex: 0 1 auto; min-width: 0; display: flex; }
+  .rd-brands__track {
+    --rd-fl: 0px; --rd-fr: 0px;
+    flex: 0 1 auto; min-width: 0; padding: .8rem; margin: -.8rem;
+    overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory; scroll-padding: 0 6rem;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--rd-fl), #000 calc(100% - var(--rd-fr)), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 var(--rd-fl), #000 calc(100% - var(--rd-fr)), transparent 100%);
+  }
+  .rd-brands__track::-webkit-scrollbar { display: none; }
+  /* Without the script (no arrows): a thin scrollbar so a mouse can still slide it. */
+  .rd-brands:not(.is-ready) .rd-brands__track { scrollbar-width: thin; }
+  .rd-brands:not(.is-ready) .rd-brands__track::-webkit-scrollbar { display: block; height: 6px; }
+  /* The fade stays inside the landing gap (scroll-padding 6rem minus the
+     4px focus ring), so a landed, picked or focused tile is fully opaque. */
+  .rd-brands__track.has-prev { --rd-fl: 5.4rem; }
+  .rd-brands__track.has-next { --rd-fr: 5.4rem; }
+  .rd-brands__track > .rd-brand { scroll-snap-align: start; }
+  .rd-brands__track.is-drag { scroll-snap-type: none; cursor: grabbing; user-select: none; -webkit-user-select: none; }
+  .rd-brands__track.is-drag .rd-brand { pointer-events: none; }
+  .rd-brands__track .rd-brand__logo { -webkit-user-drag: none; user-select: none; }
+  .rd-brands__arrow {
+    position: absolute; top: 50%; z-index: 2; transform: translateY(-50%);
+    display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    width: 4.4rem; height: 4.4rem; padding: 0; margin: 0;
+    border: 1px solid var(--rd-line-2); border-radius: 50%; background: var(--rd-bg); color: var(--rd-ink);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .08); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .rd-brands__arrow[hidden] { display: none; }
+  .rd-brands__arrow--prev { left: -.4rem; }
+  .rd-brands__arrow--next { right: -.4rem; }
+  .rd-brands__arrow:hover { border-color: var(--rd-ink); }
+  .rd-brands__arrow:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+  .rd-brands__arrow .rd-ico { display: block; flex: none; }
+}
+
+/* =====================================================================
+   v16 TIRE RESULTS (FINAL spec 2026-11-15, scratchpad cdesign/FINAL).
+   Everything below is scoped to .rd-res[data-kind="tires"] (tire result
+   pages) so wheel, accessory, product and home pages are untouched.
+   One scale: radius 4 glyph / 6 tag / 10 control / 14 card + panel / pill;
+   heights 24 tag / 32 chip / 40 desktop control / 44 button + phone target
+   / 48 phone sheet button. Red only on Request install and sale text.
+   ===================================================================== */
+.rd-res[data-kind="tires"] {
+  --t-ink: #1c1917; --t-ink2: #44403c; --t-muted: #57534e; --t-subtle: #78716c;
+  --t-line: #e7e5e4; --t-line2: #d6d3d1; --t-tile: #f4f3f1; --t-paper: #fafaf9;
+  --t-red: #dc2626; --t-red2: #b91c1c;
+  --t-winter: #2563eb; --t-aw: #e8740a; --t-as: #16a34a; --t-summer: #ca8a04;
+  --t-winter-tx: #1e40af; --t-aw-tx: #9a3412; --t-as-tx: #166534; --t-summer-tx: #854d0e;
+  color: var(--t-ink);
+}
+.rd-res[data-kind="tires"] .rd-ico--winter, .rd-ic-winter { color: #2563eb; }
+.rd-res[data-kind="tires"] .rd-ico--all-weather, .rd-ic-all-weather { color: #e8740a; }
+.rd-res[data-kind="tires"] .rd-ico--all-season, .rd-ic-all-season { color: #16a34a; }
+.rd-res[data-kind="tires"] .rd-ico--summer, .rd-ic-summer { color: #ca8a04; }
+
+/* ---------- v16 product card ------------------------------------------ */
+.rd-res[data-kind="tires"] .rd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; }
+@media (min-width: 750px) { .rd-res[data-kind="tires"] .rd-grid { grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr)); gap: 1.6rem; } }
+@media (min-width: 990px) { .rd-res[data-kind="tires"] .rd-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.6rem; } }
+@media (min-width: 1200px) { .rd-res[data-kind="tires"] .rd-grid { gap: 2.4rem; } }
+
+.rd-res[data-kind="tires"] .rd-card--v16 { border: 1px solid var(--t-line); border-radius: 14px; color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-card--v16:hover { border-color: var(--t-line2); box-shadow: 0 6px 20px rgba(28, 25, 23, .07); }
+.rd-res[data-kind="tires"] .rd-card--v16:focus-within { border-color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__tile { --rd-icon-bg: var(--t-tile); background: var(--t-tile); aspect-ratio: 1 / 1; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__img {
+  position: absolute; inset: 2.4rem 1.6rem 1.6rem; width: calc(100% - 3.2rem); height: calc(100% - 4rem); max-height: none;
+  object-fit: contain; mix-blend-mode: multiply;
+}
+@media (min-width: 750px) {
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-card__tile { aspect-ratio: 4 / 3; }
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-card__img { inset: 2.4rem 3.2rem; width: calc(100% - 6.4rem); height: calc(100% - 4.8rem); }
+}
+
+/* Season tag: white, icon in the season hue, label in a dark shade of it (all >= 7:1). */
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__season,
+.rd-res[data-kind="tires"] .rd-tag {
+  position: absolute; top: .8rem; left: .8rem; bottom: auto; right: auto; z-index: 1;
+  display: inline-flex; align-items: center; gap: .5rem; height: 2.2rem; max-width: calc(100% - 1.6rem);
+  padding: 0 .7rem 0 .5rem; border-radius: 6px; background: #fff; color: var(--t-ink2);
+  box-shadow: 0 0 0 1px rgba(28, 25, 23, .06);
+  font: 600 1.15rem/1 var(--rd-font); letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rd-res[data-kind="tires"] .rd-tag .rd-tag__ic { width: 1.4rem; height: 1.4rem; flex: none; stroke-width: 2; }
+.rd-res[data-kind="tires"] .rd-tag.rd-card__season--winter { color: var(--t-winter-tx); }
+.rd-res[data-kind="tires"] .rd-tag.rd-card__season--winter .rd-tag__ic { color: var(--t-winter); }
+.rd-res[data-kind="tires"] .rd-tag.rd-card__season--all-weather { color: var(--t-aw-tx); }
+.rd-res[data-kind="tires"] .rd-tag.rd-card__season--all-weather .rd-tag__ic { color: var(--t-aw); }
+.rd-res[data-kind="tires"] .rd-tag.rd-card__season--all-season { color: var(--t-as-tx); }
+.rd-res[data-kind="tires"] .rd-tag.rd-card__season--all-season .rd-tag__ic { color: var(--t-as); }
+.rd-res[data-kind="tires"] .rd-tag.rd-card__season--summer { color: var(--t-summer-tx); }
+.rd-res[data-kind="tires"] .rd-tag.rd-card__season--summer .rd-tag__ic { color: var(--t-summer); }
+.rd-res[data-kind="tires"] .rd-tag.rd-card__season--all-terrain { color: #78350f; }
+@media (min-width: 750px) {
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-card__season,
+  .rd-res[data-kind="tires"] .rd-tag { top: 1.2rem; left: 1.2rem; height: 2.4rem; padding: 0 .8rem 0 .6rem; font-size: 1.2rem; max-width: calc(100% - 12rem); }
+  .rd-res[data-kind="tires"] .rd-tag .rd-tag__ic { width: 1.5rem; height: 1.5rem; }
+}
+
+/* Compare: always visible, top-right, no pill. */
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__cmp {
+  opacity: 1; top: 1.2rem; right: .8rem; bottom: auto; min-height: 2.4rem; height: 2.4rem; gap: .6rem;
+  padding: 0 .6rem; border: 0; border-radius: 6px; background: transparent;
+  font: 500 1.2rem var(--rd-font); color: var(--t-muted);
+}
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__cmp input { width: 1.4rem; height: 1.4rem; accent-color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__cmp:hover { color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__fab { right: .8rem; bottom: .8rem; width: 4.4rem; height: 4.4rem; background: #fff; border: 1px solid var(--t-line); }
+
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__body { gap: 0; padding: 1.2rem; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__head { display: flex; flex-direction: column; gap: 0; }
+.rd-res[data-kind="tires"] .rd-card__meta--v16 {
+  display: flex; align-items: baseline; gap: .6rem; margin: 0; min-width: 0; flex-wrap: nowrap;
+  font: 400 1.2rem/1.35 var(--rd-font); color: var(--t-muted); white-space: nowrap; overflow: hidden;
+}
+.rd-res[data-kind="tires"] .rd-card__meta--v16 .rd-card__brand {
+  flex: none; font-size: 1.3rem; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--t-ink2);
+}
+.rd-res[data-kind="tires"] .rd-card__meta--v16 .rd-card__spec { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: inherit; color: var(--t-muted); }
+.rd-res[data-kind="tires"] .rd-card__meta--v16 .rd-card__rating {
+  flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: .3rem; font-size: 1.2rem; color: var(--t-muted);
+}
+.rd-res[data-kind="tires"] .rd-card__meta--v16 .rd-card__rating svg { color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__title {
+  margin-top: .2rem; font: 600 1.5rem/1.3 var(--rd-font); color: var(--t-ink);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+}
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__fit { margin-top: .4rem; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__rebate { margin-top: .6rem; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__push { margin-top: .8rem; padding-top: 0; gap: 0; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-price__row { flex-wrap: wrap; align-items: baseline; gap: 0 .4rem; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-price__now { font-size: 2rem; font-weight: 700; letter-spacing: -.01em; color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-price__unit { font-size: 1.3rem; color: var(--t-muted); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-price__set { flex: 0 0 100%; margin-top: .2rem; font-size: 1.2rem; color: var(--t-muted); white-space: nowrap; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__trade { margin-top: .6rem; }
+.rd-res[data-kind="tires"] .rd-card__was { margin: .2rem 0 0; font-size: 1.2rem; line-height: 1.4; color: var(--t-muted); }
+.rd-res[data-kind="tires"] .rd-card__was s { color: var(--t-muted); }
+.rd-res[data-kind="tires"] .rd-card__was em { font-style: normal; font-weight: 700; color: var(--t-red); white-space: nowrap; }
+@media (max-width: 749px) {
+  .rd-res[data-kind="tires"] .rd-card__was .rd-card__wl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .rd-res[data-kind="tires"] .rd-card__was .rd-card__wdot { display: none; }
+}
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__lead { margin-top: .8rem; padding-top: 0; border-top: 0; font-size: 1.3rem; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-lead { align-items: flex-start; gap: .6rem; font-weight: 400; line-height: 1.3; color: var(--t-muted); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-lead svg { flex: none; width: 1.8rem; height: 1.8rem; margin-top: -.1rem; --rd-icon-bg: #fff; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-lead--today { color: var(--t-ink); font-weight: 600; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-lead--order, .rd-res[data-kind="tires"] .rd-card--v16 .rd-lead--out { color: var(--t-muted); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-lead__hint { font-weight: 400; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__actions { margin-top: auto; padding-top: 1.2rem; gap: .8rem; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__actions .rd-btn { min-height: 4.4rem; height: 4.4rem; border-radius: 10px; font-size: 1.4rem; font-weight: 600; padding: 0 .8rem; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-btn--primary { background: var(--t-red); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-btn--primary:hover { background: var(--t-red2); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-btn--primary[disabled] { background: var(--t-line2); color: var(--t-muted); }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__cart { width: 4.4rem; height: 4.4rem; border-color: var(--t-line2); border-radius: 10px; }
+.rd-res[data-kind="tires"] .rd-card--v16 .rd-card__ask { margin-top: 0; }
+@media (min-width: 750px) {
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-card__body { padding: 1.6rem; }
+  .rd-res[data-kind="tires"] .rd-card__meta--v16 { font-size: 1.3rem; }
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-card__title { font-size: 1.6rem; }
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-card__push { margin-top: 1.2rem; }
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-price__now { font-size: 2.4rem; line-height: 1.1; }
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-price__unit { font-size: 1.4rem; }
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-price__set { flex: none; margin: 0 0 0 auto; font-size: 1.3rem; }
+  .rd-res[data-kind="tires"] .rd-card__was { font-size: 1.3rem; }
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-card__lead { font-size: 1.4rem; }
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-lead { align-items: center; }
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-card__actions { padding-top: 1.6rem; }
+  .rd-res[data-kind="tires"] .rd-card--v16 .rd-card__actions .rd-btn { font-size: 1.5rem; padding: 0 1.2rem; }
+}
+
+/* ---------- v16 filter groups (sidebar >= 1200 / sheet) -------------- */
+.rd-res[data-kind="tires"] .rd-fside { color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-fgroup .rd-fgroup__title::before { content: none; display: none; }
+.rd-res[data-kind="tires"] .rd-fgroup[data-rd-group="season"] .rd-fopt .rd-opt__text::before { content: none; display: none; }
+.rd-res[data-kind="tires"] .rd-fside .rd-acc { border-top: 1px solid var(--t-line); }
+.rd-res[data-kind="tires"] .rd-fside .rd-acc:last-child { border-bottom: 0; }
+.rd-res[data-kind="tires"] .rd-fside .rd-acc__head {
+  min-height: 5.2rem; gap: .8rem; font: 600 1.5rem var(--rd-font); color: var(--t-ink);
+}
+.rd-res[data-kind="tires"] .rd-fside .rd-acc__head:hover { color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-fside .rd-fgroup__title { flex: 1 1 auto; }
+.rd-res[data-kind="tires"] .rd-fside .rd-acc__sum { display: inline; margin-left: auto; max-width: 50%; font-size: 1.3rem; font-weight: 400; color: var(--t-muted); }
+.rd-res[data-kind="tires"] .rd-fside .rd-acc__chev { margin-left: 0; color: var(--t-subtle); }
+.rd-res[data-kind="tires"] .rd-fside .rd-acc__body { padding: 0 0 1.2rem; }
+.rd-res[data-kind="tires"] .rd-fside .rd-fopt { min-height: 4.4rem; gap: 1rem; padding: 0; font: 400 1.5rem/1.3 var(--rd-font); color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-fside .rd-fopt[aria-checked="true"] { font-weight: 600; }
+.rd-res[data-kind="tires"] .rd-fside .rd-fbox { width: 1.8rem; height: 1.8rem; border: 1.5px solid var(--t-subtle); border-radius: 4px; }
+.rd-res[data-kind="tires"] .rd-fside .rd-fopt[aria-checked="true"] .rd-fbox { background: var(--t-ink); border-color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-fside .rd-fbox--r { border-radius: 50%; }
+.rd-res[data-kind="tires"] .rd-fside .rd-fopt[aria-checked="true"] .rd-fbox--r { background: var(--t-ink); border-color: var(--t-ink); box-shadow: inset 0 0 0 3.5px #fff; }
+.rd-res[data-kind="tires"] .rd-fside .rd-fopt__ic { flex: none; width: 1.8rem; height: 1.8rem; margin-right: -.2rem; }
+.rd-res[data-kind="tires"] .rd-fside .rd-fopt[data-label="Winter"] .rd-fopt__ic { color: var(--t-winter); }
+.rd-res[data-kind="tires"] .rd-fside .rd-fopt[data-label="All-weather"] .rd-fopt__ic { color: var(--t-aw); }
+.rd-res[data-kind="tires"] .rd-fside .rd-fopt[data-label="All-season"] .rd-fopt__ic { color: var(--t-as); }
+.rd-res[data-kind="tires"] .rd-fside .rd-fopt[data-label="Summer"] .rd-fopt__ic { color: var(--t-summer); }
+.rd-res[data-kind="tires"] .rd-fside .rd-fmore, .rd-res[data-kind="tires"] .rd-fprice__custom {
+  display: inline-flex; align-items: center; min-height: 4.4rem; padding: 0; border: 0; background: none; cursor: pointer;
+  font: 600 1.4rem var(--rd-font); color: var(--t-ink); text-decoration: underline; text-underline-offset: 3px;
+}
+.rd-res[data-kind="tires"] .rd-fside .rd-fmore:hover { color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-fprice__presets { margin-top: 0; }
+.rd-res[data-kind="tires"] .rd-fprice { margin-top: .4rem; }
+.rd-res[data-kind="tires"] .rd-fprice[hidden] { display: none; }
+.rd-res[data-kind="tires"] .rd-fprice .rd-input { border-color: var(--t-line2); border-radius: 10px; }
+.rd-res[data-kind="tires"] .rd-fprice__go { border-radius: 10px; border-color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-fsearch { height: 4.4rem; border-color: var(--t-line2); border-radius: 10px; font-size: 1.6rem; }
+/* "Show sold-out tires" switch + its one-line lead-time promise */
+.rd-res[data-kind="tires"] .rd-fsold { border-top: 1px solid var(--t-line); padding: 1.2rem 0 .4rem; }
+.rd-res[data-kind="tires"] .rd-fswitch {
+  display: flex; align-items: center; justify-content: space-between; gap: 1.2rem; min-height: 4.4rem;
+  font: 400 1.5rem var(--rd-font); color: var(--t-ink); text-decoration: none; cursor: pointer; border-radius: 6px;
+}
+.rd-res[data-kind="tires"] .rd-fswitch:hover { color: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-fswitch:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+.rd-res[data-kind="tires"] .rd-fswitch__i { position: relative; flex: none; width: 3.6rem; height: 2.2rem; border-radius: 999px; background: var(--t-line2); transition: background-color .15s ease; }
+.rd-res[data-kind="tires"] .rd-fswitch__i::after { content: ""; position: absolute; left: .3rem; top: .3rem; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s ease; }
+.rd-res[data-kind="tires"] .rd-fswitch[aria-checked="true"] .rd-fswitch__i { background: var(--t-ink); }
+.rd-res[data-kind="tires"] .rd-fswitch[aria-checked="true"] .rd-fswitch__i::after { transform: translateX(1.4rem); }
+.rd-res[data-kind="tires"] .rd-fsold__note { margin: .2rem 0 0; max-width: 30ch; font-size: 1.2rem; line-height: 1.35; color: var(--t-muted); }
+@media (prefers-reduced-motion: reduce) { .rd-res[data-kind="tires"] .rd-fswitch__i, .rd-res[data-kind="tires"] .rd-fswitch__i::after { transition: none; } }
+@media (min-width: 1200px) {
+  .rd-res[data-kind="tires"] .rd-fside .rd-acc__head { min-height: 4.4rem; font-size: 1.4rem; }
+  .rd-res[data-kind="tires"] .rd-fside .rd-fopt { min-height: 3.6rem; font-size: 1.4rem; }
+  .rd-res[data-kind="tires"] .rd-fside .rd-fmore, .rd-res[data-kind="tires"] .rd-fprice__custom { min-height: 3.2rem; font-size: 1.3rem; }
+  .rd-res[data-kind="tires"] .rd-fswitch { font-size: 1.4rem; min-height: 3.2rem; }
+  .rd-res[data-kind="tires"] .rd-fsearch { height: 4rem; font-size: 1.4rem; }
+}
+
+/* ---------- v16 page frame: head, quick row, chips, layout ----------- */
+.rd-res--v16 { position: relative; background: #fff; }
+.rd-res--v16 .rd-wrap { max-width: 130.4rem; padding-left: 1.6rem; padding-right: 1.6rem; }
+@media (min-width: 750px) { .rd-res--v16 .rd-wrap { padding-left: 2.4rem; padding-right: 2.4rem; } }
+.rd-res--v16 .rd-res__layout { padding-top: 0; padding-bottom: 16rem; }
+.rd-res--v16 .rd-skip {
+  position: absolute; left: -9999px; top: .8rem; z-index: 100; min-height: 4.4rem; display: inline-flex; align-items: center;
+  padding: 0 1.4rem; border-radius: 10px; background: var(--t-ink); color: #fff; font: 600 1.4rem var(--rd-font); text-decoration: none;
+}
+.rd-res--v16 .rd-skip:focus, .rd-res--v16 .rd-skip:focus-visible { left: 1.6rem; outline: 3px solid var(--t-ink); outline-offset: 2px; box-shadow: 0 0 0 5px #fff; }
+.rd-res--v16 .rd-skip--in { display: none; }
+.rd-res--v16 .rd-res__main { gap: 1.6rem; outline: none; }
+.rd-res--v16 .rd-res__main:focus { outline: none; }
+.rd-res--v16 .rd-rhd__sentinel { display: block; height: 1px; margin-bottom: -1px; }
+
+/* Head */
+.rd-res--v16 .rd-rhd {
+  position: sticky; top: var(--rd-res-sticky-top, 0px); z-index: 25;
+  display: flex; align-items: center; justify-content: space-between; gap: 1.2rem;
+  margin: 0 -1.6rem; padding: 1.2rem 1.6rem; background: #fff; border-bottom: 1px solid transparent;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.rd-res--v16 .rd-rhd.is-stuck { border-bottom-color: var(--t-line); box-shadow: 0 2px 8px rgba(28, 25, 23, .05); }
+.rd-res--v16 .rd-rhd__l { display: flex; align-items: center; justify-content: space-between; gap: 1.2rem; flex: 1 1 auto; min-width: 0; }
+.rd-res--v16 .rd-rhd__t { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+.rd-res--v16 .rd-rhd__title {
+  margin: 0; font-family: var(--rd-display); font-weight: 800; font-size: 3rem; line-height: 1; letter-spacing: .005em;
+  color: var(--t-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rd-res--v16 .rd-rhd__title.is-pair { display: flex; flex-direction: column; gap: .2rem; font-size: 2.4rem; white-space: normal; }
+.rd-res--v16 .rd-rhd__title small { font: 500 1.4rem var(--rd-font); color: var(--t-muted); letter-spacing: 0; margin-left: .4rem; }
+.rd-res--v16 .rd-rhd__dot { display: none; }
+.rd-res--v16 .rd-rhd__sub { margin: 0; font: 400 1.3rem/1.3 var(--rd-font); color: var(--t-muted); white-space: nowrap; }
+.rd-res--v16 .rd-rhd__count strong { font-weight: 400; color: inherit; }
+.rd-res--v16 .rd-rhd.is-stuck .rd-rhd__title:not(.is-pair) { font-size: 2.6rem; }
+.rd-res--v16 .rd-rhd.is-stuck .rd-rhd__sub { display: none; }
+.rd-res--v16 .rd-btnsec {
+  flex: none; display: inline-flex; align-items: center; gap: .8rem; height: 4.4rem; padding: 0 1.2rem;
+  border: 1px solid var(--t-line2); border-radius: 10px; background: #fff; color: var(--t-ink);
+  font: 600 1.5rem var(--rd-font); white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.rd-res--v16 .rd-btnsec:hover { border-color: var(--t-ink); }
+.rd-res--v16 .rd-btnsec[aria-expanded="true"] { border-color: var(--t-ink); box-shadow: inset 0 0 0 1px var(--t-ink); }
+.rd-res--v16 .rd-btnsec:focus-visible { outline: 3px solid var(--t-ink); outline-offset: 2px; box-shadow: 0 0 0 5px #fff; }
+.rd-res--v16 .rd-rhd__r { display: none; }
+.rd-res--v16 .rd-rhd__n, .rd-res--v16 .rd-fab__n {
+  min-width: 2rem; height: 2rem; padding: 0 .6rem; border-radius: 1rem; display: inline-grid; place-items: center;
+  background: var(--t-ink); color: #fff; font: 700 1.2rem/1 var(--rd-font);
+}
+.rd-res--v16 .rd-fab__n { background: #fff; color: var(--t-ink); }
+
+/* Quick row (phones / tablets): one swiping row, never stacked. */
+.rd-res--v16 .rd-quick {
+  display: flex; align-items: center; gap: .8rem; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+  margin: 0 -1.6rem; padding: .4rem 1.6rem .2rem; scroll-padding: 0 1.6rem; overscroll-behavior-x: contain;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 4rem), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 4rem), transparent);
+}
+.rd-res--v16 .rd-quick::-webkit-scrollbar { display: none; }
+.rd-res--v16 .rd-quick:not(:has(.rd-q, .rd-brand, .rd-chip)) { display: none; }
+.rd-res--v16 .rd-quick .rd-brands, .rd-res--v16 .rd-quick .rd-brands__rail, .rd-res--v16 .rd-quick .rd-brands__track, .rd-res--v16 .rd-q-chips { display: contents; }
+.rd-res--v16 .rd-quick .rd-brands[hidden] { display: none; }
+.rd-res--v16 .rd-quick .rd-brands__arrow { display: none; }
+.rd-res--v16 .rd-q {
+  flex: none; display: inline-flex; align-items: center; gap: .6rem; height: 4.4rem; padding: 0 1.2rem 0 1rem;
+  border: 1px solid var(--t-line2); border-radius: 10px; background: #fff; color: var(--t-ink);
+  font: 500 1.4rem var(--rd-font); white-space: nowrap; text-decoration: none; -webkit-tap-highlight-color: transparent;
+}
+.rd-res--v16 .rd-q:hover { color: var(--t-ink); border-color: var(--t-ink); }
+.rd-res--v16 .rd-q:focus-visible, .rd-res--v16 .rd-quick .rd-brand:focus-visible { outline: 3px solid var(--t-ink); outline-offset: -3px; box-shadow: none; }
+.rd-res--v16 .rd-q.is-on { border: 2px solid var(--t-ink); font-weight: 600; padding: 0 .8rem 0 1.1rem; }
+.rd-res--v16 .rd-q__ic { width: 1.8rem; height: 1.8rem; flex: none; }
+.rd-res--v16 .rd-q[data-rd-qseason="winter"] .rd-q__ic { color: var(--t-winter); }
+.rd-res--v16 .rd-q[data-rd-qseason="all-weather"] .rd-q__ic { color: var(--t-aw); }
+.rd-res--v16 .rd-q[data-rd-qseason="all-season"] .rd-q__ic { color: var(--t-as); }
+.rd-res--v16 .rd-q[data-rd-qseason="summer"] .rd-q__ic { color: var(--t-summer); }
+.rd-res--v16 .rd-q__x, .rd-res--v16 .rd-brand__x { display: inline-flex; color: var(--t-ink); margin-left: .2rem; }
+.rd-res--v16 .rd-q--clear { border: 0; padding: 0 .6rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; order: 0; }
+.rd-res--v16 .rd-q--clear:hover { border: 0; }
+.rd-res--v16 .rd-qsep { flex: none; align-self: stretch; width: 1px; margin: .8rem .2rem; background: var(--t-line); }
+.rd-res--v16 .rd-quick .rd-chip { order: 1; }
+.rd-res--v16 .rd-q--season.is-on { order: 2; }
+.rd-res--v16 .rd-quick .rd-brand.is-on { order: 3; }
+.rd-res--v16 .rd-qsep--a { order: 4; }
+.rd-res--v16 .rd-q--season:not(.is-on) { order: 5; }
+.rd-res--v16 .rd-qsep--b { order: 6; }
+.rd-res--v16 .rd-quick .rd-brand:not(.is-on) { order: 7; }
+.rd-res--v16 .rd-quick:not(:has(.is-on)) .rd-qsep--a,
+.rd-res--v16 .rd-quick:not(:has(.rd-q--season:not(.is-on):not([hidden]), .rd-brand:not(.is-on):not(.is-out))) .rd-qsep--a,
+.rd-res--v16 .rd-quick:not(:has(.rd-q--season:not(.is-on):not([hidden]))) .rd-qsep--b,
+.rd-res--v16 .rd-quick:not(:has(.rd-brand:not(.is-on):not(.is-out))) .rd-qsep--b,
+.rd-res--v16 .rd-quick:has(.rd-brands[hidden]) .rd-qsep--b { display: none; }
+.rd-res--v16 .rd-quick .rd-brand {
+  order: 7; width: 9.6rem; height: 4.4rem; padding: 0 1rem; border: 1px solid var(--t-line2); border-radius: 10px; background: #fff;
+}
+.rd-res--v16 .rd-quick .rd-brand__logo { max-width: 7.2rem; max-height: 1.8rem; }
+.rd-res--v16 .rd-brand--word { width: auto; min-width: 9.6rem; }
+.rd-res--v16 .rd-brand__word { font-size: 1.3rem; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--t-ink2); }
+.rd-res--v16 .rd-brand.is-on, .rd-res--v16 .rd-brand.is-on:hover { border: 2px solid var(--t-ink); }
+.rd-res--v16 .rd-quick .rd-brand.is-on { width: auto; padding: 0 .8rem 0 1.1rem; gap: .6rem; }
+.rd-res--v16 .rd-brand__tick { display: none; }
+
+/* Chips: pills (desktop row; phones: the sidebar-only filters in the quick row, 44 tall) */
+.rd-res--v16 .rd-chip--v16 {
+  flex: none; display: inline-flex; align-items: center; gap: .6rem; height: 4.4rem; min-height: 0; padding: 0 1rem 0 1.2rem;
+  border: 0; border-radius: 999px; background: var(--t-ink); color: #fff; font: 600 1.3rem var(--rd-font); white-space: nowrap; text-decoration: none;
+}
+.rd-res--v16 .rd-chip--v16:hover { background: #000; color: #fff; }
+.rd-res--v16 .rd-chip--v16 .rd-chip__x { width: auto; height: auto; margin: 0; padding: 0; color: #fff; opacity: .8; background: none; }
+.rd-res--v16 .rd-chip--v16:hover .rd-chip__x { background: none; opacity: 1; }
+.rd-res--v16 .rd-chip__ic { width: 1.6rem; height: 1.6rem; color: #fff; }
+.rd-res--v16 .rd-chip--v16:focus-visible { outline: 3px solid var(--t-ink); outline-offset: 2px; box-shadow: 0 0 0 5px #fff; }
+.rd-res--v16 .rd-chips--v16 { display: none; }
+
+/* Few results / empty: one dashed panel, no numbers. */
+.rd-res--v16 .rd-widen {
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: .8rem;
+  padding: 1.6rem; border: 1px dashed var(--t-line2); border-radius: 14px; background: var(--t-paper); font-family: var(--rd-font);
+  grid-column: 1 / -1;
+}
+.rd-res--v16 .rd-widen__h { margin: 0; font-size: 1.6rem; font-weight: 600; color: var(--t-ink); }
+.rd-res--v16 .rd-widen__p { margin: 0; max-width: 46ch; font-size: 1.4rem; line-height: 1.45; color: var(--t-ink2); }
+.rd-res--v16 .rd-widen--empty { align-items: center; text-align: center; padding: 4.8rem 2.4rem; }
+.rd-res--v16 .rd-widen__b { display: flex; flex-wrap: wrap; justify-content: center; gap: .8rem; margin-top: .8rem; }
+.rd-res--v16 .rd-btnout {
+  display: inline-flex; align-items: center; justify-content: center; height: 4.4rem; padding: 0 1.6rem;
+  border: 1px solid var(--t-ink); border-radius: 10px; background: #fff; color: var(--t-ink);
+  font: 600 1.4rem var(--rd-font); text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.rd-res--v16 .rd-btnout:hover { background: var(--t-tile); color: var(--t-ink); }
+.rd-res--v16 .rd-btnout:focus-visible { outline: 3px solid var(--t-ink); outline-offset: 2px; box-shadow: 0 0 0 5px #fff; }
+.rd-res--v16 .rd-btnout--block { width: 100%; font-size: 1.5rem; }
+.rd-res--v16 .rd-widen .rd-btnout { margin-top: .8rem; }
+.rd-res--v16 .rd-widen__b .rd-btnout { margin-top: 0; }
+
+/* Under the grid */
+.rd-res--v16 .rd-res__more { gap: 1.2rem; }
+.rd-res--v16 .rd-res__more-count { font-size: 1.3rem; color: var(--t-muted); }
+.rd-res--v16 .rd-res__end { display: flex; flex-direction: column; align-items: center; gap: 1.2rem; padding-top: .8rem; }
+.rd-res--v16 .rd-res__foot { margin: 0; text-align: center; font-size: 1.3rem; color: var(--t-muted); }
+.rd-res--v16 .rd-help { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1.2rem; margin-top: .4rem; padding-top: 2.4rem; border-top: 1px solid var(--t-line); }
+.rd-res--v16 .rd-help__p { margin: 0; text-align: center; font-size: 1.4rem; color: var(--t-ink2); }
+.rd-res--v16 .rd-help__b { display: flex; flex-direction: column; gap: 1.2rem; width: 100%; }
+.rd-res--v16 .rd-help__a {
+  display: flex; align-items: center; justify-content: center; gap: 1rem; min-height: 5.2rem; padding: .6rem 1.6rem;
+  border: 1px solid var(--t-line2); border-radius: 10px; color: var(--t-ink); text-decoration: none; background: #fff;
+}
+.rd-res--v16 .rd-help__a:hover { border-color: var(--t-ink); color: var(--t-ink); }
+.rd-res--v16 .rd-help__a:focus-visible { outline: 3px solid var(--t-ink); outline-offset: 2px; box-shadow: 0 0 0 5px #fff; }
+.rd-res--v16 .rd-help__a span { display: flex; flex-direction: column; line-height: 1.25; text-align: left; }
+.rd-res--v16 .rd-help__a b { font-size: 1.4rem; font-weight: 600; }
+.rd-res--v16 .rd-help__a small { font-size: 1.3rem; color: var(--t-muted); }
+@media (min-width: 750px) {
+  .rd-res--v16 .rd-help__b { flex-direction: row; justify-content: center; width: auto; }
+  .rd-res--v16 .rd-help__a { min-width: 22rem; justify-content: flex-start; }
+}
+
+/* Phone pill: "Filters (n) | Sort ▾", 48 tall */
+@media (max-width: 989px) {
+  .rd-res--v16 .rd-fab:not([hidden]) { height: 4.8rem; bottom: calc(var(--rd-fab-bottom, 0px) + 1.2rem + env(safe-area-inset-bottom, 0px)); background: #0a0a0a; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+  .rd-res--v16 .rd-fab__f { gap: .8rem; padding: 0 1.8rem 0 2rem; }
+  .rd-res--v16 .rd-fab__s { gap: .6rem; padding: 0 2rem 0 1.8rem; }
+  .rd-res--v16 .rd-fab__sep { background: #44403c; height: 2.2rem; }
+  .rd-res--v16 .rd-fab__chev { flex: none; }
+}
+
+/* Staggered sets (v16) */
+.rd-res--v16 .rd-pair { gap: 1.6rem; }
+.rd-res--v16 .rd-pair__tabrow { display: flex; flex-direction: column; gap: 1.2rem; }
+.rd-res--v16 .rd-pair__tabs.rd-tabs--light { gap: 1.6rem; margin: 0; border-bottom: 1px solid var(--t-line); }
+.rd-res--v16 .rd-pair__tabs .rd-tab {
+  height: 4.4rem; min-height: 4.4rem; padding: 0; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  font: 500 1.4rem var(--rd-font); color: var(--t-muted); background: none;
+}
+.rd-res--v16 .rd-pair__tabs .rd-tab[aria-selected="true"] { color: var(--t-ink); font-weight: 600; border-bottom-color: var(--t-ink); }
+.rd-res--v16 .rd-pair__tabs .rd-tab:focus-visible { outline: 3px solid var(--t-ink); outline-offset: -3px; box-shadow: none; }
+.rd-res--v16 .rd-pair__rot { display: flex; align-items: flex-start; gap: .6rem; margin: 0; font-size: 1.3rem; line-height: 1.4; color: var(--t-muted); }
+.rd-res--v16 .rd-pair__rot svg { flex: none; margin-top: .1rem; }
+.rd-res--v16 .rd-sets { grid-template-columns: minmax(0, 1fr); gap: 1.2rem; }
+@media (min-width: 750px) { .rd-res--v16 .rd-sets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.6rem; } }
+@media (min-width: 990px) { .rd-res--v16 .rd-sets { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .rd-res--v16 .rd-sets { gap: 2.4rem; } }
+.rd-res--v16 .rd-set--v16 {
+  display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden;
+  border: 1px solid var(--t-line); border-radius: 14px; background: #fff; color: var(--t-ink);
+}
+.rd-res--v16 .rd-set--v16:hover { border-color: var(--t-line2); box-shadow: 0 6px 20px rgba(28, 25, 23, .07); }
+.rd-res--v16 .rd-set--v16 .rd-set__img { position: relative; aspect-ratio: auto; height: 13.6rem; border-radius: 0; background: var(--t-tile); overflow: hidden; }
+.rd-res--v16 .rd-set--v16 .rd-set__pic { position: absolute; inset: 1.2rem 1.6rem; width: calc(100% - 3.2rem); height: calc(100% - 2.4rem); object-fit: contain; mix-blend-mode: multiply; }
+.rd-res--v16 .rd-set--v16 .rd-set__body { display: flex; flex-direction: column; flex: 1; padding: 1.2rem; }
+.rd-res--v16 .rd-set__brand { margin: 0; font: 600 1.3rem var(--rd-font); color: var(--t-ink2); }
+.rd-res--v16 .rd-set--v16 .rd-set__title { margin: .2rem 0 0; font: 600 1.5rem/1.3 var(--rd-font); }
+.rd-res--v16 .rd-set--v16 .rd-set__link { color: var(--t-ink); text-decoration: none; }
+.rd-res--v16 .rd-set--v16 .rd-set__rows { margin-top: 1.2rem; border-top: 1px solid var(--t-line); border-bottom: 0; }
+.rd-res--v16 .rd-set--v16 .rd-set__row { display: grid; grid-template-columns: 4rem minmax(0, 1fr) auto; align-items: baseline; gap: .8rem; padding: .8rem 0; border-top: 0; border-bottom: 1px solid var(--t-line); font-size: 1.4rem; }
+.rd-res--v16 .rd-set--v16 .rd-set__pos { font: 600 1.2rem var(--rd-font); letter-spacing: 0; text-transform: none; color: var(--t-muted); }
+.rd-res--v16 .rd-set--v16 .rd-set__size { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-res--v16 .rd-set--v16 .rd-set__size a { font-size: 1.4rem; font-weight: 400; color: var(--t-ink); }
+.rd-res--v16 .rd-set--v16 .rd-set__spec { margin-left: .4rem; font-size: 1.3rem; color: var(--t-muted); }
+.rd-res--v16 .rd-set--v16 .rd-set__each { font-size: 1.4rem; font-weight: 600; white-space: nowrap; }
+.rd-res--v16 .rd-set--v16 .rd-set__unit { font-size: 1.2rem; font-weight: 400; color: var(--t-muted); }
+.rd-res--v16 .rd-set__total-k { margin: 1.2rem 0 0; font-size: 1.3rem; color: var(--t-muted); }
+.rd-res--v16 .rd-set__total-v { margin: .2rem 0 0; font: 700 2.4rem/1.1 var(--rd-font); letter-spacing: -.01em; color: var(--t-ink); }
+.rd-res--v16 .rd-set--v16 .rd-set__lead { margin-top: .8rem; font-size: 1.3rem; }
+.rd-res--v16 .rd-set--v16 .rd-lead { align-items: center; gap: .6rem; font-weight: 400; color: var(--t-muted); }
+.rd-res--v16 .rd-set--v16 .rd-lead--today { color: var(--t-ink); font-weight: 600; }
+.rd-res--v16 .rd-set--v16 .rd-lead svg { width: 1.8rem; height: 1.8rem; --rd-icon-bg: #fff; }
+.rd-res--v16 .rd-set--v16 .rd-set__actions { margin-top: auto; padding-top: 1.6rem; }
+.rd-res--v16 .rd-set--v16 .rd-set__book { width: 100%; height: 4.4rem; min-height: 4.4rem; border-radius: 10px; font: 600 1.5rem var(--rd-font); }
+.rd-res--v16 .rd-set--v16 .rd-btn--primary { background: var(--t-red); }
+.rd-res--v16 .rd-set--v16 .rd-btn--primary:hover { background: var(--t-red2); }
+@media (min-width: 750px) {
+  .rd-res--v16 .rd-set--v16 .rd-set__img { aspect-ratio: 4 / 3; height: auto; }
+  .rd-res--v16 .rd-set--v16 .rd-set__pic { inset: 2.4rem 3.2rem; width: calc(100% - 6.4rem); height: calc(100% - 4.8rem); }
+  .rd-res--v16 .rd-set--v16 .rd-set__body { padding: 1.6rem; }
+  .rd-res--v16 .rd-set--v16 .rd-set__title { font-size: 1.6rem; }
+  .rd-res--v16 .rd-set--v16 .rd-set__lead { font-size: 1.4rem; }
+  .rd-res--v16 .rd-pair__tabs.rd-tabs--light { gap: 2.4rem; }
+  .rd-res--v16 .rd-pair__tabs .rd-tab { font-size: 1.5rem; }
+}
+
+/* Filter sheet (phones / tablets) */
+.rd-res--v16 .rd-fdrawer__backdrop:not([hidden]) { display: block; position: fixed; inset: 0; z-index: 2147481999; background: rgba(10, 10, 10, .45); }
+@media (max-width: 989px) {
+  .rd-res--v16 .rd-fside.is-open { top: 2.4rem; height: auto; bottom: 0; border-radius: 14px 14px 0 0; overflow: hidden; }
+  .rd-res--v16 .rd-fside__head { height: 5.6rem; padding: 0 .8rem 0 1.6rem; border-bottom: 1px solid var(--t-line); }
+  .rd-res--v16 .rd-fside__head .rd-filters__title { font: 700 1.8rem var(--rd-font); }
+  .rd-res--v16 .rd-fside__scroll { padding: 0 1.6rem 1.6rem; }
+  .rd-res--v16 .rd-fside__foot { gap: .8rem; padding: 1.2rem 1.6rem calc(1.2rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--t-line); }
+  .rd-res--v16 .rd-fside__foot .rd-btn { min-height: 4.8rem; border-radius: 10px; }
+  .rd-res--v16 .rd-fside__foot .rd-btn--line { padding: 0 2.4rem; border-color: var(--t-ink); }
+  .rd-res--v16 .rd-fside__foot .rd-btn--dark { background: var(--t-ink); font-size: 1.6rem; }
+}
+
+/* ---------- v16 desktop (990+) --------------------------------------- */
+@media (min-width: 990px) {
+  .rd-res--v16 .rd-res__bar { display: none; }
+  .rd-res--v16 .rd-res__layout {
+    display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "quiet" "main";
+    column-gap: 4rem; row-gap: 0; align-items: start; padding-top: 0; padding-bottom: 7.2rem;
+  }
+  .rd-res--v16 .rd-rhd__sentinel { display: none; }
+  .rd-res--v16 .rd-rhd {
+    grid-area: head; position: static; margin: 0; padding: 2.4rem 0 1.6rem; border: 0; box-shadow: none; background: none;
+  }
+  .rd-res--v16 .rd-rhd__l { flex: 0 1 auto; justify-content: flex-start; gap: 1.6rem; }
+  .rd-res--v16 .rd-rhd__t { flex-direction: row; align-items: baseline; gap: 1.6rem; }
+  .rd-res--v16 .rd-rhd__title, .rd-res--v16 .rd-rhd.is-stuck .rd-rhd__title:not(.is-pair) { font-size: 3.4rem; }
+  .rd-res--v16 .rd-rhd__title.is-pair { flex-direction: row; align-items: baseline; gap: 0; font-size: 3.4rem; white-space: nowrap; }
+  .rd-res--v16 .rd-rhd__title small { font-size: 1.5rem; margin: 0 .2rem 0 .6rem; }
+  .rd-res--v16 .rd-rhd__dot { display: inline; margin: 0 1rem; font: 400 2.6rem var(--rd-font); color: var(--t-line2); }
+  .rd-res--v16 .rd-rhd__sub, .rd-res--v16 .rd-rhd.is-stuck .rd-rhd__sub { display: block; padding-top: .4rem; font-size: 1.5rem; }
+  .rd-res--v16 .rd-rhd__gstm { display: none; }
+  .rd-res--v16 .rd-btnsec { height: 4rem; padding: 0 1.4rem; font-size: 1.4rem; }
+  .rd-res--v16.rd-res--quiet .rd-rhd--nosize .rd-rhd__size { display: none; }
+  .rd-res--v16 .rd-rhd__r { display: flex; align-items: center; gap: 1.2rem; flex: none; }
+  .rd-res--v16 .rd-rhd__gst { font-size: 1.3rem; color: var(--t-muted); white-space: nowrap; }
+  .rd-res--v16 .rd-rhd__filters { display: none; }
+  .rd-res--v16 .rd-rhd__sort {
+    position: relative; display: inline-flex; align-items: center; gap: .6rem; height: 4rem; padding: 0 0 0 1.4rem;
+    border: 1px solid var(--t-line2); border-radius: 10px; background: #fff; cursor: pointer; font: 400 1.4rem var(--rd-font);
+  }
+  .rd-res--v16 .rd-rhd__sort:hover { border-color: var(--t-ink); }
+  .rd-res--v16 .rd-rhd__sort:focus-within { outline: 3px solid var(--t-ink); outline-offset: 2px; box-shadow: 0 0 0 5px #fff; }
+  .rd-res--v16 .rd-rhd__sortk { color: var(--t-muted); }
+  .rd-res--v16 .rd-rhd__sort select {
+    height: 100%; padding: 0 3.6rem 0 0; border: 0; background: transparent; -webkit-appearance: none; appearance: none;
+    font: 600 1.4rem var(--rd-font); color: var(--t-ink); cursor: pointer;
+  }
+  .rd-res--v16 .rd-rhd__sort select:focus { outline: none; }
+  .rd-res--v16 .rd-rhd__sortchev { position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--t-ink); }
+  .rd-res--v16 .rd-quiet { grid-area: quiet; margin: 0 0 2.4rem; }
+  .rd-res--v16 .rd-res__main { grid-area: main; gap: 1.6rem; }
+
+  /* Brand slider: a full-width row at the top of the results column. */
+  .rd-res--v16 .rd-quick { display: block; overflow: visible; margin: 0; padding: 0; -webkit-mask-image: none; mask-image: none; }
+  .rd-res--v16 .rd-quick > .rd-q, .rd-res--v16 .rd-quick > .rd-qsep, .rd-res--v16 .rd-quick > .rd-q-chips { display: none; }
+  .rd-res--v16 .rd-quick:not(:has(.rd-brand)) { display: none; }
+  .rd-res--v16 .rd-quick .rd-brands { display: block; flex: none; }
+  .rd-res--v16 .rd-quick .rd-brands[hidden] { display: none; }
+  .rd-res--v16 .rd-quick .rd-brands__rail { display: flex; align-items: center; gap: .8rem; width: 100%; }
+  .rd-res--v16 .rd-quick .rd-brands__track { display: flex; gap: .8rem; flex: 1 1 auto; min-width: 0; }
+  .rd-res--v16 .rd-quick .rd-brands__arrow {
+    position: static; transform: none; display: inline-flex; flex: none; width: 4rem; height: 4rem;
+    border: 1px solid var(--t-line2); border-radius: 10px; box-shadow: none; background: #fff;
+  }
+  .rd-res--v16 .rd-quick .rd-brands__arrow[hidden] { display: none; }
+  .rd-res--v16 .rd-quick .rd-brand, .rd-res--v16 .rd-quick .rd-brand:not(.is-on) { order: 0; width: 10.4rem; height: 4rem; padding: 0 1.2rem; border-color: var(--t-line); border-radius: 10px; }
+  .rd-res--v16 .rd-quick .rd-brand.is-on { order: 0; width: 10.4rem; padding: 0 1.2rem; border: 2px solid var(--t-ink); }
+  .rd-res--v16 .rd-quick .rd-brand--word, .rd-res--v16 .rd-quick .rd-brand--word.is-on { width: auto; min-width: 10.4rem; }
+  .rd-res--v16 .rd-quick .rd-brand__logo { max-width: 8rem; max-height: 2rem; }
+  .rd-res--v16 .rd-quick .rd-brand__x { display: none; }
+  .rd-res--v16 .rd-quick .rd-brand:hover { border-color: var(--t-line2); }
+  .rd-res--v16 .rd-quick .rd-brand:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+
+  .rd-res--v16 .rd-chips--v16 { display: flex; flex-wrap: nowrap; align-items: center; gap: .8rem; overflow-x: auto; scrollbar-width: none; padding: .4rem; margin: -.4rem; }
+  .rd-res--v16 .rd-chips--v16 .rd-chip--v16 { height: 3.2rem; }
+  .rd-res--v16 .rd-chips__clear {
+    flex: none; display: inline-flex; align-items: center; height: 3.2rem; padding: 0 .8rem;
+    font: 600 1.3rem var(--rd-font); color: var(--t-ink); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap;
+  }
+  .rd-res--v16 .rd-chips__clear:hover { color: var(--t-ink); text-decoration-thickness: 2px; }
+
+  .rd-res--v16 .rd-widen { grid-column: auto; padding: 2.4rem; }
+  .rd-res--v16 .rd-widen__p { max-width: 32ch; }
+  .rd-res--v16 .rd-widen--empty { padding: 4.8rem 2.4rem; }
+  .rd-res--v16 .rd-widen--empty .rd-widen__p { max-width: 46ch; }
+  .rd-res--v16 .rd-btnout { height: 4rem; }
+  .rd-res--v16 .rd-btnout--block { height: 4.4rem; }
+  .rd-res--v16 .rd-pair__tabrow { flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 1.6rem; border-bottom: 1px solid var(--t-line); }
+  .rd-res--v16 .rd-pair__tabs.rd-tabs--light { border-bottom: 0; flex-wrap: nowrap; }
+  .rd-res--v16 .rd-pair__rot { padding-bottom: 1.2rem; white-space: nowrap; }
+  .rd-res--v16 .rd-res__end { padding-top: 1.6rem; }
+}
+/* 990-1199: the sidebar folds into the Filters sheet (a right-side drawer); cards stay 3 across. */
+@media (min-width: 990px) and (max-width: 1199px) {
+  .rd-res--v16 .rd-rhd__gst { display: none; }
+  .rd-res--v16 .rd-rhd__filters { display: inline-flex; }
+  .rd-res--v16 .rd-fside { display: none; }
+  .rd-res--v16 .rd-fside.is-open {
+    display: flex; flex-direction: column; position: fixed; top: 0; right: 0; bottom: 0; left: auto; z-index: 2147482000;
+    width: 40rem; max-width: 100vw; height: 100vh; height: 100dvh; max-height: none; padding: 0; overflow: hidden;
+    background: #fff; box-shadow: -18px 0 48px rgba(28, 25, 23, .18);
+  }
+  .rd-res--v16 .rd-fside.is-open .rd-fside__head { flex: none; height: 5.6rem; margin: 0; padding: 0 .8rem 0 1.6rem; border-bottom: 1px solid var(--t-line); }
+  .rd-res--v16 .rd-fside.is-open .rd-fside__close { display: inline-flex; }
+  .rd-res--v16 .rd-fside.is-open .rd-filters__title { font: 700 1.8rem var(--rd-font); }
+  .rd-res--v16 .rd-fside.is-open .rd-fside__scroll { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 0 1.6rem 1.6rem; }
+  .rd-res--v16 .rd-fside.is-open .rd-fside__foot { display: flex; flex: none; gap: .8rem; padding: 1.2rem 1.6rem; border-top: 1px solid var(--t-line); background: #fff; }
+  .rd-res--v16 .rd-fside.is-open .rd-fside__foot .rd-btn { min-height: 4.8rem; border-radius: 10px; }
+  .rd-res--v16 .rd-fside.is-open .rd-fside__foot .rd-btn--dark { background: var(--t-ink); }
+}
+@media (min-width: 1200px) {
+  .rd-res--v16 .rd-res__layout { grid-template-columns: 23.2rem minmax(0, 1fr); grid-template-areas: "head head" "quiet quiet" "side main"; }
+  .rd-res--v16 .rd-fside { grid-area: side; width: auto; flex: none; padding-right: .4rem; }
+  .rd-res--v16 .rd-fside__head { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
+  .rd-res--v16 .rd-fside__scroll > .rd-acc:first-child, .rd-res--v16 .rd-fside__scroll > .rd-fgroup:first-child { border-top: 0; }
+  .rd-res--v16 .rd-skip--in { display: inline-flex; }
+  .rd-res--v16 .rd-skip--in:not(:focus) { position: absolute; }
+}
+
+/* Chat bubble on tire results: see v16 fix1 at the end. */
+
+.rd-res--v16 .rd-acc__any { display: none; }
+.rd-res--v16 .rd-fside__scroll > .rd-fgroup:first-child { border-top: 0; }
+/* Set card: the model link covers the card (like the tire card); the
+   front / rear size links, the button and the call link sit above it. */
+.rd-res--v16 .rd-set--v16 { position: relative; }
+.rd-res--v16 .rd-set--v16 .rd-set__link::after { content: ""; position: absolute; inset: 0; z-index: 0; }
+.rd-res--v16 .rd-set--v16 .rd-set__link:focus-visible { outline: none; box-shadow: none; }
+.rd-res--v16 .rd-set--v16 .rd-set__link:focus-visible::after { box-shadow: inset 0 0 0 3px var(--t-ink); border-radius: 14px; }
+.rd-res--v16 .rd-set--v16:focus-within { border-color: var(--t-ink); }
+.rd-res--v16 .rd-set--v16 .rd-set__size a, .rd-res--v16 .rd-set--v16 .rd-set__actions, .rd-res--v16 .rd-set--v16 .rd-tag { position: relative; z-index: 1; }
+.rd-res--v16 .rd-set--v16 .rd-tag { position: absolute; }
+@media (max-width: 989px) {
+  .rd-res--v16 .rd-set--v16 .rd-set__row { padding: 0; min-height: 4.4rem; align-items: center; }
+  .rd-res--v16 .rd-set--v16 .rd-set__size a { display: inline-flex; align-items: center; min-height: 4.4rem; }
+}
+
+/* =====================================================================
+   v16 fix1 (review round 1, 2026-11-16). Tire results only.
+   ===================================================================== */
+/* Summer icon a shade darker: >= 3:1 on white (was 2.94). */
+.rd-res[data-kind="tires"] { --t-summer: #b47b03; }
+.rd-res[data-kind="tires"] .rd-ico--summer, .rd-res[data-kind="tires"] .rd-ic-summer { color: #b47b03; }
+
+/* Brand slider arrows: the focus ring the v16 arrow rule took away. */
+.rd-res--v16 .rd-quick .rd-brands__arrow:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+
+/* Sold-out card: the text stays full contrast; only the photo is muted. */
+.rd-res[data-kind="tires"] .rd-card--v16.rd-card--out { opacity: 1; }
+.rd-res[data-kind="tires"] .rd-card--v16.rd-card--out .rd-card__img { opacity: .5; filter: grayscale(1); }
+
+/* Meta line: one fixed line box, so a rating never moves the rows below. */
+.rd-res[data-kind="tires"] .rd-card__meta--v16 { line-height: 2rem; min-height: 2rem; }
+.rd-res[data-kind="tires"] .rd-card__meta--v16 .rd-card__rating { align-self: center; line-height: 1; max-height: 2rem; }
+/* Phones: the meta line may wrap (no-size pages carry the size + spec). */
+@media (max-width: 749px) {
+  .rd-res[data-kind="tires"] .rd-card__meta--v16 { flex-wrap: wrap; white-space: normal; column-gap: .5rem; row-gap: 0; overflow: visible; }
+  .rd-res[data-kind="tires"] .rd-card__meta--v16 .rd-card__spec { overflow: visible; text-overflow: clip; white-space: normal; }
+}
+
+/* Phones: the no-JS Filters / Sort bar never takes space once the page's
+   script runs (the inline flag is set before anything paints). */
+@media (max-width: 989px) {
+  .rd-res--v16.rd-js .rd-res__bar { display: none; }
+  .rd-res--v16 .rd-res__layout { padding-bottom: calc(var(--rd-fab-bottom, 0px) + 10rem); }
+  /* Sticky head: 60 when stuck (8 + 44 + 8); its lost height becomes margin, so nothing below moves. */
+  .rd-res--v16 .rd-rhd.is-stuck { padding-top: .8rem; padding-bottom: .8rem; }
+  .rd-res--v16 .rd-rhd.is-stuck .rd-rhd__title.is-pair { font-size: 1.8rem; gap: .2rem; }
+}
+
+/* Staggered sets: nothing jumps while the sets load (.rd-pairwait is set
+   by the inline flag when ?rear= is in the address, removed by pair mode). */
+.rd-res--v16.rd-pairwait [data-rd-grid], .rd-res--v16.rd-pairwait .rd-res__end,
+.rd-res--v16.rd-pairwait [data-rd-more-wrap], .rd-res--v16.rd-pairwait [data-rd-pages],
+.rd-res--v16.rd-pairwait .rd-fgroup[data-rd-group="season"], .rd-res--v16.rd-pairwait .rd-q--season { display: none !important; }
+.rd-res--v16.rd-pairwait [data-rd-pair] { display: block !important; min-height: 45.5rem; }
+.rd-res--v16 .rd-brands.is-wait { visibility: hidden; }
+@media (min-width: 990px) {
+  .rd-res--v16.rd-pairwait [data-rd-pair] { min-height: 54.5rem; }
+  .rd-res--v16.rd-pairwait .rd-rhd__sub, .rd-res--v16.rd-res--pair .rd-rhd__sub { min-width: 11.6rem; min-height: 2.4rem; }
+  .rd-res--v16.rd-pairwait .rd-quick { min-height: 4rem; }
+}
+/* Sets H1: tight like the mock, one 34 line box. */
+.rd-res--v16 .rd-rhd__title.is-pair small, .rd-res--v16 .rd-rhd__title.is-pair .rd-rhd__dot { line-height: 1; }
+@media (min-width: 990px) {
+  .rd-res--v16 .rd-rhd__title.is-pair { height: 3.4rem; align-items: baseline; }
+  .rd-res--v16 .rd-rhd__title.is-pair small { margin: 0 0 0 .2rem; }
+  .rd-res--v16 .rd-rhd__dot { margin: 0 .6rem; }
+  /* Tab row: labels centred in their 44 tabs, the note on the same line. */
+  .rd-res--v16 .rd-pair__tabrow { align-items: center; margin-top: .8rem; }
+  .rd-res--v16 .rd-pair__tabs .rd-tab { display: inline-flex; align-items: center; height: 4.4rem; }
+  .rd-res--v16 .rd-pair__rot { padding-bottom: 0; align-items: center; }
+}
+
+/* No-size desktop pages: the quiet search row's box is there from the
+   first paint (it is filled once the size sheet's CSS + JS are in). */
+@media (min-width: 990px) {
+  .rd-res--v16 .rd-quiet { min-height: 4.4rem; }
+  .rd-res--v16 .rd-quiet[hidden] { display: block !important; visibility: hidden; }
+}
+
+/* Sidebar: 232 wide, 40 to the results (the mock's rules end at 324). */
+@media (min-width: 1200px) {
+  .rd-res--v16 .rd-fside { padding-right: 0; }
+}
+
+/* Chat bubble: never over a card. Wide screens keep it in the right
+   gutter; 1200-1439 it sits over the filter column (bottom left);
+   990-1199 it is 48 and the results keep a right lane free for it. */
+html:has(.rd-res--v16) .pt-chat__launcher { right: 24px; bottom: 24px; }
+@media (min-width: 1200px) and (max-width: 1439px) {
+  html:has(.rd-res--v16) .pt-chat__launcher { right: auto; left: 24px; bottom: 24px; width: 48px; height: 48px; }
+  html:has(.rd-res--v16) .pt-chat__launcher svg { width: 22px; height: 22px; }
+}
+@media (min-width: 990px) and (max-width: 1199px) {
+  /* fix2: 44 at right 12, and the same 64 gutter on both sides (was 24
+     left / 80 right): the page stays centred, the bubble never covers a card. */
+  html:has(.rd-res--v16) .pt-chat__launcher { width: 44px; height: 44px; right: 12px; bottom: 24px; }
+  html:has(.rd-res--v16) .pt-chat__launcher svg { width: 20px; height: 20px; }
+  .rd-res--v16 .rd-res__layout { padding-left: calc(var(--rd-gutter) + 4rem); padding-right: calc(var(--rd-gutter) + 4rem); }
+}
+/* Sets H1: each size + axle word stays on one line (no re-wrap when the web font swaps in). */
+.rd-res--v16 .rd-rhd__title.is-pair .rd-rhd__ax { white-space: nowrap; }
+/* Disabled "Prev" / "Next" page step: readable grey (>= 4.5:1). */
+.rd-res--v16 .rd-pages__step.is-off { color: var(--t-subtle); }
+
+/* =====================================================================
+   v16 fix2 (review round 2, 2026-11-16). Tire results only.
+   ===================================================================== */
+/* Applied-filter chips: the season icon is white on the ink pill, like the x. */
+.rd-res[data-kind="tires"] .rd-chip--v16 svg.rd-chip__ic { color: #fff; }
+
+/* Phone Filters / Sort pill: a white ring inside the black pill (the old
+   ink + white ring vanished into the pill and the page). */
+@media (max-width: 989px) {
+  .rd-res--v16 .rd-fab__f:focus-visible, .rd-res--v16 .rd-fab__s:focus-within { box-shadow: none; }
+  .rd-res--v16 .rd-fab__f:focus-visible, .rd-res--v16 .rd-fab__s:has(select:focus-visible) { outline: none; box-shadow: inset 0 0 0 2px var(--rd-black), inset 0 0 0 4px #fff; }
+  .rd-res--v16 .rd-fab__s select:focus, .rd-res--v16 .rd-fab__s select:focus-visible { outline: none; }
+}
+
+/* "Show sold-out tires" switch, off: a 4.8:1 track (was 1.49:1). */
+.rd-res[data-kind="tires"] .rd-fswitch__i { background: var(--t-subtle); }
+.rd-res[data-kind="tires"] .rd-fswitch[aria-checked="true"] .rd-fswitch__i { background: var(--t-ink); }
+
+/* Compare checkbox: the label's ring marks focus; no second (blue) ring. */
+.rd-res--v16 .rd-card__cmp input:focus, .rd-res--v16 .rd-card__cmp input:focus-visible { outline: none; }
+
+/* Sets tabs: the focus ring clears the label. */
+.rd-res--v16 .rd-pair__tabs .rd-tab:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--t-ink); border-radius: 6px; }
+@media (min-width: 750px) {
+  .rd-res--v16 .rd-pair__tabs .rd-tab { padding-left: .6rem; padding-right: .6rem; margin-left: -.6rem; margin-right: -.6rem; }
+}
+
+/* Phone quick row: the picked brand's logo has its box before it loads,
+   so the items after it never slide sideways. */
+@media (max-width: 989px) {
+  .rd-res--v16 .rd-quick .rd-brand.is-on .rd-brand__logo { width: 7.2rem; height: 1.8rem; max-width: none; max-height: none; object-fit: contain; }
+}
+
+/* Phone 0 / few results: the "Remove X" buttons stack, so the row count
+   never depends on which font has loaded (no jump). */
+@media (max-width: 749px) {
+  .rd-res--v16 .rd-widen__b { flex-direction: column; align-items: stretch; width: 100%; max-width: 36rem; }
+  .rd-res--v16 .rd-widen__b .rd-btnout { width: 100%; }
+}
+
+/* Phone no-size pages: brand on line 1, size + spec on line 2 (one line,
+   cut with an ellipsis; the full text stays in the page for screen
+   readers), so every card's title sits at the same height. */
+@media (max-width: 749px) {
+  .rd-res--v16:has(.rd-rhd--nosize) .rd-card__meta--v16 { flex-wrap: wrap; min-height: 4rem; align-content: flex-start; }
+  .rd-res--v16:has(.rd-rhd--nosize) .rd-card__meta--v16 .rd-card__spec { flex: 0 0 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* Phone stuck head: right under the header's painted 60 (its box is 61,
+   the last px is see-through). */
+@media (max-width: 989px) {
+  .rd-res--v16 .rd-rhd { top: max(0px, calc(var(--rd-res-sticky-top, 0px) - 1px)); }
+}
+
+/* Phone sets: the tabs + rotation note come first, then the quick row
+   (brands), then the sets (spec section 7). While the sets load the quick
+   row stays out (the pair box keeps the room), so nothing jumps. */
+@media (max-width: 989px) {
+  .rd-res--v16.rd-pairwait .rd-res__main > .rd-quick { display: none; }
+  /* ...and the pair box keeps the quick row's room too (52 + gap), so the page below never moves when the sets come in. */
+  .rd-res--v16.rd-pairwait [data-rd-pair] { min-height: 51.5rem; }
+  .rd-res--v16 .rd-res__main:has(> .rd-pair:not([hidden]) > .rd-pair__tabrow) > .rd-pair { display: contents; }
+  .rd-res--v16 .rd-res__main:has(> .rd-pair:not([hidden]) > .rd-pair__tabrow) > .rd-pair > .rd-pair__tabrow { order: 1; }
+  .rd-res--v16 .rd-res__main:has(> .rd-pair:not([hidden]) > .rd-pair__tabrow) > .rd-quick,
+  .rd-res--v16 .rd-res__main:has(> .rd-pair:not([hidden]) > .rd-pair__tabrow) > .rd-quick ~ .rd-chips { order: 2; }
+  .rd-res--v16 .rd-res__main:has(> .rd-pair:not([hidden]) > .rd-pair__tabrow) > .rd-pair > :not(.rd-pair__tabrow) { order: 3; }
+  .rd-res--v16 .rd-res__main:has(> .rd-pair:not([hidden]) > .rd-pair__tabrow) > .rd-pair ~ * { order: 4; }
+}
+
+/* Sets: the count line waits for the sets (no "65 results" under a
+   two-size H1, then a blank, then "6 matching sets"). Its box is kept. */
+.rd-res--v16.rd-pairwait .rd-rhd__sub { visibility: hidden; }
+
+/* H1: until Barlow Condensed is in, a local fallback sized to its width,
+   so "Change size" beside it doesn't jump when the web font swaps in. */
+@font-face { font-family: 'rd-bc-fallback'; src: local('Arial Bold'), local('Arial-BoldMT'), local('Arial'), local('Roboto'); font-weight: 800; size-adjust: 81%; }
+.rd-res--v16 .rd-rhd__title { font-family: 'Barlow Condensed', 'rd-bc-fallback', sans-serif; }
+
+/* Phones: keyboard focus never lands under the fixed bottom stack (pill,
+   tab bar, install banner) or the header + stuck head (WCAG 2.4.11).
+   --rd-sp-bot / --rd-sp-top are set by assets/pt-rd-results.js. */
+@media (max-width: 989px) {
+  html:has(.rd-res--v16) {
+    scroll-padding-top: calc(var(--rd-sp-top, 61px) + 7.6rem);
+    scroll-padding-bottom: calc(var(--rd-sp-bot, 0px) + 8.4rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Brand slider: going to the very end (End, or the last Next) turns the
+   snap off until the next drag / wheel / key, so the row rests at its true
+   end (the last tile clear of the arrow, which then goes). The mandatory
+   snap used to pull it back one snap point, under Next. */
+@media (min-width: 990px) {
+  .rd-brands__track.is-end { scroll-snap-type: none; }
+}
+
+/* 990-1199 no-size pages: the quiet search row stays on one line inside
+   the centred column (field 360 instead of 420). */
+@media (min-width: 990px) and (max-width: 1199px) {
+  .rd-res--v16 .rd-quiet .pss-quiet .pss__field { flex-basis: 36rem; }
+}

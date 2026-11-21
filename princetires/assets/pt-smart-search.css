@@ -1,0 +1,492 @@
+/* ==========================================================================
+   Prince Tires - Smart tire search styles (pt-smart-search.css)
+
+   Lifted verbatim from the stylesheet inside sections/hero-smart-search.
+   Only the search rules came across - the hero layout and slideshow rules
+   stayed behind, since this asset loads wherever the search renders.
+
+   Selectors keep their .hero-smart-search__* names so the rules and the
+   markup in snippets/pt-smart-search.liquid stay in step. They are flat
+   BEM, not descendant-scoped, so they match in any hero.
+   ========================================================================== */
+  @keyframes hero-slide-in {
+    from { opacity: 0; transform: scale(0.4) rotateX(45deg); }
+    to   { opacity: 1; transform: scale(1) rotateX(0deg); }
+  }
+  @keyframes hero-ken-burns {
+    from { transform: scale(1)    rotateX(0deg); }
+    to   { transform: scale(1.07) rotateX(0deg); }
+  }
+  @keyframes hero-slide-out-down {
+    0%   { opacity: 1; transform: translateY(0)   scale(1.07); }
+    60%  { opacity: 0.6; }
+    100% { opacity: 0; transform: translateY(40%) scale(1.10); }
+  }
+
+  @keyframes hero-fallback {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes hero-slide-left {
+    0% { transform: translateX(-120%); opacity: 0; filter: blur(8px); }
+    60% { filter: blur(2px); }
+    100% { transform: translateX(0); opacity: 1; filter: blur(0); }
+  }
+
+  @keyframes hero-slide-right {
+    0% { transform: translateX(120%); opacity: 0; filter: blur(8px); }
+    60% { filter: blur(2px); }
+    100% { transform: translateX(0); opacity: 1; filter: blur(0); }
+  }
+
+  .hero-smart-search__search-wrapper {
+    margin-bottom: 2.4rem;
+    width: 100%;
+    max-width: 48rem;
+  }
+
+  /* ── Tires / Wheels mode tabs (replaces the old "Search by …" badge) ── */
+  .hero-smart-search__tabs {
+    display: inline-flex;
+    gap: 0.6rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .hero-smart-search__tab {
+    appearance: none;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.5rem 1.4rem;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s;
+  }
+  .hero-smart-search__tab:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.35);
+  }
+  .hero-smart-search__tab--active {
+    color: #fff;
+    background: #dc2626;
+    border-color: #dc2626;
+    box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35);
+  }
+  .hero-smart-search__tab--active:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+    color: #fff;
+  }
+  .hero-smart-search__tab:focus-visible {
+    outline: 2px solid #F5820B;
+    outline-offset: 2px;
+  }
+
+  .hero-smart-search__search {
+    position: relative;
+  }
+
+  .hero-smart-search__input-wrapper {
+    display: flex;
+    align-items: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    overflow: visible;
+    transition: border-color 0.2s ease;
+    position: relative;
+    isolation: isolate;
+  }
+
+  @keyframes hero-search-fade-in {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-smart-search__input-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #525252, #525252, #dc2626, #F5820B, #525252, #525252);
+    background-size: 300% 100%;
+    z-index: -1;
+    animation: hero-border-shimmer 4s ease-in-out infinite;
+  }
+
+  .hero-smart-search__input-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0px;
+    border-radius: 2px;
+    background: #000;
+    z-index: -1;
+  }
+
+  @keyframes hero-border-shimmer {
+    0% { background-position: 100% 0; }
+    50% { background-position: 0% 0; }
+    100% { background-position: 100% 0; }
+  }
+
+  .hero-smart-search__input-wrapper:focus-within::before {
+    background: linear-gradient(90deg, #dc2626, #F5820B, #dc2626, #F5820B, #dc2626);
+    background-size: 300% 100%;
+  }
+
+  .hero-smart-search__input {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 1.4rem 2rem;
+    font-size: 1.4rem;
+    color: var(--hero-text, #ffffff);
+    outline: none;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 300;
+  }
+
+  .hero-smart-search__input::placeholder {
+    color: #6B7280;
+  }
+
+  .hero-smart-search__typewriter {
+    position: absolute;
+    left: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    color: #6B7280;
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .hero-smart-search__typewriter::after {
+    content: '|';
+    animation: hero-cursor-blink 0.7s step-end infinite;
+    color: #F5820B;
+    font-weight: 300;
+    margin-left: 1px;
+  }
+
+  .hero-smart-search__typewriter.is-hidden {
+    display: none;
+  }
+
+  @keyframes hero-cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* Ghost-text autocomplete: prefix is invisible (reserves space for the
+     customer's typed text), suffix is the muted completion that sits at
+     the cursor. Font + padding match the input exactly so the suffix lands
+     right where the caret blinks. pointer-events:none so it never blocks
+     taps on the input itself. */
+  .hero-smart-search__ghost {
+    position: absolute;
+    left: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    line-height: 1;
+    pointer-events: none;
+    white-space: pre;
+    overflow: hidden;
+    /* Leave room for the submit-arrow button at the right edge */
+    max-width: calc(100% - 6rem);
+    z-index: 0;
+  }
+  .hero-smart-search__ghost.is-hidden { display: none; }
+  .hero-smart-search__ghost-prefix { color: transparent; }
+  .hero-smart-search__ghost-suffix { color: rgba(255, 255, 255, 0.32); }
+
+  .hero-smart-search__submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4.4rem;
+    height: 4.4rem;
+    margin: 0.3rem;
+    background: var(--hero-accent, #DC2626);
+    color: #ffffff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .hero-smart-search__submit:hover {
+    opacity: 0.85;
+  }
+
+  /* ── Hint + clickable example chips below the search ── */
+  .hero-smart-search__hint {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    margin-top: 1rem;
+    padding: 0 0.2rem;
+  }
+  .hero-smart-search__hint-text {
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.78);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .hero-smart-search__hint-text-mobile { display: none; }
+  .hero-smart-search__hint-text-desktop { color: rgba(255, 255, 255, 0.6); margin-left: 0.3rem; }
+
+  .hero-smart-search__chips {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: 1;
+    padding-bottom: 0.2rem;
+  }
+  .hero-smart-search__chips::-webkit-scrollbar { display: none; }
+
+  .hero-smart-search__chip {
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    padding: 0.5rem 1.1rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.92);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    white-space: nowrap;
+  }
+  .hero-smart-search__chip:hover {
+    background: rgba(220, 38, 38, 0.18);
+    border-color: rgba(220, 38, 38, 0.6);
+    color: #fff;
+  }
+  .hero-smart-search__chip:active {
+    transform: scale(0.96);
+  }
+  .hero-smart-search__chip:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+  }
+
+  /* Hide the entire hint when the search dropdown is open so the chips don't
+     visually fight with the suggestions list. The wrapper sets [data-results-open]
+     in JS (added below alongside the chip click handler). */
+  [data-smart-search][data-results-open] .hero-smart-search__hint {
+    display: none;
+  }
+
+  .hero-smart-search__results {
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    left: 0;
+    right: 0;
+    background: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    max-height: 32rem;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 1.2rem 3.2rem rgba(0, 0, 0, 0.4);
+  }
+
+  .hero-smart-search__results[hidden] {
+    display: none;
+  }
+
+  .hero-smart-search__results-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.6rem;
+  }
+
+  .hero-smart-search__loading {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.4rem 1.6rem;
+    font-size: 1.3rem;
+    opacity: 0.7;
+    color: var(--hero-text, #ffffff);
+  }
+
+  .hero-smart-search__loading[hidden] {
+    display: none;
+  }
+
+  .hero-smart-search__spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--hero-accent, #c0392b);
+    border-radius: 50%;
+    animation: smart-search-spin 0.6s linear infinite;
+  }
+
+  @keyframes smart-search-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .hero-smart-search__result-item {
+    padding: 1.2rem 1.4rem;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    font-size: 1.4rem;
+    transition: background 0.15s ease;
+    color: var(--hero-text, #ffffff);
+  }
+
+  .hero-smart-search__result-item:hover,
+  .hero-smart-search__result-item[aria-selected="true"] {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .hero-smart-search__result-icon {
+    width: 3.2rem;
+    height: 3.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.6rem;
+    background: rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+  }
+
+  .hero-smart-search__result-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .hero-smart-search__result-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hero-smart-search__result-meta {
+    font-size: 1.2rem;
+    opacity: 0.5;
+    margin-top: 0.2rem;
+  }
+
+  .hero-smart-search__result-tag {
+    font-size: 1.1rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.4rem;
+    background: rgba(255, 255, 255, 0.08);
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+
+  .hero-smart-search__guidance--needs-trim .hero-smart-search__result-tag {
+    background: rgba(245, 130, 11, 0.18);
+    color: #F5820B;
+  }
+  .hsf-wf__chip {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #e5e7eb;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 4px;
+    padding: 0.2rem 0.6rem;
+  }
+  .hsf-wf__chip--tire {
+    color: #cbd5e0;
+  }
+
+  @keyframes hero-trim-shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+  }
+
+  @keyframes hero-trim-header-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(245, 130, 11, 0.0);  background: transparent; }
+    15%  { box-shadow: 0 0 0 6px rgba(245, 130, 11, 0.45); background: rgba(245, 130, 11, 0.10); }
+    30%  { box-shadow: 0 0 0 0 rgba(245, 130, 11, 0.0);  background: rgba(245, 130, 11, 0.06); }
+    50%  { box-shadow: 0 0 0 6px rgba(245, 130, 11, 0.45); background: rgba(245, 130, 11, 0.10); }
+    70%  { box-shadow: 0 0 0 0 rgba(245, 130, 11, 0.0);  background: rgba(245, 130, 11, 0.04); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 130, 11, 0.0);  background: transparent; }
+  }
+
+  @keyframes hero-trim-cue-bounce {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(2px); }
+  }
+
+  @media screen and (max-width: 480px) {
+    .hero-smart-search__search-wrapper {
+      max-width: 100%;
+    }
+    .hero-smart-search__input {
+      padding: 1.2rem 1.4rem;
+      font-size: 1.6rem;
+    }
+    .hero-smart-search__typewriter {
+      left: 1.4rem;
+      font-size: 1.4rem;
+    }
+    .hero-smart-search__tab {
+      font-size: 0.9rem;
+      padding: 0.4rem 1.1rem;
+    }
+    .hero-smart-search__submit {
+      min-height: 4.4rem;
+    }
+    .hero-smart-search__results {
+      max-height: 26rem;
+    }
+    .hero-smart-search__result-item {
+      padding: 1rem 1.2rem;
+      min-height: 4.4rem;
+    }
+  }
+
+
+  @media screen and (max-width: 360px) {
+    .hero-smart-search__input {
+      padding: 1rem 1.2rem;
+    }
+  }
+
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-smart-search__input-wrapper::before {
+      animation: none !important;
+    }
+    .hero-smart-search__typewriter::after {
+      animation: none !important;
+    }
+    .hero-smart-search__spinner {
+      animation: none !important;
+    }
+  }

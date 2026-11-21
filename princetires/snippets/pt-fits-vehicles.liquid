@@ -1,6 +1,8 @@
 {% doc %}
   Renders a "Fits N vehicles" trust block on a tire (or wheel) product page,
-  plus a TiresVote rating line when available. Data is fetched client-side from
+  (no third-party score: owner rule 2026-11-13 allows ratings only from a real
+  reviews.rating or TyreReviews >= 4.0, so the API's TiresVote rating is not
+  shown). Data is fetched client-side from
   the Prince Tires app (/api/fits-vehicles), which is Redis-cached 30 days, so
   it adds no render-blocking work and at most one cached upstream call.
 
@@ -38,7 +40,6 @@
   >
     <svg class="ptp-fits__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
     <span class="ptp-fits__text"></span>
-    <a class="ptp-fits__rating" href="" target="_blank" rel="noopener" hidden></a>
   </div>
 {%- endif -%}
 
@@ -77,13 +78,6 @@
             txt.textContent = names.length ? lead + ' incl. ' + names.join(', ') : lead;
             shown = true;
           }
-          if (d.rating && typeof d.rating.score === 'number') {
-            var rt = el.querySelector('.ptp-fits__rating');
-            rt.textContent = '★ ' + Math.round(d.rating.score) + '/100' + (d.rating.pros && d.rating.pros.length ? ' · ' + d.rating.pros.slice(0, 2).join(', ') : '');
-            if (d.rating.proLink) { rt.href = d.rating.proLink; } else { rt.removeAttribute('href'); }
-            rt.hidden = false;
-            shown = true;
-          }
           if (shown) el.hidden = false;
         })
         .catch(function () {});
@@ -93,9 +87,8 @@
 {% endjavascript %}
 
 {% stylesheet %}
+  .ptp-fits[hidden] { display: none; }
   .ptp-fits { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 0.9rem; margin: 0.6rem 0; padding: 0.7rem 1rem; background: #f4f7f9; border: 1px solid #e2e8ed; border-radius: 10px; font-size: 1.4rem; line-height: 1.3; color: #33414d; }
   .ptp-fits__icon { flex-shrink: 0; color: #1a8a4a; }
   .ptp-fits__text { font-weight: 600; }
-  .ptp-fits__rating { color: #b9221a; font-weight: 600; text-decoration: none; }
-  .ptp-fits__rating:hover { text-decoration: underline; }
 {% endstylesheet %}

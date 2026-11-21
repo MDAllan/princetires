@@ -8,8 +8,11 @@
   2. SMART ROUTING on Enter / submit — priority chain (first match wins):
        a. Quick action: tire size  → /collections/tires?<size-filter-params>
        b. Quick action: service kw → service landing page
-       c. Quick action: season kw  → /collections/tires?<seasonality>
-       d. Quick action: rims/wheel → /collections/wheels (HEAD-checked)
+       c. Quick action: wheel word → /collections/wheels (HEAD-checked).
+          Enter goes straight there only for a bare wheel word ("rims",
+          "winter wheels"); "rtx wheels" falls through to /search, which
+          shows a "Shop all wheels" banner. Accessories are excluded.
+       d. Quick action: season kw  → /collections/tires?<seasonality>
        e. Fallthrough              → /search?q=<query>  (Shopify's native results)
 
   Fail-safe: if anything breaks, the form submits normally to /search.
@@ -50,6 +53,21 @@
   ];
 
   var SEASON_FILTER_KEY = 'filter.p.m.custom.seasonality';
+
+  /* ── 3b. Wheel-word intent (same pattern in main-search + pt-collection-grid) ──
+     0 = not a wheel search, 1 = wheel search with other words (banner on /search),
+     2 = a bare wheel word, optionally with season words ("rims", "winter wheels")
+         → go straight to /collections/wheels. */
+  var PT_WHEEL_RE  = /\b(wheels?|rims?|mags?)\b/i;
+  var PT_WHEEL_NOT = /balanc|align|lock|nut|lug|spacer|cap|sensor|tpms/i;
+  function wheelIntent(q) {
+    q = String(q || '');
+    if (!PT_WHEEL_RE.test(q) || PT_WHEEL_NOT.test(q)) return 0;
+    var rest = q.toLowerCase()
+      .replace(/\b(wheels?|rims?|mags?|winter|snow|all|season|weather)\b/g, ' ')
+      .replace(/[^a-z0-9]+/g, '');
+    return rest ? 1 : 2;
+  }
 
   /* ── helpers ── */
   function matchesAny(q, patterns) {
@@ -122,7 +140,7 @@
       return {
         type: 'size',
         label: 'Show ' + parsed.canonical + ' tires',
-        url:   '/collections/tires?' + window.PTTireParse.sizeFilterParams(parsed).toString()
+        url:   (function (u) { return window.PTRim ? window.PTRim.route(u) : u; })('/collections/tires?' + window.PTTireParse.sizeFilterParams(parsed).toString())
       };
     }
     var service = detectService(expanded);
@@ -133,6 +151,11 @@
         url:   service.url
       };
     }
+    /* Wheel words beat season words: "winter wheels" means wheels, not winter tires. */
+    var wi = wheelIntent(q);
+    if (wi && wheelsAvailable !== false) {
+      return { type: 'wheels', label: 'Browse all wheels', url: '/collections/wheels', direct: wi === 2 };
+    }
     var season = detectSeason(expanded);
     if (season) {
       return {
@@ -140,10 +163,6 @@
         label: 'Browse ' + season + ' tires',
         url:   '/collections/tires?' + SEASON_FILTER_KEY + '=' + encodeURIComponent(season)
       };
-    }
-    var qLower = expanded.toLowerCase();
-    if ((qLower.indexOf('rims') !== -1 || qLower.indexOf('wheels') !== -1) && wheelsAvailable === true) {
-      return { type: 'wheels', label: 'Browse wheels', url: '/collections/wheels' };
     }
     return null;
   }
@@ -154,6 +173,9 @@
     if (!window.PTTireParse || typeof window.PTTireParse.parseSize !== 'function') return;
 
     var qa = quickActionFor(q);
+    /* Multi-word wheel searches ("rtx wheels") keep the customer's words: they
+       fall through to /search, which shows the "Shop all wheels" banner. */
+    if (qa && qa.type === 'wheels' && !qa.direct) qa = null;
     if (qa) {
       e.preventDefault();
       safeTrack({ surface: 'header', search_query: q, search_type: qa.type, search_outcome: 'match' });

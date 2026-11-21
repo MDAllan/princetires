@@ -1,126 +1,280 @@
-<div class="ptc">
-  <div class="ptc__container">
+{%- comment -%} /collections/all is the Shop by size hub (pt-shop-by-size), not a 20,000-product grid without filters. {%- endcomment -%}
+{%- unless collection.handle == 'all' -%}
+{%- comment -%}
+  Slim black results header (redesign 2026-11-13, mockups Main / Mobile /
+  WheelResults / WheelMobile .dc.html). One line: title (the tire size when
+  one is chosen) · result count · Change size (tires) / Shop by vehicle
+  (wheels), then season tabs (tires) or diameter tabs (wheels).
 
-    <div class="ptc__top">
-      <div class="ptc__header">
-        <span class="ptc__eyebrow">{{ section.settings.eyebrow | default: 'Browse' }}</span>
-        <div class="ptc__title-row">
-          <h1 class="ptc__heading">{{ collection.title | escape }}</h1>
-          <span class="ptc__count">{{ collection.products_count }} products</span>
-        </div>
-        {%- if collection.description != blank and section.settings.show_description -%}
-          <p class="ptc__desc">{{ collection.description | strip_html | truncate: 160 }}</p>
+  - The count follows the filters (collection.products_count) and carries
+    data-rd-count, which the phone filter drawer reads (via the Section
+    Rendering API) to say "Show N tires" before the shopper applies.
+  - "Change size" / "Find your size" (tires) opens the Find your size sheet
+    (snippets/pt-size-sheet, 2026-11-14). If that script did not load, it
+    opens the old size boxes (pt-collection-research-strip) in a panel under
+    the header instead, as before.
+  - "Shop by vehicle" (wheels) opens pt-wheel-search in that panel. The
+    panel is open by default on desktop when nothing is chosen yet, closed
+    on phones (tires: only when the sheet is not available).
+  - Tabs are links. Season tab = only that season (other filters kept).
+    Diameter tabs go to the wheels-NN-inch collections (same routing as
+    snippets/pt-rim-route), or use the collection's own diameter filter on
+    other wheel collections.
+  - Tab counts are off by default (owner decision 5: no option counts);
+    the setting "Show counts on tabs" turns them on.
+  - Old classes .ptc__count / .ptc__desc are gone on purpose: the 2026-11-08
+    overlay scripts (pt-filter-ux, pt-filter-studs) keyed on them and are
+    replaced by this design.
+{%- endcomment -%}
+{%- liquid
+  capture rh_kind
+    render 'pt-rd-results-kind', collection: collection
+  endcapture
+  assign rh_kind = rh_kind | strip
+  assign rh_one = 'tire'
+  assign rh_many = 'tires'
+  if rh_kind == 'wheels'
+    assign rh_one = 'wheel'
+    assign rh_many = 'wheels'
+  elsif rh_kind == 'items'
+    assign rh_one = 'item'
+    assign rh_many = 'items'
+  endif
+  assign rh_count = collection.products_count | default: 0
+  assign rh_count_fmt = rh_count | times: 100 | money_without_currency | remove: '.00'
+
+  # Tire size from the active size filters (same format as the grid JS).
+  assign rh_w = ''
+  assign rh_p = ''
+  assign rh_r = ''
+  assign rh_ts = ''
+  assign f_season = nil
+  assign f_rim = nil
+  assign rh_bolt_active = false
+  for f in collection.filters
+    case f.param_name
+      when 'filter.p.m.custom.tire_width'
+        if f.active_values.size == 1
+          assign rh_w = f.active_values.first.value
+        endif
+      when 'filter.p.m.custom.tire_profile'
+        if f.active_values.size == 1
+          assign rh_p = f.active_values.first.value
+        endif
+      when 'filter.p.m.custom.rim_diameter'
+        assign f_rim = f
+        if f.active_values.size == 1
+          assign rh_r = f.active_values.first.value
+        endif
+      when 'filter.p.m.custom.tire_size'
+        if f.active_values.size == 1
+          assign rh_ts = f.active_values.first.value
+        endif
+      when 'filter.p.m.custom.seasonality'
+        assign f_season = f
+      when 'filter.p.m.custom.bolt_pattern'
+        if f.active_values.size > 0
+          assign rh_bolt_active = true
+        endif
+    endcase
+  endfor
+  assign rh_size = ''
+  if rh_kind == 'tires'
+    if rh_w != '' and rh_p != '' and rh_r != ''
+      assign rh_sep = '/'
+      if rh_p contains '.' or rh_w.size <= 2
+        assign rh_sep = 'X'
+      endif
+      assign rh_size = rh_w | append: rh_sep | append: rh_p | append: 'R' | append: rh_r
+    elsif rh_ts != ''
+      assign rh_size = rh_ts
+    endif
+  endif
+  assign rh_title = collection.title
+  if rh_size != ''
+    assign rh_title = rh_size
+  endif
+
+  assign rh_open = 'no'
+  if rh_kind == 'tires' and rh_size == ''
+    assign rh_open = 'desktop'
+  elsif rh_kind == 'wheels' and rh_bolt_active == false
+    assign rh_open = 'desktop'
+  endif
+  assign rh_counts = section.settings.show_tab_counts
+-%}
+{{ 'pt-rd-results.css' | asset_url | stylesheet_tag }}
+<div class="rd rd-rh" data-rd-rhead data-section-id="{{ section.id }}" data-kind="{{ rh_kind }}">
+  {%- comment -%}
+    TIRE pages (owner 2026-11-15, after DT's dealer hub): no black band and no
+    season tabs. The band used ~120 px for the title + count, and the tabs
+    repeated the Season filter (and missed All-season). The H1 and the count
+    now sit on the results toolbar line (sections/pt-collection-grid,
+    snippets/pt-rd-results-title) with the phone "Change size" button. This
+    hidden count stays: assets/pt-rd-results.js countNow() and the fallback
+    "Show N tires" count read data-rd-count from this section.
+    Wheel and other pages keep the band (diameter tabs = their only diameter
+    control).
+  {%- endcomment -%}
+  {%- if rh_kind == 'tires' -%}
+    <span hidden data-rd-count="{{ rh_count }}"></span>
+  {%- else -%}
+  <section class="rd-rhead" aria-labelledby="rd-rh-title">
+    <div class="rd-rhead__inner">
+      <div class="rd-rhead__row">
+        <h1 class="rd-rhead__title" id="rd-rh-title" data-rd-title{% if rh_kind == 'tires' and rh_size == '' %} data-rd-size-fallback{% endif %}>{{ rh_title | escape }}</h1>
+        <span class="rd-rhead__count" data-rd-count="{{ rh_count }}">{{ rh_count_fmt }} {% if rh_count == 1 %}{{ rh_one }}{% else %}{{ rh_many }}{% endif %}</span>
+        {%- if rh_kind != 'items' -%}
+          <div class="rd-rhead__end">
+            <button type="button" class="rd-rh__toggle" aria-expanded="false" aria-controls="rd-search-panel" data-rd-panel-toggle{% if rh_kind == 'tires' %} data-pt-size-sheet{% endif %} data-label-closed="{% if rh_kind == 'wheels' %}Shop by vehicle{% elsif rh_size != '' %}Change size{% else %}Find your size{% endif %}" data-label-open="{% if rh_kind == 'wheels' %}Hide vehicle search{% else %}Hide size search{% endif %}">
+              {%- if rh_kind == 'wheels' -%}Shop by vehicle{%- elsif rh_size != '' -%}Change size{%- else -%}Find your size{%- endif -%}
+            </button>
+          </div>
+        {%- endif -%}
+      </div>
+
+      {%- if rh_kind == 'tires' and f_season -%}
+        {%- liquid
+          assign st_order = 'Winter,All-Weather,All-Season,Summer' | split: ','
+          assign st_live = 0
+          for v in f_season.values
+            if st_order contains v.value
+              if v.count > 0 or v.active
+                assign st_live = st_live | plus: 1
+              endif
+            endif
+          endfor
+          assign st_base = f_season.url_to_remove
+          if st_base contains '?'
+            assign st_sep = '&'
+          else
+            assign st_sep = '?'
+          endif
+        -%}
+        {%- if st_live > 1 or f_season.active_values.size > 0 -%}
+          <nav class="rd-tabs rd-rh__tabs" aria-label="Season" data-rd-tabs="season">
+            <a class="rd-tab" href="{{ f_season.url_to_remove | escape }}" rel="nofollow" data-rd-tab=""{% if f_season.active_values.size == 0 %} aria-current="page"{% endif %}>All {{ rh_many }}{% if rh_counts and f_season.active_values.size == 0 %} <span class="rd-tab__n">{{ rh_count_fmt }}</span>{% endif %}</a>
+            {%- for o in st_order -%}
+              {%- for v in f_season.values -%}
+                {%- if v.value == o -%}
+                  {%- if v.count > 0 or v.active -%}
+                    {%- liquid
+                      assign st_label = v.label
+                      case v.value
+                        when 'All-Weather'
+                          assign st_label = 'All-weather'
+                        when 'All-Season'
+                          assign st_label = 'All-season'
+                      endcase
+                      assign st_val = v.value | url_encode
+                      assign st_href = st_base | append: st_sep | append: 'filter.p.m.custom.seasonality=' | append: st_val
+                    -%}
+                    <a class="rd-tab" href="{{ st_href | escape }}" rel="nofollow" data-rd-tab="{{ v.value | escape }}"{% if v.active %} aria-current="page"{% endif %}>{{ st_label }}{% if rh_counts %} <span class="rd-tab__n">{{ v.count }}</span>{% endif %}</a>
+                  {%- endif -%}
+                  {%- break -%}
+                {%- endif -%}
+              {%- endfor -%}
+            {%- endfor -%}
+          </nav>
+        {%- endif -%}
+      {%- endif -%}
+
+      {%- if rh_kind == 'wheels' -%}
+        {%- liquid
+          assign rt_mode = 'facet'
+          if collection.handle == 'wheels'
+            assign rt_mode = 'collections'
+          elsif collection.handle contains 'wheels-' and collection.handle contains '-inch'
+            assign rt_mode = 'collections'
+          endif
+          assign rt_rims = '13,14,15,16,17,18,19,20,21,22,23,24' | split: ','
+        -%}
+        {%- if rt_mode == 'collections' -%}
+          {%- liquid
+            assign rt_here = ''
+            if collection.handle != 'wheels'
+              assign rt_here = collection.handle | remove: 'wheels-' | remove: '-inch'
+            elsif rh_r != ''
+              assign rt_here = rh_r
+            endif
+          -%}
+          <nav class="rd-tabs rd-rh__tabs" aria-label="Wheel diameter" data-rd-tabs="rim">
+            <a class="rd-tab" href="{{ routes.collections_url }}/wheels" data-rd-tab=""{% if rt_here == '' %} aria-current="page"{% endif %}>All wheels{% if rh_counts %} <span class="rd-tab__n">{{ collections['wheels'].products_count }}</span>{% endif %}</a>
+            {%- for r in rt_rims -%}
+              {%- assign rt_h = 'wheels-' | append: r | append: '-inch' -%}
+              {%- assign rt_c = collections[rt_h].products_count | default: 0 -%}
+              {%- if rt_c > 0 -%}
+                <a class="rd-tab" href="{{ routes.collections_url }}/{{ rt_h }}?filter.p.m.custom.rim_diameter={{ r }}" data-rd-tab="{{ r }}"{% if rt_here == r %} aria-current="page"{% endif %}>{{ r }}″{% if rh_counts %} <span class="rd-tab__n">{{ rt_c }}</span>{% endif %}</a>
+              {%- endif -%}
+            {%- endfor -%}
+          </nav>
+        {%- elsif f_rim -%}
+          {%- liquid
+            assign rt_live = 0
+            for v in f_rim.values
+              if v.count > 0 or v.active
+                assign rt_live = rt_live | plus: 1
+              endif
+            endfor
+            assign rt_base = f_rim.url_to_remove
+            if rt_base contains '?'
+              assign rt_sep = '&'
+            else
+              assign rt_sep = '?'
+            endif
+          -%}
+          {%- if rt_live > 1 or f_rim.active_values.size > 0 -%}
+            <nav class="rd-tabs rd-rh__tabs" aria-label="Wheel diameter" data-rd-tabs="rimfacet">
+              <a class="rd-tab" href="{{ f_rim.url_to_remove | escape }}" rel="nofollow" data-rd-tab=""{% if f_rim.active_values.size == 0 %} aria-current="page"{% endif %}>All wheels{% if rh_counts and f_rim.active_values.size == 0 %} <span class="rd-tab__n">{{ rh_count_fmt }}</span>{% endif %}</a>
+              {%- for v in f_rim.values -%}
+                {%- if v.count > 0 or v.active -%}
+                  {%- assign rt_href = rt_base | append: rt_sep | append: 'filter.p.m.custom.rim_diameter=' | append: v.value -%}
+                  <a class="rd-tab" href="{{ rt_href | escape }}" rel="nofollow" data-rd-tab="{{ v.value | escape }}"{% if v.active %} aria-current="page"{% endif %}>{{ v.label }}″{% if rh_counts %} <span class="rd-tab__n">{{ v.count }}</span>{% endif %}</a>
+                {%- endif -%}
+              {%- endfor -%}
+            </nav>
+          {%- endif -%}
+        {%- endif -%}
+      {%- endif -%}
+    </div>
+  </section>
+  {%- endif -%}
+
+  {%- comment -%}
+    Desktop size bar (owner 2026-11-14: "on desktop it should not be a
+    popup, everything ready in the header", after DT's dealer hub). On
+    screens 990px+ assets/pt-rd-results.js puts the Find your size search
+    (PTSizeSheet.inline, id 'bar') here, open and filled with the size shown;
+    the "Change size" button is then hidden. Phones keep the popup.
+  {%- endcomment -%}
+  {%- if rh_kind == 'tires' -%}
+    <div class="rd-rh__bar" data-rd-sizebar hidden><div class="rd-rh__bar-in" data-rd-sizebar-host></div></div>
+  {%- endif -%}
+  {%- comment -%}
+    Messages from the wheel search ("Need tires for your car too?", "We don't
+    stock wheels in your bolt pattern") land here, OUTSIDE the panel: the
+    panel is closed on phones and after a by-vehicle search, and both
+    messages are one-shot. Empty = not shown (:empty).
+  {%- endcomment -%}
+  {%- if rh_kind == 'wheels' -%}<div class="rd-rh__msg" id="rd-ws-msg" data-rd-ws-msg></div>{%- endif -%}
+  {%- if rh_kind != 'items' -%}
+    <div class="rd-rh__panel" id="rd-search-panel" data-rd-panel data-default-open="{{ rh_open }}" hidden>
+      <div class="rd-rh__panel-in">
+        {%- if rh_kind == 'wheels' -%}
+          {% render 'pt-wheel-search', collection: collection, show_counts: false, msg_target: '#rd-ws-msg' %}
+        {%- else -%}
+          {% render 'pt-collection-research-strip' %}
         {%- endif -%}
       </div>
     </div>
-
-  </div>
+  {%- endif -%}
 </div>
+{%- endunless -%}
 
 {% stylesheet %}
+  /* Kept from the old header: the theme breadcrumb is hidden here (the slim header replaces it). */
   .breadcrumbs { display: none; }
-
-  .ptc {
-    background: #fff;
-    padding: 4rem 0 0;
-  }
-
-  .ptc__container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 12rem;
-  }
-
-  .ptc__top {
-    margin-bottom: 2rem;
-  }
-
-  .ptc__header {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
-  .ptc__eyebrow {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 400;
-    color: #dc2626;
-    letter-spacing: 0.02em;
-  }
-
-  .ptc__title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 1rem;
-  }
-
-  .ptc__heading {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 3rem;
-    font-weight: 600;
-    color: #111;
-    margin: 0;
-    line-height: 1.1;
-  }
-
-  .ptc__count {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 300;
-    color: #9ca3af;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .ptc__desc {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.3rem;
-    font-weight: 300;
-    color: #6b7280;
-    margin: 0;
-    max-width: 50rem;
-  }
-
-
-  /* ── Responsive ── */
-  @media (max-width: 768px) {
-    .ptc__container {
-      padding: 0 2rem;
-    }
-    .ptc__heading {
-      font-size: 2.4rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .ptc {
-      padding: 2.5rem 0 1rem;
-    }
-    .ptc__container {
-      padding: 0 1.2rem;
-    }
-    .ptc__heading {
-      font-size: clamp(2rem, 6vw, 2.4rem);
-    }
-    .ptc__count {
-      font-size: 1.1rem;
-    }
-    .ptc__top {
-      margin-bottom: 1.2rem;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .ptc__container {
-      padding: 0 1rem;
-    }
-    .ptc__heading {
-      font-size: 2rem;
-    }
-  }
 {% endstylesheet %}
-
 
 {% schema %}
 {
@@ -132,13 +286,21 @@
       "type": "text",
       "id": "eyebrow",
       "label": "Eyebrow text",
-      "default": "Browse"
+      "default": "Browse",
+      "info": "Not shown in the slim results header (2026-11 redesign)."
     },
     {
       "type": "checkbox",
       "id": "show_description",
       "label": "Show collection description",
-      "default": true
+      "default": true,
+      "info": "Not shown in the slim results header (2026-11 redesign; the live site already hid it on 2026-11-10). The description now prints below the products in the Collection content section: in full when the collection's show_guide metafield is on, otherwise in a collapsed About block (setting there)."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_tab_counts",
+      "label": "Show counts on the season / diameter tabs",
+      "default": false
     }
   ]
 }

@@ -1,0 +1,544 @@
+{% doc %}
+  One filter group (dropdown accordion) on the tire / wheel results pages,
+  built from a Shopify storefront filter (collection.filters). Redesign
+  2026-11-13, mockups Main / MobileFilters / WheelResults.
+
+  Every option is a real link to Shopify's own filter URL (value.url_to_add /
+  url_to_remove), marked up as a checkbox (role="checkbox" aria-checked), so
+  the filters work with no JavaScript at all. assets/pt-rd-results.js adds:
+  the phone drawer's "pick several, then Show N" batching, multi-value
+  options (data-vs), the option search box, sorting and "Show more".
+
+  Owner rules honoured here:
+  - No result counts next to options (pending decision 5 = none). The count
+    is kept in data-n only so the most-stocked bolt patterns sort first.
+  - Options with no products are not listed (unless already applied), and a
+    group with fewer than `min_values` usable options is not rendered.
+
+  @param {filter} filter - A storefront filter from collection.filters
+  @param {string} [title] - Group heading. Default: the filter's own label.
+  @param {string} [id] - Unique slug for ids. Default: handleized param name.
+  @param {boolean} [open] - Start expanded.
+  @param {boolean} [active_closed] - v16 fix1: stay closed even when a value is applied (tire Brand).
+  @param {string} [mode] - 'list' (default) | 'bolt' (one option per single
+    pattern, inch + usage hints; dual-drilled values join every pattern they
+    carry) | 'offset' (plain-language ranges) | 'width' (pills, 7 = 7.0) |
+    'bore' (mm, numeric order)
+  @param {string} [map] - Value labels: 'Raw=>Label;;Raw2=>Label2'
+  @param {string} [order] - Comma list of raw values in display order
+  @param {string} [suffix] - Appended to every label (e.g. ' mm')
+  @param {number} [limit] - Show this many, the rest behind "Show more"
+  @param {string} [more_noun] - Word for the more button ("brands")
+  @param {string} [more_kind] - 'more' = "Show 4 more brands" (default), 'all' = "Show all 30 patterns"
+  @param {string} [search] - Placeholder; adds a search box when there are 10+ options
+  @param {string} [note] - Short paragraph at the top of the group
+  @param {number} [min_values] - Fewest usable options to render (default 2)
+  @param {filter} [extra] - A second filter whose chosen values join this group
+  @param {string} [extra_values] - Which values of `extra`: 'Raw=>Label;;...'
+  @param {string} [only] - Comma list of words; keep only values whose label
+    contains one of them (Finish = the finish words among the product tags)
+  @param {string} [skip] - Values to leave out, as '|Value one|Value two|'
+    (Finish: model names such as "Black Widow")
+  @param {boolean} [icons] - Season group (v16): the season icon in its hue
+    before each label (keyed on the mapped label, so Search & Discovery's
+    "All Season" group gid gets the all-season icon too).
+  @param {string} [brand_keys] - Brand group (v16): 'michelin|bridgestone|...'
+    = the brand row's logo order; listed brands follow it, the rest A to Z.
+
+  map and order also match an option's LABEL (not only its value), so a
+  filter group whose value is a gid can be mapped and ordered by its label.
+
+  @example
+    {% render 'pt-rd-results-facet', filter: f, title: 'Brand', id: 'brand', limit: 6, more_noun: 'brands', search: 'Find a brand' %}
+{% enddoc %}
+{%- liquid
+  assign fg_mode = mode | default: 'list'
+  assign fg_title = title | default: filter.label
+  assign fg_id = id | default: filter.param_name | handleize
+  assign fg_min = min_values | default: 2
+  assign fg_param = filter.param_name
+  assign fg_pairs = map | default: '' | split: ';;'
+  assign fg_order = order | default: '' | split: ','
+  assign fg_only = only | default: '' | downcase | split: ','
+  assign fg_live = 0
+  assign fg_active = 0
+  assign fg_sum = ''
+  assign fg_sort = ''
+  if fg_mode == 'bolt'
+    assign fg_sort = 'n'
+  elsif fg_mode == 'bore' or fg_mode == 'width'
+    assign fg_sort = 'num'
+  elsif order != blank or brand_keys != blank
+    assign fg_sort = 'ord'
+  endif
+-%}
+{%- capture fg_opts -%}
+  {%- case fg_mode -%}
+    {%- when 'offset' -%}
+      {%- comment -%}
+        Offset (ET) as five plain-language ranges. One range = every catalogue
+        value inside it, sent as one multi-value filter (data-vs). Bands:
+        <= -19 | -18..0 | +1..+29 | +30..+50 | > +50.
+      {%- endcomment -%}
+      {%- assign fb_labels = '+30 to +50 mm|+1 to +29 mm|−18 to 0 mm|−19 mm and lower|+51 mm and higher' | split: '|' -%}
+      {%- assign fb_hints = 'Close to factory on most cars and SUVs|Sits a little further out|Truck look, may need trimming|Aggressive, usually needs a lift|Sits further in. Check fit with us' | split: '|' -%}
+      {%- for fb_label in fb_labels -%}
+        {%- assign fb_i = forloop.index -%}
+        {%- assign fb_vs = '' -%}
+        {%- assign fb_on = false -%}
+        {%- assign fb_first = nil -%}
+        {%- for v in filter.values -%}
+          {%- if v.count > 0 or v.active -%}
+            {%- assign n = v.value | plus: 0 -%}
+            {%- assign fb_in = false -%}
+            {%- case fb_i -%}
+              {%- when 1 -%}{%- if n >= 30 and n <= 50 -%}{%- assign fb_in = true -%}{%- endif -%}
+              {%- when 2 -%}{%- if n > 0 and n < 30 -%}{%- assign fb_in = true -%}{%- endif -%}
+              {%- when 3 -%}{%- if n > -19 and n <= 0 -%}{%- assign fb_in = true -%}{%- endif -%}
+              {%- when 4 -%}{%- if n <= -19 -%}{%- assign fb_in = true -%}{%- endif -%}
+              {%- when 5 -%}{%- if n > 50 -%}{%- assign fb_in = true -%}{%- endif -%}
+            {%- endcase -%}
+            {%- if fb_in -%}
+              {%- if fb_vs != '' -%}{%- assign fb_vs = fb_vs | append: '|' -%}{%- endif -%}
+              {%- assign fb_vs = fb_vs | append: v.value -%}
+              {%- if v.active -%}{%- assign fb_on = true -%}{%- endif -%}
+              {%- if fb_first == nil -%}{%- assign fb_first = v -%}{%- endif -%}
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- if fb_vs != '' -%}
+          {%- assign fg_live = fg_live | plus: 1 -%}
+          {%- if fb_on -%}
+            {%- assign fg_active = fg_active | plus: 1 -%}
+            {%- if fg_sum != '' -%}{%- assign fg_sum = fg_sum | append: ', ' -%}{%- endif -%}
+            {%- assign fg_sum = fg_sum | append: fb_label -%}
+          {%- endif -%}
+          <a class="rd-fopt" href="{% if fb_on %}{{ fb_first.url_to_remove | escape }}{% else %}{{ fb_first.url_to_add | escape }}{% endif %}" rel="nofollow" role="checkbox" aria-checked="{{ fb_on }}" data-k="{{ fg_param }}" data-v="{{ fb_first.value | escape }}" data-vs="{{ fb_vs | escape }}" data-label="{{ fb_label | escape }}">
+            <span class="rd-fbox" aria-hidden="true">{% render 'pt-icon', name: 'check', size: 14 %}</span>
+            <span class="rd-opt__text">{{ fb_label }}<span class="rd-opt__hint">{{ fb_hints[forloop.index0] }}</span></span>
+          </a>
+        {%- endif -%}
+      {%- endfor -%}
+
+    {%- when 'width' -%}
+      {%- comment -%} Pills. The catalogue stores both "7" and "7.0": one pill sends both. {%- endcomment -%}
+      {%- assign fw_keys = ',' -%}
+      {%- for v in filter.values -%}
+        {%- if v.count > 0 or v.active -%}
+          {%- assign k = v.value | strip -%}
+          {%- if k contains '.' -%}
+            {%- assign kp = k | split: '.' -%}
+            {%- if kp[1] == '0' or kp[1] == '00' -%}{%- assign k = kp[0] -%}{%- endif -%}
+          {%- endif -%}
+          {%- assign k_tok = ',' | append: k | append: ',' -%}
+          {%- unless fw_keys contains k_tok -%}{%- assign fw_keys = fw_keys | append: k | append: ',' -%}{%- endunless -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {%- assign fw_list = fw_keys | split: ',' -%}
+      {%- for k in fw_list -%}
+        {%- if k != blank -%}
+          {%- assign fw_vs = '' -%}
+          {%- assign fw_on = false -%}
+          {%- assign fw_first = nil -%}
+          {%- for v in filter.values -%}
+            {%- if v.count > 0 or v.active -%}
+              {%- assign vk = v.value | strip -%}
+              {%- if vk contains '.' -%}
+                {%- assign vkp = vk | split: '.' -%}
+                {%- if vkp[1] == '0' or vkp[1] == '00' -%}{%- assign vk = vkp[0] -%}{%- endif -%}
+              {%- endif -%}
+              {%- if vk == k -%}
+                {%- if fw_vs != '' -%}{%- assign fw_vs = fw_vs | append: '|' -%}{%- endif -%}
+                {%- assign fw_vs = fw_vs | append: v.value -%}
+                {%- if v.active -%}{%- assign fw_on = true -%}{%- endif -%}
+                {%- if fw_first == nil -%}{%- assign fw_first = v -%}{%- endif -%}
+              {%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- assign fg_live = fg_live | plus: 1 -%}
+          {%- if fw_on -%}
+            {%- assign fg_active = fg_active | plus: 1 -%}
+            {%- if fg_sum != '' -%}{%- assign fg_sum = fg_sum | append: ', ' -%}{%- endif -%}
+            {%- assign fg_sum = fg_sum | append: k | append: '″' -%}
+          {%- endif -%}
+          <a class="rd-res-pill" href="{% if fw_on %}{{ fw_first.url_to_remove | escape }}{% else %}{{ fw_first.url_to_add | escape }}{% endif %}" rel="nofollow" role="checkbox" aria-checked="{{ fw_on }}" data-k="{{ fg_param }}" data-v="{{ fw_first.value | escape }}" data-vs="{{ fw_vs | escape }}" data-num="{{ k }}" data-label="{{ k | append: '″' | escape }}">{{ k }}″</a>
+        {%- endif -%}
+      {%- endfor -%}
+
+    {%- when 'bolt' -%}
+      {%- comment -%}
+        One option per SINGLE pattern (WheelResults mockup). The catalogue
+        stores wheels drilled for two patterns as one value ("5x127/5x139.7",
+        "6x135/6x139.7"), so the 5x139.7 option sends every value that
+        contains 5x139.7 (data-vs): a shopper who ticks it sees every wheel
+        that fits, not only the single-drilled ones.
+        "On" = every value that contains the pattern is applied (data-all),
+        so ticking 5x139.7 does not also tick 5x127 just because
+        "5x127/5x139.7" is now in the URL; a pattern with no single value of
+        its own (8x170) is not "on" when a ticked pattern pulled all of its
+        values in (data-exact marks the ones with their own value). The same
+        rule drives the chips and the Filters badge (pt-rd-results-bolt).
+      {%- endcomment -%}
+      {%- liquid
+        assign fbp_keys = ','
+        for v in filter.values
+          if v.count > 0 or v.active
+            assign fbp_parts = v.value | downcase | split: '/'
+            for part in fbp_parts
+              assign k = part | strip
+              assign k_tok = ',' | append: k | append: ','
+              if k != blank
+                unless fbp_keys contains k_tok
+                  assign fbp_keys = fbp_keys | append: k | append: ','
+                endunless
+              endif
+            endfor
+          endif
+        endfor
+        assign fbp_list = fbp_keys | split: ','
+
+        # Patterns ticked on purpose (their own single value is applied, plus
+        # every dual value): the dual values they pulled in do not tick a
+        # pattern that only exists as a dual ("8x170" in "8x165.1/8x170").
+        assign fbp_union = '|'
+        if filter.active_values.size > 0
+          for k in fbp_list
+            if k == blank
+              continue
+            endif
+            assign pa_all = true
+            assign pa_exact = false
+            assign pa_vs = ''
+            for v in filter.values
+              if v.count > 0 or v.active
+                assign vparts = v.value | downcase | split: '/'
+                assign pa_hit = false
+                for part in vparts
+                  assign ps = part | strip
+                  if ps == k
+                    assign pa_hit = true
+                    break
+                  endif
+                endfor
+                if pa_hit
+                  if v.active == false
+                    assign pa_all = false
+                    break
+                  endif
+                  if vparts.size == 1
+                    assign pa_exact = true
+                  endif
+                  assign pa_vs = pa_vs | append: v.value | append: '|'
+                endif
+              endif
+            endfor
+            if pa_all and pa_exact
+              assign fbp_union = fbp_union | append: pa_vs
+            endif
+          endfor
+        endif
+      -%}
+      {%- for k in fbp_list -%}
+        {%- if k != blank -%}
+          {%- liquid
+            assign fbp_vs = ''
+            assign fbp_n = 0
+            assign fbp_on = true
+            assign fbp_hits = 0
+            assign fbp_first = nil
+            assign fbp_exact = nil
+            for v in filter.values
+              if v.count > 0 or v.active
+                assign vparts = v.value | downcase | split: '/'
+                assign fbp_hit = false
+                for part in vparts
+                  assign ps = part | strip
+                  if ps == k
+                    assign fbp_hit = true
+                    break
+                  endif
+                endfor
+                if fbp_hit
+                  assign fbp_hits = fbp_hits | plus: 1
+                  if fbp_vs != ''
+                    assign fbp_vs = fbp_vs | append: '|'
+                  endif
+                  assign fbp_vs = fbp_vs | append: v.value
+                  assign fbp_n = fbp_n | plus: v.count
+                  unless v.active
+                    assign fbp_on = false
+                  endunless
+                  if fbp_first == nil
+                    assign fbp_first = v
+                  endif
+                  if vparts.size == 1 and fbp_exact == nil
+                    assign fbp_exact = v
+                  endif
+                endif
+              endif
+            endfor
+            if fbp_hits == 0
+              assign fbp_on = false
+            endif
+            if fbp_on and fbp_exact == nil
+              assign fbp_implied = true
+              assign fbp_vl = fbp_vs | split: '|'
+              for x in fbp_vl
+                assign x_tok = '|' | append: x | append: '|'
+                unless fbp_union contains x_tok
+                  assign fbp_implied = false
+                  break
+                endunless
+              endfor
+              if fbp_implied
+                assign fbp_on = false
+              endif
+            endif
+            assign fbp_key = fbp_exact | default: fbp_first
+            assign fl = k
+            if fbp_exact
+              assign fl = fbp_exact.label | strip
+            endif
+
+            # Inch equivalent: 5x114.3 = 5x4.5″ (only when it is a clean quarter inch).
+            assign fh = ''
+            assign pp = k | split: 'x'
+            if pp.size == 2
+              assign mm = pp[1] | plus: 0.0
+              assign q = mm | times: 4.0 | divided_by: 25.4
+              assign qr = q | round
+              assign qd = q | minus: qr | abs
+              if qd < 0.03 and qr > 0
+                assign inch = qr | divided_by: 4.0 | append: ''
+                assign inch = inch | remove: '.0'
+                assign fh = pp[0] | append: 'x' | append: inch | append: '″'
+              endif
+            endif
+            assign fb_use = ''
+            case k
+              when '5x114.3'
+                assign fb_use = 'most cars and small SUVs'
+              when '6x139.7'
+                assign fb_use = 'half-ton trucks'
+              when '5x139.7'
+                assign fb_use = 'older Ram 1500'
+              when '8x165.1'
+                assign fb_use = 'heavy-duty trucks'
+              when '5x127'
+                assign fb_use = 'Jeep'
+              when '5x120'
+                assign fb_use = 'BMW, Camaro'
+            endcase
+            if fb_use != ''
+              if fh != ''
+                assign fh = fh | append: ' · '
+              endif
+              assign fh = fh | append: fb_use
+            endif
+
+            # No-JS / ctrl-click links. Add = the first value's own link plus
+            # the other values; remove = every applied filter minus this
+            # pattern's values (pt-rd-results.js handles the normal click).
+            if fbp_on
+              assign fbp_vtok = '|' | append: fbp_vs | append: '|'
+              assign fbp_q = ''
+              for f in collection.filters
+                if f.type == 'price_range'
+                  if f.min_value.value != blank
+                    assign pv = f.min_value.value | divided_by: 100
+                    assign fbp_q = fbp_q | append: 'filter.v.price.gte=' | append: pv | append: '&'
+                  endif
+                  if f.max_value.value != blank
+                    assign pv = f.max_value.value | divided_by: 100
+                    assign fbp_q = fbp_q | append: 'filter.v.price.lte=' | append: pv | append: '&'
+                  endif
+                else
+                  for av in f.active_values
+                    assign av_tok = '|' | append: av.value | append: '|'
+                    if f.param_name == fg_param and fbp_vtok contains av_tok
+                      continue
+                    endif
+                    assign av_enc = av.value | url_encode
+                    assign fbp_q = fbp_q | append: av.param_name | append: '=' | append: av_enc | append: '&'
+                  endfor
+                endif
+              endfor
+              if collection.sort_by != blank
+                assign fbp_q = fbp_q | append: 'sort_by=' | append: collection.sort_by
+              endif
+              assign fbp_href = collection.url | append: '?' | append: fbp_q
+            else
+              assign fbp_href = fbp_key.url_to_add
+              for v in filter.values
+                if v.count > 0 or v.active
+                  if v.active or v.value == fbp_key.value
+                    continue
+                  endif
+                  assign v_tok = '|' | append: v.value | append: '|'
+                  assign fbp_vtok = '|' | append: fbp_vs | append: '|'
+                  if fbp_vtok contains v_tok
+                    assign v_enc = v.value | url_encode
+                    assign fbp_href = fbp_href | append: '&' | append: fg_param | append: '=' | append: v_enc
+                  endif
+                endif
+              endfor
+            endif
+
+            assign fg_live = fg_live | plus: 1
+            if fbp_on
+              assign fg_active = fg_active | plus: 1
+              if fg_sum != ''
+                assign fg_sum = fg_sum | append: ', '
+              endif
+              assign fg_sum = fg_sum | append: fl
+            endif
+          -%}
+          <a class="rd-fopt" href="{{ fbp_href | escape }}" rel="nofollow" role="checkbox" aria-checked="{{ fbp_on }}" data-k="{{ fg_param }}" data-v="{{ fbp_key.value | escape }}" data-vs="{{ fbp_vs | escape }}" data-all{% if fbp_exact %} data-exact{% endif %} data-n="{{ fbp_n }}" data-label="{{ fl | escape }}">
+            <span class="rd-fbox" aria-hidden="true">{% render 'pt-icon', name: 'check', size: 14 %}</span>
+            <span class="rd-opt__text">{{ fl | escape }}{% if fh != '' %}<span class="rd-opt__hint">{{ fh }}</span>{% endif %}</span>
+          </a>
+        {%- endif -%}
+      {%- endfor -%}
+
+    {%- else -%}
+      {%- for v in filter.values -%}
+        {%- liquid
+          assign f_keep = false
+          if v.count > 0 or v.active
+            assign f_keep = true
+          endif
+          if f_keep and skip != blank
+            assign f_tok = '|' | append: v.value | append: '|'
+            if skip contains f_tok
+              assign f_keep = false
+            endif
+          endif
+          if f_keep and fg_only.size > 0
+            assign f_keep = false
+            assign f_low = v.label | downcase
+            for w in fg_only
+              if f_low contains w
+                assign f_keep = true
+                break
+              endif
+            endfor
+          endif
+        -%}
+        {%- if f_keep -%}
+          {%- liquid
+            assign fl = v.label
+            for pair in fg_pairs
+              assign kv = pair | split: '=>'
+              if kv[0] == v.value or kv[0] == v.label
+                assign fl = kv[1]
+                break
+              endif
+            endfor
+            if suffix != blank
+              assign fl = fl | append: suffix
+            endif
+            assign fo = 99
+            for o in fg_order
+              if o == v.value or o == v.label
+                assign fo = forloop.index
+              endif
+            endfor
+            if brand_keys != blank
+              assign fbk = brand_keys | split: '|'
+              assign fbh = v.value | handleize | remove: '-tires' | remove: '-tire' | remove: '-'
+              assign fo = 50
+              for bk in fbk
+                if bk == fbh
+                  assign fo = forloop.index
+                  break
+                endif
+              endfor
+            endif
+            assign fic = ''
+            if icons
+              assign fic = fl | downcase | replace: ' ', '-'
+              case fic
+                when 'winter', 'all-weather', 'all-season', 'summer'
+                  assign fic = fic
+                else
+                  assign fic = ''
+              endcase
+            endif
+            assign fh = ''
+            assign fg_live = fg_live | plus: 1
+            if v.active
+              assign fg_active = fg_active | plus: 1
+              if fg_sum != ''
+                assign fg_sum = fg_sum | append: ', '
+              endif
+              assign fg_sum = fg_sum | append: fl
+            endif
+          -%}
+          <a class="rd-fopt" href="{% if v.active %}{{ v.url_to_remove | escape }}{% else %}{{ v.url_to_add | escape }}{% endif %}" rel="nofollow" role="checkbox" aria-checked="{{ v.active }}" data-k="{{ fg_param }}" data-v="{{ v.value | escape }}" data-n="{{ v.count }}" data-ord="{{ fo }}"{% if fg_mode == 'bore' %} data-num="{{ v.value | plus: 0 }}"{% endif %} data-label="{{ fl | escape }}">
+            <span class="rd-fbox" aria-hidden="true">{% render 'pt-icon', name: 'check', size: 14 %}</span>
+            {%- if fic != '' -%}{% render 'pt-icon', name: fic, size: 18, class: 'rd-fopt__ic' %}{%- endif -%}
+            <span class="rd-opt__text">{{ fl | escape }}{% if fh != '' %}<span class="rd-opt__hint">{{ fh }}</span>{% endif %}</span>
+          </a>
+        {%- endif -%}
+      {%- endfor -%}
+  {%- endcase -%}
+
+  {%- if extra != blank and extra_values != blank -%}
+    {%- assign fx_pairs = extra_values | split: ';;' -%}
+    {%- for pair in fx_pairs -%}
+      {%- assign kv = pair | split: '=>' -%}
+      {%- for v in extra.values -%}
+        {%- if v.value == kv[0] -%}
+          {%- if v.count > 0 or v.active -%}
+            {%- assign fg_live = fg_live | plus: 1 -%}
+            {%- if v.active -%}
+              {%- assign fg_active = fg_active | plus: 1 -%}
+              {%- if fg_sum != '' -%}{%- assign fg_sum = fg_sum | append: ', ' -%}{%- endif -%}
+              {%- assign fg_sum = fg_sum | append: kv[1] -%}
+            {%- endif -%}
+            <a class="rd-fopt" href="{% if v.active %}{{ v.url_to_remove | escape }}{% else %}{{ v.url_to_add | escape }}{% endif %}" rel="nofollow" role="checkbox" aria-checked="{{ v.active }}" data-k="{{ extra.param_name }}" data-v="{{ v.value | escape }}" data-n="{{ v.count }}" data-ord="999" data-label="{{ kv[1] | escape }}">
+              <span class="rd-fbox" aria-hidden="true">{% render 'pt-icon', name: 'check', size: 14 %}</span>
+              <span class="rd-opt__text">{{ kv[1] | escape }}</span>
+            </a>
+          {%- endif -%}
+          {%- break -%}
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endfor -%}
+  {%- endif -%}
+{%- endcapture -%}
+{%- liquid
+  assign fg_show = false
+  if fg_live >= fg_min or fg_active > 0
+    assign fg_show = true
+  endif
+  assign fg_open = false
+  if open or fg_active > 0
+    assign fg_open = true
+  endif
+  # v16 fix1: tire Brand stays closed when picked (the slider shows the pick; JS opens it in the phone sheet / drawer).
+  if active_closed and open != true
+    assign fg_open = false
+  endif
+-%}
+{%- if fg_show -%}
+<div class="rd-acc rd-fgroup" data-rd-group="{{ fg_id }}">
+  <button class="rd-acc__head" type="button" id="rdf-{{ fg_id }}-h" aria-expanded="{{ fg_open }}" aria-controls="rdf-{{ fg_id }}">
+    <span class="rd-fgroup__title">{{ fg_title }}</span>
+    <span class="rd-acc__sum" data-rd-sum data-any="Any">{% if fg_sum != '' %}{{ fg_sum | escape }}{% else %}<span class="rd-acc__any">Any</span>{% endif %}</span>
+    {%- render 'pt-icon', name: 'chevron-down', size: 18, class: 'rd-acc__chev' -%}
+  </button>
+  <div class="rd-acc__body" id="rdf-{{ fg_id }}" role="group" aria-labelledby="rdf-{{ fg_id }}-h">
+    {%- if note != blank -%}<p class="rd-fnote">{{ note }}</p>{%- endif -%}
+    {%- if search != blank and fg_live >= 10 -%}
+      <input type="search" class="rd-input rd-fsearch" placeholder="{{ search | escape }}" aria-label="{{ search | escape }}" data-rd-fsearch autocomplete="off">
+    {%- endif -%}
+    <div class="rd-fopts{% if fg_mode == 'width' %} rd-fopts--pills{% endif %}" data-rd-opts{% if fg_sort != '' %} data-rd-optsort="{{ fg_sort }}"{% endif %}{% if limit %} data-rd-limit="{{ limit }}"{% endif %}>
+      {{- fg_opts -}}
+    </div>
+    {%- if limit -%}
+      <button type="button" class="rd-btn rd-btn--text rd-fmore" data-rd-more data-noun="{{ more_noun | default: 'options' }}" data-kind="{{ more_kind | default: 'more' }}" aria-expanded="false" hidden>Show more</button>
+    {%- endif -%}
+  </div>
+</div>
+{%- endif -%}

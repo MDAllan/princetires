@@ -35,7 +35,7 @@
         {%- if section.settings.eyebrow != blank -%}
           <span class="ptbg__eyebrow">{{ section.settings.eyebrow | escape }}</span>
         {%- endif -%}
-        <h1 class="ptbg__title">{{ section.settings.heading | default: '26 tire &amp; wheel brands stocked in Calgary' }}</h1>
+        <h1 class="ptbg__title">{{ section.settings.heading | default: '60+ tire brands stocked in Calgary' }}</h1>
       </div>
       <div class="ptbg__hero-right">
         {%- if section.settings.tldr != blank -%}
@@ -49,7 +49,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
           <a href="/pages/booking" class="ptbg__hero-cta ptbg__hero-cta--secondary">
-            Book installation
+            Request installation
           </a>
           {%- assign hero_phone = section.settings.cta_phone | default: '(403) 452-4283' -%}
           {%- assign hero_phone_clean = hero_phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
@@ -59,18 +59,24 @@
     </header>
 
     {%- comment -%} Stats strip — 4 GEO-friendly numbers {%- endcomment -%}
+    {%- comment -%} Fallback review figures from snippets/pt-reviews.liquid (single source of truth). {%- endcomment -%}
+    {%- capture ptbg_rev_plus %}{% render 'pt-reviews', field: 'count_plus' %}{% endcapture -%}
+    {%- assign ptbg_rev_plus = ptbg_rev_plus | strip -%}
+    {%- capture ptbg_rev_rating %}{% render 'pt-reviews', field: 'rating' %}{% endcapture -%}
+    {%- assign ptbg_rev_rating = ptbg_rev_rating | strip -%}
+    {%- capture ptbg_stat3_default -%}From {{ ptbg_rev_plus }} Google reviews{%- endcapture -%}
     <div class="ptbg__stats" data-reveal>
       <div class="ptbg__stat">
         <span class="ptbg__stat-value">{{ section.settings.stat_1_value | default: '60+' | escape }}</span>
-        <span class="ptbg__stat-label">{{ section.settings.stat_1_label | default: 'Tire & wheel brands stocked' | escape }}</span>
+        <span class="ptbg__stat-label">{{ section.settings.stat_1_label | default: 'Tire brands stocked' | escape }}</span>
       </div>
       <div class="ptbg__stat">
-        <span class="ptbg__stat-value">{{ section.settings.stat_2_value | default: '3,923' | escape }}</span>
-        <span class="ptbg__stat-label">{{ section.settings.stat_2_label | default: 'Active SKUs in inventory' | escape }}</span>
+        <span class="ptbg__stat-value">{{ section.settings.stat_2_value | default: '2' | escape }}</span>
+        <span class="ptbg__stat-label">{{ section.settings.stat_2_label | default: 'Calgary shops: SW and NE' | escape }}</span>
       </div>
       <div class="ptbg__stat">
-        <span class="ptbg__stat-value">{{ section.settings.stat_3_value | default: '4.9' | escape }}<span class="ptbg__stat-suffix">★</span></span>
-        <span class="ptbg__stat-label">{{ section.settings.stat_3_label | default: 'From 562+ Google reviews' | escape }}</span>
+        <span class="ptbg__stat-value">{{ section.settings.stat_3_value | default: ptbg_rev_rating | escape }}<span class="ptbg__stat-suffix">★</span></span>
+        <span class="ptbg__stat-label">{{ section.settings.stat_3_label | default: ptbg_stat3_default | escape }}</span>
       </div>
       <div class="ptbg__stat">
         <span class="ptbg__stat-value">{{ section.settings.stat_4_value | default: 'Same-day' | escape }}</span>
@@ -82,7 +88,7 @@
     <div class="ptbg__group-head ptbg__group-head--center" data-reveal>
       <span class="ptbg__group-eyebrow">Built for Calgary</span>
       <h2 class="ptbg__group-title">Find tires by what you drive in</h2>
-      <p class="ptbg__group-body ptbg__group-body--center">Calgary asks more from tires than almost any city in Canada. Chinooks swing temps 20°C in an afternoon. The October winter-tire deadline collides with potholes that show up by April. Pick the use-case below, or scroll for all 26 brands.</p>
+      <p class="ptbg__group-body ptbg__group-body--center">Calgary asks more from tires than almost any city in Canada. Chinooks swing temps 20°C in an afternoon. The October winter-tire deadline collides with potholes that show up by April. Pick the use-case below, or scroll for the brands we stock deepest.</p>
     </div>
     <div class="ptbg__context ptbg__context--four" data-reveal>
       <a href="/collections/winter-tires" class="ptbg__ctx-card ptbg__ctx-card--link">
@@ -94,7 +100,7 @@
       <a href="/collections/all-weather-tires" class="ptbg__ctx-card ptbg__ctx-card--link">
         <span class="ptbg__ctx-badge ptbg__ctx-badge--allweather">All-weather</span>
         <h3 class="ptbg__ctx-title">One tire, all year</h3>
-        <p class="ptbg__ctx-body">Michelin CrossClimate2 and other 3PMSF all-weather tires that meet Alberta's winter-tire law — no swap twice a year.</p>
+        <p class="ptbg__ctx-body">Michelin CrossClimate2 and other 3PMSF all-weather tires, winter-rated for Calgary — no swap twice a year.</p>
         <span class="ptbg__ctx-link">Shop all-weather<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
       </a>
       <a href="/collections/all-terrain-tires" class="ptbg__ctx-card ptbg__ctx-card--link">
@@ -503,7 +509,7 @@
       <div class="ptbg__cta-buttons">
         <a href="{{ section.settings.cta_primary_link | default: '/pages/booking' }}" class="ptbg__cta-btn ptbg__cta-btn--primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-          {{ section.settings.cta_primary_label | default: 'Book installation' | escape }}
+          {{ section.settings.cta_primary_label | default: 'Request installation' | escape }}
         </a>
         {%- assign cta_phone_clean = section.settings.cta_phone | default: '(403) 452-4283' | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
         <a href="tel:+1{{ cta_phone_clean }}" class="ptbg__cta-btn ptbg__cta-btn--secondary">
@@ -585,39 +591,8 @@
   {
     "@context": "https://schema.org",
     "@graph": [
+      {%- comment -%} The #business node is emitted site-wide by schema-local-business (no self-serving rating). {%- endcomment -%}
       {
-        "@type": "AutoPartsStore",
-        "@id": "{{ shop.url }}/#business",
-        "name": "Prince Tires",
-        "url": "{{ shop.url }}",
-        "telephone": "+1-403-452-4283",
-        "priceRange": "$$",
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": "111 42 Ave SW",
-          "addressLocality": "Calgary",
-          "addressRegion": "AB",
-          "postalCode": "T2G 0A4",
-          "addressCountry": "CA"
-        },
-        "openingHoursSpecification": [
-          { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Saturday"], "opens": "{% render 'pt-nap', field: 'hours_mon_sat_open' %}", "closes": "{% render 'pt-nap', field: 'hours_mon_sat_close' %}" },
-          { "@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "{% render 'pt-nap', field: 'hours_fri_open' %}", "closes": "{% render 'pt-nap', field: 'hours_fri_close' %}" },
-          { "@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "{% render 'pt-nap', field: 'hours_fri_reopen' %}", "closes": "{% render 'pt-nap', field: 'hours_fri_final_close' %}" },
-          { "@type": "OpeningHoursSpecification", "dayOfWeek": "Sunday", "opens": "{% render 'pt-nap', field: 'hours_sun_open' %}", "closes": "{% render 'pt-nap', field: 'hours_sun_close' %}" }
-        ],
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "{{ section.settings.aggregate_rating | default: '4.9' }}",
-          "reviewCount": "{{ section.settings.review_count | default: '562' }}",
-          "bestRating": "5",
-          "worstRating": "1"
-        }
-      }
-      {%- if faq_count > 0 -%}
-      ,{ "@type": "FAQPage", "mainEntity": [ {{ faq_questions_json }} ] }
-      {%- endif -%}
-      ,{
         "@type": "ItemList",
         "@id": "{{ shop.url }}/pages/brands#brands-list",
         "name": "Tire and wheel brands stocked at Prince Tires Calgary",
@@ -625,6 +600,9 @@
         "itemListOrder": "https://schema.org/ItemListOrderAscending",
         "itemListElement": [ {{ brand_list_json }} ]
       }
+      {%- if faq_count > 0 -%}
+      ,{ "@type": "FAQPage", "mainEntity": [ {{ faq_questions_json }} ] }
+      {%- endif -%}
     ]
   }
   </script>
@@ -1682,19 +1660,19 @@
       "type": "text",
       "id": "eyebrow",
       "label": "Eyebrow",
-      "default": "60+ trusted brands in stock"
+      "default": "60+ tire brands in stock"
     },
     {
       "type": "text",
       "id": "heading",
       "label": "Heading (H1)",
-      "default": "26 tire & wheel brands stocked in Calgary"
+      "default": "60+ tire brands stocked in Calgary"
     },
     {
       "type": "textarea",
       "id": "tldr",
       "label": "TL;DR / direct answer (first 2 sentences for GEO)",
-      "default": "Prince Tires stocks over 60 tire and wheel brands at our 111 42 Ave SW Calgary shop — from premium Michelin and Bridgestone down to value picks like Radar and Rovelo. Price-match guarantee, same-day installation, 4.9★ from 562+ Google reviews."
+      "default": "Prince Tires stocks 60+ tire brands, plus wheels, at our 111 42 Ave SW Calgary shop — from premium Michelin and Bridgestone down to value picks like Radar and Rovelo. Price match with local independent shops, same-day installation, 4.9★ from 750+ Google reviews."
     },
     {
       "type": "textarea",
@@ -1718,11 +1696,11 @@
       "content": "Hero stats (4 tiles)"
     },
     { "type": "text", "id": "stat_1_value", "label": "Stat 1 value", "default": "60+" },
-    { "type": "text", "id": "stat_1_label", "label": "Stat 1 label", "default": "Tire & wheel brands stocked" },
-    { "type": "text", "id": "stat_2_value", "label": "Stat 2 value", "default": "3,923" },
-    { "type": "text", "id": "stat_2_label", "label": "Stat 2 label", "default": "Active SKUs in inventory" },
+    { "type": "text", "id": "stat_1_label", "label": "Stat 1 label", "default": "Tire brands stocked" },
+    { "type": "text", "id": "stat_2_value", "label": "Stat 2 value", "default": "2" },
+    { "type": "text", "id": "stat_2_label", "label": "Stat 2 label", "default": "Calgary shops: SW and NE" },
     { "type": "text", "id": "stat_3_value", "label": "Stat 3 value", "default": "4.9" },
-    { "type": "text", "id": "stat_3_label", "label": "Stat 3 label", "default": "From 562+ Google reviews" },
+    { "type": "text", "id": "stat_3_label", "label": "Stat 3 label", "default": "From 750+ Google reviews" },
     { "type": "text", "id": "stat_4_value", "label": "Stat 4 value", "default": "Same-day" },
     { "type": "text", "id": "stat_4_label", "label": "Stat 4 label", "default": "Installation in most cases" },
     {
@@ -1730,29 +1708,29 @@
       "content": "Schema / LocalBusiness"
     },
     { "type": "text", "id": "aggregate_rating", "label": "Aggregate rating", "default": "4.9" },
-    { "type": "text", "id": "review_count", "label": "Review count", "default": "562" },
+    { "type": "text", "id": "review_count", "label": "Review count", "default": "648" },
     {
       "type": "header",
       "content": "FAQ (up to 12 — emitted as FAQPage JSON-LD)"
     },
     { "type": "text",     "id": "faq_1_q", "label": "Q1", "default": "What tire brands does Prince Tires carry in Calgary?" },
-    { "type": "textarea", "id": "faq_1_a", "label": "A1", "default": "We stock 26 tire and wheel brands at our 111 42 Ave SW Calgary location. Top sellers include Michelin, Bridgestone, BFGoodrich, Toyo, Yokohama, Mickey Thompson, Continental, Cooper, Firestone, Kumho, and General Tire. Value lines include Radar, Rovelo, Tesche, and Cargomax." },
+    { "type": "textarea", "id": "faq_1_a", "label": "A1", "default": "We stock 60+ tire brands, plus wheels, at our 111 42 Ave SW Calgary location. Top sellers include Michelin, Bridgestone, BFGoodrich, Toyo, Yokohama, Mickey Thompson, Continental, Cooper, Firestone, Kumho, and General Tire. Value lines include Radar, Rovelo, Tesche, and Cargomax." },
     { "type": "text",     "id": "faq_2_q", "label": "Q2", "default": "Do you carry budget tire brands?" },
     { "type": "textarea", "id": "faq_2_a", "label": "A2", "default": "Yes. Radar, Rovelo, Tesche, and Cargomax cover the under-$150-per-tire range in common sizes. Every budget tire we install passes the same balance, torque, and TPMS reset as a premium tire — we don't cut corners based on what you paid." },
-    { "type": "text",     "id": "faq_3_q", "label": "Q3", "default": "Do you price-match other Calgary tire shops?" },
-    { "type": "textarea", "id": "faq_3_a", "label": "A3", "default": "Yes. Show us a written quote on the same tire from another Calgary tire shop and we will match it. The match applies to in-stock equivalents; out-of-stock or special orders are handled on a case-by-case basis." },
+    { "type": "text",     "id": "faq_3_q", "label": "Q3", "default": "Do you price-match local independent tire shops?" },
+    { "type": "textarea", "id": "faq_3_a", "label": "A3", "default": "Yes. Show us a written quote on the same tire from a local independent Calgary tire shop and we will match it. The match applies to in-stock equivalents; out-of-stock or special orders are handled on a case-by-case basis." },
     { "type": "text",     "id": "faq_4_q", "label": "Q4", "default": "Are all the tires you list actually in stock?" },
     { "type": "textarea" ,"id": "faq_4_a", "label": "A4", "default": "Most sizes in our top brands are in stock at 111 42 Ave SW. If a tire is on order, we will tell you up front and quote a realistic ETA — usually next business day from our Calgary supplier, or up to 5 days for special-order imports." },
     { "type": "text",     "id": "faq_5_q", "label": "Q5", "default": "Can I get same-day installation in Calgary?" },
     { "type": "textarea", "id": "faq_5_a", "label": "A5", "default": "Yes for most stocked sizes if you book before midday. Bigger jobs (3/4-ton trucks, duallies, trailers) need a 60-minute slot — book online or call (403) 452-4283 to confirm we have a bay free." },
-    { "type": "text",     "id": "faq_6_q", "label": "Q6", "default": "Do you carry winter-rated 3PMSF tires for Alberta's winter-tire law?" },
-    { "type": "textarea", "id": "faq_6_a", "label": "A6", "default": "Yes. Every winter and all-weather tire we sell carries the 3PMSF (three-peak mountain snowflake) certification required by Alberta and BC winter-tire laws. Highway 93 and Trans-Canada through Banff require 3PMSF or chains from October 1 through April 30." },
+    { "type": "text",     "id": "faq_6_q", "label": "Q6", "default": "Do you carry winter-rated 3PMSF tires for Calgary winters and BC mountain highways?" },
+    { "type": "textarea", "id": "faq_6_a", "label": "A6", "default": "Yes. Every winter and all-weather tire we sell carries the 3PMSF (three-peak mountain snowflake) symbol, the winter rating to look for in Calgary. Alberta has no winter-tire law, but BC requires winter-rated tires on most highways, including Hwy 1 and Hwy 93 west of the Alberta border, Oct 1–Apr 30." },
     { "type": "text",     "id": "faq_7_q", "label": "Q7", "default": "Which tire brand is best for Calgary winters?" },
-    { "type": "textarea", "id": "faq_7_a", "label": "A7", "default": "For dedicated winter tires, Michelin X-Ice Snow and Bridgestone Blizzak WS90 are our two most-installed in Calgary — both stay flexible below -20°C. For one-tire-all-year, Michelin CrossClimate2 carries the 3PMSF snowflake and meets Alberta's winter-tire law. BFGoodrich KO3 is the go-to for trucks and SUVs running gravel or oilfield roads through winter." },
-    { "type": "text",     "id": "faq_8_q", "label": "Q8", "default": "What is the cheapest 3PMSF-rated tire you stock?" },
+    { "type": "textarea", "id": "faq_7_a", "label": "A7", "default": "For dedicated winter tires, Michelin X-Ice Snow and Bridgestone Blizzak WS90 are our two most-installed in Calgary — both stay flexible below -20°C. For one-tire-all-year, Michelin CrossClimate2 carries the 3PMSF snowflake, so it is winter-rated for Calgary driving. BFGoodrich KO3 is the go-to for trucks and SUVs running gravel or oilfield roads through winter." },
+    { "type": "text",     "id": "faq_8_q", "label": "Q8", "default": "What is the lowest-priced 3PMSF-rated tire you stock?" },
     { "type": "textarea", "id": "faq_8_a", "label": "A8", "default": "In common 16\"–18\" passenger sizes, Rotalla and Haida winter lines start under $130 per tire and carry the 3PMSF mountain-snowflake mark. Radar and Suretrac sit slightly above that price band. Every tire on the floor — premium or budget — gets the same install, balance, torque, and TPMS reset." },
-    { "type": "text",     "id": "faq_9_q", "label": "Q9", "default": "Does Prince Tires sell Costco's Kirkland Signature tires?" },
-    { "type": "textarea", "id": "faq_9_a", "label": "A9", "default": "No — Kirkland Signature tires are exclusive to Costco warehouses. We stock the same brands that supply Kirkland (Michelin, BFGoodrich, and others) and price-match against Costco's published install-included pricing on equivalent SKUs. Show us the Costco quote and we will match." },
+    { "type": "text",     "id": "faq_9_q", "label": "Q9", "default": "Do you price-match the big-box chains?" },
+    { "type": "textarea", "id": "faq_9_a", "label": "A9", "default": "No — we price match local independent Calgary tire shops only, not big-box chains or online stores. Bring a written quote from a local independent shop on the same tire and we will match it. Special orders are handled case by case." },
     { "type": "text",     "id": "faq_10_q", "label": "Q10", "default": "Do you stock run-flat tires?" },
     { "type": "textarea", "id": "faq_10_a", "label": "A10", "default": "Yes for common BMW, Mini, and Lexus run-flat sizes — typically Bridgestone, Michelin, and Continental run-flats. Less-common sizes are usually next-day from our Calgary supplier. Call (403) 452-4283 with your size and we will confirm availability before you come in." },
     { "type": "text",     "id": "faq_11_q", "label": "Q11", "default": "Can you source a tire brand or size you don't currently stock?" },
@@ -1765,7 +1743,7 @@
     },
     { "type": "text",     "id": "cta_heading",     "label": "CTA heading", "default": "Don't see your brand?" },
     { "type": "textarea", "id": "cta_description", "label": "CTA description", "default": "Tell us your year, make, and tire size and we will source it. Same-day on most stocked sizes, two business days on special orders." },
-    { "type": "text",     "id": "cta_primary_label", "label": "Primary button label", "default": "Book installation" },
+    { "type": "text",     "id": "cta_primary_label", "label": "Primary button label", "default": "Request installation" },
     { "type": "url",      "id": "cta_primary_link",  "label": "Primary button link", "info": "Defaults to /pages/booking if left blank." },
     { "type": "text",     "id": "cta_phone",         "label": "Phone number", "default": "(403) 452-4283" }
   ],

@@ -25,7 +25,19 @@
           endif
         endif
       endif
+      # Same-title duplicate products (one per supplier feed) point Google at the
+      # main copy via custom.canonical_handle. Both stay purchasable.
+      if request.page_type == 'product' and product.metafields.custom.canonical_handle != blank
+        assign pt_canonical = shop.url | append: '/products/' | append: product.metafields.custom.canonical_handle
+      endif
     -%}
+    {%- comment -%}
+      Google review figures for the meta descriptions below. Single source of
+      truth is snippets/pt-reviews.liquid — these strings are what Google shows
+      in search results, so they must never drift.
+    {%- endcomment -%}
+    {%- capture pt_reviews_phrase %}{% render 'pt-reviews', field: 'phrase' %}{% endcapture -%}
+    {%- assign pt_reviews_phrase = pt_reviews_phrase | strip_newlines | strip -%}
     <link rel="canonical" href="{{ pt_canonical }}">
     {%- if pt_vendors_noindex -%}
       <meta name="robots" content="noindex, follow">
@@ -80,7 +92,71 @@
       1) /pages/brand-{handle} → "{Brand} Tires in Calgary | Prince Tires"
       2) /pages/brands → "Tire & Wheel Brands in Calgary | Prince Tires"
       3) Default Shopify behaviour (page_title + shop name)
+      Product pages with a blank SEO title (and every product page's blank or
+      "Brand: ..." sync-text meta description) get a built fallback, see below.
     {%- endcomment -%}
+    {%- comment -%}
+      Product SEO fallback (2026-11-02). Only on product pages, and only when
+      the admin SEO field is blank, so hand-written SEO titles/descriptions win.
+      Clean name = product title minus "[D]" and minus parenthesised supplier
+      codes (4+ digits, no spaces, no "/": "(9-34623)", "(69077)"; "(AS-8)",
+      "(IG)", "(P)" and load ranges like "(1610S/1430D)" stay) and minus
+      " Special Order - No Returns", spaces collapsed, with the vendor in front
+      unless the title already names it or the vendor is the shop itself or a
+      placeholder/house vendor ("Nonspecific", "Prince").
+    {%- endcomment -%}
+    {%- liquid
+      assign pt_prod_title = ''
+      assign pt_prod_desc = ''
+      if request.page_type == 'product'
+        assign pt_title_raw = product.title | remove: '[D]' | remove: ' Special Order - No Returns'
+        assign pt_parts = pt_title_raw | split: '('
+        assign pt_clean = pt_parts.first
+        for pt_part in pt_parts offset: 1
+          assign pt_keep = true
+          if pt_part contains ')'
+            assign pt_inner = pt_part | split: ')' | first
+            assign pt_inner_nodigits = pt_inner | remove: '0' | remove: '1' | remove: '2' | remove: '3' | remove: '4' | remove: '5' | remove: '6' | remove: '7' | remove: '8' | remove: '9'
+            assign pt_digit_count = pt_inner.size | minus: pt_inner_nodigits.size
+            if pt_digit_count >= 4
+              unless pt_inner contains ' ' or pt_inner contains '/'
+                assign pt_keep = false
+              endunless
+            endif
+          endif
+          if pt_keep
+            assign pt_clean = pt_clean | append: '(' | append: pt_part
+          else
+            assign pt_after = pt_part | remove_first: pt_inner | remove_first: ')'
+            assign pt_clean = pt_clean | append: ' ' | append: pt_after
+          endif
+        endfor
+        assign pt_clean = pt_clean | split: ' ' | join: ' '
+
+        assign pt_name = pt_clean
+        assign pt_vendor = product.vendor | strip
+        if pt_vendor != blank
+          assign pt_vendor_d = pt_vendor | downcase
+          assign pt_clean_d = pt_clean | downcase
+          assign pt_shop_d = shop.name | downcase
+          unless pt_clean_d contains pt_vendor_d or pt_vendor_d == pt_shop_d or pt_vendor_d == 'nonspecific' or pt_vendor_d == 'prince'
+            assign pt_name = pt_vendor | append: ' ' | append: pt_clean
+          endunless
+        endif
+
+        if product.metafields.global.title_tag.value == blank
+          assign pt_prod_title = pt_name | append: ' | ' | append: shop.name
+          if pt_prod_title.size > 70
+            assign pt_prod_title = pt_name
+          endif
+        endif
+
+        assign pt_desc_head = page_description | strip | slice: 0, 6
+        if product.metafields.global.description_tag.value == blank or pt_desc_head == 'Brand:'
+          assign pt_prod_desc = pt_name | append: ' in Calgary. Installed at our SW & NE shops. We price match local independent shops. Prices before tax.'
+        endif
+      endif
+    -%}
     <title>
       {%- if page.handle contains 'brand-' -%}
         {%- assign t_slug = page.handle | remove_first: 'brand-' -%}
@@ -95,6 +171,8 @@
         Tire &amp; Wheel Brands in Calgary | {{ shop.name }}
       {%- elsif page.handle == 'about' -%}
         About Prince Tires — Calgary's Trusted Tire Shop
+      {%- elsif pt_prod_title != blank -%}
+        {{- pt_prod_title | escape -}}
       {%- else -%}
         {{- page_title -}}
         {%- if current_tags %} &ndash; tagged "{{ current_tags | join: ', ' }}"{% endif -%}
@@ -109,11 +187,15 @@
       2) /pages/brands hub — hardcoded GEO/AEO snippet
       3) /pages/brand-{handle} — auto-generated per brand
       4) Otherwise omit (Shopify will fall back to shop description)
+      Product pages: the built fallback (pt_prod_desc, set above the <title>)
+      replaces a blank or "Brand: ..." description.
     {%- endcomment -%}
-    {%- if page_description != blank -%}
+    {%- if pt_prod_desc != blank -%}
+      <meta name="description" content="{{ pt_prod_desc | escape }}">
+    {%- elsif page_description != blank -%}
       <meta name="description" content="{{ page_description | escape }}">
     {%- elsif page.handle == 'brands' -%}
-      <meta name="description" content="Shop 26 tire and wheel brands at Prince Tires Calgary — Michelin, Bridgestone, BFGoodrich, Toyo, plus value picks like Radar and Tesche. Same-day installation, price-match guarantee, 4.9 stars from 562+ Google reviews. 111 42 Ave SW Calgary.">
+      <meta name="description" content="Shop 60+ tire brands, plus wheels, at Prince Tires Calgary — Michelin, Bridgestone, BFGoodrich, Toyo, plus value picks like Radar and Tesche. Same-day installation, price match with local independent shops, {{ pt_reviews_phrase | escape }}. 111 42 Ave SW Calgary.">
     {%- elsif page.handle contains 'brand-' -%}
       {%- assign brand_slug = page.handle | remove_first: 'brand-' -%}
       {%- assign brand_name = brand_slug | replace: '-', ' ' | capitalize -%}
@@ -122,9 +204,9 @@
       {%- if brand_slug == 'xf-off-road' -%}{%- assign brand_name = 'XF Off-Road' -%}{%- endif -%}
       {%- if brand_slug == 'envy' -%}{%- assign brand_name = 'ENVY' -%}{%- endif -%}
       {%- if brand_slug == 'rtx' -%}{%- assign brand_name = 'RTX' -%}{%- endif -%}
-      <meta name="description" content="Shop {{ brand_name }} tires in Calgary at Prince Tires. In-stock all-season, winter, and all-terrain options. Same-day installation in most cases, price-match guarantee, 4.9 stars from 562+ Google reviews. 111 42 Ave SW Calgary.">
+      <meta name="description" content="Shop {{ brand_name }} tires in Calgary at Prince Tires. In-stock all-season, winter, and all-terrain options. Same-day installation in most cases, price match with local independent shops, {{ pt_reviews_phrase | escape }}. 111 42 Ave SW Calgary.">
     {%- elsif page.handle == 'about' -%}
-      <meta name="description" content="Family-owned Calgary tire shop at 111 42 Ave SW. Same-day installation, price-match guarantee, 4.9 stars from 562+ Google reviews. Serving NE/NW/SE/SW Calgary plus Airdrie, Cochrane, Okotoks, and Chestermere with 26 tire and wheel brands in stock.">
+      <meta name="description" content="Family-owned Calgary tire shop at 111 42 Ave SW. Same-day installation, price match with local independent shops, {{ pt_reviews_phrase | escape }}. Serving all of Calgary from our SW and NE shops, with 60+ tire brands in stock, plus wheels.">
     {%- endif -%}
 
     {%- comment -%}
@@ -156,6 +238,7 @@
     {%- else -%}
       <script src="{{ 'pt-booking-core.js' | asset_url }}" defer="defer"></script>
     {%- endif -%}
+    {%- render 'pt-rim-route' -%}
     {%- render 'pt-analytics' -%}
 
     <script src="{{ 'constants.js' | asset_url }}" defer="defer"></script>
@@ -169,6 +252,49 @@
     {%- if settings.animations_reveal_on_scroll -%}
       <script src="{{ 'animations.js' | asset_url }}" defer="defer"></script>
     {%- endif -%}
+
+    {%- comment -%}
+      pt-motion — premium scroll choreography (reveals, layered hero, parallax).
+      The inline gate runs before first paint so reveal targets can start hidden
+      without a flash; it stays off for reduced-motion visitors. In the theme
+      editor pt-motion.js shows the layers but skips parallax (see its boot()).
+    {%- endcomment -%}
+    <script>
+      (function(){try{
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        document.documentElement.classList.add('pt-motion');
+      }catch(e){}})();
+    </script>
+    {{ 'pt-motion.css' | asset_url | stylesheet_tag }}
+    {%- comment -%} Hero-only styles: product pages have no hero (page-speed 2026-11-21). {%- endcomment -%}
+    {%- unless request.page_type == 'product' -%}
+      {{ 'pt-hero-scrim.css' | asset_url | stylesheet_tag }}
+    {%- endunless -%}
+    <script src="{{ 'pt-motion.js' | asset_url }}" defer="defer"></script>
+
+    {%- comment -%}
+      pt-hero-scene — the seasonal scene behind the hero: sky and road plates,
+      tire cut-outs, snow, season pill and live Calgary conditions. It dresses
+      sections/hero-smart-search from the outside; that section, its markup and
+      its search engine are untouched. Without these two files the hero renders
+      exactly as it did before.
+    {%- endcomment -%}
+    {%- unless request.page_type == 'product' -%}
+    {{ 'pt-hero-scene.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'pt-hero-scene.js' | asset_url }}" defer="defer"></script>
+    {%- endunless -%}
+
+    {%- comment -%}
+      pt-type — the type scale. This theme sets `html { font-size: 62.5% }`
+      below, so 1rem = 10px, but most section stylesheets were written as if
+      1rem = 16px: .ptp__description says 1.05rem meaning 16.8px and renders
+      at 10.5px. 200 of 378 font-size declarations render under 12px as a
+      result. pt-type.css scales those back to what their authors intended
+      and snaps them to a five-step scale. Display type and every clamp()
+      are left alone — those were written correctly for the 10px root.
+      Deleting this one line reverts the whole thing.
+    {%- endcomment -%}
+    {{ 'pt-type.css' | asset_url | stylesheet_tag }}
 
     {{ content_for_header }}
 
@@ -199,6 +325,7 @@
     </style>
 
     {{ 'component-pt-button.css' | asset_url | stylesheet_tag }}
+    {{ 'pt-rd.css' | asset_url | stylesheet_tag }}
 
     {%- comment -%} Shopify font preloads removed — using Google Fonts (Inter + Rubik) {%- endcomment -%}
 
@@ -241,7 +368,7 @@
     {% sections 'header-group' %}
 
     <main id="MainContent" class="content-for-layout focus-none" role="main" tabindex="-1">
-      {%- render 'breadcrumbs' -%}
+      {%- unless template.name == 'product' -%}{%- render 'breadcrumbs' -%}{%- endunless -%}
       {{ content_for_layout }}
     </main>
 
@@ -305,8 +432,7 @@
       <script src="{{ 'cart-drawer.js' | asset_url }}" defer="defer"></script>
     {%- endif -%}
 
-    {%- render 'pt-booking-modal' -%}
-    {%- render 'pt-service-booking-modal' -%}
+    {%- render 'pt-book' -%}
     {%- section 'pt-sticky-book-bar' -%}
     {%- render 'pt-header-search-enhance' -%}
     {%- render 'pt-pwa-install' -%}

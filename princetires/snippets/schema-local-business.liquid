@@ -16,8 +16,9 @@
   - No self-serving aggregateRating HERE: Google does not allow a business to
     mark up its own site-wide rating on its LocalBusiness entity. The rating is
     emitted separately by the testimonials section and bound via @id.
-  - NE geo coordinates are intentionally omitted until confirmed against the
-    live Google Business Profile — wrong coordinates are worse than none.
+  - NE geo comes from pt-nap (OpenStreetMap address point for 3928 Edmonton
+    Trail NE, looked up 2026-11-02). hasMap is pt-nap's maps_url per shop.
+  - No aggregateRating or Review markup on either node (self-serving).
 
   @example
   {% render 'schema-local-business' %}
@@ -57,6 +58,7 @@
 {%- capture sw_phone %}{% render 'pt-nap', location: 'sw', field: 'phone' %}{% endcapture -%}
 {%- capture sw_lat %}{% render 'pt-nap', location: 'sw', field: 'lat' %}{% endcapture -%}
 {%- capture sw_lng %}{% render 'pt-nap', location: 'sw', field: 'lng' %}{% endcapture -%}
+{%- capture sw_map %}{% render 'pt-nap', location: 'sw', field: 'maps_url' %}{% endcapture -%}
 {%- capture sw_ms_open %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{% endcapture -%}
 {%- capture sw_ms_close %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{% endcapture -%}
 {%- capture sw_su_open %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{% endcapture -%}
@@ -75,6 +77,7 @@
 {%- capture ne_phone %}{% render 'pt-nap', location: 'ne', field: 'phone' %}{% endcapture -%}
 {%- capture ne_lat %}{% render 'pt-nap', location: 'ne', field: 'lat' %}{% endcapture -%}
 {%- capture ne_lng %}{% render 'pt-nap', location: 'ne', field: 'lng' %}{% endcapture -%}
+{%- capture ne_map %}{% render 'pt-nap', location: 'ne', field: 'maps_url' %}{% endcapture -%}
 {%- capture ne_ms_open %}{% render 'pt-nap', location: 'ne', field: 'hours_mon_sat_open' %}{% endcapture -%}
 {%- capture ne_ms_close %}{% render 'pt-nap', location: 'ne', field: 'hours_mon_sat_close' %}{% endcapture -%}
 {%- capture ne_su_open %}{% render 'pt-nap', location: 'ne', field: 'hours_sun_open' %}{% endcapture -%}
@@ -103,6 +106,7 @@
       "url": {{ business_url | json }},
       "branchCode": "sw",
       "telephone": {{ sw_phone | strip | json }},
+      "email": "info@princetires.ca",
       "description": {{ business_description | strip_html | json }},
       {%- if shop.brand.logo -%}
         "logo": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }},
@@ -123,6 +127,7 @@
           "longitude": {{ sw_lng | json }}
         },
       {%- endif -%}
+      "hasMap": {{ sw_map | strip | json }},
       "openingHoursSpecification": [
         {
           "@type": "OpeningHoursSpecification",
@@ -170,7 +175,7 @@
       "@id": {{ business_url | append: '/#business-ne' | json }},
       "name": {{ ne_name | strip | json }},
       "parentOrganization": { "@id": {{ business_url | append: '/#business' | json }} },
-      "url": {{ business_url | append: '/pages/locations' | json }},
+      "url": {{ business_url | append: '/pages/tire-shop-ne-calgary' | json }},
       "branchCode": "ne",
       "telephone": {{ ne_phone | strip | json }},
       {%- if shop.brand.logo -%}
@@ -191,6 +196,7 @@
           "longitude": {{ ne_lng | json }}
         },
       {%- endif -%}
+      "hasMap": {{ ne_map | strip | json }},
       "openingHoursSpecification": [
         {
           "@type": "OpeningHoursSpecification",

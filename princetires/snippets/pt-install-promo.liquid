@@ -1,0 +1,43 @@
+{%- comment -%}
+  Install promotion for one product (owner 2026-11-13: Haida $25/tire on a
+  sedan or SUV, tires bought from us). The staff app decides which listings are
+  on a promo and writes custom.install_promo (json) on them
+  (princetires-app src/lib/pricing/install-promo-sync.ts); this only reads it.
+
+  Outputs "per_tire|was_per_tire|label|style|id|vehicles" (dollars), or nothing:
+    - no metafield, a wheel, or the promo's end time has passed → nothing;
+    - the listing's install price today (custom.install_price, else $30) is
+      not the regular price the promo was written against (was_per_tire) →
+      nothing: the listing changed since the last sync (up to 24 h), and
+      /api/book would not give the promo on it, so never strike a wrong price.
+  style: "strike" (regular struck), "save" (the label + promo price) or
+  "plain" (owner 2026-11-14 "remove the banner, keep the price": the promo
+  price shown AS the install price — callers show no label, chip or strike).
+  Callers capture it and split on "|". Display only: the booking modal
+  re-checks /api/services, and /api/book prices the booking itself.
+
+  Usage: {% capture pt_ip %}{% render 'pt-install-promo', product: product, is_wheel: is_wheel %}{% endcapture %}
+{%- endcomment -%}
+{%- liquid
+  assign ip = product.metafields.custom.install_promo.value
+  if ip and ip.per_tire and is_wheel != true
+    assign ip_live = true
+    assign ip_listed_cents = product.metafields.custom.install_price.value | default: 30 | times: 100 | round
+    assign ip_was_cents = ip.was_per_tire | default: 0 | times: 100 | round
+    if ip_listed_cents != ip_was_cents
+      assign ip_live = false
+    endif
+    if ip.ends_at_epoch
+      assign now_epoch = 'now' | date: '%s' | plus: 0
+      if now_epoch > ip.ends_at_epoch
+        assign ip_live = false
+      endif
+    endif
+    if ip_live
+      assign ip_style = ip.style | default: 'save'
+      assign ip_label = ip.label | default: 'Install promo' | replace: '|', ' '
+      assign ip_vehicles = ip.vehicles | default: 'car or SUV' | replace: '|', ' '
+      echo ip.per_tire | append: '|' | append: ip.was_per_tire | append: '|' | append: ip_label | append: '|' | append: ip_style | append: '|' | append: ip.id | append: '|' | append: ip_vehicles
+    endif
+  endif
+-%}

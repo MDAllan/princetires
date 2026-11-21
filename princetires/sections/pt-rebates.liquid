@@ -95,8 +95,26 @@
         </div>
       </div>
     {%- else -%}
+      {%- comment -%}
+        Empty state is now editable (it used to be hardcoded and named three
+        brands). Keep it short and never promise an offer that isn't running.
+      {%- endcomment -%}
       <div class="ptr__empty">
-        <p>No active rebates right now — check back next season. New offers from Michelin, Bridgestone, BFGoodrich and other major brands typically launch every spring and fall.</p>
+        <p>{{ section.settings.empty_text }}</p>
+      </div>
+    {%- endif -%}
+
+    {%- comment -%}
+      Deals-page link renders in BOTH states. The deals page was live but
+      orphaned — nothing on the site linked to it, so neither customers nor
+      crawlers could reach it.
+    {%- endcomment -%}
+    {%- if section.settings.deals_url != blank -%}
+      <div class="ptr__deals-wrap">
+        <a class="ptr__deals-link" href="{{ section.settings.deals_url }}">
+          <span>{{ section.settings.deals_label | default: 'See all current tire deals' }}</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
       </div>
     {%- endif -%}
 
@@ -292,6 +310,32 @@
     margin-top: 0.4rem;
   }
 
+  /* ── Deals page link ── */
+  .ptr__deals-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.4rem;
+  }
+  .ptr__deals-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.9rem 1.7rem;
+    border-radius: 999px;
+    background: #F5820B;
+    color: #0a0a0a;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  .ptr__deals-link:hover {
+    background: #ff9420;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -12px rgba(245, 130, 11, 0.65);
+  }
+
   .ptr__disclaimer {
     font-family: 'Outfit', sans-serif;
     font-size: 0.85rem;
@@ -347,6 +391,7 @@
       scrollbar-width: thin;
     }
     .ptr__card { transition: none !important; }
+    .ptr__deals-link { transition: none !important; }
   }
 {% endstylesheet %}
 
@@ -382,6 +427,33 @@
     },
     {
       "type": "textarea",
+      "id": "empty_text",
+      "label": "Empty-state message",
+      "info": "Shown only when every rebate has expired. Don't name specific brands here — it reads as a promise of offers you may not carry next cycle.",
+      "default": "No manufacturer rebates are running right now. Ask us in store or check our deals page — clearance pricing and seasonal offers run year-round."
+    },
+    {
+      "type": "header",
+      "content": "Deals page link"
+    },
+    {
+      "type": "url",
+      "id": "deals_url",
+      "label": "Deals page URL",
+      "info": "Point this at /pages/tire-deals-calgary. The link shows whether or not rebates are active, so the deals page is always reachable."
+    },
+    {
+      "type": "text",
+      "id": "deals_label",
+      "label": "Deals link label",
+      "default": "See all current tire deals"
+    },
+    {
+      "type": "header",
+      "content": "Fine print"
+    },
+    {
+      "type": "textarea",
       "id": "disclaimer",
       "label": "Disclaimer / fineprint",
       "default": "Rebate offers are issued by the tire manufacturer and subject to their terms, eligible product lists, and submission deadlines. Prince Tires sells the tires and helps with installation; we don't process the rebate — the manufacturer pays the prepaid card directly to you."
@@ -392,7 +464,7 @@
     },
     {
       "type": "paragraph",
-      "content": "Each rebate has a 'Valid until' date. The section automatically hides any rebate past that date — no manual cleanup needed. When all rebates are expired, the section shows a 'check back next season' message instead. You'll need to add new offers each rebate cycle (typically spring / fall)."
+      "content": "Each rebate has a 'Valid until' date. The section automatically hides any rebate past that date — no manual cleanup needed. When all rebates are expired, the section shows the empty-state message instead. You'll need to add new offers each rebate cycle (typically spring / fall)."
     }
   ],
   "blocks": [
@@ -404,8 +476,7 @@
         {
           "type": "text",
           "id": "brand",
-          "label": "Brand name",
-          "default": "Michelin"
+          "label": "Brand name"
         },
         {
           "type": "image_picker",
@@ -417,7 +488,7 @@
           "type": "text",
           "id": "amount",
           "label": "Rebate amount (number only, no $)",
-          "default": "100"
+          "info": "Copy the exact figure from the manufacturer's own offer sheet."
         },
         {
           "type": "text",
@@ -429,22 +500,19 @@
           "type": "text",
           "id": "eligibility",
           "label": "Eligibility line",
-          "info": "What tires qualify — keep it short, one line.",
-          "default": "Most passenger and light-truck Michelin tires."
+          "info": "What tires qualify — keep it short, one line."
         },
         {
           "type": "text",
           "id": "dates",
           "label": "Dates label (display text)",
-          "info": "Human-readable version shown on the card (e.g. 'Through June 29, 2026').",
-          "default": "Through June 29, 2026"
+          "info": "Human-readable version shown on the card (e.g. 'Through November 30, 2026')."
         },
         {
           "type": "text",
           "id": "valid_until",
           "label": "Valid until (YYYY-MM-DD)",
-          "info": "The actual expiry date — used to auto-hide this rebate once it expires. Leave blank to always show. Format: 2026-06-29.",
-          "default": "2026-06-29"
+          "info": "The actual expiry date — used to auto-hide this rebate once it expires. Leave blank to always show. Format: 2026-11-30."
         },
         {
           "type": "url",

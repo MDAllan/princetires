@@ -1,0 +1,45 @@
+{%- comment -%}
+  Prince Tires — collection filter upgrades (Nov 8, 2026):
+  1) every filter group starts collapsed (remembers what the shopper opened), active-count badge,
+     Price range made collapsible, Center bore moved under Bolt pattern on wheels;
+  2) phones: tap several filters, then one sticky "Show N tires" button (no reload per tap);
+  3) tire size box opens an iPhone-style Width / Aspect / Rim picker with only sizes we carry;
+  4) "Studs" filter group on tires (pt-filter-studs, rendered first so it is in place before 1-2 run).
+  Script split across pt-filter-ux-js1 / -js2 (Shopify upload size limit).
+{%- endcomment -%}
+{%- render 'pt-filter-studs' -%}
+<style>
+  .ptfx-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #dc2626; color: #fff;
+    font-size: 12px; font-weight: 600; margin-left: auto; margin-right: 8px; line-height: 1; }
+  .ptfx-bar { display: none; }
+  @media (max-width: 768px) {
+    .ptfx-bar { display: block; position: sticky; bottom: 0; z-index: 5; margin-top: 16px; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); background: #fff;
+      box-shadow: 0 -8px 16px rgba(255,255,255,.95); }
+    body:has(aside.ptg__sidebar.is-open) [data-open-filters] { display: none !important; }
+  }
+  .ptfx-apply { all: unset; box-sizing: border-box; display: block; width: 100%; text-align: center; padding: 16px; border-radius: 14px; background: #dc2626; color: #fff;
+    font-weight: 600; font-size: 16px; cursor: pointer; font-family: inherit; transition: transform .2s cubic-bezier(.2,.8,.2,1), background .2s; }
+  .ptfx-apply:active { transform: scale(.97); }
+  .ptfx-apply.is-zero { background: #9ca3af; }
+  .ptfx-sizebox .ptg__size-display-row { display: flex; align-items: center; gap: 8px; border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 6px 8px 6px 12px; cursor: pointer;
+    transition: border-color .2s; }
+  .ptfx-sizebox .ptg__size-display-row:hover { border-color: #dc2626; }
+  .ptfx-sizebox input { cursor: pointer; min-width: 0; flex: 1; }
+  .ptfx-change { all: unset; cursor: pointer; flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; background: #111; color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; font-family: inherit; }
+  .ptfx-sheet { height: auto !important; max-height: 88vh; }
+  .ptfx-body { padding: 4px 18px 22px; overflow: auto; }
+  .ptfx-big { text-align: center; font-size: 34px; font-weight: 700; letter-spacing: -.01em; margin: 2px 0 12px; color: #fff; }
+  .ptfx-heads { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; font-size: 12px; color: #98989f; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .ptw { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); height: 220px;
+    -webkit-mask-image: linear-gradient(transparent, #000 26%, #000 74%, transparent); mask-image: linear-gradient(transparent, #000 26%, #000 74%, transparent); }
+  .ptw__band { position: absolute; left: 0; right: 0; top: 88px; height: 44px; border-radius: 12px; background: rgba(255,255,255,.1); pointer-events: none; }
+  .ptw__col { height: 220px; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; position: relative; }
+  .ptw__col::-webkit-scrollbar { display: none; }
+  .ptw__pad { height: 88px; }
+  .ptw__item { height: 44px; line-height: 44px; text-align: center; font-size: 22px; color: #fff; opacity: .35; scroll-snap-align: center; cursor: pointer; user-select: none;
+    transition: opacity .15s, transform .15s; }
+  .ptw__item.is-sel { opacity: 1; font-weight: 600; transform: scale(1.08); }
+  .ptfx-note { text-align: center; color: #98989f; font-size: 13px; margin: 12px 0 14px; }
+</style>
+{%- render 'pt-filter-ux-js1' -%}
+{%- render 'pt-filter-ux-js2' -%}

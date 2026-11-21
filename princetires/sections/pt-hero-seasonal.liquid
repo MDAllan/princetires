@@ -1,0 +1,652 @@
+{% comment %}
+  Prince Tires — Seasonal Hero (pt-hero-seasonal)
+
+  One hero, five states. The state is resolved SERVER-SIDE in Liquid, so only
+  the active state's image is ever requested — no loading five backgrounds and
+  hiding four. Crawlers and AI assistants read the active message as real text.
+
+  Windows (auto mode, by MMDD):
+    preseason    Sep 1  - Oct 10   — "beat the rush", honest: winter isn't here yet
+    changeover   Oct 11 - Nov 30   — peak urgency, peak revenue
+    deep_winter  Dec 1  - Mar 10   — they already have winters on; damage/repair
+    spring       Mar 11 - Apr 30   — swap back + pothole season
+    summer       May 1  - Aug 31   — broaden: summer, truck, all-terrain, trailer
+
+  Calgary's first snow has landed in September and held off past Halloween, so
+  "Season override" lets you force a state the morning it dumps.
+
+  EVERY state's H1 contains both "Tires" and "Calgary" on purpose. The headline
+  changes with the season but the category and geography signal never does.
+
+  Never write alignment, tire storage, or mobile service into any state —
+  Prince Tires does not offer them.
+{% endcomment %}
+
+{%- liquid
+  assign mmdd = 'now' | date: '%m%d' | times: 1
+  assign mode = section.settings.season_mode | default: 'auto'
+
+  if mode == 'auto'
+    assign active_key = 'summer'
+    if mmdd >= 901 and mmdd <= 1010
+      assign active_key = 'preseason'
+    elsif mmdd >= 1011 and mmdd <= 1130
+      assign active_key = 'changeover'
+    elsif mmdd >= 1201 and mmdd <= 1231
+      assign active_key = 'deep_winter'
+    elsif mmdd >= 101 and mmdd <= 310
+      assign active_key = 'deep_winter'
+    elsif mmdd >= 311 and mmdd <= 430
+      assign active_key = 'spring'
+    endif
+  else
+    assign active_key = mode
+  endif
+
+  assign active = null
+  for block in section.blocks
+    if block.settings.season_key == active_key
+      assign active = block
+      break
+    endif
+  endfor
+  unless active
+    assign active = section.blocks.first
+  endunless
+
+  assign is_snowy = false
+  if active.settings.season_key == 'preseason' or active.settings.season_key == 'changeover' or active.settings.season_key == 'deep_winter'
+    assign is_snowy = true
+  endif
+  unless section.settings.enable_snow
+    assign is_snowy = false
+  endunless
+-%}
+
+{%- if active -%}
+<section class="psh psh--{{ active.settings.season_key }}" {{ active.shopify_attributes }}>
+
+  {%- comment -%} LAYER 1 — photographic base {%- endcomment -%}
+  <div class="psh__bg" aria-hidden="true">
+    {%- if active.settings.image != blank -%}
+      {{ active.settings.image
+         | image_url: width: 2400
+         | image_tag:
+             class: 'psh__img',
+             loading: 'eager',
+             fetchpriority: 'high',
+             widths: '750,1100,1500,1900,2400',
+             sizes: '100vw',
+             alt: '' }}
+    {%- endif -%}
+  </div>
+
+  {%- comment -%} LAYER 2 — tonal scrim: carries text legibility without flattening the photo {%- endcomment -%}
+  <div class="psh__scrim" aria-hidden="true"></div>
+
+  {%- comment -%} LAYER 3 — brand glow, anchored behind the headline {%- endcomment -%}
+  <div class="psh__glow" aria-hidden="true"></div>
+
+  {%- comment -%} LAYER 4 — weather, CSS only (no images, no JS, no requests) {%- endcomment -%}
+  {%- if is_snowy -%}
+    <div class="psh__snow psh__snow--far" aria-hidden="true"></div>
+    <div class="psh__snow psh__snow--mid" aria-hidden="true"></div>
+    <div class="psh__snow psh__snow--near" aria-hidden="true"></div>
+  {%- endif -%}
+
+  {%- comment -%} LAYER 5 — depth vignette {%- endcomment -%}
+  <div class="psh__vignette" aria-hidden="true"></div>
+
+  {%- comment -%} LAYER 6 — content {%- endcomment -%}
+  <div class="psh__inner">
+
+    {%- if active.settings.eyebrow != blank -%}
+      <p class="psh__eyebrow">
+        <span class="psh__pulse" aria-hidden="true"></span>
+        {{ active.settings.eyebrow | escape }}
+      </p>
+    {%- endif -%}
+
+    <h1 class="psh__headline">{{ active.settings.headline | escape }}</h1>
+
+    {%- if active.settings.subhead != blank -%}
+      <p class="psh__subhead">{{ active.settings.subhead | escape }}</p>
+    {%- endif -%}
+
+    {%- if section.settings.show_search -%}
+      <div class="psh__search">
+        {% render 'pt-tire-search' %}
+      </div>
+    {%- endif -%}
+
+    <div class="psh__actions">
+      {%- if active.settings.cta_label != blank -%}
+        <a class="psh__cta psh__cta--primary" href="{{ active.settings.cta_url | default: '/collections/tires' }}">
+          {{ active.settings.cta_label | escape }}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      {%- endif -%}
+      {%- if active.settings.cta2_label != blank -%}
+        <a class="psh__cta psh__cta--ghost" href="{{ active.settings.cta2_url | default: '/pages/booking' }}">
+          {{ active.settings.cta2_label | escape }}
+        </a>
+      {%- endif -%}
+    </div>
+
+    {%- comment -%}
+      Trust row. Reads from pt-nap so the phone numbers can never drift, and
+      the review count is a setting so it stays in step with the testimonials
+      section rather than being typed twice.
+    {%- endcomment -%}
+    {%- if section.settings.show_trust -%}
+      <ul class="psh__trust" role="list">
+        <li class="psh__trust-item">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          {%- comment -%} Fallback count from snippets/pt-reviews.liquid (single source of truth). {%- endcomment -%}
+          {%- capture psh_rev_default %}{% render 'pt-reviews', field: 'count' %}{% endcapture -%}
+          {%- assign psh_rev_default = psh_rev_default | strip -%}
+          {%- capture psh_rev_rating %}{% render 'pt-reviews', field: 'rating' %}{% endcapture -%}
+          {%- assign psh_rev_rating = psh_rev_rating | strip -%}
+          <span>{{ section.settings.rating | default: psh_rev_rating }} from {{ section.settings.review_count | default: psh_rev_default }}+ Google reviews</span>
+        </li>
+        <li class="psh__trust-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>Two Calgary shops — 42 Ave SW &amp; Edmonton Trail NE</span>
+        </li>
+        <li class="psh__trust-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+          <span>{{ section.settings.trust_third | default: 'Installed from $30 a tire' }}</span>
+        </li>
+      </ul>
+    {%- endif -%}
+
+  </div>
+</section>
+{%- endif -%}
+
+{% stylesheet %}
+.psh {
+  --psh-red:    #DC2626;
+  --psh-orange: #F5820B;
+  --psh-ink:    #ffffff;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: clamp(560px, 82vh, 820px);
+  display: flex;
+  align-items: center;
+  background: #050608;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* ── Layer 1: photo ── */
+.psh__bg { position: absolute; inset: 0; z-index: 0; }
+.psh__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 55%;
+  display: block;
+  transform: scale(1.06);
+  animation: psh-drift 26s ease-in-out infinite alternate;
+}
+@keyframes psh-drift {
+  from { transform: scale(1.06) translate3d(0, 0, 0); }
+  to   { transform: scale(1.12) translate3d(-1.2%, -1%, 0); }
+}
+
+/* ── Layer 2: scrim ── */
+.psh__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(100deg, rgba(5,6,8,0.93) 0%, rgba(5,6,8,0.78) 34%, rgba(5,6,8,0.30) 62%, rgba(5,6,8,0.12) 100%),
+    linear-gradient(to top, rgba(5,6,8,0.75) 0%, rgba(5,6,8,0) 45%);
+}
+
+/* ── Layer 3: brand glow ── */
+.psh__glow {
+  position: absolute;
+  z-index: 2;
+  left: -10%;
+  top: 18%;
+  width: 60%;
+  height: 70%;
+  background: radial-gradient(ellipse at center, rgba(220,38,38,0.20) 0%, rgba(220,38,38,0.07) 42%, transparent 70%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+.psh--summer .psh__glow,
+.psh--spring .psh__glow {
+  background: radial-gradient(ellipse at center, rgba(245,130,11,0.20) 0%, rgba(245,130,11,0.07) 42%, transparent 70%);
+}
+
+/* ── Layer 4: snow — three parallax planes, pure CSS ── */
+.psh__snow {
+  position: absolute;
+  inset: -20% 0 0 0;
+  z-index: 3;
+  pointer-events: none;
+  background-repeat: repeat;
+  will-change: transform;
+}
+.psh__snow--far {
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 10%, rgba(255,255,255,0.55) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 62% 34%, rgba(255,255,255,0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px   at 84% 12%, rgba(255,255,255,0.40) 50%, transparent 51%),
+    radial-gradient(1px 1px   at 37% 68%, rgba(255,255,255,0.40) 50%, transparent 51%);
+  background-size: 340px 340px;
+  animation: psh-fall 22s linear infinite;
+  opacity: 0.55;
+}
+.psh__snow--mid {
+  background-image:
+    radial-gradient(2px 2px at 25% 22%, rgba(255,255,255,0.70) 50%, transparent 51%),
+    radial-gradient(2px 2px at 72% 58%, rgba(255,255,255,0.60) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 48% 84%, rgba(255,255,255,0.55) 50%, transparent 51%);
+  background-size: 260px 260px;
+  animation: psh-fall 14s linear infinite;
+  opacity: 0.6;
+}
+.psh__snow--near {
+  background-image:
+    radial-gradient(3px 3px at 18% 44%, rgba(255,255,255,0.85) 50%, transparent 51%),
+    radial-gradient(2.5px 2.5px at 88% 24%, rgba(255,255,255,0.75) 50%, transparent 51%);
+  background-size: 420px 420px;
+  animation: psh-fall 9s linear infinite;
+  opacity: 0.5;
+  filter: blur(0.4px);
+}
+@keyframes psh-fall {
+  from { transform: translate3d(0, -20%, 0); }
+  to   { transform: translate3d(-40px, 20%, 0); }
+}
+
+/* ── Layer 5: vignette ── */
+.psh__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  box-shadow: inset 0 0 160px 40px rgba(0,0,0,0.55);
+}
+
+/* ── Layer 6: content ── */
+.psh__inner {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 6rem 2.4rem;
+  color: var(--psh-ink);
+}
+
+.psh__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 1.1rem;
+  padding: 0.5rem 1.05rem 0.5rem 0.85rem;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 999px;
+  font-size: 1.18rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.94);
+}
+.psh__pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--psh-red);
+  box-shadow: 0 0 0 0 rgba(220,38,38,0.7);
+  animation: psh-pulse 2.2s ease-out infinite;
+  flex-shrink: 0;
+}
+@keyframes psh-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.65); }
+  70%  { box-shadow: 0 0 0 9px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+
+.psh__headline {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(3.4rem, 6.4vw, 6.6rem);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: 0.005em;
+  margin: 0 0 1.2rem;
+  max-width: 19ch;
+  text-shadow: 0 2px 28px rgba(0,0,0,0.42);
+}
+
+.psh__subhead {
+  font-size: clamp(1.45rem, 1.9vw, 1.85rem);
+  font-weight: 300;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.86);
+  margin: 0 0 2.2rem;
+  max-width: 52ch;
+  text-shadow: 0 1px 14px rgba(0,0,0,0.4);
+}
+
+.psh__search {
+  max-width: 680px;
+  margin: 0 0 2rem;
+}
+
+.psh__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin-bottom: 2.6rem;
+}
+.psh__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 52px;
+  padding: 0 1.9rem;
+  border-radius: 8px;
+  font-size: 1.32rem;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.psh__cta--primary {
+  background: var(--psh-red);
+  color: #fff;
+  box-shadow: 0 10px 30px -10px rgba(220,38,38,0.75);
+}
+.psh__cta--primary:hover {
+  background: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px -12px rgba(220,38,38,0.85);
+}
+.psh__cta--primary svg { transition: transform 0.18s ease; }
+.psh__cta--primary:hover svg { transform: translateX(3px); }
+.psh__cta--ghost {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.26);
+  color: #fff;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.psh__cta--ghost:hover {
+  background: rgba(255,255,255,0.16);
+  transform: translateY(-2px);
+}
+
+.psh__trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 2.2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.psh__trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 1.22rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.78);
+}
+.psh__trust-item svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--psh-orange); }
+
+/* ── Responsive ── */
+@media (max-width: 989px) {
+  .psh { min-height: clamp(520px, 76svh, 700px); }
+  .psh__inner { padding: 4.5rem 2rem; }
+  .psh__scrim {
+    background:
+      linear-gradient(to top, rgba(5,6,8,0.94) 0%, rgba(5,6,8,0.70) 46%, rgba(5,6,8,0.34) 100%);
+  }
+  .psh__headline { max-width: 15ch; }
+}
+
+@media (max-width: 600px) {
+  .psh { min-height: auto; padding: 0; }
+  .psh__inner { padding: 3.6rem 1.6rem 3rem; }
+  .psh__headline {
+    font-size: clamp(2.9rem, 10.5vw, 4rem);
+    max-width: 13ch;
+    margin-bottom: 1rem;
+  }
+  .psh__subhead {
+    font-size: 1.35rem;
+    margin-bottom: 1.8rem;
+    max-width: 40ch;
+  }
+  .psh__eyebrow { font-size: 1.02rem; padding: 0.42rem 0.9rem 0.42rem 0.75rem; }
+  .psh__actions { gap: 0.7rem; margin-bottom: 2rem; }
+  .psh__cta { height: 48px; font-size: 1.22rem; flex: 1 1 100%; justify-content: center; }
+  .psh__trust { gap: 0.6rem 1.4rem; }
+  .psh__trust-item { font-size: 1.12rem; }
+  .psh__vignette { box-shadow: inset 0 0 100px 26px rgba(0,0,0,0.5); }
+}
+
+/* Motion and data sensitivity */
+@media (prefers-reduced-motion: reduce) {
+  .psh__img { animation: none; transform: scale(1.02); }
+  .psh__snow { animation: none; opacity: 0.3; }
+  .psh__pulse { animation: none; box-shadow: none; }
+  .psh__cta { transition: none; }
+}
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Seasonal hero",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "select",
+      "id": "season_mode",
+      "label": "Season",
+      "default": "auto",
+      "info": "Auto switches by date. Override it the morning Calgary gets its first real snow — don't wait for the calendar.",
+      "options": [
+        { "value": "auto",        "label": "Auto (by date)" },
+        { "value": "preseason",   "label": "Force: Pre-season (beat the rush)" },
+        { "value": "changeover",  "label": "Force: Winter changeover rush" },
+        { "value": "deep_winter", "label": "Force: Deep winter (repair/replace)" },
+        { "value": "spring",      "label": "Force: Spring swap-back" },
+        { "value": "summer",      "label": "Force: Summer / truck / trailer" }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_snow",
+      "label": "Falling snow on winter states",
+      "default": true,
+      "info": "Pure CSS — no images, no scripts, no extra requests. Off automatically in spring and summer."
+    },
+    {
+      "type": "header",
+      "content": "Search"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_search",
+      "label": "Show tire search",
+      "default": true,
+      "info": "Renders the pt-tire-search snippet. If it looks wrong in preview, switch this off and the hero still works — the CTA buttons carry the conversion path."
+    },
+    {
+      "type": "header",
+      "content": "Trust row"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_trust",
+      "label": "Show trust row",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "rating",
+      "label": "Google rating",
+      "default": "4.9"
+    },
+    {
+      "type": "text",
+      "id": "review_count",
+      "label": "Review count",
+      "default": "750",
+      "info": "Keep this identical to the Testimonials section — two different numbers on one page reads as careless to visitors and to AI assistants."
+    },
+    {
+      "type": "text",
+      "id": "trust_third",
+      "label": "Third trust item",
+      "default": "Installed from $30 a tire"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "season",
+      "name": "Season state",
+      "limit": 5,
+      "settings": [
+        {
+          "type": "select",
+          "id": "season_key",
+          "label": "Which season",
+          "default": "changeover",
+          "options": [
+            { "value": "preseason",   "label": "Pre-season (Sep 1 - Oct 10)" },
+            { "value": "changeover",  "label": "Winter changeover (Oct 11 - Nov 30)" },
+            { "value": "deep_winter", "label": "Deep winter (Dec 1 - Mar 10)" },
+            { "value": "spring",      "label": "Spring swap-back (Mar 11 - Apr 30)" },
+            { "value": "summer",      "label": "Summer (May 1 - Aug 31)" }
+          ]
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Background image",
+          "info": "Wide, dark, with empty space on the left for the headline. Only the active season's image is ever loaded."
+        },
+        {
+          "type": "text",
+          "id": "eyebrow",
+          "label": "Eyebrow"
+        },
+        {
+          "type": "text",
+          "id": "headline",
+          "label": "Headline (H1)",
+          "info": "Keep 'Tires' and 'Calgary' in every version. The season changes; the category and the city must not."
+        },
+        {
+          "type": "textarea",
+          "id": "subhead",
+          "label": "Subhead"
+        },
+        {
+          "type": "text",
+          "id": "cta_label",
+          "label": "Primary button"
+        },
+        {
+          "type": "url",
+          "id": "cta_url",
+          "label": "Primary button link"
+        },
+        {
+          "type": "text",
+          "id": "cta2_label",
+          "label": "Secondary button"
+        },
+        {
+          "type": "url",
+          "id": "cta2_url",
+          "label": "Secondary button link"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Seasonal hero",
+      "blocks": [
+        {
+          "type": "season",
+          "settings": {
+            "season_key": "preseason",
+            "eyebrow": "Winter tire season is coming",
+            "headline": "Get Your Winter Tires Before Calgary Freezes",
+            "subhead": "Book your changeover now and skip the October lineup. Winter tires from $130 a tire, installed at either shop.",
+            "cta_label": "Book your changeover",
+            "cta_url": "/pages/booking",
+            "cta2_label": "Shop winter tires",
+            "cta2_url": "/collections/winter-tires"
+          }
+        },
+        {
+          "type": "season",
+          "settings": {
+            "season_key": "changeover",
+            "eyebrow": "Winter tire season is here",
+            "headline": "Winter Tires in Calgary, Installed Today",
+            "subhead": "You're in the right place. Winter tires in stock at both shops, most sets fitted same day. Tell us your size and we'll pull them before you arrive.",
+            "cta_label": "Check my size",
+            "cta_url": "/collections/winter-tires",
+            "cta2_label": "Book a bay",
+            "cta2_url": "/pages/booking"
+          }
+        },
+        {
+          "type": "season",
+          "settings": {
+            "season_key": "deep_winter",
+            "eyebrow": "Winter tire trouble?",
+            "headline": "Flat Tire in Calgary? We'll Sort It Today",
+            "subhead": "Puncture repair, TPMS sensors, and replacement winter tires in stock. Walk in or book a bay at either shop.",
+            "cta_label": "Book a repair",
+            "cta_url": "/pages/booking",
+            "cta2_label": "Shop winter tires",
+            "cta2_url": "/collections/winter-tires"
+          }
+        },
+        {
+          "type": "season",
+          "settings": {
+            "season_key": "spring",
+            "eyebrow": "Time to swap back",
+            "headline": "Spring Tire Changeover in Calgary",
+            "subhead": "Winters off, all-seasons on. Book before the rush, and let us check your tread and pressures while it's on the hoist.",
+            "cta_label": "Book your changeover",
+            "cta_url": "/pages/booking",
+            "cta2_label": "Shop all-season tires",
+            "cta2_url": "/pages/all-season-tires-calgary"
+          }
+        },
+        {
+          "type": "season",
+          "settings": {
+            "season_key": "summer",
+            "eyebrow": "Summer, truck & trailer",
+            "headline": "Summer, All-Terrain & Trailer Tires in Calgary",
+            "subhead": "Performance, all-season, light truck, all-terrain and pre-mounted trailer sets, in stock now. Installed from $30 a tire.",
+            "cta_label": "Shop tires",
+            "cta_url": "/collections/tires",
+            "cta2_label": "Trailer assemblies",
+            "cta2_url": "/collections/trailer-tire-assemblies"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -26,6 +26,8 @@
 
     {%- comment -%} Step 1: Service → Vehicle + sub-options {%- endcomment -%}
     <div class="bk-page" id="sb-page-1">
+      {%- comment -%} Required-field marks (owner, 2026-11-15): * = must answer; each step button explains what is missing (PTBookingCore.req). {%- endcomment -%}
+      <p class="pt-req-note"><span class="pt-req-mark" aria-hidden="true">*</span>required</p>
 
       {%- comment -%} Location picker — only shown when 2+ shops are bookable (see sbRenderLocations) {%- endcomment -%}
       <div id="sb-location-section" hidden>
@@ -37,7 +39,7 @@
         <p class="sb-loc-note" id="sb-location-note" hidden></p>
       </div>
 
-      <p class="bk-label">What service do you need?</p>
+      <p class="bk-label">What service do you need?<span class="pt-req-mark" aria-hidden="true">*</span></p>
       <div class="sb-service-grid" id="sb-service-grid"></div>
 
       {%- comment -%} Revealed after service is selected {%- endcomment -%}
@@ -66,6 +68,17 @@
           <select class="bk-qty-select" id="sb-qty-select"></select>
         </div>
 
+        {%- comment -%}
+          Old tires (Tire Installation only — the old tires come off the rims).
+          REQUIRED, neither choice pre-selected; replaces the old "Tire disposal"
+          checkbox. "Dispose" sets addons.disposal, so the estimate math is unchanged.
+        {%- endcomment -%}
+        <div id="sb-oldtires-section" hidden>
+          <p class="bk-label" id="sb-oldtires-label" style="margin-top:1.1rem">What should we do with your old tires?<span class="pt-req-mark" aria-hidden="true">*</span></p>
+          <div class="bk-addons" id="sb-oldtires" role="radiogroup" aria-labelledby="sb-oldtires-label" aria-required="true"></div>
+          <p class="sb-field-err" id="sb-oldtires-err" role="alert" hidden>Please choose what we should do with your old tires.</p>
+        </div>
+
         {%- comment -%} Add-ons: installation + seasonal only {%- endcomment -%}
         <div id="sb-addons-section" hidden>
           <p class="bk-label" style="margin-top:1.1rem">Add-ons</p>
@@ -92,11 +105,12 @@
 
       </div>
 
-      <button class="bk-next-btn" id="sb-next-1" onclick="sbGoTo(2)" style="margin-top:1.2rem" disabled>Pick a time &rarr;</button>
+      <button class="bk-next-btn" id="sb-next-1" onclick="sbNext1()" style="margin-top:1.2rem" disabled>Pick a time &rarr;</button>
     </div>
 
     {%- comment -%} Step 2: Date + Time {%- endcomment -%}
     <div class="bk-page" id="sb-page-2" hidden>
+      <p class="pt-req-note"><span class="pt-req-mark" aria-hidden="true">*</span>required</p>
       <div class="bk-week-nav">
         <button class="bk-week-arrow" id="sb-prev-week">&#8249;</button>
         <span class="bk-week-label" id="sb-week-label"></span>
@@ -104,8 +118,8 @@
       </div>
       <div class="bk-day-strip" id="sb-day-strip"></div>
 
-      <p class="bk-label">Time</p>
-      <div class="bk-time-grid" id="sb-time-grid"></div>
+      <p class="bk-label" id="sb-time-label">Time<span class="pt-req-mark" aria-hidden="true">*</span></p>
+      <div class="bk-time-grid" id="sb-time-grid" role="group" aria-labelledby="sb-time-label"></div>
       {%- capture bw_mso -%}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{%- endcapture -%}{%- capture bw_msc -%}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{%- endcapture -%}{%- capture bw_suo -%}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{%- endcapture -%}{%- capture bw_suc -%}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{%- endcapture -%}{%- capture bw_cut -%}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{%- endcapture -%}
       <p class="bk-hours-note">Mon–Sat {% render 'pt-book-window', open: bw_mso, close: bw_msc, cutoff: bw_cut %} · Sun {% render 'pt-book-window', open: bw_suo, close: bw_suc, cutoff: bw_cut %}</p>
 
@@ -120,24 +134,69 @@
       <div class="bk-summary" id="sb-summary"></div>
 
       <div class="bk-form">
+        <p class="pt-req-note"><span class="pt-req-mark" aria-hidden="true">*</span>required</p>
+        {%- comment -%} Bot trap (security, 2026-11-13): a person never sees or fills this.
+           /api/book quietly drops any booking that has it filled. Its own <form> keeps
+           browser autofill and password managers from filling it with the contact fields. {%- endcomment -%}
+        <form class="pt-hp" aria-hidden="true" onsubmit="return false" autocomplete="off" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+          <label for="sb-company-website">Leave this empty</label>
+          <input type="text" id="sb-company-website" name="company_website" value="" tabindex="-1" autocomplete="off" aria-hidden="true" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other">
+        </form>
         <div class="bk-form-row">
           <div class="bk-field" id="sb-field-name">
-            <label for="sb-name">Name</label>
-            <input type="text" id="sb-name" placeholder="Jane Smith" autocomplete="name">
+            <label for="sb-name">Name<span class="pt-req-mark" aria-hidden="true">*</span></label>
+            <input type="text" id="sb-name" placeholder="Jane Smith" autocomplete="name" maxlength="120" aria-required="true">
           </div>
           <div class="bk-field" id="sb-field-phone">
-            <label for="sb-phone">Phone</label>
-            <input type="tel" id="sb-phone" placeholder="(403) 555-0123" autocomplete="tel">
+            <label for="sb-phone">Phone<span class="pt-req-mark" aria-hidden="true">*</span></label>
+            <input type="tel" id="sb-phone" placeholder="(403) 555-0123" autocomplete="tel" maxlength="30" aria-required="true">
           </div>
         </div>
         <div class="bk-field" id="sb-field-email">
-          <label for="sb-email">Email</label>
-          <input type="email" id="sb-email" placeholder="jane@email.com" autocomplete="email">
+          <label for="sb-email">Email<span class="pt-req-mark" aria-hidden="true">*</span></label>
+          <input type="email" id="sb-email" placeholder="jane@email.com" autocomplete="email" maxlength="200" aria-required="true">
+        </div>
+        {%- comment -%} Vehicle details — all optional; year/make/model pre-filled from the saved vehicle {%- endcomment -%}
+        <div class="bk-form-row">
+          <div class="bk-field" id="sb-field-vyear">
+            <label for="sb-vyear">Year <span class="bk-optional">(optional)</span></label>
+            <input type="text" id="sb-vyear" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="e.g. 2019" autocomplete="off">
+          </div>
+          <div class="bk-field" id="sb-field-vmake">
+            <label for="sb-vmake">Make <span class="bk-optional">(optional)</span></label>
+            <input type="text" id="sb-vmake" maxlength="40" placeholder="e.g. Toyota" autocomplete="off">
+          </div>
+        </div>
+        <div class="bk-form-row">
+          <div class="bk-field" id="sb-field-vmodel">
+            <label for="sb-vmodel">Model <span class="bk-optional">(optional)</span></label>
+            <input type="text" id="sb-vmodel" maxlength="60" placeholder="e.g. RAV4" autocomplete="off">
+          </div>
+          <div class="bk-field" id="sb-field-odo">
+            <label for="sb-odo">Current mileage (km) <span class="bk-optional">(optional)</span></label>
+            <input type="text" id="sb-odo" inputmode="numeric" maxlength="12" placeholder="e.g. 84,500" autocomplete="off" aria-describedby="sb-odo-hint">
+            <p class="sb-field-hint" id="sb-odo-hint">Helps us prepare</p>
+          </div>
         </div>
         <div class="bk-field">
           <label for="sb-notes">Notes <span class="bk-optional">(optional)</span></label>
-          <textarea id="sb-notes" rows="2" placeholder="Year, make & model — anything we should know…"></textarea>
+          <textarea id="sb-notes" rows="2" placeholder="Anything we should know…"></textarea>
         </div>
+      </div>
+
+      {%- comment -%}
+        Own tires (installation_on / installation_off) only: the customer confirms
+        tread depth + date code before the request can be sent (manager feedback
+        d342773d; owner 2026-11-03: checkbox only, no age limit). A factual check,
+        not a waiver — the legal T&C checkbox is separate. Shown by sbTireAckSync();
+        posted as tireConditionAck. Unticked every time the modal opens.
+      {%- endcomment -%}
+      <div class="sb-tire-ack" id="sb-tire-ack" hidden>
+        <label class="bk-addon sb-tire-ack__row" for="sb-tire-ack-cb">
+          <input type="checkbox" id="sb-tire-ack-cb" required aria-required="true" autocomplete="off" aria-describedby="sb-tire-ack-err">
+          <span class="bk-addon-name">I’ve checked the tires I’m bringing: they have at least 4/32&quot; (3&nbsp;mm) of tread, and I’ve checked the date code on the sidewall (the last 4 digits of the DOT code, e.g. 2321 = week 23 of 2021). I understand Prince Tires may decline to install tires that are worn, damaged or too old.<span class="pt-req-mark" aria-hidden="true">*</span></span>
+        </label>
+        <p class="sb-field-err" id="sb-tire-ack-err" role="alert" hidden>Please tick the box to confirm you’ve checked the tread depth and date code on your tires.</p>
       </div>
 
       <div class="bk-form-error" id="sb-form-error" hidden></div>
@@ -428,6 +487,24 @@
   margin: .25rem 0 0;
 }
 
+/* ── Old-tires question (required radio pair, reuses .bk-addon rows) ── */
+#sb-oldtires-section[hidden] { display: none !important; }
+#sb-oldtires .bk-addon input[type="radio"] { accent-color: #dc2626; }
+.sb-oldtires--error .bk-addons { border: 1.5px solid #dc2626; border-radius: 8px; padding: 0 .65rem; }
+.sb-field-err { margin: .35rem 0 0; font-size: .9rem; line-height: 1.4; color: #dc2626; font-weight: 500; }
+.sb-field-err[hidden] { display: none !important; }
+/* ── Own-tire condition check (installation_on/off) — one .bk-addon row in a box; red edge when unticked on submit ── */
+.sb-tire-ack { margin-top: 1rem; }
+.sb-tire-ack[hidden] { display: none !important; }
+#sb-tire-ack .sb-tire-ack__row { display: flex; cursor: pointer; color: #374151; align-items: flex-start; flex-wrap: nowrap; gap: .7rem; padding: .75rem .85rem; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; }
+#sb-tire-ack .sb-tire-ack__row input { flex-shrink: 0; width: 19px; height: 19px; margin-top: .15rem; accent-color: #dc2626; cursor: pointer; }
+#sb-tire-ack .sb-tire-ack__row .bk-addon-name { font-weight: 400; line-height: 1.45; }
+#sb-tire-ack .sb-tire-ack__row.bk-addon--active { border-color: #dc2626; background: #fff; }
+.sb-tire-ack--error .sb-tire-ack__row { border: 1.5px solid #dc2626 !important; background: #fef2f2 !important; }
+/* Small hint under an input (mileage) */
+.sb-field-hint { margin: .25rem 0 0; font-size: .85rem; line-height: 1.35; color: #9ca3af; }
+.bk-field--error .sb-field-hint { color: #dc2626; }
+
 /* ── Reveal animation ── */
 #sb-details-section:not([hidden]) {
   animation: sb-fade-in .2s ease-out;
@@ -460,7 +537,13 @@
     repairType: 'patch', // only option remaining for flat_repair
     looseRims: false,
     qty: 4,
+    // True once the customer picks a count; until then the swap's count is the
+    // vehicle's set (sbDefaultQty) and follows a change of vehicle.
+    qtyByHand: false,
     addons: { disposal: false, tpms: false, lowProfile: false, roadForce: false },
+    // Tire Installation only: 'keep' | 'dispose' | null (not answered yet).
+    // 'dispose' drives addons.disposal, which the estimate already prices.
+    oldTires: null,
     location: '', // slug of the chosen shop; '' until sbInitLocations() resolves
     date: null,
     time: null
@@ -569,16 +652,70 @@
   function sbFmtMoney(n) {
     return '$' + (n % 1 === 0 ? n.toFixed(0) : n.toFixed(2));
   }
+  // Customer-typed text (make / model) goes into innerHTML — escape it.
+  function sbEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // ── Vehicle details (step 3, all optional) ────────────────────────────────
+  // Reads the Year / Make / Model / Mileage inputs. Year must be 4 digits when
+  // given; mileage is whole km with commas / spaces / a trailing "km" stripped.
+  // Blank fields are fine — yearBad / odoBad only flag something typed wrong.
+  function sbReadVehicle() {
+    var g = function (id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; };
+    var year = g('sb-vyear').replace(/\D/g, '');
+    var make = g('sb-vmake');
+    var model = g('sb-vmodel');
+    var odoRaw = g('sb-odo').replace(/km$/i, '').replace(/[\s,]/g, '');
+    var yearBad = false, odoBad = false, odo = null;
+    if (year) {
+      var yn = parseInt(year, 10);
+      if (year.length !== 4 || yn < 1900 || yn > new Date().getFullYear() + 2) yearBad = true;
+    }
+    if (odoRaw) {
+      // Same ceiling as the server (ODOMETER_MAX_KM = 2,000,000 in
+      // booking-request-details.ts) so an extra digit is caught here, not as a 400.
+      if (/^\d{1,7}$/.test(odoRaw) && +odoRaw <= 2000000) odo = parseInt(odoRaw, 10);
+      else odoBad = true;
+    }
+    return { year: year, make: make, model: model, odometerKm: odo, yearBad: yearBad, odoBad: odoBad };
+  }
+  // True when the typed year/make/model still match the saved garage vehicle
+  // (so its trim can ride along); a customer who typed another car gets none.
+  function sbSameAsSaved(v) {
+    var s = sbSt.savedVehicle;
+    if (!s) return false;
+    var lc = function (x) { return String(x == null ? '' : x).trim().toLowerCase(); };
+    return lc(s.year) === lc(v.year) && lc(s.make) === lc(v.make) && lc(s.model) === lc(v.model);
+  }
+  // "2019 Toyota RAV4 XLE" (trim only when it is still the saved vehicle), or ''.
+  function sbVehicleText(v) {
+    var ymm = [v.year, v.make, v.model].filter(Boolean).join(' ');
+    if (ymm && sbSameAsSaved(v) && sbSt.savedVehicle.trim) ymm += ' ' + sbSt.savedVehicle.trim;
+    else if (ymm && window.ptPickedTrim && window.ptPickedTrim('sb-vmodel')) ymm += ' ' + window.ptPickedTrim('sb-vmodel');
+    return ymm;
+  }
+  function sbFmtKm(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' km';
+  }
+  // "Keeping" / "Tire disposal (+$5/tire)" for the summary + done card ('' when not asked).
+  function sbOldTiresText() {
+    if (sbSt.service !== 'installation_off') return '';
+    var fee = (sbPricing.addon_disposal && sbPricing.addon_disposal.amount) || 5;
+    return sbSt.oldTires === 'keep' ? 'Keeping' : sbSt.oldTires === 'dispose' ? 'Tire disposal (+$' + fee + '/tire)' : '';
+  }
   var sbWk = 0;
 
   // ── Services (fallback) ───────────────────────────────────────────────────
   // Used until GET /api/services lands; sbApplyCatalog() overlays the live,
   // admin-managed catalog. Shape shared with sections/pt-booking-page.liquid.
   var sbServices = [
-    { id: 'installation_off', name: 'Tire Installation', priceLabel: 'from $25 / tire',
+    { id: 'installation_off', name: 'Tire Installation', priceLabel: 'from $30 / tire',
       desc: 'Mount your new (or loose) tires onto your rims, balance all wheels, reset TPMS sensors, torque to spec, and get you road-ready. For tires that are NOT yet on rims.',
       icon: sbIcons.installation_off },
-    { id: 'installation_on', name: 'Seasonal Swap', priceLabel: 'from $60 / car',
+    { id: 'installation_on', name: 'Seasonal Swap', priceLabel: 'from $15 / tire',
       desc: 'Swap your stored seasonal tires — already mounted on their own rims — onto your vehicle, torque to spec. Tires must be pre-mounted on rims.',
       icon: sbIcons.installation_on },
     { id: 'balancing', name: 'Wheel Balancing', priceLabel: 'from $20 / wheel',
@@ -587,13 +724,13 @@
     { id: 'road_force_balancing', name: 'Road Force Balancing', priceLabel: '$35 / wheel',
       desc: 'A load roller presses against the spinning tire to find stiff spots and runout a standard balance can\'t see, then we match tire to wheel so a stubborn vibration finally goes away. Edmonton Trail NE only.',
       icon: sbIcons.road_force_balancing },
-    { id: 'rotation', name: 'Tire Rotation', priceLabel: 'from $60 / car',
+    { id: 'rotation', name: 'Tire Rotation', priceLabel: 'from $15 / tire',
       desc: 'We move your tires to different positions so they wear evenly, extending their life and keeping handling balanced.',
       icon: sbIcons.rotation },
     { id: 'flat_repair', name: 'Flat Repair', priceLabel: '$50 / tire',
       desc: 'Patch repair: we dismount the tire and apply a permanent internal patch. (We don\'t do exterior plug repairs — they\'re not safe long-term.)',
       icon: sbIcons.flat_repair },
-    { id: 'tpms', name: 'TPMS Service', priceLabel: '$75 / sensor',
+    { id: 'tpms', name: 'TPMS Service', priceLabel: '$60 / sensor',
       desc: 'We replace or reprogram your tire pressure monitoring sensors so your dashboard warning light stays off.',
       icon: sbIcons.tpms }
   ];
@@ -619,19 +756,25 @@
   //   per_unit_flat       — a single rate × qty
   var sbPricing = {
     installation_off: { mode: 'per_unit_by_vehicle', unit: 'tire',
-      byVehicle: { passenger: 25, suv: 30, van: 30, electric: 30, truck: 35, largetruck: 40, dually: 45, trailer: 30 },
+      byVehicle: { passenger: 30, suv: 30, van: 35, electric: 30, truck: 35, largetruck: 40, dually: 45, trailer: 30 },
       lowProfileFloor: 40, flatOverride: { trailer: 120 } },
-    installation_on: { mode: 'flat_by_vehicle', unit: 'car',
-      byVehicle: { passenger: 60, suv: 60, van: 60, electric: 60, truck: 80, largetruck: 80, dually: 90, trailer: 120 } },
+    // Per tire since the app's db/088 (owner 2026-11-02): 4 tires cost what the
+    // old flat price did ($60 car, $80 truck), 2 tires half. Trailer stays flat.
+    installation_on: { mode: 'per_unit_by_vehicle', unit: 'tire',
+      byVehicle: { passenger: 15, suv: 15, van: 15, electric: 15, truck: 20, largetruck: 20, dually: 15, trailer: 25 },
+      flatOverride: { trailer: 100 } },
     balancing: { mode: 'per_unit_flat', unit: 'wheel', amount: 20 },
     road_force_balancing: { mode: 'per_unit_flat', unit: 'wheel', amount: 35 },
-    rotation: { mode: 'flat_by_vehicle', unit: 'car',
-      byVehicle: { passenger: 60, suv: 60, van: 60, electric: 60, truck: 60, largetruck: 100, dually: 100, trailer: 60 } },
+    // Per tire since 2026-11-13 (owner): $15 car / SUV / van / EV, $20 truck /
+    // large truck / dually. Always the whole set — 4, or 6 on a dually — so
+    // the qty box stays hidden for rotation (the app enforces the set too).
+    rotation: { mode: 'per_unit_by_vehicle', unit: 'tire',
+      byVehicle: { passenger: 15, suv: 15, van: 15, electric: 15, truck: 20, largetruck: 20, dually: 20, trailer: 15 } },
     flat_repair: { mode: 'per_unit_flat', unit: 'tire', amount: 50 },
-    tpms: { mode: 'per_unit_flat', unit: 'sensor', amount: 75 },
-    addon_tpms: { mode: 'per_unit_flat', unit: 'sensor', amount: 75 },
+    tpms: { mode: 'per_unit_flat', unit: 'sensor', amount: 60 },
+    addon_tpms: { mode: 'per_unit_flat', unit: 'sensor', amount: 60 },
     addon_disposal: { mode: 'per_unit_flat', unit: 'tire', amount: 5 },
-    addon_road_force: { mode: 'per_unit_flat', unit: 'tire', amount: 15 }
+    addon_road_force: { mode: 'per_unit_flat', unit: 'tire', amount: 20 }
   };
 
   // Generic, catalog-driven price calc. Reads sbPricing (overlaid by
@@ -639,7 +782,7 @@
   // numbers as the prior hardcoded per-service logic. Add-ons (TPMS / disposal)
   // apply to installation_off / installation_on only.
   function sbCalcPrice() {
-    var s = sbSt.service, v = sbSt.vehicle, q = sbSt.qty;
+    var s = sbSt.service, v = sbSt.vehicle, q = sbQty();
     var p = sbPricing[s];
     if (!p) return null;
     var subtotal = 0, parts = [];
@@ -676,11 +819,11 @@
     if (s === 'installation_off') {
       if (sbSt.addons.disposal && sbPricing.addon_disposal) {
         subtotal += (sbPricing.addon_disposal.amount || 0) * q;
-        parts.push('disposal');
+        parts.push('tire disposal ×' + q);
       }
     }
     // Road force upgrade on any job (per tire, from the catalog).
-    if (s !== 'road_force_balancing' && sbSt.addons.roadForce && sbAddonCatalog.addon_road_force) {
+    if (s !== 'road_force_balancing' && s !== 'balancing' && sbSt.addons.roadForce && sbAddonCatalog.addon_road_force) {
       subtotal += (sbAddonCatalog.addon_road_force.amount || 0) * q;
       parts.push('road force ×' + q);
     }
@@ -706,6 +849,9 @@
     if (pr.byVehicle) {
       Object.keys(pr.byVehicle).forEach(function (k) {
         var n = pr.byVehicle[k];
+        // A vehicle billed flat (flatOverride: a trailer) is a total, not a
+        // per-unit rate — it never sets the "from" price.
+        if (svc.pricingMode === 'per_unit_by_vehicle' && pr.flatOverride && pr.flatOverride[k] != null) return;
         if (typeof n === 'number') vals.push(n);
       });
     }
@@ -866,8 +1012,12 @@
     grid.querySelectorAll('.sb-service-chip').forEach(function (el) {
       el.addEventListener('click', function () {
         sbSt.service = this.dataset.svc;
+        // The swap is priced per tire: start it at the vehicle's set (4, or 6
+        // on a dually), never a count carried over from another service.
+        if (sbSt.service === 'installation_on') { sbSt.qty = sbDefaultQty(); sbSt.qtyByHand = false; }
         sbSt.repairType = '';
         sbSt.addons = { disposal: false, tpms: false, lowProfile: false, roadForce: false };
+        sbSt.oldTires = null;
         sbRenderServices();
         sbShowDetails();
         sbUpdatePrice();
@@ -921,12 +1071,16 @@
     // Trailer-setup chooser is gone (off-rims vs on-rims is now the parent service)
     document.getElementById('sb-looserim-section').hidden = true;
 
-    // Qty selector — hidden for installation_on (flat per-car) and rotation (flat per-car).
-    var noQty = (sbSt.service === 'installation_on' || sbSt.service === 'rotation');
+    // Qty selector — hidden for rotation only (always the whole set). The seasonal swap
+    // is priced per tire (db/088), so it asks how many: some swap only 2.
+    var noQty = (sbSt.service === 'rotation');
     document.getElementById('sb-qty-section').hidden = noQty;
     if (!noQty) sbRenderQty();
 
-    // Add-ons: TPMS / disposal / low-profile ride on the two installs; the road
+    // Old-tires question: Tire Installation only (shows / hides itself).
+    sbRenderOldTires();
+
+    // Add-ons: TPMS / low-profile ride on the two installs; the road
     // force upgrade is offered on every job (owner's call, 2026-10-22).
     var hasAddons = (sbSt.service === 'installation_off' || sbSt.service === 'installation_on') || sbRoadForceOffered();
     document.getElementById('sb-addons-section').hidden = !hasAddons;
@@ -949,16 +1103,121 @@
     grid.querySelectorAll('.bk-vehicle-card').forEach(function (el) {
       el.addEventListener('click', function () {
         sbSt.vehicle = this.dataset.veh;
+        // To or from a dually: the swap's count follows the vehicle's set
+        // unless the customer chose a count.
+        if (sbSt.service === 'installation_on' && !sbSt.qtyByHand) sbSt.qty = sbDefaultQty();
         sbRenderVehicles();
-        if (sbSt.service !== 'installation_on' && sbSt.service !== 'rotation') sbRenderQty();
+        if (sbSt.service !== 'rotation') sbRenderQty();
         sbUpdatePrice();
         try { localStorage.setItem('pt-booking-vehicle', sbSt.vehicle); } catch (e) {}
       });
     });
   }
 
+  // ── Render: old-tires question (installation_off only) ────────────────────
+  // Two radios, neither pre-selected; answering is required before step 2.
+  // The disposal fee is the catalog's addon_disposal amount (same expression
+  // the old checkbox used), and "Dispose" sets addons.disposal so sbCalcPrice
+  // prices it exactly as the checkbox did.
+  // Own tires (on or off rims): the tread / date-code check above Send request.
+  function sbTireAckAsked() { return sbSt.service === 'installation_off' || sbSt.service === 'installation_on'; }
+  function sbTireAckTicked() { var cb = document.getElementById('sb-tire-ack-cb'); return !!(cb && cb.checked); }
+  function sbTireAckError(on) {
+    var box = document.getElementById('sb-tire-ack');
+    var err = document.getElementById('sb-tire-ack-err');
+    if (box) box.classList.toggle('sb-tire-ack--error', !!on);
+    if (err) err.hidden = !on;
+  }
+  function sbTireAckSync() {
+    var box = document.getElementById('sb-tire-ack');
+    if (!box) return;
+    box.hidden = !sbTireAckAsked();
+    if (box.hidden) sbTireAckError(false);
+  }
+  function sbTireAckReset() {
+    var cb = document.getElementById('sb-tire-ack-cb');
+    if (cb) {
+      cb.checked = false;
+      var row = cb.closest('.bk-addon');
+      if (row) row.classList.remove('bk-addon--active');
+    }
+    sbTireAckError(false);
+  }
+  (function () {
+    var cb = document.getElementById('sb-tire-ack-cb');
+    if (!cb) return;
+    cb.addEventListener('change', function () {
+      var row = this.closest('.bk-addon');
+      if (row) row.classList.toggle('bk-addon--active', this.checked);
+      if (this.checked) sbTireAckError(false);
+    });
+  })();
+  function sbOldTiresError(on) {
+    var section = document.getElementById('sb-oldtires-section');
+    var err = document.getElementById('sb-oldtires-err');
+    if (section) section.classList.toggle('sb-oldtires--error', !!on);
+    if (err) err.hidden = !on;
+  }
+  function sbRenderOldTires() {
+    var section = document.getElementById('sb-oldtires-section');
+    var host = document.getElementById('sb-oldtires');
+    if (!section || !host) return;
+    var show = sbSt.service === 'installation_off';
+    section.hidden = !show;
+    if (!show) {
+      sbSt.oldTires = null;
+      sbSt.addons.disposal = false;
+      sbOldTiresError(false);
+      host.innerHTML = '';
+      return;
+    }
+    var fee = (sbPricing.addon_disposal && sbPricing.addon_disposal.amount) || 5;
+    var opts = [
+      // Own tires off rims: the $5/tire disposal stays, said plainly (owner,
+      // 2026-11-02). Tire BUYERS leave theirs free — that is the product modal.
+      { id: 'keep',    name: 'Keep them — I’ll take them home',             price: 'Free' },
+      { id: 'dispose', name: 'Tire disposal (we recycle your old tires)', price: '+$' + fee + '/tire' }
+    ];
+    host.innerHTML = opts.map(function (o) {
+      var on = sbSt.oldTires === o.id;
+      return '<label class="bk-addon' + (on ? ' bk-addon--active' : '') + '">' +
+        '<input type="radio" name="sb-oldtires" value="' + o.id + '"' + (on ? ' checked' : '') + '>' +
+        '<span class="bk-addon-name">' + o.name + '</span>' +
+        '<span class="bk-addon-price">' + o.price + '</span>' +
+        '</label>';
+    }).join('');
+    host.querySelectorAll('input[name="sb-oldtires"]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        if (!this.checked) return;
+        sbSt.oldTires = this.value;
+        sbSt.addons.disposal = this.value === 'dispose';
+        host.querySelectorAll('.bk-addon').forEach(function (lbl) {
+          var r = lbl.querySelector('input');
+          lbl.classList.toggle('bk-addon--active', !!(r && r.checked));
+        });
+        sbOldTiresError(false);
+        sbUpdatePrice();
+      });
+    });
+  }
+
+  // Step 1 → 2. The old-tires answer is required for Tire Installation; say so
+  // next to the question instead of moving on.
+  window.sbNext1 = function () {
+    if (!sbSt.service) return;
+    if (sbSt.service === 'installation_off' && !sbSt.oldTires) {
+      sbOldTiresError(true);
+      var sec = document.getElementById('sb-oldtires-section');
+      try { sec.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+      var first = document.querySelector('#sb-oldtires input[type="radio"]');
+      if (first) { try { first.focus({ preventScroll: true }); } catch (e) {} }
+      return;
+    }
+    sbGoTo(2);
+  };
+
   // ── Render: add-ons ───────────────────────────────────────────────────────
-  // installation_off: TPMS, disposal, low-profile/run-flat
+  // installation_off: TPMS, low-profile/run-flat (disposal is the old-tires question above)
   // installation_on: TPMS only
   function sbRenderAddons() {
     var container = document.getElementById('sb-addons');
@@ -969,10 +1228,9 @@
     var isOn  = sbSt.service === 'installation_on';
 
     if (isOff || isOn) {
-      rows.push({ id: 'tpms', name: 'New TPMS sensors', price: (sbPricing.addon_tpms.amount || 75), unit: '/sensor' });
+      rows.push({ id: 'tpms', name: 'New TPMS sensors', price: (sbPricing.addon_tpms.amount || 60), unit: '/sensor' });
     }
     if (isOff) {
-      rows.push({ id: 'disposal', name: 'Tire disposal', price: (sbPricing.addon_disposal.amount || 5), unit: '/tire' });
       rows.push({ id: 'lowProfile', name: 'Low-profile or run-flat tires', priceLabel: '$' + (sbPricing.installation_off.lowProfileFloor || 40) + '/tire min' });
     }
     // Road force upgrade on any job (except road force itself) — from the
@@ -1013,7 +1271,7 @@
   // road force itself, once the catalog has it, and only while a bookable shop
   // offers it (the picker would otherwise have nothing to show).
   function sbRoadForceOffered() {
-    if (!sbSt.service || sbSt.service === 'road_force_balancing' || !sbAddonCatalog.addon_road_force) return false;
+    if (!sbSt.service || sbSt.service === 'road_force_balancing' || sbSt.service === 'balancing' || !sbAddonCatalog.addon_road_force) return false;
     return PTBookingCore.allowedLocations(sbLocBookable, [sbServiceShops.addon_road_force || []]).length > 0;
   }
 
@@ -1024,10 +1282,16 @@
     if (sbSt.service === 'road_force_balancing') return out;
     Object.keys(sbAddonKeys).forEach(function (slug) {
       var a = sbAddonCatalog[slug];
-      if (a && sbSt.addons[sbAddonKeys[slug]]) out.push({ slug: slug, name: a.name, qty: sbSt.qty, amount: a.amount });
+      if (a && sbSt.addons[sbAddonKeys[slug]]) out.push({ slug: slug, name: a.name, qty: sbQty(), amount: a.amount });
     });
     return out;
   }
+
+  // The swap's count when the customer hasn't chosen one: the vehicle's set —
+  // 6 on a dually (dual rear wheels), else 4. A dually's swap is 6 × $15 = $90.
+  function sbDefaultQty() { return sbSt.vehicle === 'dually' ? 6 : 4; }
+  // The count a price or the request uses: rotation is always the set.
+  function sbQty() { return sbSt.service === 'rotation' ? sbDefaultQty() : sbSt.qty; }
 
   // ── Render: qty selector ──────────────────────────────────────────────────
   function sbRenderQty() {
@@ -1047,6 +1311,7 @@
       sel._sbWired = true;
       sel.addEventListener('change', function () {
         sbSt.qty = parseInt(this.value);
+        sbSt.qtyByHand = true;
         sbUpdatePrice();
       });
     }
@@ -1186,7 +1451,7 @@
     var slots = [];
     for (var mins = H.open; mins <= H.last; mins += 30) slots.push(sbMinsToSlot(mins));
     document.getElementById('sb-time-grid').innerHTML = '<p style="color:#9ca3af;font-size:.9rem;grid-column:1/-1">Checking availability…</p>';
-    var _avail = await PTBookingCore.fetchAvailability(AVAILABILITY_API, PTBookingCore.localISO(sbSt.date), sbSt.location);
+    var _avail = await PTBookingCore.fetchAvailability(AVAILABILITY_API, PTBookingCore.localISO(sbSt.date), sbSt.location, { service: sbSt.service });
     if (seq !== sbAvailSeq) return; // a newer click owns the grid now
     // The platform refused or could not be reached. Say so, with the number
     // of the shop they picked — never an open grid that fails at the end.
@@ -1241,6 +1506,24 @@
       var msg = (isToday && nowMins + 120 > H.last)
         ? 'Same-day appointments need 2 hours’ notice, and the last one today is ' + sbMinsToSlot(H.last) + ' — today can’t be booked online any more. Pick another day' + (sbPhone ? ', or call ' + sbPhone + ' to ask about a walk-in.' : '.')
         : 'Fully booked this day — please pick another day.';
+      if (!(isToday && nowMins + 120 > H.last) && _avail.dayFull) {
+        // Open but full: offer to request the day (pt-booking-core.js).
+        var sbSvc = sbServices.find(function (s) { return s.id === sbSt.service; });
+        PTBookingCore.renderRequestPanel(document.getElementById('sb-time-grid'), {
+          apiBase: AVAILABILITY_API,
+          dateISO: PTBookingCore.localISO(sbSt.date),
+          locationSlug: sbSt.location || null,
+          prefill: {
+            name: (document.getElementById('sb-name') || {}).value || '',
+            phone: (document.getElementById('sb-phone') || {}).value || '',
+            email: (document.getElementById('sb-email') || {}).value || ''
+          },
+          service: (sbSvc && sbSvc.name) || null,
+          vehicle: null
+        });
+        document.getElementById('sb-next-2').disabled = true;
+        return;
+      }
       document.getElementById('sb-time-grid').innerHTML =
         '<p style="color:#9ca3af;font-size:.95rem;grid-column:1/-1;text-align:center;padding:.6rem 0;line-height:1.4">' + msg + '</p>';
       document.getElementById('sb-next-2').disabled = true;
@@ -1273,14 +1556,19 @@
     var veh = sbVehs.find(function (v) { return v.id === sbSt.vehicle; });
     var pr = sbCalcPrice();
     var ds = sbSt.date ? sbSt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + sbSt.time : '';
-    var vehLabel = sbSt.savedVehicle
-      ? (sbSt.savedVehicle.year + ' ' + sbSt.savedVehicle.make + ' ' + sbSt.savedVehicle.model + (sbSt.savedVehicle.trim ? ' ' + sbSt.savedVehicle.trim : ''))
-      : (veh ? veh.name : '');
+    // Vehicle: what the customer typed in the step-3 fields (pre-filled from
+    // the saved vehicle), else the vehicle type. Re-rendered as they type.
+    var vin = sbReadVehicle();
+    var vehLabel = sbEsc(sbVehicleText(vin)) || (veh ? veh.name : '');
+    var oldTires = sbOldTiresText();
 
     var h = '';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Service</span><span class="bk-summary-val">' + (svc ? svc.name : '—') + '</span></div>';
     if (sbSt.service === 'installation_off' && sbSt.addons.lowProfile) {
       h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire type</span><span class="bk-summary-val">Low-profile / run-flat</span></div>';
+    }
+    if (oldTires) {
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">Old tires</span><span class="bk-summary-val">' + oldTires + '</span></div>';
     }
     var picked = sbSelectedCatalogAddons();
     if (picked.length) {
@@ -1291,12 +1579,30 @@
     }
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Date &amp; time</span><span class="bk-summary-val">' + ds + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
+    if (vin.odometerKm != null) {
+      h += '<div class="bk-summary-row"><span class="bk-summary-label">Mileage</span><span class="bk-summary-val">' + sbFmtKm(vin.odometerKm) + '</span></div>';
+    }
     if (pr) h += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
     document.getElementById('sb-summary').innerHTML = h;
   }
 
+  // Step-3 vehicle inputs: keep the year digits-only, clear a field's error as
+  // it is corrected, and refresh the summary above so it shows what they typed.
+  ['sb-vyear', 'sb-vmake', 'sb-vmodel', 'sb-odo'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', function () {
+      if (id === 'sb-vyear' && /\D/.test(this.value)) this.value = this.value.replace(/\D/g, '');
+      var f = document.getElementById('sb-field-' + id.slice(3));
+      if (f) f.classList.remove('bk-field--error');
+      if (!document.getElementById('sb-page-3').hidden) sbRenderSummary();
+    });
+  });
+
   // ── Step navigation ───────────────────────────────────────────────────────
   window.sbGoTo = function (step) {
+    // A new step starts clean: no messages left over from an earlier try.
+    try { PTBookingCore.req.clear(document.getElementById('sb-overlay')); } catch (e) {}
     [1, 2, 3].forEach(function (s) { document.getElementById('sb-page-' + s).hidden = s !== step; });
     document.getElementById('sb-page-done').hidden = true;
     document.getElementById('sb-stepper').style.opacity = '1';
@@ -1318,7 +1624,7 @@
       if (!sbSt.date) { var t = new Date(); t.setHours(0, 0, 0, 0); sbSt.date = t; }
       sbRenderWeek(); sbRenderTimes();
     }
-    if (step === 3) sbRenderSummary();
+    if (step === 3) { sbRenderSummary(); sbTireAckSync(); }
   };
 
   // ── Open modal ────────────────────────────────────────────────────────────
@@ -1365,6 +1671,9 @@
     sbSt.qty = 4;
     sbSt.vehicle = 'passenger';
     sbSt.addons = { disposal: false, tpms: false, lowProfile: false, roadForce: false };
+    sbSt.oldTires = null;
+    sbOldTiresError(false);
+    sbTireAckReset();
     sbSt.savedVehicle = null;
     sbSt.date = null;
     sbSt.time = null;
@@ -1392,8 +1701,23 @@
       document.getElementById('sb-notes').value = '';
     } catch (e) {}
 
+    // Prefill vehicle details from the saved (searched) vehicle; mileage blank.
+    try {
+      var sv = sbSt.savedVehicle || {};
+      document.getElementById('sb-vyear').value = sv.year ? String(sv.year).replace(/\D/g, '').slice(0, 4) : '';
+      document.getElementById('sb-vmake').value = sv.make ? String(sv.make) : '';
+      document.getElementById('sb-vmodel').value = sv.model ? String(sv.model) : '';
+      document.getElementById('sb-odo').value = '';
+      ['sb-field-vyear', 'sb-field-vmake', 'sb-field-vmodel', 'sb-field-odo'].forEach(function (id) {
+        var f = document.getElementById(id); if (f) f.classList.remove('bk-field--error');
+      });
+    } catch (e) {}
+
     sbRenderLocations();
     sbRenderServices();
+    // A pre-selected swap starts at the (saved) vehicle's set: 4, or 6 on a dually.
+    sbSt.qtyByHand = false;
+    if (sbSt.service === 'installation_on') sbSt.qty = sbDefaultQty();
     if (sbSt.service) { sbShowDetails(); sbUpdatePrice(); }
     sbUpdateNextBtn();
     // A pre-selected restricted service (road force) narrows the picker now.
@@ -1417,24 +1741,49 @@
     var email = document.getElementById('sb-email').value.trim();
     var notes = document.getElementById('sb-notes').value.trim();
     var errEl = document.getElementById('sb-form-error');
-    ['sb-field-name', 'sb-field-phone', 'sb-field-email'].forEach(function (id) { document.getElementById(id).classList.remove('bk-field--error'); });
+    ['sb-field-name', 'sb-field-phone', 'sb-field-email', 'sb-field-vyear', 'sb-field-odo'].forEach(function (id) { document.getElementById(id).classList.remove('bk-field--error'); });
     errEl.hidden = true;
 
-    var missing = [];
-    if (!name) { document.getElementById('sb-field-name').classList.add('bk-field--error'); missing.push('full name'); }
-    if (!phone) { document.getElementById('sb-field-phone').classList.add('bk-field--error'); missing.push('phone number'); }
-    if (!email || email.indexOf('@') < 1) { document.getElementById('sb-field-email').classList.add('bk-field--error'); missing.push('email address'); }
-    if (missing.length) { errEl.textContent = 'Please fill in your ' + missing.join(', ') + '.'; errEl.hidden = false; return; }
+    // Defensive: Tire Installation needs the old-tires answer (step 1 enforces
+    // it; this catches any path around that). Send them back to the question.
+    if (sbSt.service === 'installation_off' && !sbSt.oldTires) {
+      sbGoTo(1);
+      sbOldTiresError(true);
+      try { document.getElementById('sb-oldtires-section').scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+      return;
+    }
+
+    // Required: name (2+), phone, a valid email — what /api/book rejects
+    // without. Vehicle details are optional, but something typed wrong is
+    // flagged. Own tires: the tread / date-code box. Each bad field gets a
+    // red outline + one line under it, with a count at the top.
+    var vin = sbReadVehicle();
+    sbTireAckSync();
+    var sbRules = PTBookingCore.req.contactRules(document.getElementById('sb-name'), document.getElementById('sb-phone'), document.getElementById('sb-email'));
+    sbRules.push({ el: document.getElementById('sb-vyear'), kind: 'invalid', msg: 'Enter the year as 4 digits (e.g. 2019), or leave it blank', ok: function () { return !sbReadVehicle().yearBad; } });
+    sbRules.push({ el: document.getElementById('sb-odo'), kind: 'invalid', msg: 'Enter the mileage as a number of km (e.g. 84,500), or leave it blank', ok: function () { return !sbReadVehicle().odoBad; } });
+    if (sbTireAckAsked()) sbRules.push({ el: document.getElementById('sb-tire-ack-cb'), useEl: document.getElementById('sb-tire-ack-err'), msg: 'Tick the box to confirm you’ve checked your tires', ok: sbTireAckTicked });
+    if (!PTBookingCore.req.check(document.getElementById('sb-page-3'), sbRules)) return;
 
     // Guard: date and time must be set (defensive — buttons should enforce this)
     if (!sbSt.date || !sbSt.time) {
-      errEl.textContent = 'Please select a date and time before confirming.';
+      errEl.textContent = 'Please select a date and time before sending your request.';
       errEl.hidden = false;
       return;
     }
 
+    // Own tires: the request is not sent until the tread / date-code box is ticked.
+    sbTireAckSync();
+    if (sbTireAckAsked() && !sbTireAckTicked()) {
+      sbTireAckError(true);
+      var ackCb = document.getElementById('sb-tire-ack-cb');
+      try { document.getElementById('sb-tire-ack').scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+      if (ackCb) { try { ackCb.focus({ preventScroll: true }); } catch (e) {} }
+      return;
+    }
+
     var btn = document.getElementById('sb-confirm-btn');
-    btn.disabled = true; btn.textContent = 'Booking…';
+    btn.disabled = true; btn.textContent = 'Sending…';
 
     var svc = sbServices.find(function (s) { return s.id === sbSt.service; });
     var veh = sbVehs.find(function (v) { return v.id === sbSt.vehicle; });
@@ -1455,26 +1804,36 @@
         mountState:  sbSt.service === 'installation_off' ? 'off'
                   : sbSt.service === 'installation_on'  ? 'on' : '',
         repairType: sbSt.repairType || '',
-        qty: sbSt.qty,
+        qty: sbQty(),
         tpms: sbSt.addons.tpms || false,
-        disposal: sbSt.addons.disposal || false,
+        // Old tires: 'keep' | 'dispose' on Tire Installation, null elsewhere.
+        disposal: sbSt.service === 'installation_off' && sbSt.oldTires === 'dispose',
+        oldTires: sbSt.service === 'installation_off' ? sbSt.oldTires : null,
+        // Own tires: the customer ticked the tread / date-code check (required above).
+        tireConditionAck: sbTireAckAsked() ? sbTireAckTicked() : null,
         lowProfile: sbSt.addons.lowProfile || false,
         customAddons: sbSelectedCatalogAddons(),
         name: name, phone: phone, email: email, notes: notes,
         vehicleType: sbSt.vehicle,
-        vehicleYear: sbSt.savedVehicle ? (sbSt.savedVehicle.year || '') : '',
-        vehicleMake: sbSt.savedVehicle ? (sbSt.savedVehicle.make || '') : '',
-        vehicleModel: sbSt.savedVehicle ? (sbSt.savedVehicle.model || '') : '',
-        vehicleTrim: sbSt.savedVehicle ? (sbSt.savedVehicle.trim || '') : '',
+        // What the customer typed (pre-filled from the saved vehicle). Trim
+        // only rides along while it is still the saved vehicle.
+        vehicleYear: vin.year,
+        vehicleMake: vin.make,
+        vehicleModel: vin.model,
+        vehicleTrim: (sbSameAsSaved(vin) ? (sbSt.savedVehicle.trim || '') : '') || (window.ptPickedTrim ? window.ptPickedTrim('sb-vmodel') : ''),
+        odometerKm: vin.odometerKm,
         date: dateStr,
         time: sbSt.time,
         subtotal: pr ? sbParseAmt(pr.subtotal) : 0,
         gst:      pr ? sbParseAmt(pr.gst)      : 0,
-        total:    pr ? sbParseAmt(pr.amount)    : 0
+        total:    pr ? sbParseAmt(pr.amount)    : 0,
+        // Bot trap — empty for every real customer.
+        company_website: (function () { var h = document.getElementById('sb-company-website'); return h ? String(h.value || '') : ''; })()
       };
 
       var res;
       try {
+        if (window.PTBookingCore && window.PTBookingCore.bookingRef) { var ptRef = window.PTBookingCore.bookingRef(); if (ptRef) payload.ref = ptRef; }
         res = await fetch(BOOKING_API, { method: 'POST', mode: 'cors', credentials: 'omit', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       } catch (netErr) {
         console.error('[service booking] network failure:', netErr);
@@ -1487,6 +1846,8 @@
         var ed = await res.json().catch(function () { return {}; });
         var shopPhone = ((sbCurrentLoc() || {}).phone) || '(403) 452-4283';
         if (res.status === 429) throw new Error("Too many bookings from this device — please wait a minute and try again.");
+        // The shop's online bookings for that day are used up: phone, not another time.
+        if (res.status === 409 && ed.error === 'online_full') throw new Error('Online booking is full for that day — please call ' + ((typeof ed.phone === 'string' && ed.phone) || shopPhone) + '.');
         if (res.status === 409) throw new Error("That time slot was just booked. Please pick another time.");
         // 402 is the platform switched off (a billing stop took the whole app
         // down for an hour on 2026-10-19); 5xx is it falling over. Neither is
@@ -1511,7 +1872,8 @@
       var doneAddr = nap.addressFull;
       var donePhone = nap.phone;
       var ds = sbSt.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + sbSt.time;
-      var vehLabel = sbSt.savedVehicle ? (sbSt.savedVehicle.year + ' ' + sbSt.savedVehicle.make + ' ' + sbSt.savedVehicle.model) : (veh ? veh.name : '');
+      var vehLabel = sbEsc(sbVehicleText(vin)) || (veh ? veh.name : '');
+      var doneOldTires = sbOldTiresText();
       var subEl = document.getElementById('sb-done-sub');
       if (subEl) subEl.textContent = 'Requested at Prince Tires — ' + nap.address + '. We’ll confirm by email, usually within the day — your appointment isn’t final until you hear from us.';
       var doneH = '';
@@ -1519,7 +1881,9 @@
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">' + doneAddr + '</span></div>';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">' + donePhone + '</span></div>';
+      if (doneOldTires) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Old tires</span><span class="bk-summary-val">' + doneOldTires + '</span></div>';
       if (vehLabel) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
+      if (vin.odometerKm != null) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Mileage</span><span class="bk-summary-val">' + sbFmtKm(vin.odometerKm) + '</span></div>';
       if (pr) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Est. price</span><span class="bk-summary-val bk-summary-val--green">' + pr.amount + '</span></div>';
       document.getElementById('sb-done-card').innerHTML = doneH;
 
@@ -1527,12 +1891,6 @@
       document.getElementById('sb-page-done').hidden = false;
       document.getElementById('sb-stepper').style.opacity = '0';
 
-      if (typeof confetti === 'function') {
-        var co = ['#16a34a', '#22c55e', '#F5820B', '#ffffff', '#dc2626', '#bbf7d0'];
-        confetti({ particleCount: 80, spread: 70, origin: { y: .6 }, colors: co });
-        setTimeout(function () { confetti({ particleCount: 40, angle: 60, spread: 55, origin: { x: 0 }, colors: co }); }, 200);
-        setTimeout(function () { confetti({ particleCount: 40, angle: 120, spread: 55, origin: { x: 1 }, colors: co }); }, 400);
-      }
     } catch (err) {
       console.error('[service booking] submit failed:', err);
       btn.disabled = false; btn.textContent = 'Send request';
@@ -1554,7 +1912,7 @@
       time: sbSt.time,
       durationMinutes: 60,
       summary: svcName + ' at Prince Tires',
-      description: svcName + ' appointment',
+      description: svcName + ' — requested. Not final until Prince Tires confirms by email.',
       location: icsLoc
     });
     if (ics) PTBookingCore.downloadICS(ics, 'prince-tires-service.ics');
@@ -1563,6 +1921,30 @@
   // ── Event listeners ───────────────────────────────────────────────────────
   document.getElementById('sb-prev-week').addEventListener('click', function () { if (sbWk > 0) { sbWk--; sbRenderWeek(); } });
   document.getElementById('sb-next-week').addEventListener('click', function () { sbWk++; sbRenderWeek(); });
+
+  // Step buttons explain what is missing instead of sitting greyed out
+  // (owner, 2026-11-15). The existing disabled logic stays the source of
+  // truth; `soft` keeps Next clickable so a click can say why.
+  // pt-booking-core.js is deferred on every page but /pages/book (layout/
+  // theme.liquid), so off that page it lands after this script: wait for it.
+  (function wire() {
+    var R = window.PTBookingCore && PTBookingCore.req;
+    if (!R) {
+      if (!wire.waiting && document.readyState === 'loading') { wire.waiting = true; document.addEventListener('DOMContentLoaded', wire); }
+      return;
+    }
+    R.styles();
+    R.gate(document.getElementById('sb-next-1'), document.getElementById('sb-page-1'), function () {
+      var out = [{ el: document.getElementById('sb-service-grid'), msg: 'Pick a service', ok: function () { return !!sbSt.service; } }];
+      if (sbSt.service === 'installation_off') out.push({ el: document.getElementById('sb-oldtires'), useEl: document.getElementById('sb-oldtires-err'), msg: 'Choose what we should do with your old tires', ok: function () { return sbSt.service !== 'installation_off' || !!sbSt.oldTires; } });
+      return out;
+    }, { soft: true });
+    var n2 = document.getElementById('sb-next-2');
+    var grid2 = document.getElementById('sb-time-grid');
+    R.gate(n2, document.getElementById('sb-page-2'), function () {
+      return [R.timeRule(grid2, function () { return !!sbSt.time; })];
+    }, { soft: true, blockedMsg: function () { return { el: grid2, msg: 'Pick a time', ok: function () { return !n2.disabled; } }; } });
+  })();
   document.getElementById('sb-overlay').addEventListener('click', function (e) { if (e.target === this) closeServiceModal(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !document.getElementById('sb-overlay').hidden) closeServiceModal(); });
   document.addEventListener('click', function (e) { var b = e.target.closest('[data-book-service]'); if (b) openServiceModal(b); });

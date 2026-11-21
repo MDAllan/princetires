@@ -1,0 +1,45 @@
+{%- comment -%} Nov 9, 2026: hide width/ratio/rim filters; hide phone tab bar while filter drawer is open.
+Nov 10, 2026: collection cleanup — no intro text, full-width smart search, small 'Available only' switch (was 'In stock only' — the filter includes supplier stock), clear "Your size · Change size" bar (size picker hidden until tapped). {%- endcomment -%}
+<style>.ptsz-hide{display:none!important}
+body.ptfx-open .pt-tabbar{display:none!important}
+body.ptfx-open .ptfx-bar{padding-bottom:calc(12px + env(safe-area-inset-bottom))!important}
+.ptc__eyebrow,.ptc__desc{display:none!important}
+.ptc__header{padding-bottom:8px!important;margin-bottom:0!important}
+.ptg__toolbar{display:flex!important;flex-wrap:wrap!important;gap:10px!important;align-items:center}
+.ptg__toolbar .ptg__search{flex:1 1 100%!important;max-width:none!important;width:100%!important;min-height:54px;border:2px solid #111!important;border-radius:14px!important;display:flex!important;align-items:center}
+.ptg__toolbar .ptg__search-input{font-size:16px!important;height:50px!important;width:100%!important}
+.ptg__toolbar .ptg__search-badge{display:none!important}
+.ptg__toolbar .ptcs select{display:none!important}
+.ptg__toolbar .ptcs>label{display:none!important}
+.ptcl-stock{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;background:none;border:0;padding:4px 0;cursor:pointer;color:#111}
+.ptcl-stock i{width:38px;height:22px;border-radius:999px;background:#cfd3d8;position:relative;transition:.2s;flex:0 0 38px}
+.ptcl-stock i::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.ptcl-stock[aria-pressed=true] i{background:#16a34a}.ptcl-stock[aria-pressed=true] i::after{left:19px}
+.ptg__toolbar .ptg__sort{margin-left:auto}
+.ptg__context{display:none!important}
+.ptcl-size{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#111;color:#fff;border-radius:14px;padding:14px 16px;margin:12px 0}
+.ptcl-size small{display:block;font-size:12px;opacity:.7;text-transform:uppercase;letter-spacing:.06em}
+.ptcl-size b{font-size:22px;letter-spacing:.02em}
+.ptcl-size button{background:#e11d2e;color:#fff;border:0;border-radius:10px;padding:12px 16px;font-size:15px;font-weight:700;white-space:nowrap;cursor:pointer}
+.pt-rs.ptcl-has:not(.ptcl-open){display:none!important}
+.pt-rs.ptcl-has .pt-rs__toggle{display:none!important}
+</style>
+<script>
+(function(){
+var PH='Search size, brand or car — e.g. 235/55R17';
+function h(){document.querySelectorAll('details.ptg__filter').forEach(function(d){if(d.classList.contains('ptsz-hide'))return;var s=d.querySelector('summary');if(s&&/^(tire width|aspect ratio|rim diameter)/i.test(s.textContent.trim()))d.classList.add('ptsz-hide');});
+var b=document.querySelector('.ptfx-bar'),open=!!(b&&window.innerWidth<990&&b.getClientRects().length&&getComputedStyle(b).display!=='none');if(document.body&&document.body.classList.contains('ptfx-open')!==open)document.body.classList.toggle('ptfx-open',open);
+clean();}
+function clean(){
+  var inp=document.querySelector('.ptg__search-input');if(inp&&inp.placeholder!==PH)inp.placeholder=PH;
+  var cs=document.querySelector('.ptg__toolbar .ptcs'),sel=cs&&cs.querySelector('select');
+  if(sel&&!cs.querySelector('.ptcl-stock')){var btn=document.createElement('button');btn.type='button';btn.className='ptcl-stock';btn.innerHTML='<i></i>Available only';var sync=function(){btn.setAttribute('aria-pressed',sel.selectedIndex===0?'true':'false');};sync();btn.onclick=function(){sel.selectedIndex=sel.selectedIndex===0?1:0;sync();sel.dispatchEvent(new Event('change',{bubbles:true}));};cs.appendChild(btn);}
+  var rs=document.querySelector('.pt-rs'),val=document.querySelector('[data-results-size-val]');
+  var size=val&&val.textContent.trim();var car=((document.querySelector('[data-ptg-context-car]')||{}).textContent||'').trim();
+  if(!rs)return;var bar=document.querySelector('.ptcl-size');var label=size||car;
+  if(!label){if(bar)bar.remove();rs.classList.remove('ptcl-has','ptcl-open');return;}
+  if(!bar){bar=document.createElement('div');bar.className='ptcl-size';bar.innerHTML='<div><small>Your size</small><b></b></div><button type="button">Change size</button>';bar.querySelector('button').onclick=function(){var o=rs.classList.toggle('ptcl-open');this.textContent=o?'Close':'Change size';if(o){var t=rs.querySelector('.pt-rs__toggle');if(t&&t.getAttribute('aria-expanded')==='false')t.click();}};rs.parentNode.insertBefore(bar,rs);}
+  var bb=bar.querySelector('b');if(bb.textContent!==label)bb.textContent=label;if(!rs.classList.contains('ptcl-has'))rs.classList.add('ptcl-has');
+}
+h();document.addEventListener('DOMContentLoaded',h);var q=0;new MutationObserver(function(){if(q)return;q=1;requestAnimationFrame(function(){q=0;h();});}).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class','open','style','aria-hidden','hidden']});})();
+</script>

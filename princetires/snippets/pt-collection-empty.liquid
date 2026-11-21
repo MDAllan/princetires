@@ -1,5 +1,5 @@
 {% doc %}
-  Empty state for the tires collection — shown when no products match
+  Empty state for the tire and wheel results pages (restyled 2026-11-13, mockup Main.dc.html) — shown when no products match
   the active filters. Includes a 'Clear all filters' shortcut and a
   miniature missing-vehicle form that POSTs to the same Google Sheet
   webhook used by the homepage smart-search and the tire-search widget.
@@ -9,94 +9,38 @@
   requiring the customer to type anything. Dedup via sessionStorage so
   it only fires once per size combination per tab.
 
+  @param {boolean} [is_wheels] - wheel collection: wheel wording, no tire-size demand capture
+
   @example
-  {% render 'pt-collection-empty' %}
+  {% render 'pt-collection-empty', is_wheels: is_wheels %}
 {% enddoc %}
 
 {%- assign empty_webhook = settings.missing_vehicle_webhook_url -%}
 
-<div class="ptg__empty" data-ptg-empty data-webhook="{{ empty_webhook | escape }}">
-  <p class="ptg__empty-title">No products match your filters.</p>
-  <p class="ptg__empty-sub">Try clearing some filters, or tell us what you're looking for — we'll get back to you.</p>
-  <div class="ptg__empty-actions">
-    <a href="{{ routes.collections_url }}/tires" class="ptg__empty-btn ptg__empty-btn--ghost">Browse all tires</a>
-    <a href="#" class="ptg__empty-btn ptg__empty-btn--primary" data-clear-all-empty>Clear all filters</a>
+<div class="rd-empty ptg__empty" data-ptg-empty data-webhook="{{ empty_webhook | escape }}"{% if is_wheels %} data-wheels{% endif %}>
+  <p class="rd-empty__title">No {% if is_wheels %}wheels{% else %}tires{% endif %} match these filters</p>
+  <p class="rd-empty__sub">{% if is_wheels %}Try another size, or call us and we'll find one that fits.{% else %}Try another season or size, or call us and we'll find one.{% endif %}</p>
+  <div class="rd-empty__actions">
+    <a href="#" class="rd-btn rd-btn--line" data-clear-all-empty>Clear all filters</a>
+    {%- if is_wheels -%}
+      <a href="{{ routes.collections_url }}/wheels" class="rd-btn rd-btn--text">Show all wheels</a>
+    {%- else -%}
+      <a href="{{ routes.collections_url }}/tires" class="rd-btn rd-btn--text">Show all tires</a>
+    {%- endif -%}
   </div>
   {%- if empty_webhook != blank -%}
-    <div class="ptg__empty-missing">
-      <p>Don't see the tire you need?</p>
-      <form data-empty-missing-form>
-        <input type="text" placeholder="e.g. 2018 Subaru Crosstrek or 225/45R17" maxlength="120" required>
-        <button type="submit">Tell us</button>
+    <div class="rd-empty__missing">
+      <label class="rd-empty__missing-h" for="rd-empty-missing">Don't see the {% if is_wheels %}wheel{% else %}tire{% endif %} you need?</label>
+      <form class="rd-empty__form" data-empty-missing-form>
+        <input type="text" id="rd-empty-missing" class="rd-input" placeholder="{% if is_wheels %}e.g. 2018 Ford F-150, 18 inch, 6x135{% else %}e.g. 2018 Subaru Crosstrek or 225/45R17{% endif %}" maxlength="120" required>
+        <button type="submit" class="rd-btn rd-btn--dark">Tell us</button>
       </form>
-      <p class="ptg__empty-missing-status" data-empty-missing-status aria-live="polite" hidden></p>
+      <p class="rd-empty__status" data-empty-missing-status aria-live="polite" hidden></p>
     </div>
   {%- endif -%}
 </div>
 
-{% stylesheet %}
-  .ptg__empty {
-    text-align: center;
-    padding: 5rem 0;
-    font-family: 'Outfit', sans-serif;
-    color: #6b7280;
-    font-size: 1.3rem;
-  }
-  .ptg__empty-title { font-size: 1.15rem; font-weight: 600; color: #111; margin: 0 0 0.35rem; }
-  .ptg__empty-sub { color: #6b7280; margin: 0 0 1rem; line-height: 1.5; }
-  .ptg__empty-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.2rem; }
-  .ptg__empty-btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 0.9rem;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-  }
-  .ptg__empty-btn--ghost { color: #374151; border: 1.5px solid #e5e7eb; }
-  .ptg__empty-btn--ghost:hover { border-color: #9ca3af; color: #111; }
-  .ptg__empty-btn--primary { background: #dc2626; color: #fff; }
-  .ptg__empty-btn--primary:hover { background: #b91c1c; }
-  .ptg__empty-missing {
-    margin-top: 1rem;
-    padding: 0.9rem 1rem;
-    background: #f9fafb;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 8px;
-    max-width: 460px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  .ptg__empty-missing p { margin: 0 0 0.5rem; font-size: 0.9rem; color: #374151; }
-  .ptg__empty-missing form { display: flex; gap: 0.5rem; }
-  .ptg__empty-missing input {
-    flex: 1;
-    height: 38px;
-    padding: 0 0.7rem;
-    border: 1.5px solid #d1d5db;
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 0.9rem;
-    outline: none;
-  }
-  .ptg__empty-missing input:focus { border-color: #dc2626; }
-  .ptg__empty-missing button {
-    background: #dc2626;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    padding: 0 0.95rem;
-    font-family: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .ptg__empty-missing button:hover { background: #b91c1c; }
-  .ptg__empty-missing-status { font-size: 0.85rem; margin-top: 0.5rem !important; }
-  .ptg__empty-missing-status.is-success { color: #15803d; }
-  .ptg__empty-missing-status.is-error { color: #dc2626; }
-{% endstylesheet %}
+{%- comment -%} Styles: assets/pt-rd-results.css (.rd-empty, redesign 2026-11-13). {%- endcomment -%}
 
 {% javascript %}
   (function () {
@@ -118,7 +62,7 @@
       var w = params.get('filter.p.m.custom.tire_width');
       var a = params.get('filter.p.m.custom.tire_profile');
       var r = params.get('filter.p.m.custom.rim_diameter');
-      if (webhook && (w || a || r)) {
+      if (webhook && !root.hasAttribute('data-wheels') && (w || a || r)) {
         var sizeStr = (w || '?') + '/' + (a || '?') + 'R' + (r || '?');
         var dedupKey = '__pt_empty_' + sizeStr;
         if (!sessionStorage.getItem(dedupKey)) {
@@ -154,7 +98,7 @@
       btn.textContent = 'Sending...';
       function setStatus(msg, kind) {
         status.textContent = msg;
-        status.className = 'ptg__empty-missing-status' + (kind ? ' is-' + kind : '');
+        status.className = 'rd-empty__status' + (kind ? ' is-' + kind : '');
         status.hidden = !msg;
       }
       if (!webhook) {

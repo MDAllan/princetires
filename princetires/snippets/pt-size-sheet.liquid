@@ -1,0 +1,64 @@
+{% doc %}
+  "Find your size" sheet (redesign 2026-11-14, mockup SizeSheet.dc.html).
+  Full-screen sheet on phones, centred dialog on desktop. Opened by any
+  element with data-pt-size-sheet (results header Change size / Find your
+  size, the filter drawer's Find your size, the home hero, the header search
+  overlay). Every trigger is a real link or button that still works when this
+  script does not load (the link goes to the Shop by size hub, the results
+  header button opens the old size panel).
+
+  This snippet only prints the config and loads the assets; the sheet's DOM is
+  built by assets/pt-size-sheet.js the first time it opens.
+
+  Data (nothing invented):
+  - Width / aspect / rim options: assets/pt-tire-sizes.json, the size index
+    the home search already uses (sizes we carry). If it cannot load, the
+    same fixed lists the results-page size dropdowns use.
+  - Vehicle: pt-vehicle-manifest.json + pt-vehicle-<year>.json (same as
+    every vehicle search), resolving to the trim's tire sizes; a staggered
+    trim's front + rear sets via assets/pt-vehicle-pairs.js (loaded here).
+  - "Show N tires": sections/pt-rd-count rendered for the destination URL
+    (Section Rendering API). No count -> "Show tires".
+  - Pick up where you left off: localStorage pt-recent-searches (shared
+    search history), pt-garage-<customer.id> (the signed-in customer's own
+    My Garage default car; nothing for guests), pt-tire-search-vehicle (last
+    vehicle searched).
+  - Layout (owner 2026-11-14): a "Type your size" box (any common format;
+    a typo or a size we don't stock gets a plain message, never the whole
+    catalogue under that size's name), small "Recent" chips, then width /
+    aspect / rim as three dropdowns side by side, season once complete.
+
+  Rendered once from sections/pt-header.liquid (every page).
+
+  @example
+    {% render 'pt-size-sheet' %}
+{% enddoc %}
+{%- liquid
+  assign pss_min_year = settings.smart_search_min_year | default: 2001
+  assign pss_max_year = settings.smart_search_max_year | default: 2026
+  assign pss_vehicle_url = 'pt-vehicle-2025.json' | asset_url
+  assign pss_vehicle_base = pss_vehicle_url | split: 'pt-vehicle-2025.json' | first
+  assign pss_vehicle_ver = ''
+  if pss_vehicle_url contains '?'
+    assign pss_vehicle_ver = pss_vehicle_url | split: '?' | last
+  endif
+-%}
+{% render 'pt-vehicle-manifest-loader' %}
+{% render 'pt-search-tracking' %}
+<script type="application/json" id="pt-size-sheet-config">
+{
+  "sizesUrl": {{ 'pt-tire-sizes.json' | asset_url | json }},
+  "manifestUrl": {{ 'pt-vehicle-manifest.json' | asset_url | json }},
+  "vehicleBase": {{ pss_vehicle_base | json }},
+  "vehicleVersion": {{ pss_vehicle_ver | json }},
+  "minYear": {{ pss_min_year | json }},
+  "maxYear": {{ pss_max_year | json }},
+  "tiresUrl": {{ routes.collections_url | append: '/tires' | json }},
+  "hubUrl": {{ routes.collections_url | append: '/all' | json }},
+  "customerId": {% if customer %}{{ customer.id | json }}{% else %}null{% endif %}
+}
+</script>
+{%- comment -%} Not render-blocking: the sheet only exists after a tap. {%- endcomment -%}
+<link rel="stylesheet" href="{{ 'pt-size-sheet.css' | asset_url }}" media="print" onload="this.media='all'" data-pss-css><script src="{{ 'pt-size-sheet.js' | asset_url }}" defer="defer"></script>
+{%- comment -%} Front + rear sets for a staggered trim on EVERY page (product pages, /pages/*), not only where the grid / hero / tire search load it. The helper ignores a second copy (if (P.lookup) return). {%- endcomment -%}
+<script src="{{ 'pt-vehicle-pairs.js' | asset_url }}" defer></script>

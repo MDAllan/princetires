@@ -5,11 +5,18 @@
 
   Search-by-size: 3 dropdowns (width / aspect / rim) → redirects to
     /collections/tires?filter.p.m.custom.tire_width=...&tire_profile=...&rim_diameter=...
+    or, when the rim collection exists, /collections/tires-NN-inch?<same params>
+    (window.PTRim.route, snippets/pt-rim-route.liquid).
 
   Search-by-vehicle: 4 cascading dropdowns (year → make → model → trim).
   Loads /assets/pt-vehicle-{year}.json on year change. When a trim has multiple
-  tire sizes, an OEM-size dropdown appears. Staggered fitments (same rim,
-  different widths) are labelled "Front" and "Rear".
+  tire sizes, an OEM-size dropdown appears. Staggered fitments come from
+  window.PTVehiclePairs.lookup (assets/pt-vehicle-pairs.js, GET
+  app.princetires.ca/api/vehicle-pairs with the trim's own sizes): one sure
+  factory set shows "Front" / "Rear" with "Front + rear set" picked (a pair
+  search, PTVehiclePairs.url); several sets are listed in the OEM dropdown
+  first. No answer (endpoint down, timeout, not staggered) = the plain OEM
+  dropdown, as before. The old same-aspect guess is gone.
 
   URL state: every selection is mirrored to the page URL under the `ts_` prefix
   (e.g. `?ts_tab=vehicle&ts_y=2020&ts_mk=Honda&ts_mo=Civic&ts_tr=LX`).
@@ -57,7 +64,7 @@
     </div>
     <label class="pt-ts__instock">
       <input type="checkbox" data-pt-ts-instock checked>
-      <span>In stock only</span>
+      <span>{{ 'products.stock.available_only' | t }}</span>
     </label>
   </div>
 
@@ -157,15 +164,17 @@
           <span class="pt-ts__match-size" data-pt-ts-veh-rear></span>
         </div>
         <div class="pt-ts__stagger-pick" data-pt-ts-stagger-pick role="radiogroup" aria-label="Which tires to shop">
-          <label class="pt-ts__stagger-opt"><input type="radio" name="pt-ts-stagger-pick" value="front" checked> Shop front</label>
-          <label class="pt-ts__stagger-opt"><input type="radio" name="pt-ts-stagger-pick" value="rear"> Shop rear</label>
-          <label class="pt-ts__stagger-opt" data-pt-ts-stagger-both hidden><input type="radio" name="pt-ts-stagger-pick" value="both"> Shop both</label>
+          <label class="pt-ts__stagger-opt" data-pt-ts-stagger-both><input type="radio" name="pt-ts-stagger-pick" value="both" checked> Front + rear set</label>
+          <label class="pt-ts__stagger-opt"><input type="radio" name="pt-ts-stagger-pick" value="front"> Front only</label>
+          <label class="pt-ts__stagger-opt"><input type="radio" name="pt-ts-stagger-pick" value="rear"> Rear only</label>
         </div>
-        <p class="pt-ts__match-note">Staggered fitment. Pick which size to shop. Need help? Call <a href="tel:{{ shop_phone_dial }}">{{ shop_phone_display }}</a>.</p>
+        <p class="pt-ts__match-note"><span data-pt-ts-pair-say></span> Staggered tires can&rsquo;t be rotated front to back. Need help? Call <a href="tel:{{ shop_phone_dial }}">{{ shop_phone_display }}</a>.</p>
       </div>
     </div>
 
+    <p class="pt-ts__match-note" data-pt-ts-pair-note hidden></p>
     <p class="pt-ts__loading" data-pt-ts-loading hidden>Loading vehicles…</p>
+    <p class="pt-ts__loading" data-pt-ts-pairload role="status" hidden>Checking front and rear sizes…</p>
     <p class="pt-ts__error" data-pt-ts-error hidden></p>
 
     <div class="pt-ts__actions">
@@ -194,6 +203,9 @@
     </div>
   </div>
 </div>
+
+{%- comment -%} window.PTVehiclePairs (lookup + the pair URL); harmless if another section loads it too. {%- endcomment -%}
+<script src="{{ 'pt-vehicle-pairs.js' | asset_url }}" defer></script>
 
 {% stylesheet %}
 .pt-ts { font-family: 'Outfit', sans-serif; color: #111; }
@@ -380,6 +392,14 @@
   align-items: baseline;
   padding: 0.15rem 0;
 }
+/* display:flex above would beat [hidden]: only showStaggerMatch hides a row
+   (the single "Your tire" row while a front + rear set shows). */
+.pt-ts__match-row[hidden] { display: none; }
+.pt-ts__match-row[hidden] + .pt-ts__match-stagger { margin-top: 0; padding-top: 0; border-top: 0; }
+/* While a sure front + rear set shows, the hidden OEM box really hides
+   (.pt-ts__field display:flex beats [hidden]); single-size trims keep
+   today's look - the class is only on while the set card shows. */
+.pt-ts--set [data-pt-ts-oemwrap][hidden] { display: none; }
 .pt-ts__match-label {
   font-size: 0.78rem;
   font-weight: 600;
@@ -686,7 +706,7 @@
     var state = {
       tab: 'size',
       size: { width: '', aspect: '', rim: '', mode: 'metric' },
-      veh:  { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false, staggeredFront: '', staggeredRear: '', staggeredPick: 'front' },
+      veh:  { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false, staggeredFront: '', staggeredRear: '', staggeredPick: 'front', pairs: null },
       filters: readFilterPrefs(),
       yearData: null
     };
@@ -891,6 +911,11 @@
     var elOemWrap = $('[data-pt-ts-oemwrap]');
     var elOem   = $('[data-pt-ts-oem]');
     var elLoad  = $('[data-pt-ts-loading]');
+    var elPairLoad = $('[data-pt-ts-pairload]');
+    var elPairNote = $('[data-pt-ts-pair-note]');
+    // Vehicle pairs: every cascade change bumps the token, so a late answer
+    // for an older trim is dropped.
+    var pairTok = 0;
     var elErr   = $('[data-pt-ts-error]');
     var elMatch = $('[data-pt-ts-veh-match]');
     var elSubmitVeh = $('[data-pt-ts-submit-veh]');
@@ -1015,7 +1040,12 @@
     function resetMatch() {
       elMatch.hidden = true;
       $('[data-pt-ts-veh-stagger]').hidden = true;
+      root.classList.remove('pt-ts--set');
       elSubmitVeh.disabled = true;
+      elPairNote.hidden = true; elPairNote.textContent = '';
+      elPairLoad.hidden = true;
+      state.veh.pairs = null;
+      pairTok++;
     }
 
     async function onYearChange(year) {
@@ -1111,7 +1141,7 @@
       writeUrlState(state);
     }
 
-    function onTrimChange(trim) {
+    async function onTrimChange(trim) {
       state.veh.trim = trim;
       state.veh.oemPick = '';
       state.veh.oem = '';
@@ -1144,33 +1174,148 @@
         return;
       }
 
-      // Multiple sizes — detect staggered (find a pair sharing rim + aspect, differing in width)
-      var parsed = sizes.map(parseSize).filter(Boolean);
-      var staggeredPair = findStaggeredPair(parsed);
-      state.veh.isStaggered = !!staggeredPair;
-
-      if (staggeredPair) {
-        state.veh.staggeredFront = staggeredPair.front.raw;
-        state.veh.staggeredRear  = staggeredPair.rear.raw;
-        state.veh.staggeredPick  = 'front';
-        state.veh.oemPick = staggeredPair.front.raw;
-        state.veh.oem     = staggeredPair.front.raw;
-        showStaggerMatch(staggeredPair.front.raw, staggeredPair.rear.raw);
+      // Multiple sizes: ask which ones go front and rear (the trim's own
+      // sizes decide, see assets/pt-vehicle-pairs.js). Nothing can be picked
+      // until the answer (resetMatch disabled the button).
+      var tok = ++pairTok;
+      var ans = null;
+      await domReady(); // the deferred helper has run by now (if it loaded)
+      var VP = window.PTVehiclePairs;
+      if (tok !== pairTok || state.veh.trim !== trim) return;
+      if (VP && typeof VP.lookup === 'function') {
+        elPairLoad.hidden = false;
+        try {
+          ans = await VP.lookup({ year: state.veh.year, make: state.veh.make, model: state.veh.model, trim: trim, sizes: sizes });
+        } catch (e) { ans = null; }
+        if (tok !== pairTok || state.veh.trim !== trim) return; // changed meanwhile
+        elPairLoad.hidden = true;
+      }
+      var one = ans && VP.only(ans);
+      if (one) {
+        // One sure factory set: Front / Rear, "Front + rear set" picked.
+        state.veh.isStaggered = true;
+        state.veh.pairs = ans;
+        state.veh.staggeredFront = one.front;
+        state.veh.staggeredRear  = one.rear;
+        state.veh.oemPick = one.front;
+        state.veh.oem     = one.front;
+        showStaggerMatch(one.front, one.rear, VP.sentence(ans, vehName()));
         elSubmitVeh.disabled = false;
+      } else if (ans && ans.staggered) {
+        // Several sets (or a set and other sizes): sets first in the dropdown.
+        state.veh.isStaggered = false;
+        state.veh.pairs = ans;
+        state.veh.staggeredFront = state.veh.staggeredRear = '';
+        state.veh.staggeredPick = 'front';
+        state.veh.oemSizes = sizes;
+        fillPairSelect(ans);
+        elOem.disabled = false;
+        elOemWrap.hidden = false;
+        elPairNote.textContent = VP.sentence(ans, vehName());
+        elPairNote.hidden = false;
       } else {
+        state.veh.isStaggered = false;
         state.veh.staggeredFront = state.veh.staggeredRear = '';
         state.veh.staggeredPick = 'front';
         // OEM options — show 5th dropdown
         state.veh.oemSizes = sizes;
-        fillSelect(elOem, '— pick OEM size —', sizes);
+        if (ans && (ans.sameSize.length || ans.others.length)) fillPlainSelect(ans);
+        else fillSelect(elOem, '— pick OEM size —', sizes);
         elOem.disabled = false;
         elOemWrap.hidden = false;
+        /* 2+ sizes and no set: when a size may be only the front or only the
+           rear one (mayDiffer), or the check failed, say so above the list. */
+        var distinct = {};
+        sizes.forEach(function (z) { var p = parseSize(z); distinct[p ? p.width + '/' + p.aspect + 'R' + p.rim : String(z)] = 1; });
+        var hedge = ans ? (ans.mayDiffer ? VP.sentence(ans, vehName()) : '')
+          : (Object.keys(distinct).length > 1 ? 'We couldn\u2019t check front and rear sizes. Front and rear may differ on this car \u2014 check the sticker in the driver\u2019s door.' : '');
+        if (hedge) { elPairNote.textContent = hedge; elPairNote.hidden = false; }
       }
       emitCascadeStep('trim', trim);
       writeUrlState(state);
     }
 
+    function domReady() {
+      if (document.readyState !== 'loading') return Promise.resolve();
+      return new Promise(function (r) { document.addEventListener('DOMContentLoaded', function () { r(); }, { once: true }); });
+    }
+    function vehName() {
+      return [state.veh.year, state.veh.make, state.veh.model].join(' ').replace(/\s+/g, ' ').trim();
+    }
+    // OEM dropdown with sets first: "set:FRONT|REAR" values, then sizes on
+    // all four, then any other size the trim lists (plain values, as before).
+    function fillPairSelect(ans) {
+      var h = '<option value="">— pick your tires —</option><optgroup label="Front + rear sets">';
+      ans.pairs.forEach(function (x) {
+        h += '<option value="' + escapeAttr('set:' + x.front + '|' + x.rear) + '">' + escapeHtml(x.front + ' front + ' + x.rear + ' rear') + '</option>';
+      });
+      h += '</optgroup>';
+      if (ans.sameSize.length) {
+        h += '<optgroup label="Same size on all four">' + ans.sameSize.map(function (sz) {
+          return '<option value="' + escapeAttr(sz) + '">' + escapeHtml(sz) + '</option>';
+        }).join('') + '</optgroup>';
+      }
+      if (ans.others.length) {
+        h += '<optgroup label="' + (ans.mayDiffer ? 'Other sizes (front or rear only?)' : 'Other sizes') + '">' + ans.others.map(function (sz) {
+          return '<option value="' + escapeAttr(sz) + '">' + escapeHtml(sz) + '</option>';
+        }).join('') + '</optgroup>';
+      }
+      elOem.innerHTML = h;
+    }
+    // No set: sizes on all four first, then the sizes the server could not
+    // place (labelled "front or rear only?" when it says they may differ).
+    function fillPlainSelect(ans) {
+      var h = '<option value="">— pick OEM size —</option>';
+      if (ans.sameSize.length) {
+        h += '<optgroup label="Same size on all four">' + ans.sameSize.map(function (sz) {
+          return '<option value="' + escapeAttr(sz) + '">' + escapeHtml(sz) + '</option>';
+        }).join('') + '</optgroup>';
+      }
+      if (ans.others.length) {
+        h += '<optgroup label="' + (ans.mayDiffer ? 'Front or rear only?' : 'Other sizes') + '">' + ans.others.map(function (sz) {
+          return '<option value="' + escapeAttr(sz) + '">' + escapeHtml(sz) + '</option>';
+        }).join('') + '</optgroup>';
+      }
+      elOem.innerHTML = h;
+    }
+    function pairFromValue(v) {
+      var a = state.veh.pairs;
+      if (!a || String(v).indexOf('set:') !== 0) return null;
+      var fr = String(v).slice(4).split('|');
+      for (var i = 0; i < a.pairs.length; i++) if (a.pairs[i].front === fr[0] && a.pairs[i].rear === fr[1]) return a.pairs[i];
+      return null;
+    }
+
     function onOemPick(size) {
+      var set = pairFromValue(size);
+      if (set) {
+        state.veh.isStaggered = true;
+        state.veh.staggeredFront = set.front;
+        state.veh.staggeredRear = set.rear;
+        state.veh.oemPick = set.front;
+        state.veh.oem = size; // mirror for URL state
+        showStaggerMatch(set.front, set.rear, '');
+        elSubmitVeh.disabled = false;
+        emitCascadeStep('oem', size);
+        writeUrlState(state);
+        return;
+      }
+      if (state.veh.pairs) {
+        // A single size picked from the sets list: a plain search again.
+        state.veh.isStaggered = false;
+        state.veh.staggeredFront = state.veh.staggeredRear = '';
+        state.veh.staggeredPick = 'front';
+        if (!size) {
+          // Back to the placeholder: hide the match, keep the list and its sentence.
+          state.veh.oemPick = state.veh.oem = '';
+          elMatch.hidden = true;
+          $('[data-pt-ts-veh-stagger]').hidden = true;
+          root.classList.remove('pt-ts--set');
+          elSubmitVeh.disabled = true;
+          writeUrlState(state);
+          return;
+        }
+      }
       state.veh.oemPick = size;
       state.veh.oem = size; // mirror for URL state
       if (!size) { resetMatch(); writeUrlState(state); return; }
@@ -1190,27 +1335,27 @@
 
     function showVehMatch(size) {
       $('[data-pt-ts-veh-stagger]').hidden = true;
+      root.classList.remove('pt-ts--set');
       $('[data-pt-ts-veh-size]').textContent = size;
       // Show the simple row (size + value):
       var simpleRow = elMatch.querySelector('.pt-ts__match-row');
       if (simpleRow) simpleRow.hidden = false;
       elMatch.hidden = false;
     }
-    function showStaggerMatch(front, rear) {
+    function showStaggerMatch(front, rear, say) {
       var simpleRow = elMatch.querySelector('.pt-ts__match-row');
       if (simpleRow) simpleRow.hidden = true;
+      // No stale single size under the set (an earlier one-size pick).
+      $('[data-pt-ts-veh-size]').textContent = '';
+      root.classList.add('pt-ts--set');
       $('[data-pt-ts-veh-front]').textContent = front;
       $('[data-pt-ts-veh-rear]').textContent = rear;
+      $('[data-pt-ts-pair-say]').textContent = say || '';
       $('[data-pt-ts-veh-stagger]').hidden = false;
-      // Show "Shop both" only when front + rear share aspect (so combined URL is exact)
-      var pf = parseSize(front), pr = parseSize(rear);
-      var aspectsMatch = pf && pr && pf.aspect === pr.aspect;
-      var bothLabel = $('[data-pt-ts-stagger-both]');
-      if (bothLabel) bothLabel.hidden = !aspectsMatch;
-      // Reset radio to front
-      var frontRadio = root.querySelector('input[name="pt-ts-stagger-pick"][value="front"]');
-      if (frontRadio) frontRadio.checked = true;
-      state.veh.staggeredPick = 'front';
+      // A factory set: "Front + rear set" first and picked (half sets stay one tap away).
+      var bothRadio = root.querySelector('input[name="pt-ts-stagger-pick"][value="both"]');
+      if (bothRadio) bothRadio.checked = true;
+      state.veh.staggeredPick = 'both';
       elMatch.hidden = false;
     }
 
@@ -1250,9 +1395,10 @@
       if (!urlState.veh.trim) return;
       if (!elTrim.querySelector('option[value="' + cssEscape(urlState.veh.trim) + '"]')) return;
       elTrim.value = urlState.veh.trim;
-      onTrimChange(urlState.veh.trim);
+      await onTrimChange(urlState.veh.trim);
+      if (state.veh.trim !== urlState.veh.trim) return; // the customer moved on meanwhile
 
-      // OEM (only if the 5th dropdown opened — trim had >1 non-staggered size)
+      // OEM (only if the 5th dropdown opened — trim had >1 sizes and no one sure set)
       if (!urlState.veh.oem) return;
       if (elOemWrap.hidden) return;
       if (!elOem.querySelector('option[value="' + cssEscape(urlState.veh.oem) + '"]')) return;
@@ -1275,10 +1421,11 @@
           if (!p) return;
           url = buildCollectionUrl(p.width, p.aspect, p.rim);
         } else if (state.veh.staggeredPick === 'both') {
-          url = buildStaggeredCollectionUrl(state.veh.staggeredFront, state.veh.staggeredRear);
-          if (!url) return;
           p = parseSize(state.veh.staggeredFront);
           if (!p) return;
+          // THE pair URL (front rim collection + rear=); the results page pairs them.
+          url = window.PTVehiclePairs && window.PTVehiclePairs.url({ front: state.veh.staggeredFront, rear: state.veh.staggeredRear, seasons: pairSeasons() });
+          if (!url) url = buildCollectionUrl(p.width, p.aspect, p.rim); // front rim has no collection: front size
         } else {
           // 'front' (default)
           p = parseSize(state.veh.staggeredFront || state.veh.oemPick);
@@ -1311,6 +1458,7 @@
           trim: state.veh.trim,
           tireSize: state.veh.oemPick,
           isStaggered: state.veh.isStaggered,
+          pair: state.veh.isStaggered && state.veh.staggeredPick === 'both' ? { front: state.veh.staggeredFront, rear: state.veh.staggeredRear } : undefined,
           savedAt: new Date().toISOString()
         }));
       } catch (e) {}
@@ -1343,7 +1491,9 @@
     }
 
     function clearVehicleTab() {
-      state.veh = { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false, staggeredFront: '', staggeredRear: '', staggeredPick: 'front' };
+      state.veh = { year: '', make: '', model: '', trim: '', oemSizes: [], oemPick: '', oem: '', isStaggered: false, staggeredFront: '', staggeredRear: '', staggeredPick: 'front', pairs: null };
+      pairTok++;
+      elPairLoad.hidden = true; elPairNote.hidden = true;
       state.yearData = null;
       elYear.value = '';
       resetSelect(elMake, ['—']); elMake.disabled = true;
@@ -1352,6 +1502,7 @@
       elOemWrap.hidden = true; resetSelect(elOem, ['—']); elOem.disabled = true;
       elMatch.hidden = true;
       $('[data-pt-ts-veh-stagger]').hidden = true;
+      root.classList.remove('pt-ts--set');
       elSubmitVeh.disabled = true;
       showError('');
       writeUrlState(state);
@@ -1365,24 +1516,11 @@
     function resetSelect(el, opts) {
       el.innerHTML = '<option value="">' + (opts[0] || '—') + '</option>';
     }
-    function findStaggeredPair(parsed) {
-      // Returns { front, rear } where rim matches, aspect matches, widths differ.
-      // Picks the first such pair found. Smaller width = front.
-      for (var i = 0; i < parsed.length; i++) {
-        for (var j = i + 1; j < parsed.length; j++) {
-          var a = parsed[i], b = parsed[j];
-          if (a.rim === b.rim && a.aspect === b.aspect && a.width !== b.width) {
-            var aw = parseInt(a.width, 10), bw = parseInt(b.width, 10);
-            return aw <= bw ? { front: a, rear: b } : { front: b, rear: a };
-          }
-        }
-      }
-      return null;
-    }
     function parseSize(s) {
       var p = window.PTTireParse && window.PTTireParse.parseSize(s);
       return p && { width: p.width, aspect: p.profile, rim: p.rim, raw: s, flotation: p.flotation };
     }
+    function rimRoute(u) { return window.PTRim ? window.PTRim.route(u) : u; }
     function buildCollectionUrl(w, a, r) {
       var qs = new URLSearchParams();
       if (w) qs.set('filter.p.m.custom.tire_width', w);
@@ -1401,31 +1539,19 @@
       if (state.filters && state.filters.inStock) {
         qs.set('filter.v.availability', '1');
       }
-      return '/collections/' + collectionHandle + '?' + qs.toString();
+      // Owner 2026-11-17: a tire size search lands cheapest first.
+      if (r && !qs.has('sort_by')) qs.set('sort_by', 'price-ascending');
+      // One rim size → that rim's own collection (filters work there); see pt-rim-route.
+      return rimRoute('/collections/' + collectionHandle + '?' + qs.toString());
     }
-    function buildStaggeredCollectionUrl(frontRaw, rearRaw) {
-      // Both share aspect (we only render "Shop both" when aspects match).
-      var pf = parseSize(frontRaw), pr = parseSize(rearRaw);
-      if (!pf || !pr) return '';
-      var qs = new URLSearchParams();
-      if (pf.width) qs.append('filter.p.m.custom.tire_width', pf.width);
-      if (pr.width) qs.append('filter.p.m.custom.tire_width', pr.width);
-      if (pf.aspect) qs.set('filter.p.m.custom.tire_profile', pf.aspect);
-      if (pf.rim) qs.set('filter.p.m.custom.rim_diameter', pf.rim);
-      var seasons = (state.filters && state.filters.seasons) || [];
-      seasons.forEach(function (s) {
-        if (s === 'Summer' || s === 'Winter') {
-          qs.append('filter.p.m.custom.seasonality', s);
-        } else if (s === 'All-Season') {
-          // "All-season" UI option emits BOTH metafield values (All-Season + All-Weather)
-          qs.append('filter.p.m.custom.seasonality', 'All-Season');
-          qs.append('filter.p.m.custom.seasonality', 'All-Weather');
-        }
+    // The same season values buildCollectionUrl writes ("All-season" = both values).
+    function pairSeasons() {
+      var out = [];
+      ((state.filters && state.filters.seasons) || []).forEach(function (s) {
+        if (s === 'Summer' || s === 'Winter') out.push(s);
+        else if (s === 'All-Season') out.push('All-Season', 'All-Weather');
       });
-      if (state.filters && state.filters.inStock) {
-        qs.set('filter.v.availability', '1');
-      }
-      return '/collections/' + collectionHandle + '?' + qs.toString();
+      return out;
     }
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, function (c) {

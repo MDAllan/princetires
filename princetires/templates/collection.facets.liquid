@@ -1,0 +1,53 @@
+{%- comment -%}
+  A tiny JSON view of a collection's storefront filters:
+    /collections/wheels?view=facets
+
+  Why this exists: only a collection page has `collection.filters`, so any OTHER
+  surface that wants to offer spec dropdowns — the homepage hero's wheel search,
+  a landing page — has no way to learn the real option values. The alternative
+  is to copy the catalogue's values into that surface, which is exactly how the
+  homepage's hardcoded centre-bore list rotted until it hid ~1,100 of ~1,400
+  wheels. This keeps one source: Shopify's own facet index.
+
+  Shape:
+    { "handle": "wheels", "count": 2061,
+      "filters": [ { "param": "filter.p.m.custom.rim_diameter",
+                     "label": "Rim diameter",
+                     "values": [ { "v": "20", "n": 627 }, … ] }, … ] }
+
+  "val" (added 2026-11-15) is the exact value to send back as the filter
+  param. It differs from the label for a grouped value: "All Season" is a
+  FilterSettingGroup whose value is a gid, and only that value checks the box
+  and shows the chip on the results page. The home hero's quick filters use it.
+
+  Only value-list filters are emitted; price ranges and the like are skipped,
+  since a dropdown can't use them. Values keep Shopify's own strings so they can
+  be handed straight back as filter params.
+{%- endcomment -%}
+{%- layout none -%}
+{%- capture body -%}
+{
+  "handle": {{ collection.handle | json }},
+  "title": {{ collection.title | json }},
+  "count": {{ collection.all_products_count }},
+  "filters": [
+    {%- assign emitted = 0 -%}
+    {%- for f in collection.filters -%}
+      {%- if f.type == 'list' and f.values.size > 0 -%}
+        {%- if emitted > 0 -%},{%- endif -%}
+        {
+          "param": {{ f.param_name | json }},
+          "label": {{ f.label | json }},
+          "values": [
+            {%- for v in f.values -%}
+              {"v": {{ v.label | json }}, "n": {{ v.count }}, "val": {{ v.value | json }}}{%- unless forloop.last -%},{%- endunless -%}
+            {%- endfor -%}
+          ]
+        }
+        {%- assign emitted = emitted | plus: 1 -%}
+      {%- endif -%}
+    {%- endfor -%}
+  ]
+}
+{%- endcapture -%}
+{{- body | strip -}}

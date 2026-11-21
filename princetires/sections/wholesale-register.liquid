@@ -2,7 +2,7 @@
   Prince Tires — Wholesale Registration
   Two flows:
     A) Guest → {% form 'create_customer' %} with wholesale data in customer[note]
-               Redirects to /pages/wholesale on success (shows pending state there)
+               Redirects to /pages/wholesale?submitted=1 on success (shows the "we got your application" notice there)
     B) Logged-in → {% form 'contact' %} notifies admin for manual review + tagging
 
   Customer note format (for admin to identify applicants in Shopify):
@@ -706,8 +706,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             Wholesale Partner Program
           </div>
-          <h2 class="whr-perks-title">Trade pricing.<br>Built for the pros.</h2>
-          <p class="whr-perks-sub">Join the Alberta auto businesses already buying at trade prices from Prince Tires.</p>
+          <h2 class="whr-perks-title">Apply for a<br>wholesale account.</h2>
+          <p class="whr-perks-sub">For auto shops, tire shops, dealerships and fleets. When you are approved, we send you an invite to the Prince Tires dealer portal.</p>
         </div>
         <ul class="whr-perks-list">
           <li class="whr-perk">
@@ -715,8 +715,8 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             </div>
             <div class="whr-perk-body">
-              <strong>Up to 35% below retail</strong>
-              <span>Volume discounts on all major brands — Michelin, Goodyear, Continental, and more</span>
+              <strong>Your trade price on every item</strong>
+              <span>The tire and wheel brands we import ourselves, in stock at our Calgary warehouse</span>
             </div>
           </li>
           <li class="whr-perk">
@@ -724,8 +724,8 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </div>
             <div class="whr-perk-body">
-              <strong>Approved in 24 hours</strong>
-              <span>Quick review — most applications approved the same business day</span>
+              <strong>We review, then send your invite</strong>
+              <span>The invite link sets up your dealer portal login</span>
             </div>
           </li>
           <li class="whr-perk">
@@ -733,8 +733,8 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
             <div class="whr-perk-body">
-              <strong>Dedicated account manager</strong>
-              <span>Direct phone &amp; email — no hold times, no ticket queues</span>
+              <strong>Order online, pick up at our Edmonton Trail shop</strong>
+              <span>Unit 101, 3928 Edmonton Trail NE, Calgary. Delivery is coming soon.</span>
             </div>
           </li>
         </ul>
@@ -743,16 +743,16 @@
       <div class="whr-brand-bottom">
         <div class="whr-trust-bar">
           <div class="whr-trust-item">
-            <span class="whr-trust-val">500+</span>
-            <span class="whr-trust-label">Partners</span>
+            <span class="whr-trust-val">Online</span>
+            <span class="whr-trust-label">Ordering</span>
           </div>
           <div class="whr-trust-item" style="padding-left:1.4rem;border-left:1px solid rgba(255,255,255,0.08)">
-            <span class="whr-trust-val">24hr</span>
-            <span class="whr-trust-label">Approval</span>
+            <span class="whr-trust-val">Pickup</span>
+            <span class="whr-trust-label">Edmonton Trail NE</span>
           </div>
           <div class="whr-trust-item" style="padding-left:1.4rem;border-left:1px solid rgba(255,255,255,0.08)">
-            <span class="whr-trust-val">35%</span>
-            <span class="whr-trust-label">Max savings</span>
+            <span class="whr-trust-val">Pay</span>
+            <span class="whr-trust-label">When you pick up</span>
           </div>
         </div>
       </div>
@@ -778,13 +778,14 @@
           {%- if customer.tags contains 'wholesale' -%}
             <div class="whr-already-applied">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              <div>Your account already has wholesale access active. <a href="/pages/wholesale" style="color:#92400e;font-weight:600">Go to your wholesale portal →</a></div>
+              <div>You already have a wholesale account with us. Ordering is now in the dealer portal. <a href="https://wholesale.princetires.ca/dealer/login" style="color:#92400e;font-weight:600" rel="noopener">Dealer login</a>. No invite yet? Call (403) 452-4283.
+              </div>
             </div>
           {%- else -%}
             {%- comment -%} Pending status comes from the app (Phase 4 — docs/phase-4-wholesale-portal.md). Liquid can't see it reliably; reveal via the API. {%- endcomment -%}
             <div class="whr-already-applied" id="whr-pending-notice" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <div>You've already submitted an application — it's under review. <a href="/pages/wholesale" style="color:#92400e;font-weight:600">Check your status →</a></div>
+              <div>You have already applied and we are reviewing it. When you are approved, we send you an invite to the dealer portal.</div>
             </div>
             <script>
               (function () {
@@ -828,15 +829,17 @@
             Wholesale Application
           </div>
           <h1 class="whr-title">
-            {%- if show_upgrade_form -%}Upgrade to wholesale{%- else -%}Apply for wholesale access{%- endif -%}
+            Apply for a wholesale account
           </h1>
-          <p class="whr-subtitle">Takes under 3 minutes &middot; Approved within 24 hours &middot; No fees</p>
+          <p class="whr-subtitle">The form takes a few minutes. We review each application.</p>
+          <p class="whr-subtitle" data-dealer-portal-note style="margin-top:6px">When you are approved, we send you an invite to the Prince Tires dealer portal. That is where you see your trade price and order.</p>
+          <p class="whr-subtitle" data-dealer-login-note style="margin-top:6px">Already have an account? <a href="https://wholesale.princetires.ca/dealer/login" rel="noopener" style="color:#DC2626;font-weight:600;text-decoration:underline">Dealer login</a></p>
         </div>
 
         {%- comment -%} ════════════════════════════════════════════════
             FLOW A: GUEST — create_customer form
             Creates Shopify account + stores wholesale data in customer note
-            On success: redirects to /pages/wholesale (shows pending state)
+            On success: redirects to /pages/wholesale?submitted=1 (shows the "we got your application" notice)
         ════════════════════════════════════════════════ {%- endcomment -%}
 
         {%- if show_account_form -%}
@@ -923,7 +926,7 @@
             </div>
 
             {%- comment -%} ─── SECTION 2: Account creation ─── {%- endcomment -%}
-            <div class="whr-divider"><span>Create your account</span></div>
+            <div class="whr-divider"><span>Your contact details</span></div>
 
             <div class="whr-row">
               <div class="whr-field">
@@ -985,6 +988,7 @@
                 <div class="whr-pw-bar" id="WhrPwBar4"></div>
               </div>
               <p class="whr-pw-hint" id="WhrPwHint"></p>
+              <p class="whr-pw-note" style="margin:6px 0 0;font-size:1.4rem;line-height:1.45;color:#6b7280">This password is for your princetires.ca customer account only. Your dealer portal login is set up from the invite we send you.</p>
             </div>
 
             {%- comment -%} Wholesale data goes into customer note — assembled by JS on submit {%- endcomment -%}
@@ -992,18 +996,18 @@
 
             <button type="submit" class="whr-submit" id="WhrSubmitGuest">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <span>Create account &amp; apply</span>
+              <span>Send my application</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
 
           {%- endform -%}
 
           <p class="whr-terms">
-            By applying you agree to our <a href="/pages/terms-of-use" target="_blank" rel="noopener">Terms of Use</a> and <a href="/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. Wholesale pricing is subject to approval.
+            By applying you agree to our <a href="/pages/terms-of-use" target="_blank" rel="noopener">Terms of Use</a> and <a href="/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. Wholesale accounts are subject to approval.
           </p>
           <div class="whr-switch">
-            Already have an account?
-            <a href="{{ routes.account_login_url }}">Sign in instead</a>
+            Already have a dealer account?
+            <a href="https://wholesale.princetires.ca/dealer/login" rel="noopener">Dealer login</a>
           </div>
 
         {%- comment -%} ════════════════════════════════════════════════
@@ -1025,24 +1029,24 @@
                 </div>
                 <h2 class="whr-success-title">Application submitted!</h2>
                 <p class="whr-success-text">
-                  We've received your wholesale application for <strong>{{ customer.first_name }}'s</strong> account and will review it within 24 hours.
+                  We got your wholesale application and will review it.
                 </p>
                 <div class="whr-success-next">
                   <div class="whr-success-step">
                     <span class="whr-success-step-num">1</span>
-                    <span>Our team reviews your application — usually same business day</span>
+                    <span>We review your application</span>
                   </div>
                   <div class="whr-success-step">
                     <span class="whr-success-step-num">2</span>
-                    <span>You receive a confirmation at <strong>{{ customer.email }}</strong> once approved</span>
+                    <span>When you are approved, we send you an invite to the dealer portal</span>
                   </div>
                   <div class="whr-success-step">
                     <span class="whr-success-step-num">3</span>
-                    <span>Log in to see wholesale pricing applied across the full catalog</span>
+                    <span>You set your dealer login from the invite, then order online and pick up at our Edmonton Trail shop</span>
                   </div>
                 </div>
                 <a href="/pages/wholesale" style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 22px;background:#dc2626;color:#fff;border-radius:9px;text-decoration:none;font-size:13.5px;font-weight:600;">
-                  View your wholesale portal
+                  How wholesale works
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </a>
               </div>
@@ -1158,11 +1162,11 @@
           {%- endform -%}
 
           <p class="whr-terms">
-            By applying you agree to our <a href="/pages/terms-of-use" target="_blank" rel="noopener">Terms of Use</a> and <a href="/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. Wholesale access is subject to approval.
+            By applying you agree to our <a href="/pages/terms-of-use" target="_blank" rel="noopener">Terms of Use</a> and <a href="/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. Wholesale accounts are subject to approval.
           </p>
           <div class="whr-switch">
-            Want to check your application status?
-            <a href="/pages/wholesale">Go to wholesale portal</a>
+            Already have a dealer account?
+            <a href="https://wholesale.princetires.ca/dealer/login" rel="noopener">Dealer login</a>
           </div>
 
         {%- endif -%}
@@ -1424,7 +1428,7 @@
       var btn = $id('WhrSubmitGuest');
       if (btn) {
         btn.classList.add('whr-submit--loading');
-        btn.querySelector('span').textContent = 'Creating your account\u2026';
+        btn.querySelector('span').textContent = 'Sending your application\u2026';
       }
     });
   }

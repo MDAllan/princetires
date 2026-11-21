@@ -7,8 +7,6 @@
   {% render 'pt-booking-modal' %}
 {% enddoc %}
 
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js" defer></script>
-
 {%- comment -%} Inject Shopify customer data for smart contact prefill {%- endcomment -%}
 <script>
   window.__bkCustomer = {
@@ -52,6 +50,8 @@
 
     {%- comment -%} Step 1 {%- endcomment -%}
     <div class="bk-page" id="bk-page-1">
+      {%- comment -%} Required-field marks (owner, 2026-11-15): * = must answer; each step button explains what is missing (PTBookingCore.req). {%- endcomment -%}
+      <p class="pt-req-note bk-install-only"><span class="pt-req-mark" aria-hidden="true">*</span>required</p>
 
       <div class="bk-order-card">
         <div class="bk-order-header">
@@ -92,7 +92,7 @@
         Step-zero choice — install (default) vs tires-only.
         Tires-only skips steps 2 + 3 and adds the variant to Shopify cart.
       {%- endcomment -%}
-      <p class="bk-label">How would you like this?</p>
+      <p class="bk-label" id="bk-flow-label">How would you like this?</p>
       <div class="bk-flow-grid" id="bk-flow-grid">
         <label class="bk-flow-card bk-flow-card--active" data-flow="install">
           <input type="radio" name="bk-flow" value="install" checked>
@@ -130,12 +130,7 @@
           <label class="bk-addon" id="bk-addon-tpms">
             <input type="checkbox" id="bk-tpms">
             <span class="bk-addon-name">TPMS sensor replacement</span>
-            <span class="bk-addon-price">+$75/tire</span>
-          </label>
-          <label class="bk-addon bk-addon--active" id="bk-addon-disposal">
-            <input type="checkbox" id="bk-disposal" checked>
-            <span class="bk-addon-name">Tire disposal</span>
-            <span class="bk-addon-price">+$5/tire</span>
+            <span class="bk-addon-price">+$60/tire</span>
           </label>
           {%- comment -%}
             Additional custom add-ons rendered here by bkRenderCustomAddons()
@@ -143,6 +138,34 @@
           {%- endcomment -%}
           <div id="bk-custom-addons"></div>
         </div>
+
+        {%- comment -%}
+          Old tires (owner, 2026-10-27): a REQUIRED choice on every install —
+          the old tires come off the rims. Neither option is pre-selected; the
+          step can't continue until one is picked.
+          Owner, 2026-11-02 (staff feedback 9a7421bd): a customer BUYING tires
+          from us leaves the old ones with us at no charge — no $5 disposal
+          here (st.disposal stays false; /api/book never charges it on a tire
+          purchase either). The $5/tire disposal stays on the booking page, the
+          service modal, and here when the modal opens with no product (My
+          Garage's install for own tires): bkRenderOldTiresOptions() rewords
+          these two rows for who is booking.
+          Values stay 'dispose' (leave with us) / 'keep' (take home): /api/book's oldTires.
+        {%- endcomment -%}
+        <p class="bk-label" id="bk-oldtires-label">What should we do with your old tires?<span class="pt-req-mark" aria-hidden="true">*</span></p>
+        <div class="bk-addons bk-oldtires" id="bk-oldtires" role="radiogroup" aria-labelledby="bk-oldtires-label" aria-required="true">
+          <label class="bk-addon" id="bk-addon-disposal">
+            <input type="radio" name="bk-oldtires" value="dispose">
+            <span class="bk-addon-name">Leave old tires with us</span>
+            <span class="bk-addon-price">Included</span>
+          </label>
+          <label class="bk-addon" id="bk-oldtires-keep">
+            <input type="radio" name="bk-oldtires" value="keep">
+            <span class="bk-addon-name">I’ll take them home</span>
+            <span class="bk-addon-price"></span>
+          </label>
+        </div>
+        <div class="bk-form-error" id="bk-oldtires-error" role="alert" hidden>Please choose what we should do with your old tires.</div>
       </div>
 
       <div id="bk-price-box" hidden></div>
@@ -151,6 +174,34 @@
 
     {%- comment -%} Step 2 {%- endcomment -%}
     <div class="bk-page" id="bk-page-2" hidden>
+      <p class="pt-req-note"><span class="pt-req-mark" aria-hidden="true">*</span>required</p>
+
+      {%- comment -%}
+        Wait or drop off (owner, 2026-10-29). Shown ONLY for a real tire bought
+        from its own page, collection card or the cart (st.productHandle + a
+        tire size) — never on My Garage, a bare wheel, the service modal or the
+        booking page. Drop-off has no time: the customer brings the car any
+        time the shop is open that day. JS un-hides it (bkSyncVisit).
+      {%- endcomment -%}
+      <div class="bk-visit" id="bk-visit" hidden>
+        <p class="bk-label" id="bk-visit-label">How would you like to come in?</p>
+        <div class="bk-flow-grid bk-visit-grid" id="bk-visit-grid" role="radiogroup" aria-labelledby="bk-visit-label">
+          <label class="bk-flow-card bk-flow-card--active" data-visit="wait">
+            <input type="radio" name="bk-visit" value="wait" checked>
+            <div class="bk-flow-card-head">
+              <span class="bk-flow-card-title">Wait while we work</span>
+            </div>
+            <span class="bk-flow-card-sub">Pick a time and stay with your car.</span>
+          </label>
+          <label class="bk-flow-card" data-visit="drop_off">
+            <input type="radio" name="bk-visit" value="drop_off">
+            <div class="bk-flow-card-head">
+              <span class="bk-flow-card-title">Drop off for the day</span>
+            </div>
+            <span class="bk-flow-card-sub">Leave your car with us and pick it up later that day.</span>
+          </label>
+        </div>
+      </div>
 
       <div class="bk-week-nav">
         <button class="bk-week-arrow" id="bk-prev-week">&#8249;</button>
@@ -159,11 +210,21 @@
       </div>
       <div class="bk-day-strip" id="bk-day-strip"></div>
 
-      <p class="bk-label">Time</p>
+      <p class="bk-label" id="bk-time-label">Time<span class="pt-req-mark" aria-hidden="true">*</span></p>
       <p class="bk-trial-note" id="bk-trial-note" hidden></p>
-      <div class="bk-time-grid" id="bk-time-grid"></div>
+      <div class="bk-time-grid" id="bk-time-grid" role="group" aria-labelledby="bk-time-label"></div>
+      {%- comment -%} Drop-off only: replaces the time grid (no time to pick). {%- endcomment -%}
+      <div class="bk-drop" id="bk-drop" hidden>
+        <p class="bk-drop-info">Bring your car any time we're open that day. We'll text you when it's ready.</p>
+        <p class="bk-drop-msg" id="bk-drop-msg" role="status" aria-live="polite" hidden></p>
+      </div>
+      {%- comment -%}
+        The SW line below is the first paint only; bkRenderHoursNote() replaces
+        it with the CHOSEN shop's hours (booking window for a timed visit, the
+        day's opening hours for a drop-off).
+      {%- endcomment -%}
       {%- capture bw_mso -%}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_open' %}{%- endcapture -%}{%- capture bw_msc -%}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_close' %}{%- endcapture -%}{%- capture bw_suo -%}{% render 'pt-nap', location: 'sw', field: 'hours_sun_open' %}{%- endcapture -%}{%- capture bw_suc -%}{% render 'pt-nap', location: 'sw', field: 'hours_sun_close' %}{%- endcapture -%}{%- capture bw_cut -%}{% render 'pt-nap', location: 'sw', field: 'booking_cutoff_minutes' %}{%- endcapture -%}
-      <p class="bk-hours-note">Mon–Sat {% render 'pt-book-window', open: bw_mso, close: bw_msc, cutoff: bw_cut %} · Sun {% render 'pt-book-window', open: bw_suo, close: bw_suc, cutoff: bw_cut %}</p>
+      <p class="bk-hours-note" id="bk-hours-note">Mon–Sat {% render 'pt-book-window', open: bw_mso, close: bw_msc, cutoff: bw_cut %} · Sun {% render 'pt-book-window', open: bw_suo, close: bw_suc, cutoff: bw_cut %}</p>
 
       <div class="bk-nav-row">
         <button class="bk-back-btn" onclick="bkGoTo(1)">&larr; Back</button>
@@ -177,19 +238,53 @@
       <div class="bk-summary" id="bk-summary"></div>
 
       <div class="bk-form">
+        <p class="pt-req-note"><span class="pt-req-mark" aria-hidden="true">*</span>required</p>
+        {%- comment -%} Bot trap (security, 2026-11-13): a person never sees or fills this.
+           /api/book quietly drops any booking that has it filled. Its own <form> keeps
+           browser autofill and password managers from filling it with the contact fields. {%- endcomment -%}
+        <form class="pt-hp" aria-hidden="true" onsubmit="return false" autocomplete="off" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+          <label for="bk-company-website">Leave this empty</label>
+          <input type="text" id="bk-company-website" name="company_website" value="" tabindex="-1" autocomplete="off" aria-hidden="true" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other">
+        </form>
         <div class="bk-form-row">
           <div class="bk-field" id="bk-field-name">
-            <label for="bk-name">Name</label>
-            <input type="text" id="bk-name" placeholder="Jane Smith" autocomplete="name">
+            <label for="bk-name">Name<span class="pt-req-mark" aria-hidden="true">*</span></label>
+            <input type="text" id="bk-name" placeholder="Jane Smith" autocomplete="name" maxlength="120" aria-required="true">
           </div>
           <div class="bk-field" id="bk-field-phone">
-            <label for="bk-phone">Phone</label>
-            <input type="tel" id="bk-phone" placeholder="(403) 555-0123" autocomplete="tel">
+            <label for="bk-phone">Phone<span class="pt-req-mark" aria-hidden="true">*</span></label>
+            <input type="tel" id="bk-phone" placeholder="(403) 555-0123" autocomplete="tel" maxlength="30" aria-required="true">
           </div>
         </div>
         <div class="bk-field" id="bk-field-email">
-          <label for="bk-email">Email</label>
-          <input type="email" id="bk-email" placeholder="jane@email.com" autocomplete="email">
+          <label for="bk-email">Email<span class="pt-req-mark" aria-hidden="true">*</span></label>
+          <input type="email" id="bk-email" placeholder="jane@email.com" autocomplete="email" maxlength="200" aria-required="true">
+        </div>
+        {%- comment -%}
+          Vehicle details — all optional. Year/make/model are pre-filled from the
+          customer's saved garage vehicle when there is one (bkPrefillVehicleFields).
+        {%- endcomment -%}
+        <p class="bk-label bk-form-label">Your vehicle <span class="bk-optional">(optional)</span></p>
+        <div class="bk-form-row">
+          <div class="bk-field" id="bk-field-vyear">
+            <label for="bk-vyear">Year</label>
+            <input type="text" id="bk-vyear" inputmode="numeric" maxlength="4" placeholder="2019" autocomplete="off">
+          </div>
+          <div class="bk-field" id="bk-field-vmake">
+            <label for="bk-vmake">Make</label>
+            <input type="text" id="bk-vmake" maxlength="60" placeholder="Toyota" autocomplete="off">
+          </div>
+        </div>
+        <div class="bk-form-row">
+          <div class="bk-field" id="bk-field-vmodel">
+            <label for="bk-vmodel">Model</label>
+            <input type="text" id="bk-vmodel" maxlength="60" placeholder="RAV4" autocomplete="off">
+          </div>
+          <div class="bk-field" id="bk-field-odometer">
+            <label for="bk-odometer">Current mileage (km)</label>
+            <input type="text" id="bk-odometer" inputmode="numeric" maxlength="12" placeholder="e.g. 84,500" autocomplete="off">
+            <span class="bk-field-hint">Optional — helps us prepare</span>
+          </div>
         </div>
         <div class="bk-field">
           <label for="bk-notes">Notes <span class="bk-optional">(optional)</span></label>
@@ -210,7 +305,7 @@
       <div class="bk-done-icon">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
       </div>
-      <h2 class="bk-done-title">Request sent</h2>
+      <h2 class="bk-done-title" id="bk-done-title">Request sent</h2>
       <p class="bk-done-sub" id="bk-done-sub">We'll confirm by email, usually within the day — your appointment isn't final until you hear from us.</p>
       <div class="bk-done-card" id="bk-done-card"></div>
       <div class="bk-done-actions">
@@ -332,6 +427,11 @@
 .bk-addon-term:focus{outline:none;border-color:#dc2626}
 .bk-addon-price{flex-shrink:0;color:#9ca3af;font-size: 1rem;font-weight:500}
 .bk-addon--active .bk-addon-price{color:#dc2626}
+/* Old-tires question (required radio pair) */
+.bk-oldtires--error{box-shadow:inset 3px 0 0 #dc2626;padding-left:.6rem}
+#bk-oldtires-error{margin-top:.4rem}
+#bk-oldtires[hidden],#bk-oldtires-label[hidden]{display:none!important}
+#bk-flow-grid[hidden],#bk-flow-label[hidden]{display:none!important}
 
 /* ── Price box ── */
 .bk-price-box{margin-top:.9rem;padding-top:.8rem;border-top:1px solid #f3f4f6;font-size: 1.05rem}
@@ -375,6 +475,15 @@
 .bk-confirm-btn{flex:1;padding:13px;background:#16a34a;border:none;color:#fff;font-family:'Outfit',sans-serif;font-size: 1.1rem;font-weight:600;border-radius:8px;cursor:pointer;transition:background .15s}
 .bk-confirm-btn:hover:not(:disabled){background:#15803d}
 .bk-confirm-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── Wait or drop off (step 2, tire purchases only) ── */
+.bk-visit[hidden],.bk-drop[hidden],.bk-drop-msg[hidden],#bk-time-label[hidden],.bk-time-grid[hidden]{display:none!important}
+.bk-visit{margin-bottom:.9rem}
+.bk-visit-grid{margin-bottom:0}
+.bk-drop{margin:0 0 .2rem}
+.bk-drop-info{margin:0;padding:.65rem .8rem;border-left:3px solid #F5820B;background:#fafafa;border-radius:0 7px 7px 0;font-size:1rem;line-height:1.45;color:#374151}
+.bk-drop-msg{margin:.6rem 0 0;font-size:.95rem;line-height:1.5;color:#b91c1c;text-align:center}
+.bk-drop-msg--muted{color:#9ca3af}
 
 /* ── Trial note ── */
 .bk-trial-note{font-size: 0.9rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:.5rem .75rem;margin:0 0 .5rem;line-height:1.4}
@@ -426,6 +535,9 @@
 .bk-field input,.bk-field textarea{width:100%;padding:.7rem .85rem;border:1.5px solid #e5e7eb;border-radius:7px;font-family:'Outfit',sans-serif;font-size: 1.1rem;outline:none;box-sizing:border-box;color:#111;transition:border-color .15s}
 .bk-field input:focus,.bk-field textarea:focus{border-color:#dc2626}
 .bk-field textarea{resize:none}
+.bk-field-hint{display:block;font-size:.85rem;color:#9ca3af;margin-top:.25rem}
+.bk-form-label{margin:.3rem 0 0}
+.bk-form-label .bk-optional{text-transform:none;letter-spacing:0}
 
 /* ── Done page ── */
 .bk-done-icon{width:44px;height:44px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .7rem}
@@ -459,7 +571,7 @@
   var AVAILABILITY_API = 'https://app.princetires.ca/api/availability';
   var SERVICES_API = 'https://app.princetires.ca/api/services';
 
-  var st = { tireName: '', tireSize: '', tireVendor: '', tirePrice: 0, installPrice: 30, vehicle: 'passenger', qty: 4, maxQty: 0, tpms: false, disposal: true, date: null, time: null, savedVehicle: null, inventorySource: 'store', supplierTier: 'B', productHandle: '', variantId: '', flow: 'install', customAddons: [], location: null };
+  var st = { tireName: '', tireSize: '', tireVendor: '', tirePrice: 0, installPrice: 30, installWas: 0, installPromoId: '', installPromoLabel: '', installPromoStyle: '', vehicle: 'passenger', qty: 4, maxQty: 0, tpms: false, disposal: false, oldTires: null, date: null, time: null, savedVehicle: null, inventorySource: 'store', supplierTier: 'B', productHandle: '', variantId: '', fromCart: false, flow: 'install', customAddons: [], location: null, waitOrDrop: 'wait', dropOk: false };
   var wk = 0;
   // Bookable locations (bookable === true) from the #pt-locations-data island.
   // When fewer than 2 are bookable there is NO picker UI — the single bookable
@@ -473,12 +585,46 @@
   // Each entry: { slug, name, amount }.
   // Seeded with the live catalog value so the total is right even if the
   // catalog fetch fails; bkApplyCatalog() replaces it (and can clear it).
-  var bkMandatoryFees = [{ slug: 'fee_environmental', name: 'Tire recycling fee', amount: 5 }];
+  var bkMandatoryFees = [{ slug: 'fee_environmental', name: 'Alberta tire recycling levy', amount: 5 }];
+  // What the customer reads the levy as (owner, 2026-11-02) — the catalogue
+  // calls it "Tire recycling fee"; /api/book names it the same way.
+  var BK_LEVY_SLUG = 'fee_environmental';
+  var BK_LEVY_LABEL = 'Alberta tire recycling levy';
   // The one add-on the "Protect your new tires?" card may offer.
   var BK_PROTECTION_SLUG = 'addon_road_hazard';
   // Whether the last-chance protection nudge has already fired this session
   // (reset on each modal open) — so we ask at most once per booking.
   var bkUpsellNudged = false;
+  // Install promotions live right now (GET /api/services installPromos), by
+  // id; null until the catalogue has loaded. bkCheckPromo drops a promo the
+  // page showed when the app no longer runs it, or when this booking's
+  // vehicle is not one it covers (owner: sedan and SUV — a van, truck, dually
+  // or trailer pays the regular price, as /api/book decides:
+  // web-install-promo.ts). "largetruck" counts as a car here: the modal picks
+  // it from an R21+ rim alone. /api/book prices the booking itself either way.
+  var bkLivePromoIds = null;
+  var bkPromoVehicles = {};
+  var BK_PROMO_DEFAULT_VEHICLES = ['passenger', 'electric', 'suv'];
+  function bkPromoCoversVehicle() {
+    var v = st.vehicle || 'passenger';
+    if (v === 'largetruck') v = 'passenger';
+    var types = bkPromoVehicles[st.installPromoId] || BK_PROMO_DEFAULT_VEHICLES;
+    return types.indexOf(v) !== -1;
+  }
+  function bkCheckPromo() {
+    if (!st.installPromoId) return;
+    var live = !Array.isArray(bkLivePromoIds) || bkLivePromoIds.indexOf(st.installPromoId) !== -1;
+    if (live && bkPromoCoversVehicle()) return;
+    if (st.installWas > 0) st.installPrice = st.installWas;
+    st.installWas = 0; st.installPromoId = ''; st.installPromoLabel = ''; st.installPromoStyle = '';
+  }
+  // "$30 struck, $25/tire · Install promo" or "$25/tire · Install promo" (the "save" look);
+  // "plain" (owner 2026-11-14): just "$25/tire" — the promo price IS the install price.
+  function bkInstallRateHtml() {
+    if (!st.installPromoId || st.installPromoStyle === 'plain') return '$' + st.installPrice + '/tire';
+    var was = st.installPromoStyle === 'strike' && st.installWas > st.installPrice ? '<s style="color:#9ca3af">$' + st.installWas + '</s> ' : '';
+    return was + '$' + st.installPrice + '/tire · ' + bkEsc(st.installPromoLabel || 'Install promo');
+  }
 
   // Vehicle type drives appointment DURATION + the calendar event only — not price.
   // Install price is per tire, set on each product via the custom.install_price
@@ -496,7 +642,7 @@
 
   // Add-on pricing fallbacks — bkApplyCatalog() overlays these from GET /api/services
   // (addon_tpms + addon_disposal in the admin catalog).
-  var bkTpmsPrice = 75;
+  var bkTpmsPrice = 60;
   var bkDisposalPrice = 5;
 
   var vIcons = {
@@ -728,8 +874,14 @@
   // Never on a tire whose price already carries the levy (Trail Tire), and
   // never on a button that did not say (st.levyInPrice null): /api/book makes
   // the final call from the product's own tags either way.
+  // A TIRE is one with a size OR one the product page says is not a wheel
+  // (data-is-wheel="false"): 86 ATW flotation tires have no tire_size
+  // metafield and booked $5/tire under their PDP total (2026-11-13).
+  function bkIsTire() {
+    return !!(st.tireSize || '').trim() || st.isWheel === false;
+  }
   function bkFeesApply() {
-    return st.flow === 'install' && bkMandatoryFees.length > 0 && !!(st.tireSize || '').trim() && st.levyInPrice === false;
+    return st.flow === 'install' && bkMandatoryFees.length > 0 && bkIsTire() && st.levyInPrice === false;
   }
   function bkFeesPerTire() {
     var n = 0;
@@ -746,6 +898,9 @@
     // Install is per tire (st.installPrice) — set per product via the install_price metafield.
     var i = installable ? st.installPrice * st.qty : 0;
     var t = installable && st.tpms ? bkTpmsPrice * st.qty : 0;
+    // Disposal is included with tires bought from us (owner, 2026-11-02):
+    // st.disposal is only ever true for own tires (bkTireBuyer() false — My
+    // Garage's no-product install), which still pay the catalogue's $/tire.
     var d = installable && st.disposal ? bkDisposalPrice * st.qty : 0;
     var ca = 0;
     if (installable && Array.isArray(st.customAddons)) {
@@ -787,7 +942,7 @@
         // A required fee, not a choice. The fee_ prefix covers a cached page
         // talking to an app that does not send `mandatory` yet.
         if (typeof svc.prices.amount === 'number') {
-          fees.push({ slug: svc.slug, name: svc.name || svc.slug, amount: svc.prices.amount });
+          fees.push({ slug: svc.slug, name: svc.slug === BK_LEVY_SLUG ? BK_LEVY_LABEL : (svc.name || svc.slug), amount: svc.prices.amount });
         }
       } else if (svc.kind === 'addon') {
         var p = svc.prices || {};
@@ -843,7 +998,8 @@
       if (el) el.textContent = text;
     };
     setLabel('bk-addon-tpms', '+$' + bkTpmsPrice + '/tire');
-    setLabel('bk-addon-disposal', '+$' + bkDisposalPrice + '/tire');
+    // "Included" for a tire buyer, the catalogue price for own tires.
+    bkRenderOldTiresOptions();
     bkRenderCustomAddons();
     // Repaint if the modal is already open when the catalog lands.
     var ov = document.getElementById('bk-overlay');
@@ -1008,9 +1164,10 @@
       h += '<div class="bk-order-row"><span>' + st.qty + ' tire' + (st.qty !== 1 ? 's' : '') + ' × $' + st.tirePrice.toFixed(2) + '</span><span>$' + c.tires.toFixed(2) + '</span></div>';
     }
     if (installable) {
-      var installLabel = 'Installation × ' + st.qty + ' ($' + st.installPrice + '/tire)';
+      var installLabel = 'Installation × ' + st.qty + ' (' + bkInstallRateHtml() + ')';
       h += '<div class="bk-order-row"><span>' + installLabel + '</span><span>$' + c.install.toFixed(2) + '</span></div>';
       if (st.tpms) h += '<div class="bk-order-row"><span>TPMS sensors × ' + st.qty + '</span><span>+$' + c.tpms.toFixed(2) + '</span></div>';
+      if (bkAsksOldTires() && st.oldTires === 'dispose' && bkTireBuyer()) h += '<div class="bk-order-row"><span>Old tires left with us × ' + st.qty + '</span><span>Included</span></div>';
       if (st.disposal) h += '<div class="bk-order-row"><span>Tire disposal × ' + st.qty + '</span><span>+$' + c.disposal.toFixed(2) + '</span></div>';
       (st.customAddons || []).forEach(function (a) {
         if (a && a.selected) {
@@ -1057,6 +1214,9 @@
       bkAddToCartOnly();
       return;
     }
+    // The old-tires question is required on every install — nothing is
+    // pre-selected, so stop here with the message next to the question.
+    if (!bkCheckOldTires()) return;
     // Last-chance upsell: if a brand-eligible protection add-on is shown but
     // left unticked, ask once before advancing to date/time.
     if (!bkUpsellNudged) {
@@ -1067,6 +1227,110 @@
     }
     bkGoTo(2);
   };
+
+  // ── Old tires: required keep / dispose choice (install flow only) ─────────
+  // Is this a customer BUYING a tire from us — the modal opened for a real
+  // product (a handle) with a price? Then leaving the old tires with us is
+  // included (owner, 2026-11-02). My Garage's "Book install for vehicle" opens
+  // this modal with no handle and tirePrice 0: the customer's own tires, who
+  // pay the catalogue's disposal like the booking page. /api/book decides the
+  // same thing from the product it looks up itself.
+  function bkTireBuyer() {
+    return !!String(st.productHandle || '').trim() && st.tirePrice > 0;
+  }
+  // The two old-tires rows, worded for who is booking. Values stay 'dispose'
+  // / 'keep' (/api/book's oldTires) either way.
+  function bkRenderOldTiresOptions() {
+    var buyer = bkTireBuyer();
+    var set = function (id, name, price) {
+      var row = document.getElementById(id);
+      if (!row) return;
+      var n = row.querySelector('.bk-addon-name');
+      var p = row.querySelector('.bk-addon-price');
+      if (n) n.textContent = name;
+      if (p) p.textContent = price;
+    };
+    set('bk-addon-disposal',
+      buyer ? 'Leave old tires with us' : 'Tire disposal (we recycle your old tires)',
+      buyer ? 'Included' : '+$' + bkDisposalPrice + '/tire');
+    set('bk-oldtires-keep',
+      buyer ? 'I\u2019ll take them home' : 'Keep them \u2014 I\u2019ll take them home',
+      buyer ? '' : 'Free');
+  }
+  // st.oldTires is null until the customer picks. st.disposal (charged) only
+  // for own tires: a tire buyer leaves theirs with us at no charge.
+  function bkSetOldTires(choice) {
+    st.oldTires = (choice === 'keep' || choice === 'dispose') ? choice : null;
+    st.disposal = st.oldTires === 'dispose' && !bkTireBuyer();
+    var keepRow = document.getElementById('bk-oldtires-keep');
+    var dispRow = document.getElementById('bk-addon-disposal');
+    if (keepRow) keepRow.classList.toggle('bk-addon--active', st.oldTires === 'keep');
+    if (dispRow) dispRow.classList.toggle('bk-addon--active', st.oldTires === 'dispose');
+    document.querySelectorAll('#bk-oldtires input[name="bk-oldtires"]').forEach(function (r) {
+      r.checked = r.value === st.oldTires;
+    });
+    if (st.oldTires) bkShowOldTiresError(false);
+    renderPrice();
+  }
+  function bkShowOldTiresError(show) {
+    var err = document.getElementById('bk-oldtires-error');
+    var grp = document.getElementById('bk-oldtires');
+    if (err) err.hidden = !show;
+    if (grp) grp.classList.toggle('bk-oldtires--error', !!show);
+  }
+  // True when the install can go ahead; otherwise shows the inline message
+  // next to the question and scrolls it into view.
+  // Only a TIRE installation takes old tires off the rims. A bare wheel opens
+  // this modal with an empty tire size (same rule as bkFeesApply), so no
+  // question, no disposal, oldTires null.
+  function bkAsksOldTires() {
+    return st.flow === 'install' && !!(st.tireSize || '').trim();
+  }
+  function bkCheckOldTires() {
+    if (!bkAsksOldTires() || st.oldTires) return true;
+    bkShowOldTiresError(true);
+    var grp = document.getElementById('bk-oldtires');
+    try { if (grp) grp.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    return false;
+  }
+
+  // ── Vehicle details (step 3, all optional) ────────────────────────────────
+  function bkVehField(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  }
+  // Fill year/make/model from a saved garage vehicle. Only overwrites a field
+  // that is empty or still holds what the previous saved vehicle put there,
+  // so a late /apps/api/vehicles answer never clobbers what the customer typed.
+  function bkPrefillVehicleFields(prev, next) {
+    [['bk-vyear', 'year'], ['bk-vmake', 'make'], ['bk-vmodel', 'model']].forEach(function (f) {
+      var el = document.getElementById(f[0]);
+      if (!el) return;
+      var cur = String(el.value || '').trim();
+      var prevVal = prev && prev[f[1]] != null ? String(prev[f[1]]).trim() : '';
+      if (cur === '' || cur === prevVal) {
+        el.value = next && next[f[1]] != null ? String(next[f[1]]).trim() : '';
+      }
+    });
+  }
+  // Mileage → whole km. '' → null; anything that isn't a whole number after
+  // stripping commas/spaces (and a trailing "km") → NaN.
+  function bkParseKm(raw) {
+    var s = String(raw || '').replace(/km\.?$/i, '').replace(/[\s,]/g, '');
+    if (s === '') return null;
+    if (!/^\d+$/.test(s)) return NaN;
+    var n = parseInt(s, 10);
+    return n <= 3000000 ? n : NaN;
+  }
+  function bkValidYear(y) {
+    if (y === '') return true;
+    if (!/^\d{4}$/.test(y)) return false;
+    var n = parseInt(y, 10);
+    return n >= 1900 && n <= new Date().getFullYear() + 2;
+  }
+  function bkFormatKm(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' km';
+  }
 
   // Show the protection nudge for an unticked add-on row. "Yes" ticks it (which
   // recomputes the price) and advances; "No thanks" just advances.
@@ -1110,6 +1374,13 @@
   // to /cart. Falls back to /cart link if variantId is missing for any reason.
   window.bkAddToCartOnly = function () {
     var cta = document.getElementById('bk-step1-cta');
+    // Opened from the cart: the tires are already in it. The cart button now
+    // carries a variant id (the drop-off check needs it), so adding here
+    // would put a second set in the cart. Just go back to the cart.
+    if (st.fromCart) {
+      window.location.href = '/cart';
+      return;
+    }
     if (!st.variantId) {
       // No variant id wired — open the cart so the customer can add manually.
       window.location.href = '/cart';
@@ -1142,7 +1413,7 @@
     var nameEl = document.getElementById('bk-vehicle-display-name');
     var priceEl = document.getElementById('bk-vehicle-display-price');
     if (nameEl) nameEl.textContent = v ? v.name : 'Vehicle';
-    if (priceEl) priceEl.textContent = '$' + st.installPrice + '/tire';
+    if (priceEl) priceEl.innerHTML = bkInstallRateHtml();
     renderPrice();
   }
 
@@ -1194,13 +1465,16 @@
       var d = new Date(start); d.setDate(d.getDate() + i);
       var isPast = d < today;
       var isTooEarly = !isPast && earliestISO && bkLocalISO(d) < earliestISO;
+      // Drop-off mode: a day the server said is full is greyed the same way.
+      var isDropFull = !isPast && !isTooEarly && bkIsDropOff() && !!bkDropFull[bkDropKey(d)];
       var isToday = d.getTime() === today.getTime();
       var isActive = st.date && d.toDateString() === st.date.toDateString();
       var cls = 'bk-day-card';
-      if (isPast || isTooEarly) cls += ' bk-day-card--past';
+      if (isPast || isTooEarly || isDropFull) cls += ' bk-day-card--past';
       if (isToday) cls += ' bk-day-card--today';
       if (isActive) cls += ' bk-day-card--active';
-      var titleAttr = isTooEarly ? ' title="' + String(st.serverEarliest.reason || '').replace(/"/g, '&quot;') + '"' : '';
+      var titleAttr = isTooEarly ? ' title="' + String(st.serverEarliest.reason || '').replace(/"/g, '&quot;') + '"'
+        : isDropFull ? ' title="Drop-offs are full this day"' : '';
       h += '<div class="' + cls + '" data-date="' + bkLocalISO(d) + '"' + titleAttr + '><div class="bk-day-name">' + dn[i] + '</div><div class="bk-day-num">' + d.getDate() + '</div></div>';
     }
     document.getElementById('bk-day-strip').innerHTML = h;
@@ -1291,7 +1565,7 @@
     else { open = toMin(H.hours_mon_sat_open); close = toMin(H.hours_mon_sat_close); }
     if (open === null) open = dow === 0 ? 600 : 540;
     if (close === null) close = dow === 0 ? 840 : 1020;
-    return { open: open, last: close - (parseInt(H.booking_cutoff_minutes, 10) || 30), gap: gap };
+    return { open: open, close: close, last: close - (parseInt(H.booking_cutoff_minutes, 10) || 30), gap: gap };
   }
   // Minutes → the label shape the availability API uses ("9:00 AM", "12:30 PM").
   function bkMinsToSlot(mins) {
@@ -1348,6 +1622,170 @@
   // click must never paint over a later one.
   var bkAvailSeq = 0;
 
+  // ── Wait or drop off (owner, 2026-10-29) ────────────────────────────────
+  // A drop-off has a DAY and no time: the customer leaves the car any time
+  // we're open and picks it up later that day. Each shop takes a set number
+  // of drop-offs a day (the owner sets it in the app). Offered to customers
+  // BUYING tires only — this modal opened for a real product (productHandle)
+  // that has a tire size. My Garage opens it with no handle and a bare wheel
+  // has no size, so neither sees it. /api/book checks the product itself and
+  // refuses a drop-off it cannot verify, so this is the courtesy, not the fence.
+  function bkDropOffOffered() {
+    return st.flow === 'install' && !!st.productHandle && !!String(st.tireSize || '').trim();
+  }
+  function bkIsDropOff() {
+    return st.waitOrDrop === 'drop_off' && bkDropOffOffered();
+  }
+  // Days the server said are full, per shop ("sw|2026-11-04"), so the strip
+  // can grey them. Cleared when the server says the day has room again.
+  var bkDropFull = {};
+  function bkDropKey(d) {
+    return ((st.location && st.location.slug) || 'sw') + '|' + bkLocalISO(d);
+  }
+  // "Tue Nov 4" — the same shape /api/book uses in its refusal.
+  function bkShortDay(d) {
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(/,/g, '');
+  }
+  // "Tuesday, November 4"
+  function bkLongDay(d) {
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+  function bkDropFullMsg(d) {
+    return 'Drop-offs are full on ' + bkShortDay(d) + '. Pick another day, or choose a time and wait.';
+  }
+
+  // Toggle on/off, and swap the time grid for the drop-off note.
+  function bkSyncVisit() {
+    var offered = bkDropOffOffered();
+    if (!offered) st.waitOrDrop = 'wait';
+    var drop = bkIsDropOff();
+    var box = document.getElementById('bk-visit');
+    if (box) box.hidden = !offered;
+    document.querySelectorAll('#bk-visit-grid .bk-flow-card').forEach(function (card) {
+      var on = card.dataset.visit === (drop ? 'drop_off' : 'wait');
+      card.classList.toggle('bk-flow-card--active', on);
+      var r = card.querySelector('input');
+      if (r) r.checked = on;
+    });
+    ['bk-time-label', 'bk-time-grid'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.hidden = drop;
+    });
+    var trial = document.getElementById('bk-trial-note');
+    if (trial && drop) trial.hidden = true;
+    var dropEl = document.getElementById('bk-drop');
+    if (dropEl) dropEl.hidden = !drop;
+    bkRenderHoursNote();
+  }
+
+  // The hours line under step 2, for the CHOSEN shop (it was SW's for
+  // everyone). Timed visit: the weekly booking window, exactly as the Liquid
+  // line renders it for SW. Drop-off: that day's opening hours, since the car
+  // can come any time we're open.
+  function bkRenderHoursNote() {
+    var el = document.getElementById('bk-hours-note');
+    if (!el) return;
+    var slug = (st.location && st.location.slug) ? st.location.slug : 'sw';
+    if (!BK_HOURS[slug]) return; // unknown shop: keep the server-rendered line
+    if (bkIsDropOff() && st.date) {
+      var H = bkHoursFor(st.date);
+      var span = H.gap
+        ? bkMinsToSlot(H.open) + ' – ' + bkMinsToSlot(H.gap[0]) + ' and ' + bkMinsToSlot(H.gap[1]) + ' – ' + bkMinsToSlot(H.close)
+        : bkMinsToSlot(H.open) + ' – ' + bkMinsToSlot(H.close);
+      var shop = st.location ? bkShortShopName(st.location) : '';
+      el.textContent = 'Open ' + span + ' on ' + st.date.toLocaleDateString('en-US', { weekday: 'long' }) +
+        (shop && shop !== 'Prince Tires' ? ' at ' + shop : '') + '.';
+      return;
+    }
+    // Any Monday and any Sunday: bkHoursFor only reads the weekday.
+    var mon = bkHoursFor(new Date(2024, 0, 1)), sun = bkHoursFor(new Date(2024, 0, 7));
+    el.textContent = 'Mon–Sat ' + bkMinsToSlot(mon.open) + ' – ' + bkMinsToSlot(mon.last) +
+      ' · Sun ' + bkMinsToSlot(sun.open) + ' – ' + bkMinsToSlot(sun.last);
+  }
+
+  // Step 2 in drop-off mode: no grid, just "is this day open for a drop-off".
+  // Same availability call as the grid plus drop_off=1, which adds the shop's
+  // daily cap for that day ({cap, taken, full}). The server stays the
+  // authority: if it sends no dropOff key the day is allowed and /api/book
+  // decides. Order of checks mirrors /api/book: too early for this tire,
+  // closed, today after closing, full.
+  async function bkRenderDropOff() {
+    var msg = document.getElementById('bk-drop-msg');
+    var next = document.getElementById('bk-next-2');
+    var say = function (text, muted) {
+      if (!msg) return;
+      msg.textContent = text || '';
+      msg.hidden = !text;
+      msg.classList.toggle('bk-drop-msg--muted', !!muted);
+    };
+    st.dropOk = false;
+    if (next) next.disabled = true;
+    if (!st.date) { say('Pick a day above.', true); return; }
+
+    var seq = ++bkAvailSeq;
+    var day = new Date(st.date);
+    var iso = bkLocalISO(day);
+    say('Checking that day…', true);
+    var hadEarliest = !!st.serverEarliest;
+    var res = await PTBookingCore.fetchAvailability(
+      AVAILABILITY_API,
+      iso,
+      (st.location && st.location.slug) ? st.location.slug : null,
+      { product_handle: st.productHandle, variant_id: st.variantId, qty: st.qty, book_type: 'tire_install', drop_off: 1 }
+    );
+    if (seq !== bkAvailSeq || !bkIsDropOff()) return; // a newer render owns step 2
+
+    if (res.unavailable) {
+      var downPhone = (st.location && st.location.phone) ? st.location.phone : 'the shop';
+      say('Online booking is temporarily unavailable. Please call ' + downPhone + ' to book, or try again in a few minutes.');
+      return;
+    }
+
+    // A tire we have to order can be dropped off from the first day it can
+    // be here (the server's floor DATE; its time does not apply to a car
+    // that is already with us). Auto-picked days land on that day.
+    if (res.earliest) {
+      st.serverEarliest = res.earliest;
+      if (!st.userPickedDate && iso < res.earliest.date) {
+        st.date = new Date(res.earliest.date + 'T12:00:00');
+        wk = bkWeekOffset(st.date);
+        renderWeek();
+        renderTimes();
+        return;
+      }
+      if (!hadEarliest) renderWeek();
+      if (iso < res.earliest.date) {
+        say(res.earliest.reason || ('The earliest day we can have your tires is ' + bkShortDay(new Date(res.earliest.date + 'T12:00:00')) + '. Pick that day or later.'));
+        return;
+      }
+    }
+
+    if (res.allDayBlocked) {
+      say(res.blockedReason || ('We\'re closed on ' + bkShortDay(day) + '. Pick another day.'));
+      return;
+    }
+
+    var now = new Date();
+    if (day.toDateString() === now.toDateString() && now.getHours() * 60 + now.getMinutes() >= bkHoursFor(day).close) {
+      say('We\'re closed for the rest of today. Pick another day.');
+      return;
+    }
+
+    var key = bkDropKey(day);
+    if (res.dropOff && res.dropOff.full) {
+      var known = !!bkDropFull[key];
+      bkDropFull[key] = true;
+      if (!known) renderWeek();
+      say(bkDropFullMsg(day));
+      return;
+    }
+    if (bkDropFull[key]) { delete bkDropFull[key]; renderWeek(); }
+
+    say('');
+    st.dropOk = true;
+    if (next) next.disabled = false;
+  }
+
   function slotToMins(slot) {
     var m = slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
     if (!m) return 0;
@@ -1359,6 +1797,10 @@
 
   // ── Render: time slots ───────────────────────────────────────────────────
   async function renderTimes() {
+    // Every caller (day click, shop switch, add-on restriction, step 2) comes
+    // through here, so this is where a drop-off takes its own path.
+    bkRenderHoursNote();
+    if (bkIsDropOff()) return bkRenderDropOff();
     if (!st.date) {
       document.getElementById('bk-time-grid').innerHTML = '<p style="color:#9ca3af;font-size: 0.9rem;grid-column:1/-1">Select a day above</p>';
       return;
@@ -1495,7 +1937,7 @@
 
         var earliestDay = earliest.toLocaleDateString('en-US', { weekday: 'long' });
         var earliestLabel = earliestDay + ' ' + earliest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        var blockMsg = 'Earliest available: ' + earliestLabel + ' (warehouse delivery)';
+        var blockMsg = 'Earliest available: ' + earliestLabel + ' (tires ordered in)';
 
         // If selected date is BEFORE earliest day → block ALL slots
         var dateOnly = new Date(st.date); dateOnly.setHours(0,0,0,0);
@@ -1550,6 +1992,26 @@
       var bkMsg;
       if (bkLeadBlockedAll && trialNote) bkMsg = trialNote;
       else if (bkIsToday && bkNowMins + 120 > H.last) bkMsg = 'Same-day appointments need 2 hours’ notice, and the last one today is ' + bkMinsToSlot(H.last) + ' — today can’t be booked online any more. Pick another day' + (bkPhone ? ', or call ' + bkPhone + ' to ask about a walk-in.' : '.');
+      else if (availRes.dayFull) {
+        // Open but full, at both shops (the other shop's open times above are
+        // not a dead end): offer to request the day instead of a dead end.
+        // pt-booking-core.js renderRequestPanel → staff queue + a text to the shop.
+        PTBookingCore.renderRequestPanel(document.getElementById('bk-time-grid'), {
+          apiBase: AVAILABILITY_API,
+          dateISO: bkLocalISO(st.date),
+          dateLabel: bkShortDay(st.date),
+          locationSlug: (st.location && st.location.slug) ? st.location.slug : null,
+          prefill: {
+            name: (document.getElementById('bk-name') || {}).value || '',
+            phone: (document.getElementById('bk-phone') || {}).value || '',
+            email: (document.getElementById('bk-email') || {}).value || ''
+          },
+          service: 'Tire install' + (st.tireName ? ': ' + st.qty + ' × ' + st.tireName : ''),
+          vehicle: [(document.getElementById('bk-vyear') || {}).value, (document.getElementById('bk-vmake') || {}).value, (document.getElementById('bk-vmodel') || {}).value].filter(Boolean).join(' ') || null
+        });
+        document.getElementById('bk-next-2').disabled = true;
+        return;
+      }
       else bkMsg = 'Fully booked this day — please pick another day.';
       document.getElementById('bk-time-grid').innerHTML = '<p style="color:#b91c1c;font-size: 0.95rem;line-height:1.5;grid-column:1/-1;text-align:center;padding:.5rem .25rem">' + bkMsg + '</p>';
       document.getElementById('bk-next-2').disabled = true;
@@ -1596,24 +2058,30 @@
   function renderSummary() {
     var c = calcPrice();
     var v = vehs.find(function (x) { return x.id === st.vehicle; });
-    var ds = st.date ? st.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + st.time : '';
+    var isDrop = bkIsDropOff();
+    var ds = !st.date ? '' : isDrop
+      ? bkLongDay(st.date) + ', any time we\'re open'
+      : st.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + st.time;
     var addons = [];
     if (st.tpms) addons.push('TPMS sensors');
-    if (st.disposal) addons.push('Tire disposal');
+    // Disposal now has its own "Old tires" row below (keeping / disposal).
     (st.customAddons || []).forEach(function (a) { if (a && a.selected) addons.push(bkAddonDisplayName(a)); });
     var vehLabel = buildVehicleLabel(v);
+    var km = bkParseKm(bkVehField('bk-odometer'));
     var h = '';
-    h += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
+    h += '<div class="bk-summary-row"><span class="bk-summary-label">' + (isDrop ? 'Drop-off' : 'Date & time') + '</span><span class="bk-summary-val">' + ds + '</span></div>';
     // Only surface a Location row when the customer actually had a choice
     // (2+ bookable shops) — keeps the single-SW summary identical to before.
     if (bkLocations && bkLocations.length >= 2 && st.location) {
       h += '<div class="bk-summary-row"><span class="bk-summary-label">Location</span><span class="bk-summary-val">' + (st.location.public_name || st.location.name || '') + '</span></div>';
     }
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
+    if (typeof km === 'number' && !isNaN(km)) h += '<div class="bk-summary-row"><span class="bk-summary-label">Mileage</span><span class="bk-summary-val">' + bkFormatKm(km) + '</span></div>';
     h += '<div class="bk-summary-row"><span class="bk-summary-label">Tire</span><span class="bk-summary-val">' + (st.tireSize || '—') + ' × ' + st.qty + '</span></div>';
+    if (st.oldTires) h += '<div class="bk-summary-row"><span class="bk-summary-label">Old tires</span><span class="bk-summary-val">' + (st.oldTires === 'dispose' ? (bkTireBuyer() ? 'Leaving with us (included)' : 'Tire disposal (+$' + bkDisposalPrice + '/tire)') : 'Taking them home') + '</span></div>';
     if (addons.length) h += '<div class="bk-summary-row"><span class="bk-summary-label">Add-ons</span><span class="bk-summary-val">' + addons.join(', ') + '</span></div>';
     if (st.tirePrice > 0) h += '<div class="bk-summary-row"><span class="bk-summary-label">Tires</span><span class="bk-summary-val">$' + c.tires.toFixed(2) + '</span></div>';
-    h += '<div class="bk-summary-row"><span class="bk-summary-label">Installation</span><span class="bk-summary-val">$' + c.install.toFixed(2) + '</span></div>';
+    h += '<div class="bk-summary-row"><span class="bk-summary-label">Installation' + (st.installPromoId && st.installPromoStyle !== 'plain' ? ' (' + bkEsc(st.installPromoLabel || 'Install promo') + ')' : '') + '</span><span class="bk-summary-val">' + (st.installPromoId && st.installPromoStyle === 'strike' && st.installWas > st.installPrice ? '<s style="color:#9ca3af;font-weight:500">$' + (st.installWas * st.qty).toFixed(2) + '</s> ' : '') + '$' + c.install.toFixed(2) + '</span></div>';
     if (c.fees > 0) {
       var feeLabel = bkMandatoryFees.map(function (fee) { return fee.name; }).join(', ');
       h += '<div class="bk-summary-row"><span class="bk-summary-label">' + feeLabel + '</span><span class="bk-summary-val">$' + c.fees.toFixed(2) + '</span></div>';
@@ -1629,13 +2097,38 @@
     document.getElementById('bk-summary').innerHTML = h;
   }
 
+  // The saved garage vehicle's own label (the hidden #bk-saved-vehicle banner).
+  function bkSavedVehicleLabel() {
+    if (!st.savedVehicle) return '';
+    var lbl = st.savedVehicle.year + ' ' + st.savedVehicle.make + ' ' + st.savedVehicle.model;
+    if (st.savedVehicle.trim) lbl += ' ' + st.savedVehicle.trim;
+    return lbl;
+  }
+  // The saved vehicle's trim, only while the typed make + model still match it
+  // (the customer may have typed a different car).
+  // Garage trim when it is still the saved vehicle, else the trim picked in
+  // the "Pick your vehicle" row (pt-popup-ymm), else none.
+  function bkTrim() {
+    return bkMatchingTrim() || (window.ptPickedTrim ? window.ptPickedTrim('bk-vmodel') : '');
+  }
+  function bkMatchingTrim() {
+    var sv = st.savedVehicle;
+    if (!sv || !sv.trim) return '';
+    var same = function (a, b) { return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase(); };
+    return (same(bkVehField('bk-vmake'), sv.make) && same(bkVehField('bk-vmodel'), sv.model)) ? String(sv.trim) : '';
+  }
+  // Summary / done label: what the customer entered (year make model), else
+  // the vehicle type.
   function buildVehicleLabel(vehObj) {
-    if (st.savedVehicle) {
-      var lbl = st.savedVehicle.year + ' ' + st.savedVehicle.make + ' ' + st.savedVehicle.model;
-      if (st.savedVehicle.trim) lbl += ' ' + st.savedVehicle.trim;
-      return lbl;
+    var parts = [bkVehField('bk-vyear'), bkVehField('bk-vmake'), bkVehField('bk-vmodel')].filter(Boolean);
+    if (parts.length) {
+      var t = bkTrim();
+      return bkEsc(parts.join(' ') + (t ? ' ' + t : ''));
     }
     return vehObj ? vehObj.name : '';
+  }
+  function bkEsc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
   }
 
   // ── Open modal ───────────────────────────────────────────────────────────
@@ -1647,7 +2140,19 @@
     // 'true' = the price already includes the tire levy (pt-levy-in-price).
     var levyFlag = (btn.dataset.levyInPrice || '').trim();
     st.levyInPrice = levyFlag === 'true' ? true : levyFlag === 'false' ? false : null;
+    // The PDP's is_wheel verdict; null when the button did not say (collection cards).
+    var wheelFlag = (btn.dataset.isWheel || '').trim();
+    st.isWheel = wheelFlag === 'true' ? true : wheelFlag === 'false' ? false : null;
     st.installPrice = parseFloat(btn.dataset.installPrice) || 30;
+    // An install promotion the page showed (snippets/pt-install-promo.liquid):
+    // installPrice is the promo's, installWas the regular price it replaces.
+    st.installPromoId = String(btn.dataset.installPromoId || '');
+    st.installWas = st.installPromoId ? (parseFloat(btn.dataset.installWas) || 0) : 0;
+    // "plain" (owner 2026-11-14): no label, no strike — the promo price shown as the install price.
+    var bkIpStyle = String(btn.dataset.installPromoStyle || '');
+    st.installPromoStyle = !st.installPromoId ? '' : bkIpStyle === 'strike' ? 'strike' : bkIpStyle === 'plain' ? 'plain' : 'save';
+    st.installPromoLabel = st.installPromoId && st.installPromoStyle !== 'plain' ? String(btn.dataset.installPromoLabel || 'Install promo') : '';
+    // bkCheckPromo() runs once the vehicle is decided below.
     st.inventorySource = btn.dataset.inventorySource === 'trial' ? 'trial' : 'store';
     // Tier 'A' = in stock at our shop (Prince Tires / imported brands) → 2 hr lead.
     // Tier 'B' = Trail Tire warehouse → next business day after 12:30 PM. Default to B (slowest, safest).
@@ -1657,6 +2162,10 @@
     // buttons pass data-variant-id; collection cards may not (in which case
     // the tires-only CTA falls back to /cart).
     st.variantId = btn.dataset.variantId || '';
+    // Opened from the cart's "Book install": the tires are already in the
+    // cart, so the "Tires only" choice is hidden (see the flow reset below)
+    // and bkAddToCartOnly never adds them again.
+    st.fromCart = btn.dataset.fromCart === '1';
     // On-hand stock cap (0 = no cap). PDP + grid book buttons pass data-max-qty
     // so a customer can never book more tires than are in stock; surfaces that
     // don't pass it (e.g. some search results) fall back to the standard 1–8.
@@ -1672,13 +2181,21 @@
     // Reset opt-out add-on state for every open.
     bkUpsellNudged = false;
     st.tpms = false;
-    st.disposal = true;
+    // Disposal of the old tires is the customer's choice (owner, 2026-10-27):
+    // some keep them. The keep/dispose question starts with NO choice on every
+    // open (required before continuing); the recycling fee is separate and
+    // always in the total.
+    st.disposal = false;
+    st.oldTires = null;
     st.flow = 'install';
     if (Array.isArray(st.customAddons)) {
       st.customAddons.forEach(function (a) { if (a) a.selected = false; });
     }
     st.date = null;
     st.time = null;
+    // Every open starts on "Wait while we work"; drop-off is a choice.
+    st.waitOrDrop = 'wait';
+    st.dropOk = false;
     wk = 0;
 
     // Resolve bookable location(s) + initial selection. With <2 bookable shops
@@ -1720,13 +2237,25 @@
         st.vehicle = lastVehicle;
       }
     } catch (e) {}
+    // The install promo the page showed: still running, and for this vehicle?
+    bkCheckPromo();
 
     // Show/hide saved vehicle banner + vehicle grid
     var svEl = document.getElementById('bk-saved-vehicle');
     var svLbl = document.getElementById('bk-saved-vehicle-label');
     var vSection = document.getElementById('bk-vehicle-section');
+    // Vehicle details (step 3): start from the saved garage vehicle, if any;
+    // mileage always starts blank.
+    ['bk-vyear', 'bk-vmake', 'bk-vmodel', 'bk-odometer'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+      var f = document.getElementById('bk-field-' + id.slice(3));
+      if (f) f.classList.remove('bk-field--error');
+    });
+    bkPrefillVehicleFields(null, st.savedVehicle);
+
     if (st.savedVehicle) {
-      svLbl.textContent = buildVehicleLabel(null);
+      svLbl.textContent = bkSavedVehicleLabel();
       svEl.hidden = false;
       vSection.hidden = true; // collapsed by default — user can open with "Change"
     } else {
@@ -1740,14 +2269,27 @@
 
     // Reset add-on state
     document.getElementById('bk-tpms').checked = false;
-    document.getElementById('bk-disposal').checked = true;
     document.getElementById('bk-addon-tpms').classList.remove('bk-addon--active');
-    document.getElementById('bk-addon-disposal').classList.add('bk-addon--active');
+    // Old tires: no choice, no leftover error message.
+    bkRenderOldTiresOptions();
+    bkSetOldTires(null);
+    bkShowOldTiresError(false);
+    // Bare wheel (no tire size): the old-tires question does not apply.
+    var askOld = !!(st.tireSize || '').trim();
+    ['bk-oldtires-label', 'bk-oldtires'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.hidden = !askOld;
+    });
 
     // Reset flow radio + visuals to install (default).
     var instRadio = document.querySelector('#bk-flow-grid input[value="install"]');
     if (instRadio) instRadio.checked = true;
     bkSetFlow('install');
+    // From the cart there is nothing to choose: the tires are already in it.
+    ['bk-flow-label', 'bk-flow-grid'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.hidden = !!st.fromCart;
+    });
     bkRenderCustomAddons();
 
     renderVehicles();
@@ -1792,11 +2334,13 @@
 
         var hadSaved = !!prev;
         st.savedVehicle = newSaved;
+        // Refresh the vehicle fields unless the customer already typed over them.
+        bkPrefillVehicleFields(prev, newSaved);
 
         var svEl = document.getElementById('bk-saved-vehicle');
         var svLbl = document.getElementById('bk-saved-vehicle-label');
         var vSection = document.getElementById('bk-vehicle-section');
-        if (svLbl) svLbl.textContent = buildVehicleLabel(null);
+        if (svLbl) svLbl.textContent = bkSavedVehicleLabel();
         // First-ever-load case: cache had nothing, API returned a default —
         // promote the banner now (and collapse the grid we'd shown by default).
         if (!hadSaved) {
@@ -1829,6 +2373,8 @@
 
   // ── Step navigation ──────────────────────────────────────────────────────
   window.bkGoTo = function (step) {
+    // A new step starts clean: no messages left over from an earlier try.
+    try { PTBookingCore.req.clear(document.getElementById('bk-modal')); } catch (e) {}
     [1, 2, 3].forEach(function (s) { document.getElementById('bk-page-' + s).hidden = s !== step; });
     document.getElementById('bk-page-done').hidden = true;
     document.getElementById('bk-stepper').style.opacity = '1';
@@ -1852,6 +2398,7 @@
     if (step === 2) {
       // Open on the first day that actually has slots, not unconditionally today.
       if (!st.date) { st.date = bkEarliestDate(); wk = bkWeekOffset(st.date); }
+      bkSyncVisit();
       renderWeek(); renderTimes();
     }
     if (step === 3) { renderSummary(); }
@@ -1866,25 +2413,34 @@
 
     // Clear previous errors
     var errEl = document.getElementById('bk-form-error');
-    ['bk-field-name', 'bk-field-phone', 'bk-field-email'].forEach(function (id) {
+    ['bk-field-name', 'bk-field-phone', 'bk-field-email', 'bk-field-vyear', 'bk-field-odometer'].forEach(function (id) {
       document.getElementById(id).classList.remove('bk-field--error');
     });
     errEl.hidden = true;
 
-    // Inline validation
-    var missing = [];
-    if (!name) { document.getElementById('bk-field-name').classList.add('bk-field--error'); missing.push('full name'); }
-    if (!phone) { document.getElementById('bk-field-phone').classList.add('bk-field--error'); missing.push('phone number'); }
-    if (!email || email.indexOf('@') < 1) { document.getElementById('bk-field-email').classList.add('bk-field--error'); missing.push('email address'); }
-    if (missing.length) {
-      errEl.textContent = 'Please fill in your ' + missing.join(', ') + '.';
-      errEl.hidden = false;
+    // The old-tires answer lives on step 1 — if it's somehow missing (it is
+    // checked there too), send them back to it with the message showing.
+    if (bkAsksOldTires() && !st.oldTires) {
+      bkGoTo(1);
+      bkCheckOldTires();
       return;
     }
 
+    // Required: name (2+), phone, a valid email — what /api/book rejects
+    // without. Optional vehicle details are only checked when filled in. Each
+    // bad field gets a red outline + one line under it (PTBookingCore.req).
+    var vYear = bkVehField('bk-vyear');
+    var vMake = bkVehField('bk-vmake');
+    var vModel = bkVehField('bk-vmodel');
+    var odometerKm = bkParseKm(bkVehField('bk-odometer'));
+    var bkRules = PTBookingCore.req.contactRules(document.getElementById('bk-name'), document.getElementById('bk-phone'), document.getElementById('bk-email'));
+    bkRules.push({ el: document.getElementById('bk-vyear'), kind: 'invalid', msg: 'Enter the year as 4 digits (e.g. 2019), or leave it blank', ok: function () { return bkValidYear(bkVehField('bk-vyear')); } });
+    bkRules.push({ el: document.getElementById('bk-odometer'), kind: 'invalid', msg: 'Enter the mileage as a number of km (e.g. 84,500), or leave it blank', ok: function () { var k = bkParseKm(bkVehField('bk-odometer')); return !(typeof k === 'number' && isNaN(k)); } });
+    if (!PTBookingCore.req.check(document.getElementById('bk-page-3'), bkRules)) return;
+
     var btn = document.getElementById('bk-confirm-btn');
     btn.disabled = true;
-    btn.textContent = 'Booking…';
+    btn.textContent = 'Sending…';
 
     var c = calcPrice();
     var v = vehs.find(function (x) { return x.id === st.vehicle; });
@@ -1924,31 +2480,54 @@
         email: email,
         notes: notes,
         vehicleType: st.vehicle,
-        vehicleYear: st.savedVehicle ? (st.savedVehicle.year || '') : '',
-        vehicleMake: st.savedVehicle ? (st.savedVehicle.make || '') : '',
-        vehicleModel: st.savedVehicle ? (st.savedVehicle.model || '') : '',
-        vehicleTrim: st.savedVehicle ? (st.savedVehicle.trim || '') : '',
+        // What the customer entered (pre-filled from the saved vehicle). Year
+        // goes as a string — /api/book's schema is z.string().
+        vehicleYear: vYear,
+        vehicleMake: vMake,
+        vehicleModel: vModel,
+        vehicleTrim: bkTrim(),
+        odometerKm: (typeof odometerKm === 'number' && !isNaN(odometerKm)) ? odometerKm : null,
         tireName: st.tireName,
         tireSize: st.tireSize,
         qty: st.qty,
         tpms: st.tpms,
-        disposal: st.disposal,
+        // Never a disposal charge on a tire purchase (owner, 2026-11-02): a
+        // tire buyer's answer travels as oldTires ('dispose' = leave them with
+        // us, included) with disposal false. Own tires (no product — My
+        // Garage) post disposal true and pay it, like the booking page.
+        disposal: bkAsksOldTires() && st.disposal,
+        oldTires: bkAsksOldTires() ? st.oldTires : null,
         customAddons: customAddonsForApi,
         serviceId: 'installation_off',
         mountState: 'off',
         location_id: (st.location && st.location.slug) ? st.location.slug : 'sw',
         supplierTier: st.supplierTier,
         productHandle: st.productHandle,
+        // The exact variant picked. /api/book only confirms a booking itself
+        // (in-stock tire, more than the owner's threshold at this shop) when it
+        // is told which variant — it never guesses.
+        variantId: st.variantId || null,
         inventorySource: st.inventorySource,
         date: bkLocalISO(st.date),
-        time: st.time,
+        // A drop-off has a day and no time (the car comes any time we're
+        // open). waitOrDrop goes only when the choice was offered (a tire
+        // bought from its page, card or cart); /api/book verifies the product.
+        time: bkIsDropOff() ? null : st.time,
+        waitOrDrop: bkDropOffOffered() ? (bkIsDropOff() ? 'drop_off' : 'wait') : null,
         subtotal: parseFloat(c.subtotal.toFixed(2)),
         gst: parseFloat(c.gst.toFixed(2)),
-        total: parseFloat(c.total.toFixed(2))
+        total: parseFloat(c.total.toFixed(2)),
+        // The install per tire this page charged, and the promo it showed:
+        // /api/book compares them with its own price (never trusted alone).
+        installPerTireCents: bkTireBuyer() ? Math.round(st.installPrice * 100) : null,
+        installPromoId: bkTireBuyer() && st.installPromoId ? st.installPromoId : null,
+        // Bot trap — empty for every real customer.
+        company_website: (function () { var h = document.getElementById('bk-company-website'); return h ? String(h.value || '') : ''; })()
       };
 
       var res;
       try {
+        if (window.PTBookingCore && window.PTBookingCore.bookingRef) { var ptRef = window.PTBookingCore.bookingRef(); if (ptRef) payload.ref = ptRef; }
         res = await fetch(BOOKING_API, {
           method: 'POST',
           mode: 'cors',
@@ -1971,6 +2550,10 @@
         if (res.status === 429) {
           throw new Error("Too many bookings from this device — please wait a minute and try again.");
         }
+        // The shop's online bookings for that day are used up: phone, not another time.
+        if (res.status === 409 && errData.error === 'online_full') {
+          throw new Error('Online booking is full for that day — please call ' + ((typeof errData.phone === 'string' && errData.phone) || shopPhone) + '.');
+        }
         if (res.status === 409) {
           throw new Error("That time slot was just booked. Please pick another time.");
         }
@@ -1980,12 +2563,19 @@
         if (res.status === 402 || res.status >= 500) {
           throw new Error("Online booking is temporarily unavailable. Please call " + shopPhone + " to book — sorry for the trouble.");
         }
+        // Drop-offs filled up while they typed (a 400, never a 409 — 409 is
+        // "slot taken"). Grey the day for when they go back to step 2.
+        if (res.status === 400 && bkIsDropOff() && /drop-offs are full/i.test(String(errData.error || ''))) {
+          bkDropFull[bkDropKey(st.date)] = true;
+          st.dropOk = false;
+        }
         throw new Error(errData.error || ("Booking failed (HTTP " + res.status + ")"));
       }
 
       // Save preferences and HMAC lookup token for next visit
+      var bookData = {};
       try {
-        var bookData = await res.json().catch(function () { return {}; });
+        bookData = await res.json().catch(function () { return {}; }) || {};
         // A01: store the server-issued HMAC token so the customer can look up
         // their own bookings without exposing an IDOR vulnerability
         if (bookData.lookupToken && email) {
@@ -2002,28 +2592,55 @@
       var locAddr = nap.addressFull;
       var locPhone = nap.phone;
       var subEl = document.getElementById('bk-done-sub');
-      if (subEl) subEl.textContent = 'Requested at Prince Tires — ' + nap.address + '. We’ll confirm by email, usually within the day — your appointment isn’t final until you hear from us.';
+      var titleEl = document.getElementById('bk-done-title');
       var ds = st.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + st.time;
+      // An in-stock tire at this shop confirms itself (/api/book says so with
+      // autoConfirmed: true) — only then is it final language. Everything else
+      // is still a request until the shop confirms (owner's rule).
+      var autoConfirmed = !!(bookData && bookData.autoConfirmed === true);
+      var isDrop = bkIsDropOff();
+      var dropShop = st.location ? bkShortShopName(st.location) : '';
+      if (!dropShop || dropShop === 'Prince Tires') dropShop = nap.address;
+      if (isDrop) {
+        // Drop-off: a day, no time. Still a request until the shop confirms
+        // (owner's rule) — /api/book never confirms a drop-off by itself.
+        var dropLine = 'Bring your car any time we\'re open; we\'ll text you when it\'s ready.';
+        if (autoConfirmed) {
+          if (titleEl) titleEl.textContent = 'You’re booked';
+          if (subEl) subEl.textContent = 'Drop-off confirmed for ' + bkLongDay(st.date) + ' at ' + dropShop + '. ' + dropLine;
+        } else {
+          if (titleEl) titleEl.textContent = 'Request sent';
+          if (subEl) subEl.textContent = 'Drop-off requested for ' + bkLongDay(st.date) + ' at ' + dropShop + '. ' + dropLine + ' We’ll confirm by email, usually within the day — it isn’t final until you hear from us.';
+        }
+      } else if (autoConfirmed) {
+        if (titleEl) titleEl.textContent = 'You’re booked';
+        if (subEl) subEl.textContent = 'Confirmed for ' + ds + ' at ' + nap.address + '. We’ve sent the details by text and email.';
+      } else {
+        if (titleEl) titleEl.textContent = 'Request sent';
+        if (subEl) subEl.textContent = 'Requested at Prince Tires — ' + nap.address + '. We’ll confirm by email, usually within the day — your appointment isn’t final until you hear from us.';
+      }
       var vehLabel = buildVehicleLabel(v);
       var doneH = '';
-      doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
+      doneH += isDrop
+        ? '<div class="bk-summary-row"><span class="bk-summary-label">Drop-off</span><span class="bk-summary-val">' + bkLongDay(st.date) + ', any time we\'re open</span></div>'
+        : '<div class="bk-summary-row"><span class="bk-summary-label">Date & time</span><span class="bk-summary-val">' + ds + '</span></div>';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Address</span><span class="bk-summary-val">' + locAddr + '</span></div>';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Phone</span><span class="bk-summary-val">' + locPhone + '</span></div>';
       if (vehLabel) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Vehicle</span><span class="bk-summary-val">' + vehLabel + '</span></div>';
+      if (typeof odometerKm === 'number' && !isNaN(odometerKm)) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Mileage</span><span class="bk-summary-val">' + bkFormatKm(odometerKm) + '</span></div>';
       doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Tire</span><span class="bk-summary-val">' + (st.tireSize || '—') + ' × ' + st.qty + '</span></div>';
-      doneH += '<div class="bk-summary-row"><span class="bk-summary-label" style="font-weight:700;color:#111">Total (incl. GST)</span><span class="bk-summary-val bk-summary-val--green">$' + c.total.toFixed(2) + '</span></div>';
+      if (st.oldTires) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Old tires</span><span class="bk-summary-val">' + (st.oldTires === 'dispose' ? (bkTireBuyer() ? 'Leaving with us (included)' : 'Tire disposal (+$' + bkDisposalPrice + '/tire)') : 'Taking them home') + '</span></div>';
+      // The figures the booking was SAVED with: the server may have priced it
+      // otherwise (a pickup pays the regular install, a promo that ended).
+      var savedTotal = bookData && bookData.pricing && typeof bookData.pricing.total === 'number' ? bookData.pricing.total : c.total;
+      if (Math.abs(savedTotal - c.total) >= 0.005) doneH += '<div class="bk-summary-row"><span class="bk-summary-label">Price updated</span><span class="bk-summary-val">' + 'Total updated for your vehicle and tire' + '</span></div>';
+      doneH += '<div class="bk-summary-row"><span class="bk-summary-label" style="font-weight:700;color:#111">Total (incl. GST)</span><span class="bk-summary-val bk-summary-val--green">$' + savedTotal.toFixed(2) + '</span></div>';
       document.getElementById('bk-done-card').innerHTML = doneH;
 
       [1, 2, 3].forEach(function (s) { document.getElementById('bk-page-' + s).hidden = true; });
       document.getElementById('bk-page-done').hidden = false;
       document.getElementById('bk-stepper').style.opacity = '0';
 
-      if (typeof confetti === 'function') {
-        var co = ['#16a34a', '#22c55e', '#F5820B', '#ffffff', '#dc2626', '#bbf7d0'];
-        confetti({ particleCount: 80, spread: 70, origin: { y: .6 }, colors: co });
-        setTimeout(function () { confetti({ particleCount: 40, angle: 60, spread: 55, origin: { x: 0 }, colors: co }); }, 200);
-        setTimeout(function () { confetti({ particleCount: 40, angle: 120, spread: 55, origin: { x: 1 }, colors: co }); }, 400);
-      }
     } catch (err) {
       console.error('[booking] submit failed:', err);
       btn.disabled = false;
@@ -2043,7 +2660,14 @@
   // to the previous inline build. LOCATION comes from the SELECTED shop's
   // address_full (SW fallback baked into PTBookingCore.napOf).
   window.bkDownloadICS = function () {
-    var ics = PTBookingCore.buildICS({
+    // Drop-off: an all-day entry (no time to put in the calendar).
+    var ics = bkIsDropOff() ? PTBookingCore.buildICS({
+      dateISO: bkLocalISO(st.date),
+      allDay: true,
+      summary: 'Tire drop-off at Prince Tires',
+      description: (st.tireSize || '') + ' × ' + st.qty + ' tires. Bring your car any time we\'re open; we\'ll text you when it\'s ready.',
+      location: PTBookingCore.napOf(st.location).addressFull
+    }) : PTBookingCore.buildICS({
       dateISO: bkLocalISO(st.date),
       time: st.time,
       durationMinutes: Math.ceil(st.qty * 0.5) * 60,
@@ -2060,10 +2684,22 @@
     document.getElementById('bk-addon-tpms').classList.toggle('bk-addon--active', this.checked);
     renderPrice();
   });
-  document.getElementById('bk-disposal').addEventListener('change', function () {
-    st.disposal = this.checked;
-    document.getElementById('bk-addon-disposal').classList.toggle('bk-addon--active', this.checked);
-    renderPrice();
+  // Old tires: keep / dispose radios (replace the old disposal checkbox).
+  document.querySelectorAll('#bk-oldtires input[name="bk-oldtires"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      if (this.checked) bkSetOldTires(this.value);
+    });
+  });
+  // Vehicle fields: keep the step-3 summary above them in step as they type.
+  ['bk-vyear', 'bk-vmake', 'bk-vmodel', 'bk-odometer'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', function () {
+      var f = document.getElementById('bk-field-' + id.slice(3));
+      if (f) f.classList.remove('bk-field--error');
+      var p3 = document.getElementById('bk-page-3');
+      if (p3 && !p3.hidden) renderSummary();
+    });
   });
   // Flow toggle (install ↔ tires-only) — radio cards in #bk-flow-grid.
   document.querySelectorAll('#bk-flow-grid input[name="bk-flow"]').forEach(function (radio) {
@@ -2071,10 +2707,49 @@
       if (this.checked) bkSetFlow(this.value);
     });
   });
+  // Wait ↔ drop off (step 2). Switching back to Wait keeps a picked time.
+  document.querySelectorAll('#bk-visit-grid input[name="bk-visit"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      if (!this.checked) return;
+      st.waitOrDrop = this.value === 'drop_off' ? 'drop_off' : 'wait';
+      document.getElementById('bk-next-2').disabled = true;
+      bkSyncVisit();
+      renderWeek();
+      renderTimes();
+    });
+  });
   document.getElementById('bk-prev-week').addEventListener('click', function () { if (wk > 0) { wk--; renderWeek(); } });
   document.getElementById('bk-next-week').addEventListener('click', function () { wk++; renderWeek(); });
   document.getElementById('bk-overlay').addEventListener('click', function (e) { if (e.target === this) closeBookingModal(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeBookingModal(); });
+
+  // Step buttons explain what is missing instead of sitting greyed out
+  // (owner, 2026-11-15). The existing disabled logic stays the source of
+  // truth; `soft` keeps Next clickable so a click can say why.
+  // pt-booking-core.js is deferred on every page but /pages/book (layout/
+  // theme.liquid), so off that page it lands after this script: wait for it.
+  (function wire() {
+    var R = window.PTBookingCore && PTBookingCore.req;
+    if (!R) {
+      if (!wire.waiting && document.readyState === 'loading') { wire.waiting = true; document.addEventListener('DOMContentLoaded', wire); }
+      return;
+    }
+    R.styles();
+    R.gate(document.getElementById('bk-step1-cta'), document.getElementById('bk-page-1'), function () {
+      return [{ el: document.getElementById('bk-oldtires'), useEl: document.getElementById('bk-oldtires-error'), msg: 'Choose what we should do with your old tires', ok: function () { return st.flow !== 'install' || !bkAsksOldTires() || !!st.oldTires; } }];
+    });
+    var n2 = document.getElementById('bk-next-2');
+    var grid2 = document.getElementById('bk-time-grid');
+    R.gate(n2, document.getElementById('bk-page-2'), function () {
+      if (bkIsDropOff()) {
+        return [{ el: document.getElementById('bk-drop'), msg: st.date ? 'Pick a day you can drop off' : 'Pick a day', ok: function () { return !!st.dropOk; } }];
+      }
+      return [R.timeRule(grid2, function () { return !!st.time; })];
+    }, { soft: true, blockedMsg: function () {
+      if (bkIsDropOff()) return { el: document.getElementById('bk-drop'), msg: 'Pick a day you can drop off', ok: function () { return !n2.disabled; } };
+      return { el: grid2, msg: 'That time isn’t free any more. Pick another time', ok: function () { return !n2.disabled; } };
+    } });
+  })();
 
   // Event delegation for all [data-book-install] trigger buttons
   document.addEventListener('click', function (e) {
@@ -2086,7 +2761,16 @@
   //    overlays the fallback pricing above; silent fallback on any failure.
   fetch(SERVICES_API)
     .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (data) { if (data && data.services) bkApplyCatalog(data.services); })
+    .then(function (data) {
+      if (data && Array.isArray(data.installPromos)) {
+        bkLivePromoIds = data.installPromos.map(function (p) { return p && p.id; }).filter(Boolean);
+        data.installPromos.forEach(function (p) { if (p && p.id && Array.isArray(p.vehicleTypes)) bkPromoVehicles[p.id] = p.vehicleTypes; });
+      } else if (data && data.services) bkLivePromoIds = [];
+      if (data && data.services) bkApplyCatalog(data.services);
+      var before = st.installPromoId;
+      bkCheckPromo();
+      if (before && !st.installPromoId) { try { renderVehicles(); } catch (e) {} }
+    })
     .catch(function () {});
 })();
 </script>

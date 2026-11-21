@@ -3,13 +3,17 @@
   triggers to set data-supplier-tier so the install modal can pick the correct
   lead-time floor.
 
+  Tier B = a supplier's warehouse (next-business-day after 12:30 PM)
+    - Tag "Supplier Stock" — checked FIRST and wins over everything below.
+      ATW sells the very brands we import, so a Haida or Tesche sitting in
+      ATW's Edmonton warehouse must NOT be offered as a two-hour install
+      just because of its brand name.
+    - Default for everything else (most products tagged "Trail Tire Supply")
+
   Tier A = in stock at our shop (2 hr lead time)
-    - Tag "Prince Tires"
+    - Tag "Prince Stock" (or legacy "Prince Tires")
     - OR collection handle "imported-tires"
     - OR vendor matches one of our imported brands
-
-  Tier B = Trail Tire Calgary warehouse (next-business-day after 12:30 PM)
-    - Default for everything else (most products tagged "Trail Tire Supply")
 
   Canonical brand list lives here. Add new imported brands by editing tierA_brands below.
   Mirrored server-side in princetires-app/src/app/api/book/route.ts — keep in sync.
@@ -24,22 +28,36 @@
   assign tier = 'B'
   assign tierA_brands = 'haida,tesche,composal,suretrac,sierra,bearway' | split: ','
 
-  if product.tags contains 'Prince Tires'
-    assign tier = 'A'
-  endif
-
-  for c in product.collections
-    if c.handle == 'imported-tires'
+  comment
+    Supplier stock is never Tier A, whatever the brand or collection says. The
+    tag records where the tire physically IS, which is what a lead time is
+    about; the checks below are all about which brands we import.
+  endcomment
+  unless product.tags contains 'Supplier Stock'
+    comment
+      OWN-STOCK TAG. This checked only 'Prince Tires', which 0 active products
+      carry — the tag in use is 'Prince Stock' (355 products, measured
+      2026-10-03), so own shelf stock was being quoted next-business-day
+      instead of two hours. Both spellings accepted so a rename cannot silently
+      break it again. Mirrored in src/lib/shopify/product-tier.ts — keep in sync.
+    endcomment
+    if product.tags contains 'Prince Stock' or product.tags contains 'Prince Tires'
       assign tier = 'A'
     endif
-  endfor
 
-  if tier == 'B'
-    assign vendor_lower = product.vendor | default: '' | downcase
-    for b in tierA_brands
-      if vendor_lower contains b
+    for c in product.collections
+      if c.handle == 'imported-tires'
         assign tier = 'A'
       endif
     endfor
-  endif
+
+    if tier == 'B'
+      assign vendor_lower = product.vendor | default: '' | downcase
+      for b in tierA_brands
+        if vendor_lower contains b
+          assign tier = 'A'
+        endif
+      endfor
+    endif
+  endunless
 -%}{{- tier -}}

@@ -1,0 +1,655 @@
+/* =====================================================================
+   pt-rd-pdp.css - product page (tires + wheels), 2026-11-13 redesign.
+   Loaded by sections/pt-product.liquid. Builds on assets/pt-rd.css
+   (tokens + .rd- components). Spec: canvas Product / ProductMobile /
+   ProductStates / WheelProduct / WheelProductMobile .dc.html.
+
+   - Every rule is scoped to .rdp (the <product-info> root), .rdp-toast
+     (appended to <body>) or body.template-product (two product-page-only
+     rules: the PWA install banner and the site tab bar).
+   - Root is 62.5%: 1rem = 10px. Selectors are .rdp + class (0,2,0) so they
+     beat assets/pt-type.css (:root .ptp__x, also 0,2,0) by load order. Where
+     the size comes from a pt-rd.css component (.rd-btn, .rd-price) or is
+     inherited, the "pt-type.css guard" block at the end restores it.
+   - Mobile first. The two-column layout, cards and tabs start at 990px;
+     below that the title sits above the photo and the details are dropdowns.
+   ===================================================================== */
+
+/* The section draws its own breadcrumb bar; layout/theme.liquid skips the
+   theme breadcrumb on product templates (one BreadcrumbList per page). */
+
+/* Phones: the "Install Prince Tires" banner (snippets/pt-pwa-install.liquid,
+   fixed bottom, z 9998) would sit on top of the sticky buy bar below and
+   cover Call / Add to cart / Request install. Product pages don't show it. */
+@media (max-width: 749px) {
+  body.template-product .pt-pwa-install { display: none !important; }
+}
+
+/* Owner 11-14: "you are using less orange and green - I like the colours in the
+   old design". Orange and green now sit where the live page puts them, in the
+   live shades:
+     --rdp-or     #F5820B  live orange: icons, pills, underlines, borders, bars
+     --rdp-or-lg  #dc750a  same hue a step darker for LARGE orange text (3.2:1;
+                           #F5820B itself is 2.6:1 on white, under AA's 3:1)
+     --rd-orange-ink #a95a08  same hue darker again for SMALL orange text
+                           (5.1:1 on white, 4.6:1 on the tile) - tabs, links
+     --rdp-gr-lg  #16a34a  live's green for the big installed total (3.3:1, large text)
+     --rd-green   #15803d  live's darker green for small green text (5.0:1) */
+.rdp { --rd-orange-ink: #a95a08; --rdp-or: #F5820B; --rdp-or-lg: #dc750a; --rdp-gr-lg: #16a34a; }
+.rdp { display: block; background: var(--rd-bg); font-family: var(--rd-font); color: var(--rd-ink); }
+.rdp a { color: inherit; }
+.rdp h1, .rdp h2, .rdp h3 { font-family: var(--rd-font); text-transform: none; letter-spacing: 0; }
+.rdp-main { padding-top: 1.4rem; padding-bottom: 4rem; }
+
+/* ---------- Breadcrumb ---------------------------------------------- */
+.rdp .rdp-crumbs { background: var(--rd-black); }
+.rdp .rdp-crumbs__list {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .8rem;
+  min-height: 4.4rem; padding: .6rem 0; margin: 0; list-style: none;
+  font-size: 1.4rem; line-height: 1.4; color: #a8a8a8;
+}
+.rdp .rdp-crumbs__list li { display: inline-flex; align-items: center; gap: .8rem; min-width: 0; }
+.rdp .rdp-crumbs__list li + li::before { content: '/'; color: #a8a8a8; }
+.rdp .rdp-crumbs__list a { color: var(--rd-on-dark-2); text-decoration: none; display: inline-flex; align-items: center; min-height: 3.2rem; }
+.rdp .rdp-crumbs__list a:hover { color: #fff; }
+.rdp .rdp-crumbs__list a:focus-visible { outline: none; box-shadow: var(--rd-focus-dark); border-radius: 4px; }
+.rdp .rdp-crumbs__list [aria-current] { color: #fff; overflow-wrap: anywhere; }
+@media (max-width: 749px) {
+  .rdp .rdp-crumbs__list [aria-current] { display: none; }
+}
+
+/* ---------- Garage fit bar ------------------------------------------ */
+.rdp .rdp-fit {
+  display: flex; align-items: center; gap: .6rem 1rem; flex-wrap: wrap;
+  margin: 0 0 1.6rem; padding: 1rem 1.4rem;
+  background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--rd-r);
+  font-size: 1.4rem; line-height: 1.4; color: #14532d;
+}
+.rdp .rdp-fit[hidden] { display: none; }
+.rdp .rdp-fit strong { font-weight: 600; }
+.rdp .rdp-fit__note { font-weight: 400; }
+.rdp .rdp-fit__change { margin-left: auto; color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; min-height: 2.4rem; display: inline-flex; align-items: center; }
+.rdp .rdp-fit.ptp__fitment--may-fit { background: var(--rd-note-bg); border-color: var(--rd-note-line); color: var(--rd-note-ink); }
+@media (min-width: 990px) { .rdp .rdp-fit { font-size: 1.5rem; margin-bottom: 2rem; } }
+
+/* ---------- Top: gallery + buy box ---------------------------------- */
+.rdp .rdp-top { display: flex; flex-direction: column; gap: 1.4rem; }
+.rdp .rdp-col { display: contents; }
+.rdp .rdp-head { order: 1; }
+.rdp .rdp-gal { order: 2; }
+.rdp .rdp-buy { order: 3; }
+.rdp .rdp-viz { order: 4; }
+@media (min-width: 990px) {
+  .rdp-main { padding-top: 2.4rem; padding-bottom: 5.6rem; }
+  .rdp .rdp-top { flex-direction: row; align-items: flex-start; gap: 4rem; }
+  .rdp .rdp-col { display: flex; flex-direction: column; min-width: 0; }
+  .rdp .rdp-col--l { flex: 1 1 56%; gap: 1.2rem; }
+  .rdp .rdp-col--r { flex: 0 1 44%; max-width: 56rem; gap: 1.4rem; }
+}
+@media (min-width: 990px) and (min-height: 940px) {
+  .rdp .rdp-col--sticky { position: sticky; top: 2rem; }
+}
+
+/* ---------- Gallery -------------------------------------------------- */
+.rdp .rdp-gal { display: flex; gap: 1.6rem; min-width: 0; margin: 0 calc(-1 * var(--rd-gutter)); }
+.rdp .rdp-gal__thumbs { display: none; }
+.rdp .rdp-gal__stage { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: .4rem; }
+.rdp .rdp-gal__main { position: relative; background: var(--rd-tile); }
+.rdp .rdp-gal__track {
+  display: flex; height: 30rem; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.rdp .rdp-gal__track::-webkit-scrollbar { display: none; }
+.rdp .rdp-gal__slide { flex: 0 0 100%; height: 100%; display: flex; align-items: center; justify-content: center; scroll-snap-align: center; }
+.rdp .rdp-gal__img { width: 80%; height: 86%; object-fit: contain; }
+.rdp--tire .rdp-gal__img { mix-blend-mode: multiply; }
+.rdp .rdp-gal__ph {
+  height: 30rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem;
+  color: #b5b0a8; text-align: center;
+}
+.rdp .rdp-gal__ph .rd-ico { stroke-width: 1.2; }
+.rdp .rdp-gal__ph-brand { font: 700 1.8rem var(--rd-display); letter-spacing: .06em; text-transform: uppercase; color: var(--rd-muted-2); }
+.rdp .rdp-gal__ph-size { font-size: 1.4rem; color: var(--rd-muted-2); font-variant-numeric: tabular-nums; }
+.rdp .rdp-gal__ph-note { font-size: 1.3rem; color: var(--rd-muted); }
+.rdp .rdp-gal__sale {
+  position: absolute; top: 1.2rem; left: 1.2rem; z-index: 1;
+  background: var(--rd-red); color: #fff; font: 700 1.3rem var(--rd-font);
+  padding: .3rem .8rem; border-radius: 6px;
+}
+.rdp .rdp-gal__nav { display: flex; align-items: center; justify-content: center; gap: .4rem 1.2rem; flex-wrap: wrap; min-height: 1rem; }
+.rdp .rdp-gal__count { display: none; }
+.rdp .rdp-gal__dots { display: inline-flex; }
+.rdp .rdp-gal__dot { width: 4.4rem; height: 4.4rem; margin: 0 -.8rem; border: 0; padding: 0; background: transparent; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.rdp .rdp-gal__dot span { width: .8rem; height: .8rem; border-radius: 50%; background: var(--rd-line-2); }
+/* Active image: live's orange (#F5820B, the active thumb's colour on live at every width). */
+.rdp .rdp-gal__dot[aria-current="true"] span { background: var(--rdp-or); width: 1rem; height: 1rem; }
+.rdp .rdp-gal__dot:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--rd-ink); border-radius: 50%; }
+.rdp .rdp-gal__vbtn {
+  min-height: 4.4rem; padding: 0 1.2rem; border: 1px solid var(--rd-line-2); border-radius: 999px;
+  background: var(--rd-bg); font: 600 1.4rem var(--rd-font); color: var(--rd-ink); cursor: pointer;
+}
+.rdp .rdp-gal__video { position: relative; background: #000; aspect-ratio: 16 / 9; overflow: hidden; }
+.rdp .rdp-gal__video[hidden] { display: none; }
+.rdp .rdp-gal__video-wrap, .rdp .rdp-gal__video-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
+.rdp .rdp-gal__video-close {
+  position: absolute; top: .8rem; right: .8rem; z-index: 2; width: 4.4rem; height: 4.4rem;
+  border: 0; border-radius: 50%; background: rgba(0, 0, 0, .6); color: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+@media (min-width: 990px) {
+  .rdp .rdp-gal { margin: 0; }
+  .rdp .rdp-gal__thumbs { display: flex; flex-direction: column; gap: 1.2rem; flex: none; max-height: 60rem; overflow-y: auto; padding: .2rem; }
+  .rdp .rdp-gal__thumb {
+    width: 9.2rem; height: 9.2rem; padding: 0; overflow: hidden; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--rd-line); border-radius: var(--rd-r-md); background: var(--rd-tile); color: var(--rd-red);
+  }
+  .rdp .rdp-gal__thumb:hover { border-color: var(--rd-faint); }
+  /* Live: the active thumb is orange with an orange glow. */
+  .rdp .rdp-gal__thumb[aria-pressed="true"] { border: 2px solid var(--rdp-or); box-shadow: 0 0 0 1px var(--rdp-or); }
+  .rdp .rdp-gal__thumb:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+  .rdp .rdp-gal__thumb-img { width: 84%; height: 84%; object-fit: contain; }
+  .rdp--tire .rdp-gal__thumb-img { mix-blend-mode: multiply; }
+  .rdp .rdp-gal__stage { gap: .8rem; }
+  .rdp .rdp-gal__main { border-radius: var(--rd-r-xl); aspect-ratio: 1 / 1; max-height: 60rem; overflow: hidden; }
+  .rdp .rdp-gal__track { display: block; height: 100%; overflow: hidden; }
+  .rdp .rdp-gal__slide { display: none; height: 100%; }
+  .rdp .rdp-gal__slide.is-on { display: flex; }
+  .rdp .rdp-gal__img { width: 78%; height: 86%; }
+  .rdp .rdp-gal__ph { height: 100%; }
+  .rdp .rdp-gal__dots, .rdp .rdp-gal__vbtn { display: none; }
+  .rdp .rdp-gal__count { display: block; font-size: 1.3rem; color: var(--rd-muted-2); }
+  .rdp .rdp-gal__video { border-radius: var(--rd-r-xl); }
+}
+
+/* ---------- Title block --------------------------------------------- */
+.rdp .rdp-head__brand {
+  display: inline-block; font-size: 1.3rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--rd-muted-2); text-decoration: none;
+}
+.rdp .rdp-head__brand:hover { color: var(--rd-red); }
+.rdp .rdp-head__title { margin: .4rem 0 0; font-size: 2.4rem; font-weight: 700; line-height: 1.2; color: var(--rd-ink); overflow-wrap: anywhere; }
+.rdp--wheel .rdp-head__title { font-size: 2.2rem; line-height: 1.22; }
+.rdp .rdp-head__meta { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .8rem; margin: .6rem 0 0; font-size: 1.4rem; line-height: 1.45; color: var(--rd-ink-3); }
+.rdp .rdp-head__meta > .rdp-sep:first-child { display: none; }
+/* "· item" groups: the dot travels with its item (never alone at a line end);
+   no dot first in the line or right after a chip (the pill separates).
+   The dot sits in the column gap left of its item; when the item wraps to a
+   new line its dot falls left of the line box and the meta's overflow clips
+   it, so a wrapped line never starts with a stray "·" (wheel 390 px). */
+.rdp .rdp-head__meta { overflow: hidden; }
+.rdp .rdp-mi { position: relative; display: inline-flex; align-items: center; white-space: nowrap; }
+.rdp .rdp-mi > .rdp-sep { position: absolute; top: 0; bottom: 0; right: 100%; width: .8rem; display: flex; align-items: center; justify-content: center; }
+.rdp .rdp-head__meta > .rdp-mi:first-child > .rdp-sep,
+.rdp .rdp-head__meta > .rdp-chipx + .rdp-mi > .rdp-sep { display: none; }
+.rdp .rdp-sep { color: var(--rd-faint); }
+.rdp .rdp-head__sku { color: var(--rd-muted); font-size: inherit; }
+/* Season + 3PMSF chips - the live page's chips (pt-product-ux.liquid): grey pill,
+   Winter / 3PMSF blue, season icon in its own colour (All-weather orange). */
+.rdp .rdp-chipx {
+  display: inline-flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border-radius: 999px;
+  background: #f3f4f6; color: #111; font-size: 1.3rem; font-weight: 600; line-height: 1.2; white-space: nowrap;
+}
+.rdp .rdp-chipx--snow { background: #eff6ff; color: #1d4ed8; }
+.rdp .rdp-chipx__ico { width: 1.5rem; height: 1.5rem; flex: none; }
+.rdp .rdp-head__meta > .rdp-chipx + .rdp-chipx { margin-left: -.2rem; }
+.rdp .rdp-head__rating { display: flex; align-items: center; gap: .6rem; margin: .8rem 0 0; font-size: 1.5rem; color: var(--rd-ink-3); }
+.rdp .rdp-head__rating .rd-ico { color: var(--rd-orange); }
+.rdp .rdp-head .pt-fitment-badge { margin: .8rem 0 0; font-size: 1.3rem; }
+@media (min-width: 990px) {
+  .rdp .rdp-head__brand { font-size: 1.5rem; }
+  .rdp .rdp-head__title { font-size: 3.4rem; line-height: 1.12; letter-spacing: -.01em; }
+  .rdp--wheel .rdp-head__title { font-size: 3.2rem; line-height: 1.15; }
+  .rdp .rdp-head__meta { margin-top: 1rem; font-size: 1.5rem; gap: .6rem 1.2rem; }
+  .rdp .rdp-mi > .rdp-sep { width: 1.2rem; }
+}
+
+/* ---------- Buy box -------------------------------------------------- */
+.rdp .rdp-buy { display: flex; flex-direction: column; gap: 1.4rem; min-width: 0; }
+.rdp .rdp-price { padding-bottom: 1.4rem; border-bottom: 1px solid var(--rd-line-3); }
+.rdp .rdp-price .rd-price__now { color: var(--rd-ink); }
+.rdp .rdp-price__save { font-size: 1.4rem; font-weight: 600; color: var(--rd-red); }
+.rdp .rdp-price .ptp__price-hero-amount, .rdp .rdp-price .ptp__price-hero-label { font: inherit; color: inherit; }
+.rdp .rdp-trade { margin-top: 1rem; background: var(--rd-tile); border: 0; border-radius: var(--rd-r); padding: 1rem 1.2rem; font-size: 1.5rem; color: var(--rd-ink); }
+.rdp .rdp-rebate { background: var(--rd-err-bg); border: 1px solid var(--rd-err-line); border-radius: var(--rd-r); padding: 1rem 1.2rem; font-size: 1.4rem; line-height: 1.45; color: #7f1d1d; }
+.rdp .rdp-weather[hidden] { display: none; }
+.rdp .rdp-weather a { color: inherit; font-weight: 600; }
+.rdp .rdp-lead { font-size: 1.5rem; }
+/* Lead time as the live stock pill: "Ready today" green #15803d on #ecfdf5 (4.8:1),
+   as live's in-stock chip; 1-2 days / Order in neutral grey (live's supplier chip);
+   Sold out amber (live's warn chip). Wording stays lead-time only. */
+.rdp .rdp-lead .rd-lead {
+  font-size: 1.4rem; gap: .6rem; padding: .6rem 1.2rem .6rem 1rem; border-radius: 999px;
+  background: #f3f4f6; color: #111; line-height: 1.25;
+}
+.rdp .rdp-lead .rd-lead .rd-ico { width: 1.8rem; height: 1.8rem; }
+.rdp .rdp-lead .rd-lead--today { background: #ecfdf5; color: #15803d; }
+.rdp .rdp-lead .rd-lead--out { background: #fef3c7; color: #92400e; }
+@media (min-width: 990px) { .rdp .rdp-lead .rd-lead { font-size: 1.5rem; } }
+
+.rdp .rdp-cta { display: flex; flex-direction: column; gap: 1.2rem; }
+.rdp .rdp-form { display: flex; flex-direction: column; gap: 1.2rem; margin: 0; }
+.rdp .rdp-buyrow { gap: 1rem; }
+.rdp .rdp-buyrow .rd-btn { flex: 1 1 auto; min-width: 0; }
+.rdp .ptp__book-btn--out { cursor: not-allowed; }
+.rdp .rdp-stepper .rdp-stepper__input {
+  width: 3.6rem; min-width: 3.6rem; border: 0; padding: 0; margin: 0; background: transparent; color: var(--rd-ink);
+  text-align: center; font: 600 1.8rem var(--rd-font); font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.rdp .rdp-stepper__input::-webkit-inner-spin-button,
+.rdp .rdp-stepper__input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.rdp .rdp-stepper__input:focus-visible { outline: 2px solid var(--rd-ink); outline-offset: -2px; border-radius: 4px; }
+@media (max-width: 989px) {
+  .rdp .rdp-buyrow { gap: 1rem; }
+  .rdp .rdp-stepper .rd-stepper__btn { width: 4.4rem; }
+  .rdp .rdp-stepper .rdp-stepper__input { width: 2.8rem; min-width: 2.8rem; font-size: 1.7rem; }
+}
+.rdp .rdp-quote { min-height: 4.6rem; border-radius: var(--rd-r-md); }
+
+/* Sold out: back-in-stock form */
+.rdp .rdp-bis { display: flex; flex-direction: column; gap: .6rem; position: relative; }
+.rdp .rdp-bis__label { font-size: 1.4rem; font-weight: 600; color: var(--rd-ink); }
+.rdp .rdp-bis__row { display: flex; gap: .8rem; }
+.rdp .rdp-bis__email {
+  flex: 1 1 auto; min-width: 0; height: 4.6rem; padding: 0 1.2rem;
+  border: 1px solid var(--rd-line-2); border-radius: var(--rd-r); background: var(--rd-bg);
+  font: 400 1.6rem var(--rd-font); color: var(--rd-ink);
+}
+.rdp .rdp-bis__email:focus { outline: none; border-color: var(--rd-ink); box-shadow: 0 0 0 1px var(--rd-ink); }
+.rdp .rdp-bis__email[aria-invalid="true"] { border-color: var(--rd-red); }
+.rdp .rdp-bis .rd-btn { flex: none; min-height: 4.6rem; padding: 0 1.8rem; }
+.rdp .rdp-bis__ok { display: flex; align-items: center; gap: .6rem; margin: .4rem 0 0; font-size: 1.4rem; color: var(--rd-green); }
+.rdp .rdp-bis__err { margin: .4rem 0 0; font-size: 1.4rem; color: var(--rd-err-ink); }
+.rdp .rdp-bis__ok[hidden], .rdp .rdp-bis__err[hidden] { display: none; }
+.rdp .rdp-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.rdp .rdp-cta__call { margin: 0; font-size: 1.4rem; color: var(--rd-ink-3); }
+.rdp .rdp-cta__call a { font-weight: 600; color: var(--rd-ink); }
+
+/* Installed total - the lead number again, as on live (owner 11-14): first in the
+   buy box, green #16a34a (large text, 3.1:1 on the paper box), "incl. GST" in the
+   darker #15803d, an orange #F5820B wrench on the label, the orange promo pill. */
+.rdp .rdp-total { padding: 1.2rem 1.4rem; }
+.rdp .rdp-total .rd-total__head { flex-wrap: wrap; align-items: baseline; gap: .2rem 1.2rem; }
+.rdp .rdp-total .rd-total__label { display: inline-flex; align-items: center; gap: .6rem; font-size: 1.5rem; color: var(--rd-ink); }
+.rdp .rdp-total__ico { flex: none; color: var(--rdp-or); }
+.rdp .rdp-total .rd-total__amount { order: -1; flex: 1 0 100%; font-size: 2.4rem; font-weight: 600; letter-spacing: 0; line-height: 1.1; color: var(--rdp-gr-lg); }
+.rdp .rdp-total .rd-total__incl { font-size: 1.3rem; font-weight: 500; color: var(--rd-green); }
+.rdp .rdp-promo { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; margin: .6rem 0 0; font-size: 1.3rem; line-height: 1.4; color: var(--rd-ink-3); }
+.rdp .rdp-promo strong { color: var(--rd-ink); }
+.rdp .rdp-promo__was { color: var(--rd-muted); }
+/* Live pill: #F5820B; its text is #111 (7.3:1) - white on #F5820B is only 2.6:1. */
+.rdp .rdp-promo__pill { display: inline-block; padding: .2rem .7rem; border-radius: 999px; background: var(--rdp-or); color: #111; font-size: 1.1rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+.rdp .rdp-total .rd-sumrow--total { color: var(--rd-green); font-weight: 800; }
+/* The per-tire price steps down when the installed total leads (live: total first). */
+.rdp .rdp-total + .rdp-price .rd-price__now { font-size: 2.2rem; }
+.rdp .rdp-total__sub { display: flex; justify-content: space-between; align-items: center; gap: .4rem 1.2rem; flex-wrap: wrap; margin-top: .2rem; }
+.rdp .rdp-total .rd-total__note { font-size: 1.3rem; color: var(--rd-muted); }
+.rdp .rd-total__break[hidden] { display: none; }
+@media (min-width: 990px) {
+  .rdp .rdp-total { padding: 1.4rem 1.6rem; }
+  .rdp .rdp-total .rd-total__amount { font-size: 3.2rem; }
+  .rdp .rdp-total .rd-total__incl { font-size: 1.5rem; }
+  .rdp .rdp-total + .rdp-price .rd-price__now { font-size: 2.8rem; }
+}
+.rdp .rdp-textbtn {
+  display: inline-flex; align-items: center; min-height: 4.4rem; margin: -.8rem 0; padding: 0;
+  background: none; border: 0; cursor: pointer; list-style: none;
+  font: 600 1.4rem var(--rd-font); color: var(--rd-ink); text-decoration: underline; text-underline-offset: 3px;
+}
+.rdp .rdp-textbtn:hover { color: var(--rd-red); }
+.rdp .rdp-textbtn:focus-visible { outline: none; box-shadow: var(--rd-focus); border-radius: 4px; }
+.rdp summary.rdp-textbtn { margin: 0; }
+.rdp summary.rdp-textbtn::-webkit-details-marker { display: none; }
+
+/* Wheel: package link + visualizer link */
+/* Live colours (pt-product.liquid .ptp__pkg-cta / pt-rim-visualizer .ptp-viz__btn):
+   package banner solid #dc2626 + white text (hover #b91c1c); the Visualize
+   button and its phone stand-in ("See these on your car") the red gradient
+   #da291c -> #b9221a. White on #dc2626 is 4.8:1, on #b9221a 6.5:1. */
+.rdp .rdp-pkg {
+  display: flex; align-items: center; justify-content: space-between; gap: 1.2rem;
+  min-height: 4.8rem; padding: 1.2rem 1.4rem; border: 0; border-radius: var(--rd-r-md);
+  background: #dc2626; color: #fff; text-decoration: none;
+}
+.rdp .rdp-pkg:hover { background: #b91c1c; color: #fff; }
+.rdp .rdp-pkg:focus-visible { outline: 2px solid #111; outline-offset: 2px; }
+.rdp .rdp-pkg .rd-ico { color: #fff; }
+.rdp .rdp-pkg__text { display: flex; flex-direction: column; gap: .2rem; }
+.rdp .rdp-pkg__text strong { font-size: 1.5rem; font-weight: 700; color: #fff; }
+.rdp .rdp-pkg__text small { font-size: 1.3rem; color: #fff; opacity: .92; }
+.rdp .rdp-vizlink {
+  display: flex; align-items: center; gap: 1rem; min-height: 4.8rem; padding: 1.2rem 1.4rem;
+  border: 0; border-radius: var(--rd-r-md); background: linear-gradient(135deg, #da291c, #b9221a);
+  font-size: 1.5rem; font-weight: 700; color: #fff; text-decoration: none;
+}
+.rdp .rdp-vizlink .rd-ico { color: #fff; }
+.rdp .rdp-vizlink:hover { color: #fff; filter: brightness(.94); }
+.rdp .rdp-vizlink:focus-visible { outline: 2px solid #111; outline-offset: 2px; }
+@media (min-width: 990px) {
+  .rdp .rdp-pkg { padding: 1.4rem 1.6rem; }
+  .rdp .rdp-pkg__text strong { font-size: 1.6rem; }
+  .rdp .rdp-pkg__text small { font-size: 1.4rem; }
+  .rdp .rdp-vizlink { display: none; }
+}
+
+/* Trust cards + share pill - the live page's look, kept on owner request 11-13.
+   Sizes are the live page's rendered sizes (10px root). */
+.rdp .rdp-trust { display: flex; gap: .8rem; margin: 0; padding: 0; list-style: none; }
+.rdp .rdp-trust__item {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem;
+  padding: 1rem .4rem; border-radius: 12px; background: #f7f7f8; border: 1px solid #e8e9ec; text-align: center; transition: opacity .2s;
+}
+.rdp .rdp-trust__item:hover { opacity: .8; }
+.rdp .rdp-trust__icon { width: 1.8rem; height: 1.8rem; display: flex; align-items: center; justify-content: center; color: #9ca3af; }
+.rdp .rdp-trust__icon svg { width: 1.6rem; height: 1.6rem; }
+.rdp .rdp-trust__label { font-family: var(--rd-font); font-size: 1.3rem; font-weight: 600; line-height: 1.3; color: #6b7280; overflow-wrap: anywhere; }
+
+.rdp .rdp-share {
+  display: flex; align-items: center; gap: .55rem; align-self: flex-start; width: fit-content; max-width: 100%;
+  margin: .6rem 0 0; padding: .45rem .75rem; background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 100px;
+}
+.rdp .rdp-share__label { font-family: var(--rd-font); font-size: 1.26rem; font-weight: 600; line-height: 1.6; color: #475569; white-space: nowrap; }
+.rdp .rdp-share__btn {
+  flex: 0 0 auto; width: 2.5rem; height: 2.5rem; display: flex; align-items: center; justify-content: center; padding: 0;
+  border: 1px solid transparent; border-radius: 50%; cursor: pointer; text-decoration: none; transition: transform .2s, background-color .2s, color .2s;
+}
+.rdp .rdp-share__btn svg { width: 1.5rem; height: 1.5rem; }
+.rdp .rdp-share__btn:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+.rdp .rdp-share__btn--wa { background: #25d366; border-color: #25d366; color: #fff; }
+.rdp .rdp-share__btn--wa:hover { background: #20ba5a; border-color: #20ba5a; transform: scale(1.08); }
+.rdp .rdp-share__btn--fb { background: #1877f2; border-color: #1877f2; color: #fff; }
+.rdp .rdp-share__btn--fb:hover { background: #1464d4; border-color: #1464d4; transform: scale(1.08); }
+.rdp .rdp-share__btn--link { background: #f3f4f6; border-color: #e5e7eb; color: #6b7280; }
+.rdp .rdp-share__btn--link:hover { background: #e5e7eb; color: #374151; transform: scale(1.08); }
+
+/* Stat strip (live look): full width under the gallery / buy row */
+.rdp .rdp-stats { display: flex; align-items: stretch; overflow: hidden; margin-top: 2rem; background: #f9fafb; border-radius: 12px; }
+.rdp .rdp-stat {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: .25rem; padding: 1.5rem 1rem; text-align: center;
+}
+.rdp .rdp-stat + .rdp-stat { border-left: 1px solid #f3f4f6; }
+.rdp .rdp-stat__ico { width: 2.2rem; height: 2.2rem; color: #dc2626; flex: 0 0 auto; }
+.rdp .rdp-stat__num {
+  font-family: var(--rd-display); font-size: 1.4rem; font-weight: 700; line-height: 1; letter-spacing: .02em; color: #111; overflow-wrap: anywhere;
+}
+.rdp .rdp-stat__num--brand { font-size: 1.5rem; }
+/* live #9ca3af is 2.5:1 on #f9fafb; #6b7280 (same grey family) passes AA */
+.rdp .rdp-stat__unit { font-size: 1.4rem; font-weight: 400; color: #6b7280; margin-left: .2rem; }
+.rdp .rdp-stat__label { font-family: var(--rd-font); font-size: 1.4rem; font-weight: 400; line-height: 1.6; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
+@media (max-width: 749px) {
+  .rdp .rdp-stats { display: grid; grid-template-columns: 1fr 1fr; }
+  .rdp .rdp-stat + .rdp-stat { border-left: 0; }
+  .rdp .rdp-stat:nth-child(odd):not(:last-child) { border-right: 1px solid #f0f0f0; }
+  .rdp .rdp-stat:nth-child(n+3) { border-top: 1px solid #f0f0f0; }
+}
+@media (min-width: 990px) { .rdp .rdp-stats { margin-top: 3.5rem; } }
+
+/* Performance ratings in the Specifications card (live look) */
+.rdp .rdp-perf__h { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-family: var(--rd-font); font-size: 1.4rem; font-weight: 600; line-height: 1.1; color: var(--rd-ink-3); text-transform: uppercase; letter-spacing: .04em; margin: 1.8rem 0 1.2rem; }
+.rdp .rdp-perf__h > span:first-child { display: inline-flex; align-items: center; gap: .8rem; }
+.rdp .rdp-perf__h > span:first-child::before { content: ""; width: .4rem; height: 1.4rem; border-radius: 2px; background: var(--rd-orange); }
+.rdp .rdp-perf__scale { font-size: 1.2rem; font-weight: 500; letter-spacing: .02em; text-transform: none; color: var(--rd-muted); }
+.rdp .rdp-perf { display: flex; flex-direction: column; gap: .9rem; }
+.rdp .rdp-perf__row { display: flex; align-items: center; gap: .8rem; }
+.rdp .rdp-perf__label { width: 10.4rem; flex-shrink: 0; font-size: 1.4rem; font-weight: 500; line-height: 1.6; color: var(--rd-muted); }
+.rdp .rdp-perf__track { flex: 1 1 auto; min-width: 0; height: 10px; background: var(--rd-line-3); border-radius: 5px; overflow: hidden; }
+/* Owner 11-14 ("I like the colours in the old design"): the live bars' colours,
+   one per rating - dry, wet, ice, snow (orange), tread life (green). */
+.rdp .rdp-perf__fill--dry { background: #fca5a5; }
+.rdp .rdp-perf__fill--wet { background: #93c5fd; }
+.rdp .rdp-perf__fill--ice { background: #7dd3fc; }
+.rdp .rdp-perf__fill--snow { background: #fdba74; }
+.rdp .rdp-perf__fill--tread { background: #86efac; }
+.rdp .rdp-perf__fill { height: 100%; border-radius: 5px; transition: width 2.5s cubic-bezier(.16, 1, .3, 1); }
+.rdp .rdp-perf--still .rdp-perf__fill { transition: none; }
+.rdp .rdp-perf__val { width: 3rem; flex-shrink: 0; font-variant-numeric: tabular-nums; text-align: right; font-size: 1.4rem; font-weight: 700; line-height: 1.6; color: #111; }
+
+/* Visualizer (snippets/pt-rim-visualizer.liquid) in the redesign's look */
+.rdp .ptp-viz { margin: 0; padding: 1.6rem 1.8rem; background: var(--rd-bg); border: 1px solid var(--rd-line); border-radius: var(--rd-r-lg); }
+.rdp .ptp-viz__head { gap: 1rem; font-size: 1.6rem; color: var(--rd-ink); margin-bottom: 1rem; }
+.rdp .ptp-viz__head .rd-ico, .rdp .ptp-viz__head svg { color: #b9221a; }
+.rdp .ptp-viz__form { gap: .8rem; }
+.rdp .ptp-viz__in { height: 4.4rem; border: 1px solid var(--rd-line-2); border-radius: var(--rd-r); font-size: 1.5rem; color: var(--rd-ink); }
+.rdp .ptp-viz__in:focus { border-color: var(--rd-ink); box-shadow: 0 0 0 1px var(--rd-ink); }
+.rdp .ptp-viz__btn { height: 4.4rem; padding: 0 1.6rem; background: linear-gradient(135deg, #da291c, #b9221a); color: #fff; border: 0; border-radius: var(--rd-r); font-weight: 700; font-size: 1.4rem; }
+.rdp .ptp-viz__btn:hover:not(:disabled) { filter: brightness(.94); }
+.rdp .ptp-viz__btn:focus-visible { outline: 2px solid #111; outline-offset: 2px; }
+.rdp .ptp-viz__msg { font-size: 1.4rem; color: var(--rd-muted); }
+.rdp .rdp-viz { scroll-margin-top: 2rem; }
+/* Phones: folded until the "See these on your car" link opens it (JS only) */
+@media (max-width: 989px) { .rdp.rdp-js .rdp-viz:not(.is-open) { display: none; } }
+
+/* ---------- Details: dropdowns (phone) / cards + tabs (desktop) ----- */
+.rdp .rdp-cards { margin-top: 2rem; }
+.rdp .rdp-d { border-top: 1px solid var(--rd-line); }
+.rdp .rdp-d__h { margin: 0; font-size: inherit; }
+.rdp .rdp-d__btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  width: 100%; min-height: 5.6rem; padding: 0; border: 0; background: none; cursor: pointer; text-align: left;
+  font: 600 1.6rem var(--rd-font); color: var(--rd-ink);
+}
+.rdp .rdp-d__btn:focus-visible { outline: none; box-shadow: var(--rd-focus); border-radius: 4px; }
+.rdp .rdp-d__chev { color: var(--rd-orange-ink); transition: transform .18s ease; }
+.rdp .rdp-d.is-open > .rdp-d__h .rdp-d__btn { color: var(--rd-orange-ink); }
+/* Phones: the tabs are accordions; the open one reads like live's active tab (red). */
+.rdp .rdp-tabset .rdp-d.is-open > .rdp-d__h .rdp-d__btn { color: #dc2626; }
+.rdp .rdp-d.is-open .rdp-d__chev { transform: rotate(180deg); }
+.rdp .rdp-d__t-lg { display: none; }
+.rdp .rdp-d__body { padding: 0 0 1.4rem; }
+.rdp-js .rdp-d__body { display: none; }
+.rdp-js .rdp-d.is-open > .rdp-d__body { display: block; }
+.rdp .rdp-tablist { display: none; }
+.rdp .rdp-links { display: flex; flex-wrap: wrap; gap: 0 1.8rem; margin: 0; padding: .8rem 0 0; font-size: 1.4rem; font-weight: 600; }
+.rdp .rdp-links a { display: inline-flex; align-items: center; min-height: 4.4rem; color: var(--rd-ink); }
+.rdp .rdp-links a:hover { color: var(--rd-red); }
+.rdp .rdp-tabset .rdp-links { border-top: 1px solid var(--rd-line); }
+
+@media (min-width: 990px) {
+  /* Owner 11-14: the three cards looked uneven. Specs (the tall one) takes the
+     left column; Installation and Will it fit stack on the right and stretch,
+     so both columns end on the same line. */
+  .rdp .rdp-cards { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; gap: 2rem; margin-top: 4rem; align-items: stretch; }
+  .rdp .rdp-card[data-rdp-d="specs"] { grid-column: 1; grid-row: 1 / span 2; }
+  .rdp .rdp-card[data-rdp-d="install"] { grid-column: 2; grid-row: 1; }
+  .rdp .rdp-card[data-rdp-d="fit"] { grid-column: 2; grid-row: 2; }
+  .rdp .rdp-card { display: flex; flex-direction: column; }
+  .rdp .rdp-card > .rdp-d__body { flex: 1; }
+  .rdp .rdp-card { border: 1px solid var(--rd-line); border-radius: var(--rd-r-lg); background: var(--rd-paper); padding: 2.2rem 2.4rem; }
+  .rdp .rdp-card .rdp-d__btn { min-height: 0; margin: 0 0 1.2rem; font-size: 2rem; font-weight: 700; cursor: default; pointer-events: none; justify-content: flex-start; gap: 1rem; }
+  .rdp .rdp-card.is-open > .rdp-d__h .rdp-d__btn, .rdp .rdp-card .rdp-d__btn { color: var(--rd-ink); }
+  .rdp .rdp-card .rdp-d__btn::before { content: ""; flex: none; width: .4rem; height: 2rem; border-radius: 2px; background: var(--rd-orange); }
+  .rdp .rdp-card .rdp-d__chev { display: none; }
+  /* Desktop card order follows the canvas: specs, installation, will it fit (phones: specs, fit, install). */
+  .rdp .rdp-card[data-rdp-d="install"] { order: 2; }
+  .rdp .rdp-card[data-rdp-d="fit"] { order: 3; }
+  .rdp .rdp-card .rdp-d__body { padding: 0; }
+  .rdp-js .rdp-card > .rdp-d__body { display: block; }
+  .rdp .rdp-d__t-lg { display: inline; }
+  .rdp .rdp-d__t-sm { display: none; }
+
+  .rdp .rdp-tabset { margin-top: 4rem; }
+  /* Live tab bar: no band, a 2px grey line, the active tab underlined 2px. The
+     active colour stays orange (owner 11-13; red is for the main button + sale). */
+  .rdp .rdp-tablist { display: flex; flex-wrap: wrap; gap: .4rem; padding: 0; border-bottom: 2px solid #e5e7eb; }
+  .rdp .rdp-tab {
+    margin-bottom: -2px; padding: 1.3rem 1.8rem 1.1rem; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; cursor: pointer;
+    font: 600 1.6rem var(--rd-font); color: var(--rd-muted);
+  }
+  /* Follow live (review 11-14): the active tab is red #dc2626 with a red 2px
+     underline, as on the live product page (4.8:1 on white, AA). This replaces
+     the orange active tab of the 11-13 pass - flagged for the owner. */
+  .rdp .rdp-tab:hover { color: #dc2626; }
+  .rdp .rdp-tab.is-on { color: #dc2626; border-bottom-color: #dc2626; }
+  .rdp .rdp-tab:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+  .rdp .rdp-tabset .rdp-d { border-top: 0; }
+  .rdp .rdp-tabset .rdp-d__h { display: none; }
+  .rdp .rdp-tabset .rdp-d__body { padding: 2.2rem 0 0; max-width: 86rem; }
+  .rdp-js .rdp-tabset .rdp-d > .rdp-d__body { display: none; }
+  .rdp-js .rdp-tabset .rdp-d.is-tab > .rdp-d__body { display: block; }
+  .rdp .rdp-tabset .rdp-links { border-top: 0; padding-top: 1.8rem; gap: 0 2.4rem; font-size: 1.5rem; }
+}
+
+/* Rows (specs, install) */
+.rdp .rdp-rows { margin: 0; }
+.rdp .rdp-rows > div { display: flex; justify-content: space-between; gap: 1.2rem; padding: .8rem 0; border-top: 1px solid var(--rd-line-soft); font-size: 1.4rem; line-height: 1.4; }
+.rdp .rdp-rows > div:first-child { border-top: 0; }
+.rdp .rdp-rows dt { color: var(--rd-muted); }
+.rdp .rdp-rows dd { margin: 0; font-weight: 500; text-align: right; color: var(--rd-ink); overflow-wrap: anywhere; }
+@media (min-width: 990px) {
+  .rdp .rdp-rows > div { font-size: 1.5rem; border-top-color: var(--rd-line-3); }
+}
+
+/* Text */
+.rdp .rdp-p, .rdp .rdp-prose p { margin: 0 0 1rem; font-size: 1.4rem; line-height: 1.6; color: var(--rd-ink-3); }
+.rdp .rdp-p--small { margin-top: 1rem; font-size: 1.4rem; }
+.rdp .rdp-p--last { margin-bottom: 0; }
+.rdp .rdp-p a, .rdp .rdp-prose a { color: var(--rd-ink); font-weight: 600; }
+.rdp .rdp-p strong { color: var(--rd-ink); }
+.rdp .rdp-prose ul { list-style: disc; padding-left: 2rem; margin: 0 0 1rem; font-size: 1.4rem; line-height: 1.6; color: var(--rd-ink-3); }
+.rdp .rdp-h3 { margin: 1.4rem 0 .4rem; font-size: 1.5rem; font-weight: 600; color: var(--rd-ink); }
+.rdp .rdp-h3--first { margin-top: 0; }
+.rdp .rdp-use p { margin: 0 0 .6rem; font-size: 1.4rem; color: var(--rd-ink-3); }
+.rdp .rdp-use strong { color: var(--rd-ink); }
+.rdp .rdp-qa { padding: 1.4rem 0; border-top: 1px solid var(--rd-line); }
+.rdp .rdp-qa:first-child { padding-top: 0; border-top: 0; }
+.rdp .rdp-qa h3 { margin: 0 0 .6rem; font-size: 1.5rem; font-weight: 600; color: var(--rd-ink); }
+.rdp .rdp-qa p { margin: 0; font-size: 1.4rem; line-height: 1.6; color: var(--rd-ink-3); }
+
+/* ---------- Owner 11-13: orange + green accents in the details ------
+   Orange = headings accent + the Calgary note's border; green = the "Yes." FAQ
+   ticks. Owner 11-14: the pale orange/green panels are gone (live has none);
+   the Warranty tab uses live's grey rows with orange icons. */
+.rdp .rdp-tabset .rdp-h3 { display: flex; align-items: center; gap: .8rem; }
+.rdp .rdp-tabset .rdp-h3::before { content: ""; flex: none; width: .4rem; height: 1.6rem; border-radius: 2px; background: var(--rd-orange); }
+.rdp .rdp-callout { margin: 1.4rem 0; padding: 1.4rem 1.6rem; border: 1px solid; border-left-width: 4px; border-radius: var(--rd-r); }
+.rdp .rdp-callout:first-child { margin-top: 0; }
+.rdp .rdp-callout > :last-child, .rdp .rdp-callout .rdp-prose > :last-child { margin-bottom: 0; }
+/* Live's Calgary note: a very light grey panel with a 3px orange left border (no orange tint). */
+.rdp .rdp-callout--orange { background: #f8fafc; border: 0; border-left: 3px solid var(--rdp-or); border-radius: 0 var(--rd-r) var(--rd-r) 0; }
+/* Warranty rows - live look: light-grey rows, orange line icon, orange "— optional" + link. */
+.rdp .rdp-wrow { display: flex; align-items: flex-start; gap: 1.2rem; margin: 0 0 .6rem; padding: 1.4rem 1.6rem; background: #f6f6f6; border-radius: 8px; }
+.rdp .rdp-wrow:last-child { margin-bottom: 0; }
+.rdp .rdp-wrow__ico { flex: none; width: 2.2rem; height: 2.2rem; margin-top: .1rem; color: var(--rdp-or); }
+.rdp .rdp-wrow__body { flex: 1 1 auto; min-width: 0; }
+.rdp .rdp-wrow__h { margin: 0 0 .4rem; font-size: 1.5rem; font-weight: 600; line-height: 1.4; color: var(--rd-ink); }
+.rdp .rdp-wrow__p { margin: 0 0 .4rem; font-size: 1.4rem; line-height: 1.6; color: var(--rd-ink-3); }
+.rdp .rdp-wrow__p:last-child { margin-bottom: 0; }
+.rdp .rdp-wrow__p a { color: var(--rd-ink); font-weight: 600; }
+.rdp .rdp-wrow .rdp-rows { margin: .2rem 0 .6rem; }
+.rdp .rdp-wrow .rdp-rows > div { border-top-color: #e5e5e5; }
+.rdp .rdp-wrow__opt { font-weight: 500; color: var(--rd-orange-ink); }
+.rdp .rdp-wrow__p a.rdp-wrow__link { color: var(--rd-orange-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 990px) {
+  .rdp .rdp-wrow { padding: 1.6rem 2rem; }
+  .rdp .rdp-wrow__h { font-size: 1.6rem; }
+  .rdp .rdp-wrow__p { font-size: 1.5rem; }
+}
+.rdp .rdp-qa--yes .ptp__faq-a { position: relative; padding-left: 2.6rem; }
+.rdp .rdp-qa--yes .ptp__faq-a::before {
+  content: ""; position: absolute; left: 0; top: .2em; width: 1.8rem; height: 1.8rem; border-radius: 50%;
+  background: #dcfce7 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2315803d' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 1.2rem no-repeat;
+}
+@media (min-width: 990px) {
+  .rdp .rdp-callout { padding: 1.6rem 2rem; }
+  .rdp .rdp-tabset .rdp-h3::before { height: 1.8rem; }
+}
+@media (min-width: 990px) {
+  .rdp .rdp-p, .rdp .rdp-prose p { margin-bottom: 1.2rem; font-size: 1.5rem; }
+  .rdp .rdp-p--small { font-size: 1.4rem; }
+  .rdp .rdp-h3 { margin: 1.8rem 0 .6rem; font-size: 1.7rem; }
+  .rdp .rdp-h3--first { margin-top: 0; }
+  .rdp .rdp-qa { padding: 1.6rem 0; }
+  .rdp .rdp-qa h3 { font-size: 1.6rem; }
+  .rdp .rdp-qa p { font-size: 1.5rem; }
+}
+
+/* Will it fit: "Fits N vehicles" line (snippets/pt-fits-vehicles.liquid) + chips */
+.rdp .ptp-fits { display: flex; align-items: flex-start; gap: .4rem .8rem; flex-wrap: wrap; margin: 0 0 1rem; padding: 0; background: none; border: 0; font-size: 1.4rem; line-height: 1.5; color: var(--rd-green); }
+.rdp .ptp-fits[hidden] { display: none; }
+.rdp .ptp-fits__icon { color: #1a8a4a; margin-top: .2rem; }
+.rdp .ptp-fits__text { font-weight: 600; }
+.rdp .ptp-fits__rating { color: var(--rd-ink-3); font-weight: 500; }
+.rdp .rdp-fitlist__h { margin: 1.2rem 0 .8rem; font-size: 1.4rem; font-weight: 600; color: var(--rd-ink); }
+.rdp .rdp-chips { display: flex; flex-wrap: wrap; gap: .6rem; margin: 0 0 1rem; padding: 0; list-style: none; }
+.rdp .rdp-chip { padding: .4rem 1rem; border: 1px solid var(--rd-line); border-radius: 999px; background: var(--rd-bg); font-size: 1.4rem; line-height: 1.4; color: var(--rd-ink); }
+.rdp .rdp-chip--more { color: var(--rd-muted); }
+.rdp .rdp-more-v { margin: -.4rem 0 .6rem; }
+.rdp .rdp-more-v[open] > summary { margin-bottom: .6rem; }
+@media (min-width: 990px) {
+  .rdp .ptp-fits { font-size: 1.5rem; }
+}
+
+/* ---------- Phone sticky bar ---------------------------------------- */
+.rdp .rdp-sticky { display: none; }
+@media (max-width: 749px) {
+  .rdp-main { padding-bottom: 14rem; }
+  .rdp .rdp-sticky {
+    display: flex; flex-direction: column; gap: .8rem;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1002;
+    padding: .8rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom, 0px));
+    background: var(--rd-bg); border-top: 1px solid #ecebe7; box-shadow: 0 -8px 24px rgba(17, 17, 17, .06);
+  }
+  .rdp .rdp-sticky__top { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: .2rem .8rem; font-size: 1.4rem; line-height: 1.3; }
+  .rdp .rdp-sticky .ptp__sticky-set { font-size: 1.6rem; font-weight: 700; color: var(--rd-ink); }
+  .rdp .rdp-sticky .ptp__sticky-per { font-size: 1.4rem; color: var(--rd-muted); }
+  .rdp .rdp-sticky .ptp__sticky-save { color: var(--rd-red); }
+  .rdp .rdp-sticky__inst { color: var(--rd-green); font-weight: 600; white-space: nowrap; }
+  .rdp .ptp__sticky-trade { display: none; padding: .3rem .6rem; background: #fef3c7; border-left: 3px solid var(--rd-red); border-radius: 4px; font-size: 1.4rem; color: var(--rd-ink-3); }
+  body.pt-trade-visible .rdp .ptp__sticky-trade { display: block; }
+  .rdp .rdp-sticky__actions { display: flex; gap: .8rem; }
+  .rdp .rdp-sticky__call {
+    width: 4.6rem; height: 4.6rem; flex: none; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--rd-line-2); border-radius: var(--rd-r); color: var(--rd-ink); text-decoration: none;
+  }
+  .rdp .rdp-sticky__add, .rdp .rdp-sticky__book {
+    height: 4.6rem; min-width: 0; padding: 0 .8rem; border-radius: var(--rd-r); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; white-space: nowrap; text-decoration: none;
+    font: 600 1.5rem var(--rd-font);
+  }
+  .rdp .rdp-sticky__add { flex: 1 1 0; border: 1.5px solid var(--rd-red); background: var(--rd-bg); color: var(--rd-red); }
+  .rdp .rdp-sticky__book { flex: 1.3 1 0; border: 0; background: var(--rd-red); color: #fff; }
+  .rdp .rdp-sticky__book:hover { background: var(--rd-red-dark); color: #fff; }
+  .rdp .rdp-sticky__book[disabled] { background: var(--rd-line-2); color: var(--rd-muted); cursor: default; }
+  .rdp .rdp-sticky__call:focus-visible, .rdp .rdp-sticky__add:focus-visible, .rdp .rdp-sticky__book:focus-visible { outline: none; box-shadow: var(--rd-focus); }
+  /* The product page has its own bar, so the site tab bar steps aside. */
+  body.template-product .pt-tabbar { display: none !important; }
+}
+
+/* ---------- Toast (appended to <body>) ------------------------------ */
+.rdp-toast {
+  position: fixed; left: 50%; bottom: 2.4rem; z-index: 99999; max-width: calc(100vw - 3.2rem);
+  transform: translate(-50%, 10px); opacity: 0; pointer-events: none; transition: opacity .22s, transform .22s;
+  padding: 1.2rem 1.8rem; border-radius: var(--rd-r); background: var(--rd-black); color: #fff;
+  font: 500 1.5rem/1.35 var(--rd-font, 'Outfit', sans-serif); box-shadow: 0 4px 24px rgba(0, 0, 0, .18);
+}
+.rdp-toast--in { opacity: 1; transform: translate(-50%, 0); }
+.rdp-toast--error { background: var(--rd-red); }
+@media (max-width: 749px) { .rdp-toast { bottom: 13rem; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rdp .rdp-d__chev, .rdp-toast { transition: none; }
+}
+
+/* ---------- pt-type.css guard ----------------------------------------
+   layout/theme.liquid loads assets/pt-type.css on every page; it pins the
+   legacy .ptp__* classes this page still carries (for other scripts) to
+   14px with :root .ptp__x (0,2,0), which beats the .rd-* component sizes
+   in pt-rd.css (0,1,0) and inherited sizes. Restore the redesign's sizes. */
+.rdp .rdp-prose { font-size: 1.4rem; }
+.rdp .ptp__book-btn.rd-btn--lg { font-size: 1.7rem; }
+.rdp .ptp__bis-btn.rd-btn { font-size: 1.5rem; }
+.rdp .ptp__price-was.rd-price__was { font-size: 1.3rem; }
+.rdp .rdp-fit__change.ptp__fitment-change,
+.rdp .ptp__links .ptp__link { font-size: inherit; }
+@media (max-width: 749px) {
+  .rdp .ptp__book-btn.rd-btn--lg { font-size: 1.6rem; }
+  .rdp .ptp__bis-btn.rd-btn { font-size: 1.4rem; }
+}
+@media (min-width: 750px) {
+  .rdp .ptp__price-was.rd-price__was { font-size: 1.4rem; }
+}
+@media (min-width: 990px) {
+  .rdp .rdp-prose { font-size: 1.5rem; }
+}

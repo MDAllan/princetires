@@ -1,0 +1,48 @@
+{%- comment -%}
+  Dealer portal call-to-action (PART 6 of the dealer portal).
+  Renders nothing unless Theme settings → Dealer portal → "Show dealer portal links" is on.
+
+  Params:
+    target   'login' (default) → <portal>/login, 'search' → <portal> (size search)
+    heading  bold line
+    body     supporting line (optional)
+    cta      button text
+  The portal address is one setting: settings.dealer_portal_url.
+{%- endcomment -%}
+{%- if settings.dealer_portal_enabled -%}
+  {%- liquid
+    assign pdp_base = settings.dealer_portal_url | default: 'https://wholesale.princetires.ca/dealer' | strip
+    assign pdp_scheme = pdp_base | slice: 0, 8 | downcase
+    if pdp_scheme != 'https://'
+      assign pdp_base = 'https://wholesale.princetires.ca/dealer'
+    endif
+    if target == 'search'
+      assign pdp_href = pdp_base
+    else
+      assign pdp_href = pdp_base | append: '/login' | replace: '//login', '/login'
+    endif
+  -%}
+  <style>
+    .pt-dpc { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px 20px;
+              background:#111111; color:#ffffff; border-left:4px solid #DC2626; border-radius:10px;
+              padding:16px 20px; margin:16px 0; font-family:'Outfit',sans-serif; }
+    .pt-dpc__text { flex:1 1 280px; min-width:0; }
+    .pt-dpc__heading { display:block; font-size:1.7rem; font-weight:700; line-height:1.3; }
+    .pt-dpc__body { display:block; font-size:1.4rem; line-height:1.45; color:#d1d5db; margin-top:2px; }
+    .pt-dpc__btn { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:0 20px;
+                   background:#DC2626; color:#ffffff; border-radius:8px; font-size:1.5rem; font-weight:700;
+                   text-decoration:none; white-space:nowrap; }
+    .pt-dpc__btn:hover, .pt-dpc__btn:focus-visible { background:#F97316; color:#111111; }
+    @media (max-width: 560px) { .pt-dpc__btn { width:100%; justify-content:center; } }
+  </style>
+  <div class="pt-dpc" data-dealer-portal-cta>
+    <div class="pt-dpc__text">
+      <strong class="pt-dpc__heading">{{ heading | default: 'Order in the new dealer portal' | escape }}</strong>
+      {%- if body != blank -%}<span class="pt-dpc__body">{{ body | escape }}</span>{%- endif -%}
+    </div>
+    <a class="pt-dpc__btn" href="{{ pdp_href | escape }}" rel="noopener">
+      {{ cta | default: 'Open dealer portal' | escape }}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+{%- endif -%}

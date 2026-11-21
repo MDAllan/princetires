@@ -104,7 +104,7 @@
 
             <div class="pt-footer__locs">
               <div class="pt-footer__loc">
-                <p class="pt-footer__loc-name">{% render 'pt-nap', location: 'sw', field: 'name' %}</p>
+                <p class="pt-footer__loc-name"><a href="/pages/tire-shop-sw-calgary" class="pt-footer__loc-link">{% render 'pt-nap', location: 'sw', field: 'name' %}</a></p>
                 <address class="pt-footer__loc-addr">
                   {% render 'pt-nap', location: 'sw', field: 'street' %}<br>
                   {% render 'pt-nap', location: 'sw', field: 'city' %}, {% render 'pt-nap', location: 'sw', field: 'region' %} {% render 'pt-nap', location: 'sw', field: 'postal' %}
@@ -118,7 +118,7 @@
               </div>
 
               <div class="pt-footer__loc">
-                <p class="pt-footer__loc-name">{% render 'pt-nap', location: 'ne', field: 'name' %}</p>
+                <p class="pt-footer__loc-name"><a href="/pages/tire-shop-ne-calgary" class="pt-footer__loc-link">{% render 'pt-nap', location: 'ne', field: 'name' %}</a></p>
                 <address class="pt-footer__loc-addr">
                   {% render 'pt-nap', location: 'ne', field: 'street' %}<br>
                   {% render 'pt-nap', location: 'ne', field: 'city' %}, {% render 'pt-nap', location: 'ne', field: 'region' %} {% render 'pt-nap', location: 'ne', field: 'postal' %}
@@ -147,15 +147,17 @@
         <h4 class="pt-footer__col-heading">All Tires</h4>
         <ul class="pt-footer__links">
           <li><a href="/pages/tires" class="pt-footer__link"><strong>All tire types</strong></a></li>
-          <li><a href="/pages/winter-tires-calgary" class="pt-footer__link">Winter Tires</a></li>
+          <li><a href="/collections/winter-tires" class="pt-footer__link">Winter Tires</a></li>
           <li><a href="/pages/all-weather-tires-calgary" class="pt-footer__link">All-Weather Tires</a></li>
           <li><a href="/pages/all-season-tires-calgary" class="pt-footer__link">All-Season Tires</a></li>
           <li><a href="/pages/summer-tires" class="pt-footer__link">Summer Tires</a></li>
-          <li><a href="/pages/performance-tires" class="pt-footer__link">Performance Tires</a></li>
-          <li><a href="/pages/light-truck-tires" class="pt-footer__link">Light Truck Tires</a></li>
-          <li><a href="/pages/trailer-tires" class="pt-footer__link">Trailer Tires</a></li>
+          <li><a href="/collections/performance-tires" class="pt-footer__link">Performance Tires</a></li>
+          <li><a href="/collections/light-truck-tires" class="pt-footer__link">Light Truck Tires</a></li>
+          <li><a href="/collections/trailer-tires" class="pt-footer__link">Trailer Tires</a></li>
           <li><a href="/pages/wheels-and-rims-calgary" class="pt-footer__link">Wheels &amp; Rims</a></li>
-          <li><a href="/collections/tires" class="pt-footer__link">Shop all tires</a></li>
+          {%- comment -%} Shop by size hub: /pages/shop-tires once that page exists, else /collections/all (which renders the same hub). {%- endcomment -%}
+          {%- assign pt_shop_hub = pages['shop-tires'] -%}
+          <li><a href="{% if pt_shop_hub != empty and pt_shop_hub.url != blank %}{{ pt_shop_hub.url }}{% else %}/collections/all{% endif %}" class="pt-footer__link" data-pt-shop-hub>{{ 'sections.pt_shop_by_size.footer_link' | t }}</a></li>
         </ul>
       </div>
 
@@ -167,6 +169,7 @@
           <li><a href="/pages/tire-repair-calgary" class="pt-footer__link">Tire Repair</a></li>
           <li><a href="/pages/tire-rotation" class="pt-footer__link">Tire Rotation</a></li>
           <li><a href="/pages/tire-balancing" class="pt-footer__link">Tire Balancing</a></li>
+          <li><a href="/pages/road-force-balancing" class="pt-footer__link">Road Force Balancing</a></li>
           <li><a href="/pages/seasonal-tire-change-calgary" class="pt-footer__link">Seasonal Tire Change</a></li>
           <li><a href="/pages/tpms-calgary" class="pt-footer__link">TPMS Service</a></li>
           <li><a href="/pages/road-hazard-protection" class="pt-footer__link">Road Hazard Protection</a></li>
@@ -244,6 +247,7 @@
         <li><a href="/pages/privacy-policy" class="pt-footer__legal-link">Privacy Policy</a></li>
         <li><a href="/pages/terms-of-use" class="pt-footer__legal-link">Terms of Use</a></li>
         <li><a href="/pages/returns-policy" class="pt-footer__legal-link">Returns &amp; Warranty</a></li>
+        <li><a href="/pages/price-match" class="pt-footer__legal-link">Price Match</a></li>
         <li><a href="/pages/contact" class="pt-footer__legal-link">Contact</a></li>
       </ul>
     </div>
@@ -313,8 +317,8 @@
     letter-spacing: 0.04em;
   }
   .pt-footer__tagline {
-    font-size: 1.4rem;
-    line-height: 1.5;
+    font-size: 1.3rem;
+    line-height: 1.45;
     color: var(--pt-mute);
     margin: 0;
     max-width: 32ch;
@@ -376,35 +380,35 @@
   .pt-footer__col { min-width: 0; }
   .pt-footer__col-heading {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: #fff;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    margin: 0 0 1.4rem;
+    margin: 0 0 1.1rem;
   }
 
   .pt-footer__links {
     display: flex;
     flex-direction: column;
-    gap: 0.95rem;
+    gap: 0.72rem;
     list-style: none;
     padding: 0;
     margin: 0;
   }
   .pt-footer__link {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     font-weight: 400;
     color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
-    line-height: 1.4;
+    line-height: 1.35;
     transition: color 0.15s;
     word-break: break-word;
   }
   a.pt-footer__link:hover { color: var(--pt-red); }
   .pt-footer__link--strong {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.7rem;
+    font-size: 1.55rem;
     font-weight: 700;
     color: #fff;
     letter-spacing: 0.005em;
@@ -422,8 +426,8 @@
   .pt-footer__locs {
     display: flex;
     flex-direction: column;
-    gap: 1.8rem;
-    margin-bottom: 1.4rem;
+    gap: 1.4rem;
+    margin-bottom: 1.2rem;
   }
   .pt-footer__loc {
     display: flex;
@@ -432,26 +436,28 @@
   }
   .pt-footer__loc-name {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--pt-orange);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin: 0;
   }
+  .pt-footer__loc-link { color: inherit; text-decoration: none; }
+  .pt-footer__loc-link:hover { text-decoration: underline; }
   .pt-footer__loc-addr {
     font-style: normal;
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     line-height: 1.45;
     color: rgba(255, 255, 255, 0.7);
   }
   .pt-footer__loc-hours {
-    font-size: 1.2rem;
+    font-size: 1.12rem;
     line-height: 1.45;
     color: rgba(255, 255, 255, 0.5);
     margin: 0.2rem 0 0;
   }
-  .pt-footer__links--contact { gap: 0.8rem; }
+  .pt-footer__links--contact { gap: 0.6rem; }
 
   /* ── Newsletter ── */
   .pt-footer__col--newsletter {
@@ -461,7 +467,7 @@
     .pt-footer__col--newsletter { grid-column: span 2; }
   }
   .pt-footer__newsletter-sub {
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     line-height: 1.45;
     color: var(--pt-mute);
     margin: -0.3rem 0 1.2rem;
@@ -547,13 +553,13 @@
     .pt-footer { padding: 3.2rem 0 2rem; }
     .pt-footer__main { padding: 0 1.6rem; gap: 2.4rem; }
     .pt-footer__wordmark { font-size: 2rem; }
-    .pt-footer__tagline { font-size: 1.3rem; }
-    .pt-footer__col-heading { font-size: 1.3rem; margin: 0 0 1rem; }
-    .pt-footer__link { font-size: 1.3rem; }
-    .pt-footer__link--strong { font-size: 1.6rem; }
+    .pt-footer__tagline { font-size: 1.25rem; }
+    .pt-footer__col-heading { font-size: 1.25rem; margin: 0 0 0.85rem; }
+    .pt-footer__link { font-size: 1.25rem; }
+    .pt-footer__link--strong { font-size: 1.5rem; }
     .pt-footer__copy { font-size: 1.1rem; }
-    .pt-footer__loc-addr { font-size: 1.25rem; }
-    .pt-footer__loc-hours { font-size: 1.15rem; }
+    .pt-footer__loc-addr { font-size: 1.2rem; }
+    .pt-footer__loc-hours { font-size: 1.1rem; }
     .pt-footer__newsletter-row { flex-direction: column; }
     .pt-footer__newsletter-submit { width: 100%; justify-content: center; }
   }
@@ -631,7 +637,7 @@
       "type": "textarea",
       "id": "tagline",
       "label": "Tagline",
-      "default": "Calgary's most trusted tire shop. Walk-ins welcome."
+      "default": "Family-owned Calgary tire shop. Walk-ins welcome."
     },
     {
       "type": "header",

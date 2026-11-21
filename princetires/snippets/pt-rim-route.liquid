@@ -1,0 +1,123 @@
+{%- comment -%}
+  Rim-collection router (2026-11-10, shop by size).
+
+  Shopify hides storefront filters on any collection with more than 5,000
+  products. The fix is one smart collection per rim size, filled by the
+  product tag `rim-NN`:
+    tires  → /collections/tires-NN-inch
+    wheels → /collections/wheels-NN-inch
+
+  This snippet publishes which of those collections exist (and have products)
+  as window.PTRim, plus PTRim.route(url): give it any /collections/tires… or
+  /collections/wheels… URL and it returns the same search inside the rim
+  collection when exactly ONE rim size is asked for and that collection has
+  products. Otherwise it returns the URL unchanged, so it is safe to ship
+  before the collections are created — every search keeps today's behaviour.
+
+  The size filter params (width / aspect / rim) are kept on purpose: the
+  collection grid reads them back to show "Your size", and they cost nothing
+  inside a collection that only holds that rim.
+
+  It also bounces an arrival on /collections/tires or /collections/wheels with
+  a single rim filter into the rim collection (location.replace, before the
+  page paints), which covers every older link and search box in one place.
+
+  Rendered once, early in <head>, from layout/theme.liquid.
+{%- endcomment -%}
+{%- liquid
+  assign pt_rim_sizes = '13,14,15,16,17,18,19,20,21,22,23,24' | split: ','
+  assign pt_rim_tires = ''
+  assign pt_rim_wheels = ''
+  for r in pt_rim_sizes
+    assign th = 'tires-' | append: r | append: '-inch'
+    assign wh = 'wheels-' | append: r | append: '-inch'
+    assign tc = collections[th].products_count | default: 0
+    assign wc = collections[wh].products_count | default: 0
+    if tc > 0
+      assign pt_rim_tires = pt_rim_tires | append: '"' | append: r | append: '":' | append: tc | append: ','
+    endif
+    if wc > 0
+      assign pt_rim_wheels = pt_rim_wheels | append: '"' | append: r | append: '":' | append: wc | append: ','
+    endif
+  endfor
+  assign pt_rim_tires = pt_rim_tires | remove_last: ','
+  assign pt_rim_wheels = pt_rim_wheels | remove_last: ','
+  assign pt_rim_here = ''
+  if template.name == 'collection' and collection
+    assign pt_rim_here = collection.handle
+  endif
+-%}
+<script>
+(function () {
+  var RIM = 'filter.p.m.custom.rim_diameter';
+  var PTRim = window.PTRim = {
+    tires: { {{- pt_rim_tires -}} },
+    wheels: { {{- pt_rim_wheels -}} },
+    hadRim: function (from) {
+      try {
+        var f = new URL(from || window.location.href, window.location.origin);
+        return f.searchParams.getAll(RIM).filter(Boolean).length > 0;
+      } catch (e) { return false; }
+    },
+    tireHandle: function (r) { return 'tires-' + r + '-inch'; },
+    wheelHandle: function (r) { return 'wheels-' + r + '-inch'; },
+    // Which family a collection path belongs to: 'tires' | 'wheels' | null.
+    family: function (path) {
+      var m = /^\/collections\/(tires|wheels)(?:-(\d{2})-inch)?\/?$/.exec(path || '');
+      return m ? { kind: m[1], rim: m[2] || '' } : null;
+    },
+    // `from` = where the shopper is now (defaults to the current page). It only
+    // matters inside a rim collection: see the "cleared the rim" case below.
+    route: function (url, from) {
+      try {
+        var u = new URL(url, window.location.origin);
+        if (u.origin !== window.location.origin) return url;
+        var fam = PTRim.family(u.pathname);
+        if (!fam) return url;
+        var rims = u.searchParams.getAll(RIM).filter(Boolean);
+        var map = fam.kind === 'tires' ? PTRim.tires : PTRim.wheels;
+        var target;
+        if (rims.length === 1 && /^\d{2}$/.test(rims[0]) && map[rims[0]] > 0) {
+          target = '/collections/' + fam.kind + '-' + rims[0] + '-inch';
+        } else if (fam.rim && rims.length && !(rims.length === 1 && rims[0] === fam.rim)) {
+          // Asked for another rim (or several) from inside a rim collection:
+          // go back to the full catalogue, which honours any rim filter.
+          target = '/collections/' + fam.kind;
+        } else if (fam.rim && !rims.length && PTRim.hadRim(from)) {
+          // Cleared the size / removed the rim filter from inside a rim
+          // collection: widen back to the full catalogue, as it did before
+          // rim collections existed. A plain visit with no rim param (a hub
+          // tile) has nothing to clear, so it stays put.
+          target = '/collections/' + fam.kind;
+        } else {
+          return url;
+        }
+        if (target === u.pathname) return url;
+        var qs = u.searchParams.toString();
+        return target + (qs ? '?' + qs : '') + u.hash;
+      } catch (e) { return url; }
+    }
+  };
+  {%- if pt_rim_here == 'tires' or pt_rim_here == 'wheels' %}
+  // Arrived on the big catalogue with one rim size: open the rim collection instead.
+  // pt-collection-stock (rendered earlier, in meta-tags) may already have
+  // called location.replace to add the in-stock filter; a later replace wins,
+  // so add that filter here too and the shopper lands in ONE hop instead of
+  // three (tires -> tires+stock -> rim -> rim+stock).
+  var here = window.location.pathname + window.location.search + window.location.hash;
+  var to = PTRim.route(here);
+  if (to !== here) {
+    try {
+      var tu = new URL(to, window.location.origin);
+      var bot = /bot|crawl|spider|slurp|Google-InspectionTool|Lighthouse|Mediapartners/i.test(navigator.userAgent || '');
+      if (!bot && tu.searchParams.get('stock') !== 'all' && tu.searchParams.getAll('filter.v.availability').indexOf('1') === -1) {
+        tu.searchParams.delete('filter.v.availability');
+        tu.searchParams.append('filter.v.availability', '1');
+        to = tu.pathname + tu.search + tu.hash;
+      }
+    } catch (e) {}
+    window.location.replace(to);
+  }
+  {%- endif %}
+})();
+</script>

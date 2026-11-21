@@ -1,3 +1,11 @@
+{%- comment -%}
+  [[hours_sw]] / [[hours_ne]] inside an answer render that shop's week from
+  pt-nap (store_hours metaobject), so FAQ hours can't drift from the footer.
+{%- endcomment -%}
+{%- capture pt_hours_sw %}{% render 'pt-nap', location: 'sw', field: 'hours_line' %}{% endcapture -%}
+{%- capture pt_hours_ne %}{% render 'pt-nap', location: 'ne', field: 'hours_line' %}{% endcapture -%}
+{%- assign pt_hours_sw = pt_hours_sw | strip_newlines | strip -%}
+{%- assign pt_hours_ne = pt_hours_ne | strip_newlines | strip -%}
 <div class="faq-home">
   <div class="faq-home__container">
 
@@ -7,8 +15,14 @@
         <h2 class="faq-home__heading">{{ section.settings.heading }}</h2>
       </div>
 
-      {%- if section.settings.cta_label != blank -%}
-        <a href="{{ section.settings.cta_link | default: '#' }}" class="faq-home__cta">
+      {%- comment -%}
+        The CTA used to fall back to href="#" when no link was set, which shipped
+        a dead "Contact us" button on the live homepage. Now it falls back to the
+        contact page, and renders only when there's both a label and a target.
+      {%- endcomment -%}
+      {%- assign faq_cta_link = section.settings.cta_link | default: '/pages/contact' -%}
+      {%- if section.settings.cta_label != blank and faq_cta_link != blank -%}
+        <a href="{{ faq_cta_link }}" class="faq-home__cta">
           {{ section.settings.cta_label }}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
@@ -17,41 +31,57 @@
 
     <div class="faq-home__grid">
       {%- for block in section.blocks -%}
-        <details class="faq-home__card" {{ block.shopify_attributes }}>
-          <summary class="faq-home__question">
-            <span class="faq-home__q-text">{{ block.settings.question }}</span>
-            <span class="faq-home__q-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 9l6 6 6-6"/>
-              </svg>
-            </span>
-          </summary>
-          <div class="faq-home__answer">
-            {{ block.settings.answer }}
-          </div>
-        </details>
+        {%- if block.settings.question != blank and block.settings.answer != blank -%}
+          <details class="faq-home__card" {{ block.shopify_attributes }}>
+            <summary class="faq-home__question">
+              <span class="faq-home__q-text">{{ block.settings.question }}</span>
+              <span class="faq-home__q-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </span>
+            </summary>
+            <div class="faq-home__answer">
+              {{ block.settings.answer | replace: '[[hours_sw]]', pt_hours_sw | replace: '[[hours_ne]]', pt_hours_ne }}
+            </div>
+          </details>
+        {%- endif -%}
       {%- endfor -%}
     </div>
 
   </div>
 </div>
 
-{%- if section.blocks.size > 0 -%}
+{%- comment -%}
+  FAQPage schema. Only complete Q+A pairs are emitted — a half-filled block used
+  to publish an empty acceptedAnswer, which Google treats as invalid markup.
+{%- endcomment -%}
+{%- assign faq_valid = 0 -%}
+{%- for block in section.blocks -%}
+  {%- if block.settings.question != blank and block.settings.answer != blank -%}
+    {%- assign faq_valid = faq_valid | plus: 1 -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- if faq_valid > 0 -%}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     "mainEntity": [
+      {%- assign faq_i = 0 -%}
       {%- for block in section.blocks -%}
-        {%- if forloop.first == false -%},{%- endif -%}
-        {
-          "@type": "Question",
-          "name": {{ block.settings.question | json }},
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": {{ block.settings.answer | strip_html | json }}
+        {%- if block.settings.question != blank and block.settings.answer != blank -%}
+          {%- if faq_i > 0 -%},{%- endif -%}
+          {%- assign faq_i = faq_i | plus: 1 -%}
+          {
+            "@type": "Question",
+            "name": {{ block.settings.question | json }},
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": {{ block.settings.answer | replace: '[[hours_sw]]', pt_hours_sw | replace: '[[hours_ne]]', pt_hours_ne | strip_html | json }}
+            }
           }
-        }
+        {%- endif -%}
       {%- endfor -%}
     ]
   }
@@ -288,7 +318,16 @@
     {
       "type": "url",
       "id": "cta_link",
-      "label": "CTA link"
+      "label": "CTA link",
+      "info": "Defaults to /pages/contact if left empty."
+    },
+    {
+      "type": "header",
+      "content": "Writing answers"
+    },
+    {
+      "type": "paragraph",
+      "content": "These answers are published as FAQ structured data, so AI assistants and Google quote them directly. Keep every figure identical to the service pages. Never mention wheel alignment, mobile service, or winter tire storage — Prince Tires does not offer them."
     }
   ],
   "blocks": [
@@ -299,14 +338,12 @@
         {
           "type": "text",
           "id": "question",
-          "label": "Question",
-          "default": "What services do you offer?"
+          "label": "Question"
         },
         {
           "type": "richtext",
           "id": "answer",
-          "label": "Answer",
-          "default": "<p>We offer a wide range of tire services including installation, balancing, rotation, and flat repair.</p>"
+          "label": "Answer"
         }
       ]
     }
@@ -319,42 +356,42 @@
           "type": "question",
           "settings": {
             "question": "What tire brands does Prince Tires carry?",
-            "answer": "<p>Prince Tires stocks a wide range of trusted tire brands to fit every budget. We carry premium names like Michelin, Bridgestone, Goodyear, Toyo, Cooper, Falken, and Continental, alongside high-quality affordable brands including Firemax, Linglong, Farroad, Yeada, and Fortune. Whether you need winter tires, all-season tires, or summer performance tires, we'll match you with the right brand for your vehicle and driving habits.</p>"
+            "answer": "<p>We stock premium brands including Michelin, Bridgestone, Firestone, Continental, BFGoodrich, General, Toyo, Yokohama, Kumho and Cooper, plus value brands we import directly — Haida, Mileking, Rovelo and Cargomax trailer tires. That range means we can quote you a set at almost any budget. Call either shop with your tire size and we'll tell you exactly what's on the shelf.</p>"
           }
         },
         {
           "type": "question",
           "settings": {
             "question": "Where is Prince Tires located in Calgary?",
-            "answer": "<p>Prince Tires is located at 111 42 Ave SW, Calgary, AB. We've been serving Calgary drivers from our shop for over 10 years, and we're easy to reach from Macleod Trail and surrounding neighbourhoods. If you need directions or want to book an appointment, call us at (403) 452-4283 or email princetires111@gmail.com.</p>"
+            "answer": "<p>We have two Calgary shops. Our main location is 111 42 Ave SW, Calgary, AB T2G 0A4 — call (403) 452-4283. Our second shop is Unit 101, 3928 Edmonton Trail NE, Calgary, AB T2E 3P6 — call (825) 395-4024. The 42 Ave SW location carries the larger inventory, so if you need a specific size today, start there. Email us at info@princetires.ca.</p>"
           }
         },
         {
           "type": "question",
           "settings": {
             "question": "What tire services does Prince Tires offer?",
-            "answer": "<p>We handle everything tire-related so you can get back on the road quickly. Our services include new tire sales and installation, tire balancing, tire rotation, flat tire repair, and TPMS (tire pressure monitoring system) service. Every installation is done by experienced technicians who've been fitting tires for Calgary's roads and weather conditions for over a decade.</p>"
+            "answer": "<p>New tire sales, tire installation, computer balancing, tire rotation, flat and puncture repair, TPMS sensor service, and seasonal changeovers. Every install includes mounting, balancing, a valve stem check and torque to manufacturer spec — and we'll re-torque for free after you've driven on them. We're tire specialists, so we don't do wheel alignment.</p>"
           }
         },
         {
           "type": "question",
           "settings": {
-            "question": "Does Prince Tires sell winter tires for Calgary weather?",
-            "answer": "<p>Yes — winter tires are one of our specialties. Calgary's icy roads and heavy snowfall demand proper winter rubber, and we carry winter tire options from brands like Michelin, Bridgestone, Goodyear, and Continental, as well as budget-friendly choices from Firemax and Linglong. We can help you choose the right winter tire for your vehicle and get them installed and balanced the same day in most cases.</p>"
+            "question": "How long does a tire installation take?",
+            "answer": "<p>A standard set of four takes about 45 to 60 minutes, including computer balancing. Add TPMS work and it's closer to 90 minutes. Booking online lets us set a bay aside once we confirm your time and have your tires pulled before you arrive — walk-ins are welcome, but we can't promise same-visit availability during the October and November changeover rush.</p>"
           }
         },
         {
           "type": "question",
           "settings": {
-            "question": "How much do tires cost at Prince Tires in Calgary?",
-            "answer": "<p>Tire prices at Prince Tires vary depending on the brand, size, and type of tire you need. We carry options at every price point — from affordable brands like Yeada, Fortune, and Firemax starting at competitive prices, to premium tires from Michelin, Bridgestone, and Goodyear. Contact us at (403) 452-4283 for a free quote based on your vehicle's exact tire size, and we'll find the best tire for your budget.</p>"
+            "question": "How much does tire installation cost?",
+            "answer": "<p>Installation is $30 a tire ($120 for four) on a car or SUV, whether you buy the tires from us or bring your own. It includes mounting, computer balancing, a valve stem check and torque to spec. TPMS sensor replacement is $60 per sensor. Leaving your old tires with us is included when you buy tires from us, and disposal is $5 per tire when you bring your own. When you bring your own tires, SUVs are $30 a tire and trucks $35 a tire. GST applies.</p>"
           }
         },
         {
           "type": "question",
           "settings": {
-            "question": "Why should I choose Prince Tires over other tire shops in Calgary?",
-            "answer": "<p>Prince Tires has been one of Calgary's most recognized tire specialists for over 10 years. What started as a two-bay shop on Macleod Trail has grown into a go-to destination for drivers across the city. We combine a huge selection of tire brands at every price point with fast, professional installation and honest pricing. Our team focuses exclusively on tires, which means you're getting advice and service from true specialists — not a general mechanic who does tires on the side.</p>"
+            "question": "Do you sell winter tires for Calgary roads?",
+            "answer": "<p>Yes, and they're our busiest category. Calgary's ice and freeze-thaw cycles are hard on tires, and we carry dedicated winter tires as well as 3PMSF-rated all-weather options if you'd rather run one set year-round. Winter tires start around $130 per tire installed. Book early — the changeover rush runs mid-October to mid-November and slots go fast.</p>"
           }
         }
       ]

@@ -1,0 +1,153 @@
+{%- comment -%}
+  Nov 8, 2026 — SEO plan Phase 3: call-to-action box under every blog post.
+  Picks the button from the post's handle/title (brand > studded > service > winter > general),
+  links into the pages we are trying to rank (winter tires, tire change), and lists both shops
+  with tap-to-call. The mobile bottom tab bar (pt-sticky-book-bar) already gives Book + Call on phones.
+  Hours are not repeated here: the two shops keep different hours and the footer lists both.
+{%- endcomment -%}
+{%- liquid
+  assign h = article.handle | downcase
+  assign key = article.handle | append: ' ' | append: article.title | downcase
+
+  assign brand_list = 'michelin,bridgestone,continental,bfgoodrich,toyo,yokohama,cooper,falken,kumho,firestone,nexen,haida' | split: ','
+  assign brand = ''
+  assign brand_hits = 0
+  for b in brand_list
+    if h contains b
+      assign brand_hits = brand_hits | plus: 1
+      if brand == ''
+        assign brand = b
+      endif
+    endif
+  endfor
+
+  assign kind = 'general'
+  if brand_hits == 1
+    assign kind = 'brand'
+  elsif key contains 'stud'
+    assign kind = 'studded'
+  elsif key contains 'swap' or key contains 'change' or key contains 'install' or key contains 'balanc' or key contains 'rotation' or key contains 'repair' or key contains 'tpms' or key contains 'flat'
+    assign kind = 'service'
+  elsif key contains 'winter' or key contains 'tread' or key contains 'dot' or key contains 'replace' or key contains 'mismatch' or key contains 'snow' or key contains 'ice' or brand_hits > 1
+    assign kind = 'winter'
+  endif
+
+  case kind
+    when 'brand'
+      assign brand_name = brand | capitalize
+      if brand == 'bfgoodrich'
+        assign brand_name = 'BFGoodrich'
+      endif
+      assign heading = brand_name | prepend: 'Shop ' | append: ' tires in Calgary'
+      assign sub = 'See sizes, prices and stock at both Prince Tires shops, then book your install online or by phone.'
+      assign p_label = brand_name | prepend: 'See ' | append: ' prices'
+      assign p_url = '/collections/' | append: brand
+      assign p_event = 'article_cta_brand'
+    when 'studded'
+      assign heading = 'Studded winter tires in Calgary'
+      assign sub = 'Shop tires with studs already installed, or ask about studdable options for your vehicle.'
+      assign p_label = 'Shop studded tires'
+      assign p_url = '/collections/tires?filter.p.m.custom.stud_option=Studded'
+      assign p_event = 'article_cta_studded'
+    when 'service'
+      assign heading = 'Book your tire change in Calgary'
+      assign sub = 'Pick a time online and we will confirm it with you. Two shops: SW on 42 Ave and NE on Edmonton Trail.'
+      assign p_label = 'Book your tire change'
+      assign p_url = '/pages/booking'
+      assign p_event = 'article_cta_book'
+    when 'winter'
+      assign heading = 'Need new winter tires?'
+      assign sub = 'Search by your tire size or vehicle and see what is in stock at our Calgary shops right now.'
+      assign p_label = 'Shop winter tires by size'
+      assign p_url = '/collections/winter-tires'
+      assign p_event = 'article_cta_winter'
+    else
+      assign heading = 'Shop tires in Calgary'
+      assign sub = 'Search by size or vehicle, compare brands and prices, then book your install at either shop.'
+      assign p_label = 'Shop tires'
+      assign p_url = '/collections/tires'
+      assign p_event = 'article_cta_shop'
+  endcase
+
+  if kind == 'service'
+    assign s_label = 'Shop winter tires'
+    assign s_url = '/collections/winter-tires'
+  else
+    assign s_label = 'Book an appointment'
+    assign s_url = '/pages/booking'
+  endif
+-%}
+
+<aside class="ptac" aria-label="Prince Tires: next steps">
+  <div class="ptac__inner">
+    <p class="ptac__eyebrow">Prince Tires &middot; Calgary</p>
+    <h2 class="ptac__heading">{{ heading }}</h2>
+    <p class="ptac__sub">{{ sub }}</p>
+
+    <div class="ptac__actions">
+      <a class="ptac__btn ptac__btn--primary" href="{{ p_url }}" data-pt-event="{{ p_event }}">{{ p_label }}</a>
+      <a class="ptac__btn ptac__btn--ghost" href="{{ s_url }}" data-pt-event="article_cta_secondary">{{ s_label }}</a>
+    </div>
+
+    <p class="ptac__links">
+      Also see:
+      <a href="/pages/winter-tires-calgary">Winter tires in Calgary</a>
+      &middot; <a href="/pages/seasonal-tire-change-calgary">Tire change in Calgary</a>
+      {%- if kind == 'studded' %} &middot; <a href="/pages/studded-tires-calgary">Studded tires in Calgary</a>{% endif %}
+    </p>
+
+    <div class="ptac__shops">
+      <a class="ptac__shop" href="tel:+14034524283" data-pt-event="article_cta_call_sw">
+        <span class="ptac__shop-name">SW &middot; 42 Ave</span>
+        <span class="ptac__shop-addr">111 42 Ave SW</span>
+        <span class="ptac__shop-tel">(403) 452-4283</span>
+      </a>
+      <a class="ptac__shop" href="tel:+18253954024" data-pt-event="article_cta_call_ne">
+        <span class="ptac__shop-name">NE &middot; Edmonton Trail</span>
+        <span class="ptac__shop-addr">Unit 101, 3928 Edmonton Trail NE</span>
+        <span class="ptac__shop-tel">(825) 395-4024</span>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .ptac { padding: 0 1.5rem; margin: 2.5rem auto 3rem; max-width: 78rem; }
+  .ptac__inner { background: #0b0b0c; color: #fff; border-radius: 18px; padding: 2.4rem 2.2rem; position: relative; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.08); box-shadow: 0 18px 40px -20px rgba(0,0,0,.5); }
+  .ptac__inner::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, #dc2626, #F5820B); }
+  .ptac__eyebrow { margin: 0 0 .4rem; font-family: 'Outfit', sans-serif; font-size: 1.2rem; letter-spacing: .12em; text-transform: uppercase; color: #F5820B; font-weight: 600; }
+  .ptac__heading { margin: 0 0 .6rem; font-family: 'Barlow Condensed', 'Outfit', sans-serif; font-weight: 700; font-size: clamp(2.6rem, 4vw, 3.4rem); line-height: 1.05; color: #fff; text-transform: none; }
+  .ptac__sub { margin: 0 0 1.6rem; font-family: 'Outfit', sans-serif; font-size: 1.6rem; line-height: 1.5; color: rgba(255,255,255,.78); max-width: 56rem; }
+  .ptac__actions { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.4rem; }
+  .ptac__btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 2.2rem; border-radius: 999px;
+    font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1.6rem; text-decoration: none; transition: transform .15s ease, background .15s ease; }
+  .ptac__btn:active { transform: scale(.98); }
+  .ptac__btn--primary { background: #dc2626; color: #fff; }
+  .ptac__btn--primary:hover { background: #b91c1c; color: #fff; }
+  .ptac__btn--ghost { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.35); }
+  .ptac__btn--ghost:hover { border-color: #fff; color: #fff; }
+  .ptac__links { margin: 0 0 1.8rem; font-family: 'Outfit', sans-serif; font-size: 1.4rem; color: rgba(255,255,255,.6); }
+  .ptac__links a { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+  .ptac__shops { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .ptac__shop { display: flex; flex-direction: column; gap: .2rem; padding: 1.2rem 1.4rem; border-radius: 12px; background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08); text-decoration: none; color: #fff; transition: background .15s ease; }
+  .ptac__shop:hover { background: rgba(255,255,255,.1); color: #fff; }
+  .ptac__shop-name { font-family: 'Barlow Condensed', 'Outfit', sans-serif; font-weight: 700; font-size: 1.8rem; }
+  .ptac__shop-addr { font-family: 'Outfit', sans-serif; font-size: 1.3rem; color: rgba(255,255,255,.65); }
+  .ptac__shop-tel { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 600; color: #F5820B; }
+  @media (max-width: 600px) {
+    .ptac { padding: 0 1rem; }
+    .ptac__inner { padding: 2rem 1.5rem; }
+    .ptac__btn { width: 100%; }
+    .ptac__shops { grid-template-columns: 1fr; }
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Article call to action",
+  "settings": [],
+  "presets": [{ "name": "Article call to action" }]
+}
+{% endschema %}

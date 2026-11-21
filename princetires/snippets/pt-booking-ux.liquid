@@ -1,0 +1,213 @@
+{%- comment -%}
+  Nov 9, 2026: booking popup ("Request installation") upgrade, layered on top of pt-booking-modal
+  without editing it (that file is ~148 KB). Readable sizes, bigger total, step-1 options collapsed
+  into an accordion that shows what's picked (Baymard: collapse completed steps into summaries),
+  2 / 4 tire buttons, sticky "Pick a time". Add-ons + old tires stay expanded (Prince, Nov 9).
+{%- endcomment -%}
+<style>
+  .bk-modal.ptbx { max-width: 560px !important; width: calc(100vw - 24px) !important; }
+  .ptbx .bk-header-title { font-size: 13px !important; letter-spacing: .08em; }
+  .ptbx .bk-order-tire-name { font-size: 17px !important; line-height: 1.3; }
+  .ptbx .bk-tire-badge { font-size: 14px !important; }
+  .ptbx .bk-order-veh-info span { font-size: 13px !important; }
+  .ptbx .bk-order-row { font-size: 14px !important; padding: 4px 0 !important; }
+  .ptbx .bk-order-row span:last-child { font-weight: 600; color: #111; }
+  .ptbx .bk-order-total-row { font-size: 15px !important; align-items: baseline !important; }
+  .ptbx .bk-order-total-val { font-size: 22px !important; font-weight: 700 !important; }
+  @media (max-width: 600px) {
+    .ptbx .bk-order-row { font-size: 13px !important; }
+    .ptbx .bk-order-total-row { font-size: 14px !important; }
+    .ptbx .bk-order-total-val { font-size: 20px !important; }
+  }
+  .ptbx .bk-order-note { font-size: 12px !important; }
+  .ptbx .bk-loc-name, .ptbx .bk-flow-card-title { font-size: 15px !important; }
+  .ptbx .bk-loc-addr, .ptbx .bk-flow-card-desc, .ptbx .bk-loc-nudge, .ptbx .bk-loc-note { font-size: 13px !important; line-height: 1.4; }
+  .ptbx .bk-addon-name { font-size: 15px !important; }
+  .ptbx .bk-addon-price { font-size: 14px !important; }
+  .ptbx .bk-addon-note { font-size: 12.5px !important; }
+  .ptbx .bk-qty-select { font-size: 15px !important; min-height: 46px; }
+  .ptbx #bk-step1-cta { position: sticky; bottom: 12px; z-index: 3; font-size: 17px !important; min-height: 54px; box-shadow: 0 10px 24px -8px rgba(220,38,38,.55); }
+  .ptbx .ptbx-orig { display: none !important; }
+
+  .ptbx-acc { border: 1.5px solid #e5e7eb; border-radius: 14px; margin: 0 0 10px; background: #fff; transition: border-color .2s ease, box-shadow .2s ease; }
+  .ptbx-acc.is-open { border-color: #111; box-shadow: 0 6px 18px -10px rgba(0,0,0,.25); }
+  .ptbx-acc__head { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 15px; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+  .ptbx-acc__head:focus-visible { outline: 2px solid #dc2626; outline-offset: 2px; border-radius: 12px; }
+  .ptbx-acc__num { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #f3f4f6; color: #111; font-size: 13px; font-weight: 700; }
+  .ptbx-acc.is-done .ptbx-acc__num { background: #16a34a; color: #fff; }
+  .ptbx-acc__txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .ptbx-acc__label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; font-weight: 600; }
+  .ptbx-acc__val { font-size: 16px; font-weight: 600; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ptbx-acc__val.is-empty { color: #dc2626; }
+  .ptbx-acc__chg { flex: 0 0 auto; font-size: 13px; font-weight: 600; color: #dc2626; }
+  .ptbx-acc.is-open .ptbx-acc__chg { visibility: hidden; }
+  .ptbx-acc__body { display: none; padding: 0 15px 15px; }
+  .ptbx-acc.is-open .ptbx-acc__body { display: block; animation: ptbxIn .22s ease; }
+  @keyframes ptbxIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .ptbx-qty { display: flex; gap: 8px; margin-bottom: 8px; }
+  .ptbx-qty button { flex: 1 1 0; min-height: 48px; border: 1.5px solid #e5e7eb; border-radius: 12px; background: #fff; color: #111; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .ptbx-qty button.is-on { border-color: #dc2626; background: #fef2f2; color: #dc2626; }
+  .ptbx-qty-other[hidden] { display: none !important; }
+  .ptbx-acc--fixed { border-color: #e5e7eb; box-shadow: none; }
+  .ptbx-acc--fixed .ptbx-acc__head { cursor: default; padding-bottom: 6px; }
+  .ptbx-acc--fixed .ptbx-acc__chg, .ptbx-acc--fixed .ptbx-acc__val, .ptbx-acc--fixed .ptbx-acc__num { display: none; }
+  .ptbx-acc--fixed .ptbx-acc__body { display: block !important; animation: none !important; }
+  .ptbx-acc__sub { margin: 14px 0 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; font-weight: 600; }
+</style>
+<script>
+(function () {
+  if (window.__ptbx) return;
+  window.__ptbx = true;
+  var CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17l9-10"/></svg>';
+
+  function txt(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+  function shown(el) { return !!el && getComputedStyle(el).display !== 'none' && !el.hidden; }
+
+  function enhance(m) {
+    if (m.getAttribute('data-ptbx')) return;
+    var pg = m.querySelector('.bk-page');
+    if (!pg) return;
+    var loc = pg.querySelector('#bk-location-section') || (pg.querySelector('#bk-loc-grid') || {}).parentElement, flowL = pg.querySelector('#bk-flow-label'), flowG = pg.querySelector('#bk-flow-grid');
+    var qty = pg.querySelector('#bk-qty-select'), qtyG = pg.querySelector('#bk-qty-grid');
+    if (!loc || !flowG || !qty) return;
+    m.setAttribute('data-ptbx', '1');
+    m.classList.add('ptbx');
+    var qtyL = qty.previousElementSibling && qty.previousElementSibling.classList.contains('bk-label') ? qty.previousElementSibling : null;
+    var extras = Array.prototype.find.call(pg.children, function (c) { return c.querySelector && c.querySelector('.bk-addons'); });
+    var items = [], busy = false;
+
+    function make(key, label, anchor, nodes, getVal, auto) {
+      var it = document.createElement('div');
+      it.className = 'ptbx-acc';
+      it.setAttribute('data-ptbx-key', key);
+      it.innerHTML = '<button type="button" class="ptbx-acc__head" aria-expanded="false"><span class="ptbx-acc__num"></span>' +
+        '<span class="ptbx-acc__txt"><span class="ptbx-acc__label">' + label + '</span><span class="ptbx-acc__val"></span></span>' +
+        '<span class="ptbx-acc__chg">Change</span></button><div class="ptbx-acc__body"></div>';
+      anchor.parentNode.insertBefore(it, anchor);
+      var body = it.querySelector('.ptbx-acc__body');
+      nodes.forEach(function (n) { if (!n) return; if (n.classList && n.classList.contains('bk-label')) n.classList.add('ptbx-orig'); body.appendChild(n); });
+      var o = { key: key, el: it, body: body, head: it.querySelector('.ptbx-acc__head'), val: it.querySelector('.ptbx-acc__val'), num: it.querySelector('.ptbx-acc__num'), getVal: getVal };
+      items.push(o);
+      o.head.addEventListener('click', function () { if (o.fixed) return; if (o.el.classList.contains('is-open')) setOpen(null); else setOpen(o); });
+      if (auto) {
+        body.addEventListener('change', function (e) {
+          if (e.target && e.target.classList && e.target.classList.contains('bk-qty-select')) return;
+          next(o);
+        });
+      }
+      return o;
+    }
+
+    var locLabel = loc.querySelector('.bk-label');
+    if (locLabel) locLabel.classList.add('ptbx-orig');
+    make('loc', 'Location', loc, [loc], function () {
+      var c = loc.querySelector('input[name="bk-location"]:checked') || loc.querySelector('.bk-loc-card--active input');
+      var card = c && c.closest('label');
+      return card ? txt(card.querySelector('.bk-loc-name')).replace(/^Prince Tires\s*[—–-]\s*/, '') : '';
+    }, true);
+
+    make('flow', 'Service', flowL || flowG, [flowL, flowG], function () {
+      var c = flowG.querySelector('input:checked');
+      var card = (c && c.closest('label')) || flowG.querySelector('.bk-flow-card--active');
+      return card ? txt(card.querySelector('.bk-flow-card-title')) : '';
+    }, true);
+
+    var pills = document.createElement('div');
+    pills.className = 'ptbx-qty';
+    pills.innerHTML = '<button type="button" data-q="2">2 tires</button><button type="button" data-q="4">4 tires</button><button type="button" data-q="other">Other amount</button>';
+    qty.classList.add('ptbx-qty-other');
+    var qItem = make('qty', 'Tires', qtyL || qty, [qtyL, pills, qty, qtyG], function () { return qty.selectedIndex >= 0 ? txt(qty.options[qty.selectedIndex]) : ''; }, false);
+    function paintPills(forceOther) {
+      var v = qty.value, std = v === '2' || v === '4';
+      Array.prototype.forEach.call(pills.children, function (b) { var q = b.getAttribute('data-q'); b.classList.toggle('is-on', q === v || (q === 'other' && (!std || forceOther))); });
+      qty.hidden = std && !forceOther;
+    }
+    pills.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-q]');
+      if (!b) return;
+      var q = b.getAttribute('data-q');
+      if (q === 'other') { paintPills(true); qty.focus(); return; }
+      qty.value = q;
+      qty.dispatchEvent(new Event('input', { bubbles: true }));
+      qty.dispatchEvent(new Event('change', { bubbles: true }));
+      paintPills(false);
+      next(qItem);
+    });
+    qty.addEventListener('change', function () { paintPills(qty.value !== '2' && qty.value !== '4'); update(); });
+
+    if (extras) {
+      var labels = extras.querySelectorAll(':scope > .bk-label');
+      var addons = extras.querySelector('.bk-addons:not(.bk-oldtires)'), old = extras.querySelector('.bk-oldtires');
+      if (addons && labels[0]) {
+        var sub = null;
+        if (old && labels[1]) { sub = document.createElement('p'); sub.className = 'ptbx-acc__sub'; sub.textContent = txt(labels[1]); labels[1].classList.add('ptbx-orig'); }
+        var fx = make('addons', 'Add-ons', labels[0], [labels[0], addons, sub, labels[1], old], function () { return 'fixed'; }, false);
+        fx.fixed = true;
+        fx.el.classList.add('ptbx-acc--fixed');
+        fx.head.setAttribute('aria-expanded', 'true');
+        fx.head.tabIndex = -1;
+      }
+    }
+
+    function visible() { return items.filter(function (o) { return !o.fixed && shown(o.el) && (!extras || !extras.contains(o.el) || shown(extras)); }); }
+    function setOpen(o) {
+      items.forEach(function (x) { if (x.fixed) return; var on = x === o; x.el.classList.toggle('is-open', on); x.head.setAttribute('aria-expanded', on ? 'true' : 'false'); });
+      if (o && o.el.scrollIntoView) setTimeout(function () { o.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 30);
+    }
+    function update() {
+      if (busy) return;
+      busy = true;
+      visible().forEach(function (o, i) {
+        var v = o.getVal();
+        var t = v || 'Choose one';
+        if (o.val.textContent !== t) o.val.textContent = t;
+        o.val.classList.toggle('is-empty', !v);
+        o.el.classList.toggle('is-done', !!v);
+        var n = v ? CHECK : String(i + 1);
+        if (o.num.innerHTML !== n) o.num.innerHTML = n;
+      });
+      busy = false;
+    }
+    function next(from) {
+      setTimeout(function () {
+        update();
+        var vis = visible(), start = vis.indexOf(from), target = null;
+        for (var i = start + 1; i < vis.length; i++) { if (!vis[i].getVal()) { target = vis[i]; break; } }
+        setOpen(target);
+      }, 260);
+    }
+    function reset() {
+      update();
+      paintPills(qty.value !== '2' && qty.value !== '4');
+      var first = visible().filter(function (o) { return !o.getVal(); })[0] || null;
+      setOpen(first);
+    }
+
+    var pend = null;
+    try {
+      new MutationObserver(function () { if (busy) return; clearTimeout(pend); pend = setTimeout(update, 80); })
+        .observe(pg, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden', 'style', 'checked'] });
+    } catch (e) {}
+    pg.addEventListener('change', function () { setTimeout(update, 30); });
+    pg.addEventListener('click', function () { setTimeout(update, 60); });
+
+    var wasShown = false;
+    function watchOpen() {
+      var now = !!(m.offsetParent || m.getClientRects().length);
+      if (now && !wasShown) setTimeout(reset, 120);
+      wasShown = now;
+    }
+    try {
+      var host = m.parentElement || m;
+      new MutationObserver(watchOpen).observe(host, { attributes: true, attributeFilter: ['class', 'hidden', 'style', 'open', 'aria-hidden'] });
+      new MutationObserver(watchOpen).observe(m, { attributes: true, attributeFilter: ['class', 'hidden', 'style', 'open', 'aria-hidden'] });
+    } catch (e) {}
+    document.addEventListener('click', function () { setTimeout(watchOpen, 150); }, true);
+    watchOpen();
+    update();
+  }
+
+  function init() { Array.prototype.forEach.call(document.querySelectorAll('.bk-modal'), enhance); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>

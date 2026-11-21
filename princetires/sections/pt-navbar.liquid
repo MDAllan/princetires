@@ -2,6 +2,10 @@
   Prince Tires — Custom Navbar
   Section: pt-navbar
   Fixed primary links + account, contact (phone), cart, book.
+
+  Sept 2026: added a Deals link (desktop nav + mobile drawer) and a Locations
+  link (drawer). /pages/tire-deals-calgary was published but had no link from
+  the header, so neither customers nor crawlers could reach it.
 {% endcomment %}
 
 {%- liquid
@@ -9,6 +13,12 @@
   assign phone = section.settings.phone | default: '(403) 452-4283'
   assign phone_digits = phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-'
   assign tel_href = 'tel:+1' | append: phone_digits
+
+  assign href_deals = section.settings.deals_url
+  if href_deals == blank
+    assign href_deals = '/pages/tire-deals-calgary'
+  endif
+  assign label_deals = section.settings.deals_label | default: 'Deals'
 
   assign href_about = section.settings.about_url
   if href_about == blank
@@ -26,6 +36,10 @@
   if href_wholesale == blank
     assign href_wholesale = '/pages/wholesale'
   endif
+  assign href_locations = section.settings.locations_url
+  if href_locations == blank
+    assign href_locations = '/pages/locations'
+  endif
   assign href_contact = section.settings.contact_url
   if href_contact == blank
     assign href_contact = tel_href
@@ -33,11 +47,11 @@
 -%}
 
 <style>
-/* ═══════════════════════════════════════
+/* ═════════════════════════════════════
    PT-NAVBAR  —  CSS VARS & RESET
    Palette: Automotive/Car Dealership (ui-ux-pro-max)
    bg #F8FAFC · text #1E293B · muted #64748B · accent #DC2626
-═══════════════════════════════════════ */
+═════════════════════════════════════ */
 #pt-navbar {
   --nb-h:          68px;
   --nb-bg:         #ffffff;
@@ -101,7 +115,7 @@
   border-radius: 999px;
   border: 1px solid var(--nb-border);
   box-shadow: 0 10px 36px -8px rgba(15, 23, 42, 0.16);
-  max-width: 920px;
+  max-width: 980px;
   height: calc(var(--nb-h) - 8px);
   padding-left: 24px;
   padding-right: 24px;
@@ -146,15 +160,15 @@
   align-items: center;
 }
 
-/* ══════════════════════════════════════
+/* ═══════════════════════════════════
    LOGO
-══════════════════════════════════════ */
+═══════════════════════════════════ */
 #pt-navbar .nb-logo {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   text-decoration: none;
-  margin-right: 32px;
+  margin-right: 28px;
   position: relative;
 }
 
@@ -184,9 +198,9 @@
   opacity: 0.85;
 }
 
-/* ══════════════════════════════════════
+/* ═══════════════════════════════════
    DESKTOP NAV — clean pill
-══════════════════════════════════════ */
+═══════════════════════════════════ */
 #pt-navbar .nb-links-frost {
   position: relative;
   display: flex;
@@ -242,7 +256,7 @@
 #pt-navbar .nb-link {
   display: flex;
   align-items: center;
-  padding: 0 15px;
+  padding: 0 14px;
   height: 100%;
   color: var(--nb-muted);
   text-decoration: none;
@@ -259,6 +273,29 @@
   color: var(--nb-text);
 }
 
+/* Deals — the one nav item that should pull the eye during changeover season */
+#pt-navbar .nb-link--deal {
+  color: var(--nb-red);
+  font-weight: 600;
+}
+#pt-navbar .nb-item:hover .nb-link--deal,
+#pt-navbar .nb-link--deal.is-active {
+  color: var(--nb-red-dim);
+}
+#pt-navbar .nb-link--deal .nb-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--nb-red);
+  margin-right: 7px;
+  flex-shrink: 0;
+  animation: nb-deal-pulse 2.4s ease-in-out infinite;
+}
+@keyframes nb-deal-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.82); }
+}
+
 /* active red dot */
 #pt-navbar .nb-link.is-active::after {
   content: '';
@@ -272,9 +309,9 @@
   background: var(--nb-red);
 }
 
-/* ══════════════════════════════════════
+/* ═══════════════════════════════════
    RIGHT ACTIONS
-══════════════════════════════════════ */
+═══════════════════════════════════ */
 #pt-navbar .nb-actions {
   display: flex;
   align-items: center;
@@ -384,9 +421,15 @@
 /* hamburger */
 #pt-navbar .nb-burger { display: none; }
 
-/* ══════════════════════════════════════
+/* Tighter link padding on narrower desktops so five items still fit */
+@media (max-width: 1180px) {
+  #pt-navbar .nb-link { padding: 0 11px; font-size: 13.5px; }
+  #pt-navbar .nb-logo { margin-right: 18px; }
+}
+
+/* ═══════════════════════════════════
    MOBILE  (≤ 989px)
-══════════════════════════════════════ */
+═══════════════════════════════════ */
 @media (max-width: 989px) {
   #pt-navbar .nb-links-frost,
   #pt-navbar .nb-sep,
@@ -398,9 +441,9 @@
   #pt-navbar .nb-inner { padding: 0 16px; }
 }
 
-/* ══════════════════════════════════════
+/* ═══════════════════════════════════
    MOBILE DRAWER
-══════════════════════════════════════ */
+═══════════════════════════════════ */
 #pt-navbar .nb-drawer {
   position: fixed;
   inset: 0 0 0 auto;
@@ -480,6 +523,20 @@
   color: var(--nb-text);
   padding-left: 24px;
 }
+#pt-navbar .nb-drawer-row--deal {
+  color: var(--nb-red);
+  font-weight: 600;
+}
+#pt-navbar .nb-drawer-row--deal:hover { color: var(--nb-red-dim); }
+#pt-navbar .nb-drawer-row--deal .nb-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--nb-red);
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+#pt-navbar .nb-drawer-row--deal span { display: inline-flex; align-items: center; }
 
 /* drawer footer */
 #pt-navbar .nb-drawer-foot {
@@ -538,9 +595,9 @@
 #pt-navbar .nb-drawer-tel svg { width: 13px; height: 13px; }
 #pt-navbar .nb-drawer-tel:hover { color: var(--nb-text); }
 
-/* ══════════════════════════════════════
+/* ═══════════════════════════════════
    RESPONSIVE
-══════════════════════════════════════ */
+═══════════════════════════════════ */
 @media (max-width: 480px) {
   #pt-navbar .nb-inner { padding: 0 12px; }
   #pt-navbar .nb-drawer { width: min(280px, 90vw); }
@@ -557,6 +614,7 @@
 @media (prefers-reduced-motion: reduce) {
   #pt-navbar .nb-book::before,
   #pt-navbar .nb-drawer-book::before { animation: none; }
+  #pt-navbar .nb-link--deal .nb-dot { animation: none; }
   #pt-navbar .nb-indicator { transition: none; }
   #pt-navbar .nb-root::after { transition: none; }
 }
@@ -565,10 +623,10 @@
 
 <div id="pt-navbar">
 
-  {%- comment -%} ── BACKDROP ─────────────────────────── {%- endcomment -%}
+  {%- comment -%} ── BACKDROP ──────────────────────── {%- endcomment -%}
   <div class="nb-backdrop" id="nb-backdrop"></div>
 
-  {%- comment -%} ── STICKY ROOT ──────────────────────── {%- endcomment -%}
+  {%- comment -%} ── STICKY ROOT ─────────────────────── {%- endcomment -%}
   <div class="nb-root" id="nb-root">
     <div class="nb-inner">
 
@@ -598,6 +656,9 @@
       <div class="nb-links-frost">
         <div class="nb-indicator" id="nb-indicator"></div>
         <ul class="nb-links" role="list">
+          <li class="nb-item">
+            <a href="{{ href_deals }}" class="nb-link nb-link--deal{% if request.path == href_deals %} is-active{% endif %}"><span class="nb-dot" aria-hidden="true"></span><span>{{ label_deals }}</span></a>
+          </li>
           <li class="nb-item">
             <a href="{{ href_about }}" class="nb-link{% if request.path == href_about %} is-active{% endif %}"><span>About us</span></a>
           </li>
@@ -679,10 +740,12 @@
     </div>
 
     <div class="nb-drawer-links">
+      <a class="nb-drawer-row nb-drawer-row--deal" href="{{ href_deals }}"><span><span class="nb-dot" aria-hidden="true"></span>{{ label_deals }}</span></a>
       <a class="nb-drawer-row" href="{{ href_about }}">About us</a>
       <a class="nb-drawer-row" href="{{ href_services }}">Services</a>
       <a class="nb-drawer-row" href="{{ href_brands }}">All brands</a>
       <a class="nb-drawer-row" href="{{ href_wholesale }}">Wholesale</a>
+      <a class="nb-drawer-row" href="{{ href_locations }}">Locations &amp; hours</a>
       <a class="nb-drawer-row" href="{{ href_contact }}">Contact us</a>
     </div>
 
@@ -800,6 +863,19 @@
     },
     {
       "type": "url",
+      "id": "deals_url",
+      "label": "Deals",
+      "info": "Default: /pages/tire-deals-calgary. Shown first, in red, with a pulsing dot."
+    },
+    {
+      "type": "text",
+      "id": "deals_label",
+      "label": "Deals label",
+      "default": "Deals",
+      "info": "Swap to 'Winter Deals' or 'Rebates' during changeover season."
+    },
+    {
+      "type": "url",
       "id": "about_url",
       "label": "About us",
       "info": "Default: /pages/about"
@@ -821,6 +897,12 @@
       "id": "wholesale_url",
       "label": "Wholesale",
       "info": "Default: /pages/wholesale"
+    },
+    {
+      "type": "url",
+      "id": "locations_url",
+      "label": "Locations & hours",
+      "info": "Default: /pages/locations. Appears in the mobile drawer."
     },
     {
       "type": "url",

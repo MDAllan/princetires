@@ -1,11 +1,62 @@
 {%- liquid
-  assign phone = section.settings.phone
-  assign phone_digits = phone | replace: ' ', '' | replace: '-', '' | replace: '.', '' | replace: '(', '' | replace: ')', ''
-  assign phone_href = phone_digits | prepend: 'tel:'
-  assign phone_alt = section.settings.phone_alt
   assign email = section.settings.email
   assign email_alt = section.settings.email_alt
   assign email_href = email | prepend: 'mailto:'
+-%}
+
+{%- comment -%}
+  Both shops render from pt-nap (which reads the 'store_hours' metaobject), so
+  addresses, phone numbers and hours cannot drift from the footer or the
+  structured data. This page used to show a single hand-typed address reading
+  only "Calgary, AB", one phone, and NE's opening hours printed under the SW
+  address. The old address / phone / phone_alt settings are no longer rendered.
+{%- endcomment -%}
+{%- capture sw_name %}{% render 'pt-nap', location: 'sw', field: 'public_name' %}{% endcapture -%}
+{%- capture sw_street %}{% render 'pt-nap', location: 'sw', field: 'street' %}{% endcapture -%}
+{%- capture sw_city %}{% render 'pt-nap', location: 'sw', field: 'city' %}{% endcapture -%}
+{%- capture sw_region %}{% render 'pt-nap', location: 'sw', field: 'region' %}{% endcapture -%}
+{%- capture sw_postal %}{% render 'pt-nap', location: 'sw', field: 'postal' %}{% endcapture -%}
+{%- capture sw_phone %}{% render 'pt-nap', location: 'sw', field: 'phone' %}{% endcapture -%}
+{%- capture sw_phone_href %}{% render 'pt-nap', location: 'sw', field: 'phone_href' %}{% endcapture -%}
+{%- capture sw_ms %}{% render 'pt-nap', location: 'sw', field: 'hours_mon_sat_display' %}{% endcapture -%}
+{%- capture sw_su %}{% render 'pt-nap', location: 'sw', field: 'hours_sun_display' %}{% endcapture -%}
+{%- capture sw_fr %}{% render 'pt-nap', location: 'sw', field: 'hours_fri_display' %}{% endcapture -%}
+
+{%- capture ne_name %}{% render 'pt-nap', location: 'ne', field: 'public_name' %}{% endcapture -%}
+{%- capture ne_street %}{% render 'pt-nap', location: 'ne', field: 'street' %}{% endcapture -%}
+{%- capture ne_city %}{% render 'pt-nap', location: 'ne', field: 'city' %}{% endcapture -%}
+{%- capture ne_region %}{% render 'pt-nap', location: 'ne', field: 'region' %}{% endcapture -%}
+{%- capture ne_postal %}{% render 'pt-nap', location: 'ne', field: 'postal' %}{% endcapture -%}
+{%- capture ne_phone %}{% render 'pt-nap', location: 'ne', field: 'phone' %}{% endcapture -%}
+{%- capture ne_phone_href %}{% render 'pt-nap', location: 'ne', field: 'phone_href' %}{% endcapture -%}
+{%- capture ne_ms %}{% render 'pt-nap', location: 'ne', field: 'hours_mon_sat_display' %}{% endcapture -%}
+{%- capture ne_su %}{% render 'pt-nap', location: 'ne', field: 'hours_sun_display' %}{% endcapture -%}
+{%- capture ne_fr %}{% render 'pt-nap', location: 'ne', field: 'hours_fri_display' %}{% endcapture -%}
+
+{%- liquid
+  assign sw_name = sw_name | strip
+  assign sw_street = sw_street | strip
+  assign sw_city = sw_city | strip
+  assign sw_region = sw_region | strip
+  assign sw_postal = sw_postal | strip
+  assign sw_phone = sw_phone | strip
+  assign sw_phone_href = sw_phone_href | strip
+  assign sw_ms = sw_ms | strip
+  assign sw_su = sw_su | strip
+  assign sw_fr = sw_fr | strip
+  assign sw_q = sw_street | append: ', ' | append: sw_city | append: ', ' | append: sw_region | append: ' ' | append: sw_postal | url_encode
+
+  assign ne_name = ne_name | strip
+  assign ne_street = ne_street | strip
+  assign ne_city = ne_city | strip
+  assign ne_region = ne_region | strip
+  assign ne_postal = ne_postal | strip
+  assign ne_phone = ne_phone | strip
+  assign ne_phone_href = ne_phone_href | strip
+  assign ne_ms = ne_ms | strip
+  assign ne_su = ne_su | strip
+  assign ne_fr = ne_fr | strip
+  assign ne_q = ne_street | append: ', ' | append: ne_city | append: ', ' | append: ne_region | append: ' ' | append: ne_postal | url_encode
 -%}
 
 <section class="pt-contact" data-pt-contact>
@@ -48,23 +99,46 @@
             <p class="pt-contact__info-lead">{{ section.settings.info_lead }}</p>
           {%- endif -%}
 
-          <ul class="pt-contact__info-list">
-            <li class="pt-contact__info-item">
-              <span class="pt-contact__info-icon" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              </span>
-              <div class="pt-contact__info-body">
-                <span class="pt-contact__info-label">Visit the shop</span>
-                <address class="pt-contact__info-text">{{ section.settings.address }}</address>
-                {%- if section.settings.directions_url != blank -%}
-                  <a class="pt-contact__info-link" href="{{ section.settings.directions_url }}" target="_blank" rel="noopener">
-                    Get directions
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M7 7h10v10"/></svg>
-                  </a>
-                {%- endif -%}
-              </div>
-            </li>
+          <!-- Locations -->
+          <div class="pt-contact__locs">
+            <article class="pt-contact__loc">
+              <h3 class="pt-contact__loc-name">{{ sw_name }}</h3>
+              <address class="pt-contact__loc-addr">
+                {{ sw_street }}<br>
+                {{ sw_city }}, {{ sw_region }} {{ sw_postal }}
+              </address>
+              <a class="pt-contact__loc-phone" href="tel:{{ sw_phone_href }}">{{ sw_phone }}</a>
+              <dl class="pt-contact__loc-hours">
+                <div><dt>Mon&ndash;Thu &amp; Sat</dt><dd>{{ sw_ms }}</dd></div>
+                <div><dt>Friday</dt><dd>{{ sw_fr }}</dd></div>
+                <div><dt>Sunday</dt><dd>{{ sw_su }}</dd></div>
+              </dl>
+              <a class="pt-contact__info-link" href="https://www.google.com/maps/search/?api=1&amp;query={{ sw_q }}" target="_blank" rel="noopener">
+                Get directions
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>
+              </a>
+            </article>
 
+            <article class="pt-contact__loc">
+              <h3 class="pt-contact__loc-name">{{ ne_name }}</h3>
+              <address class="pt-contact__loc-addr">
+                {{ ne_street }}<br>
+                {{ ne_city }}, {{ ne_region }} {{ ne_postal }}
+              </address>
+              <a class="pt-contact__loc-phone" href="tel:{{ ne_phone_href }}">{{ ne_phone }}</a>
+              <dl class="pt-contact__loc-hours">
+                <div><dt>Mon&ndash;Thu &amp; Sat</dt><dd>{{ ne_ms }}</dd></div>
+                <div><dt>Friday</dt><dd>{{ ne_fr }}</dd></div>
+                <div><dt>Sunday</dt><dd>{{ ne_su }}</dd></div>
+              </dl>
+              <a class="pt-contact__info-link" href="https://www.google.com/maps/search/?api=1&amp;query={{ ne_q }}" target="_blank" rel="noopener">
+                Get directions
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>
+              </a>
+            </article>
+          </div>
+
+          <ul class="pt-contact__info-list">
             <li class="pt-contact__info-item">
               <span class="pt-contact__info-icon" aria-hidden="true">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
@@ -74,19 +148,6 @@
                 <a class="pt-contact__info-text pt-contact__info-text--link" href="{{ email_href }}">{{ email }}</a>
                 {%- if email_alt != blank -%}
                   <a class="pt-contact__info-text pt-contact__info-text--link" href="mailto:{{ email_alt }}">{{ email_alt }}</a>
-                {%- endif -%}
-              </div>
-            </li>
-
-            <li class="pt-contact__info-item">
-              <span class="pt-contact__info-icon" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              </span>
-              <div class="pt-contact__info-body">
-                <span class="pt-contact__info-label">Call us</span>
-                <a class="pt-contact__info-text pt-contact__info-text--link pt-contact__phone-display" href="{{ phone_href }}">{{ phone }}</a>
-                {%- if phone_alt != blank -%}
-                  <span class="pt-contact__info-text pt-contact__info-text--muted">{{ phone_alt }}</span>
                 {%- endif -%}
               </div>
             </li>
@@ -191,6 +252,15 @@
                 >
               </label>
             </div>
+
+            <label class="pt-contact__field">
+              <span class="pt-contact__field-label">Which shop?</span>
+              <select class="pt-contact__input" name="contact[Preferred location]">
+                <option value="No preference">No preference</option>
+                <option value="{{ sw_name | escape }} — {{ sw_street | escape }}">{{ sw_name }} — {{ sw_street }}</option>
+                <option value="{{ ne_name | escape }} — {{ ne_street | escape }}">{{ ne_name }} — {{ ne_street }}</option>
+              </select>
+            </label>
 
             <label class="pt-contact__field">
               <span class="pt-contact__field-label">Subject</span>
@@ -431,7 +501,74 @@
     line-height: 1.55;
     color: var(--pt-mute);
     margin: 0 0 0.4rem;
-    max-width: 36ch;
+    max-width: 40ch;
+  }
+
+  /* ── Locations ── */
+  .pt-contact__locs {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    margin-top: 0.3rem;
+  }
+  .pt-contact__loc {
+    padding: 1.3rem 1.4rem;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--pt-line);
+    border-left: 3px solid var(--pt-red);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .pt-contact__loc-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--pt-orange);
+    margin: 0;
+  }
+  .pt-contact__loc-addr {
+    font-style: normal;
+    font-size: 1.02rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.86);
+  }
+  .pt-contact__loc-phone {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    text-decoration: none;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.005em;
+    width: fit-content;
+    transition: color 160ms ease;
+  }
+  .pt-contact__loc-phone:hover { color: var(--pt-red); }
+  .pt-contact__loc-hours {
+    margin: 0.1rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.95rem;
+    color: var(--pt-mute);
+  }
+  .pt-contact__loc-hours div {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .pt-contact__loc-hours dt {
+    min-width: 5.4rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.5);
+  }
+  .pt-contact__loc-hours dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    color: rgba(255, 255, 255, 0.82);
   }
 
   /* Info list */
@@ -484,18 +621,6 @@
   }
   .pt-contact__info-text--link { transition: color 160ms ease; }
   .pt-contact__info-text--link:hover { color: var(--pt-red); }
-  .pt-contact__info-text--muted {
-    font-weight: 500;
-    color: var(--pt-mute);
-    font-size: 1rem;
-  }
-  .pt-contact__phone-display {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.55rem;
-    letter-spacing: 0.005em;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
   .pt-contact__info-link {
     display: inline-flex;
     align-items: center;
@@ -608,6 +733,20 @@
     outline: none;
     border-color: var(--pt-red);
     background: rgba(255, 255, 255, 0.06);
+  }
+  select.pt-contact__input {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 18px;
+    padding-right: 3rem;
+    cursor: pointer;
+  }
+  select.pt-contact__input option {
+    background: #111;
+    color: #fff;
   }
   .pt-contact__input--textarea {
     resize: vertical;
@@ -723,11 +862,15 @@
       "type": "textarea",
       "id": "hero_subhead",
       "label": "Hero subhead",
-      "default": "Family-owned Calgary tire shop. Walk-ins welcome — or send us a note and we'll get back the same day."
+      "default": "Two Calgary shops, walk-ins welcome — or send us a note and we'll get back the same day."
     },
     {
       "type": "header",
       "content": "Get in touch (left side)"
+    },
+    {
+      "type": "paragraph",
+      "content": "Both shops' addresses, phone numbers and hours render automatically from pt-nap and the 'store hours' metaobject (Settings > Custom data > Metaobjects). Edit them there and this page, the footer and the structured data all follow. Only the email and social links are set here."
     },
     {
       "type": "text",
@@ -745,40 +888,18 @@
       "type": "textarea",
       "id": "info_lead",
       "label": "Info lead text",
-      "default": "Booking a service, getting a quote, or fleet account — pick the channel that's easiest for you."
-    },
-    {
-      "type": "textarea",
-      "id": "address",
-      "label": "Address",
-      "default": "Calgary, AB"
-    },
-    {
-      "type": "url",
-      "id": "directions_url",
-      "label": "Google Maps directions URL"
+      "default": "Booking a service, getting a quote, or setting up a fleet account — pick whichever channel is easiest."
     },
     {
       "type": "text",
       "id": "email",
       "label": "Primary email",
-      "default": "bookings@princetires.ca"
+      "default": "info@princetires.ca"
     },
     {
       "type": "text",
       "id": "email_alt",
       "label": "Alt email (optional)"
-    },
-    {
-      "type": "text",
-      "id": "phone",
-      "label": "Primary phone",
-      "default": "403 452 4283"
-    },
-    {
-      "type": "text",
-      "id": "phone_alt",
-      "label": "Alt phone / fax (optional)"
     },
     {
       "type": "header",

@@ -1,0 +1,39 @@
+{% doc %}
+  Emits Service + BreadcrumbList JSON-LD for the services hub page.
+  No params. Render once, from the services hero section.
+{% enddoc %}
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Service",
+      "name": "Tire Services in Calgary",
+      "serviceType": "Tire installation, seasonal changeover, wheel balancing, tire rotation, flat repair, TPMS service",
+      "provider": {
+        "@type": "AutoRepair",
+        "name": "Prince Tires",
+        "telephone": "+1-403-452-4283",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "111 42 Ave SW",
+          "addressLocality": "Calgary",
+          "addressRegion": "AB",
+          "postalCode": "T2G 0A4",
+          "addressCountry": "CA"
+        }
+      },
+      "areaServed": { "@type": "City", "name": "Calgary" },
+      "url": "{{ shop.url }}{{ page.url }}"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "{{ shop.url }}/" },
+        { "@type": "ListItem", "position": 2, "name": "{{ page.title | escape }}", "item": "{{ shop.url }}{{ page.url }}" }
+      ]
+    }
+  ]
+}
+</script>

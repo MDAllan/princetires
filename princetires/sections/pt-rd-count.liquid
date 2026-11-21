@@ -1,0 +1,51 @@
+{%- comment -%}
+  Result-count endpoint (redesign 2026-11-14). Never placed in a template:
+  scripts fetch it with the Section Rendering API by file name,
+    /collections/<handle>[/<tags>]?<filters>&section_id=pt-rd-count
+  and get back a few hundred bytes instead of a whole results page.
+
+  Used by:
+  - assets/pt-size-sheet.js  ("Show N tires" on the Find your size sheet)
+  - assets/pt-rd-results.js  (filter drawer "Show N tires / wheels" and the
+    greyed-out options that would give 0)
+
+  Output = one JSON object:
+    n    products matching the URL (collection.products_count, the number the
+         results page header shows for the same URL)
+    f    every storefront filter: [param, [[value, count, active], ...]]
+         (counts are Shopify's own; they are NEVER shown next to options -
+         owner rule: no filter counts. Callers use them to grey out a choice
+         that would give 0, and to check the URL's filters were applied.)
+    t    tags applied through the /collections/<handle>/<tag> path, as handles
+  A collection over 5,000 products has no storefront filters (Shopify hides
+  them), so `f` is empty and filter params in the URL were ignored: callers
+  compare what they asked for with `f` and fall back to "Show tires" (no
+  number) instead of showing a count that ignores the size.
+{%- endcomment -%}
+{%- if collection -%}
+<script type="application/json" data-rd-count-json>
+{"n":{{ collection.products_count | default: 0 | json }},"f":[
+{%- for f in collection.filters -%}
+  {%- unless forloop.first -%},{%- endunless -%}
+  [{{ f.param_name | json }},[
+  {%- if f.type == 'price_range' -%}
+    [{{ 'gte' | json }},{{ f.min_value.value | default: '' | json }},true],[{{ 'lte' | json }},{{ f.max_value.value | default: '' | json }},true]
+  {%- else -%}
+    {%- for v in f.values -%}{%- unless forloop.first -%},{%- endunless -%}[{{ v.value | json }},{{ v.count | default: 0 }},{{ v.active }}]{%- endfor -%}
+  {%- endif -%}
+  ]]
+{%- endfor -%}
+],"t":[
+{%- for t in current_tags -%}{%- unless forloop.first -%},{%- endunless -%}{{ t | handleize | json }}{%- endfor -%}
+]}
+</script>
+{%- else -%}
+<script type="application/json" data-rd-count-json>{"n":null,"f":[],"t":[]}</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Result count (internal)",
+  "settings": []
+}
+{% endschema %}

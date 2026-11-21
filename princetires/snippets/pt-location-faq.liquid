@@ -1,0 +1,144 @@
+{% doc %}
+  Visible FAQ (details/summary) plus ONE FAQPage JSON-LD block whose text is
+  exactly what is on screen. Used by the pt-location-* sections.
+
+  Answers may carry the same tokens as the faq section, plus NAP tokens, all
+  filled from pt-nap by the calling section and passed in here:
+  [[hours_sw]] [[hours_ne]] [[address_sw]] [[address_ne]] [[phone_sw]] [[phone_ne]]
+
+  Use one FAQ per page: don't add the faq section to a template that uses this.
+
+  @param {object[]} faqs - Blocks with settings.question and settings.answer.
+  @param {string} [heading] - H2 above the questions.
+  @param {string} [id_prefix] - Prefix for the heading id (default 'ptl-faq').
+  @param {string} [hours_sw] - Token value.
+  @param {string} [hours_ne] - Token value.
+  @param {string} [address_sw] - Token value.
+  @param {string} [address_ne] - Token value.
+  @param {string} [phone_sw] - Token value.
+  @param {string} [phone_ne] - Token value.
+  @param {boolean} [schema] - Emit FAQPage JSON-LD (default true).
+  @param {string} [about_ids] - Comma-separated @ids the FAQPage is about (e.g. the sitewide #business-ne).
+  @param {string} [breadcrumb_id] - @id of the page's BreadcrumbList node.
+
+  The FAQPage is the page's main schema entity (FAQPage is a kind of
+  WebPage), so it carries about + breadcrumb itself. The calling sections
+  emit no second WebPage node: aeo-meta already emits one sitewide (no @id),
+  and a second, unlinked one would split the page into two entities.
+
+  @example
+  {% render 'pt-location-faq', faqs: faq_blocks, heading: 'Questions', hours_ne: t_hours_ne %}
+{% enddoc %}
+
+{%- liquid
+  assign ptf_prefix = id_prefix | default: 'ptl-faq'
+  assign ptf_schema = true
+  if schema == false
+    assign ptf_schema = false
+  endif
+-%}
+
+{%- if faqs.size > 0 -%}
+  <section class="ptl-faq" aria-labelledby="{{ ptf_prefix }}-title">
+    <h2 class="ptl-faq__title" id="{{ ptf_prefix }}-title">{{ heading | default: 'Frequently asked questions' }}</h2>
+    <div class="ptl-faq__list">
+      {%- for block in faqs -%}
+        {%- if block.settings.question != blank and block.settings.answer != blank -%}
+          {%- assign ptf_a = block.settings.answer | replace: '[[hours_sw]]', hours_sw | replace: '[[hours_ne]]', hours_ne | replace: '[[address_sw]]', address_sw | replace: '[[address_ne]]', address_ne | replace: '[[phone_sw]]', phone_sw | replace: '[[phone_ne]]', phone_ne -%}
+          <details class="ptl-faq__item" {{ block.shopify_attributes }}>
+            <summary class="ptl-faq__q"><h3>{{ block.settings.question }}</h3></summary>
+            <div class="ptl-faq__a rte">{{ ptf_a }}</div>
+          </details>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  </section>
+
+  {%- if ptf_schema -%}
+    {%- assign ptf_about = about_ids | split: ',' -%}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "@id": {{ canonical_url | append: '#faq' | json }},
+      "url": {{ canonical_url | json }},
+      "name": {{ page_title | json }},
+      "isPartOf": { "@type": "WebSite", "name": {{ shop.name | json }}, "url": {{ request.origin | json }} }
+      {%- if breadcrumb_id != blank -%},
+      "breadcrumb": { "@id": {{ breadcrumb_id | json }} }
+      {%- endif -%}
+      {%- if ptf_about.size > 0 -%},
+      "about": [
+        {%- for aid in ptf_about -%}
+          { "@id": {{ aid | strip | json }} }{%- unless forloop.last -%},{%- endunless -%}
+        {%- endfor -%}
+      ]
+      {%- endif -%},
+      "mainEntity": [
+        {%- assign ptf_n = 0 -%}
+        {%- for block in faqs -%}
+          {%- if block.settings.question != blank and block.settings.answer != blank -%}
+            {%- assign ptf_a = block.settings.answer | replace: '[[hours_sw]]', hours_sw | replace: '[[hours_ne]]', hours_ne | replace: '[[address_sw]]', address_sw | replace: '[[address_ne]]', address_ne | replace: '[[phone_sw]]', phone_sw | replace: '[[phone_ne]]', phone_ne -%}
+            {%- if ptf_n > 0 -%},{%- endif -%}
+            {
+              "@type": "Question",
+              "name": {{ block.settings.question | strip_html | json }},
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": {{ ptf_a | replace: '</p>', '</p> ' | replace: '</li>', '</li> ' | replace: '<br>', ' ' | replace: '<br/>', ' ' | replace: '<br />', ' ' | strip_html | strip_newlines | replace: '&nbsp;', ' ' | replace: '&quot;', '"' | replace: '&#39;', "'" | replace: '&lt;', '<' | replace: '&gt;', '>' | replace: '&amp;', '&' | split: ' ' | join: ' ' | strip | json }}
+              }
+            }
+            {%- assign ptf_n = ptf_n | plus: 1 -%}
+          {%- endif -%}
+        {%- endfor -%}
+      ]
+    }
+    </script>
+  {%- endif -%}
+{%- endif -%}
+
+{% stylesheet %}
+  .ptl-faq__title {
+    margin: 0 0 2.4rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-transform: uppercase;
+    color: #111;
+  }
+  .ptl-faq__list { display: flex; flex-direction: column; gap: 0.8rem; }
+  .ptl-faq__item { border: 1px solid #e5e5e5; border-radius: 0.6rem; background: #fff; overflow: hidden; }
+  .ptl-faq__q {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.6rem 1.8rem;
+    cursor: pointer;
+    list-style: none;
+  }
+  .ptl-faq__q::-webkit-details-marker { display: none; }
+  .ptl-faq__q h3 {
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #111;
+  }
+  .ptl-faq__q::after {
+    content: '+';
+    flex-shrink: 0;
+    font-size: 2.2rem;
+    font-weight: 300;
+    line-height: 1;
+    color: #E8251D;
+  }
+  .ptl-faq__item[open] .ptl-faq__q::after { content: '\2212'; }
+  .ptl-faq__q:focus-visible { outline: 3px solid #F5820B; outline-offset: -3px; }
+  .ptl-faq__a { padding: 0 1.8rem 1.8rem; font-size: 1.6rem; line-height: 1.7; color: #444; }
+  .ptl-faq__a p { margin: 0 0 1.2rem; }
+  .ptl-faq__a p:last-child { margin-bottom: 0; }
+  .ptl-faq__a a { color: #E8251D; text-decoration: underline; }
+{% endstylesheet %}

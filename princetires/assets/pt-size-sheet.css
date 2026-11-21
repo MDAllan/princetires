@@ -1,0 +1,491 @@
+/* =====================================================================
+   pt-size-sheet.css - "Find your size" sheet (mockup SizeSheet.dc.html).
+   Everything is scoped under .pss. Root is 62.5% (1rem = 10px).
+   Phone: full-screen sheet. >= 750px: centred dialog.
+   Tokens come from assets/pt-rd.css (loaded site-wide); fallbacks inline.
+   ===================================================================== */
+html.pss-lock, html.pss-lock body { overflow: hidden; }
+
+.pss { position: fixed; inset: 0; z-index: 2147483000; font-family: var(--rd-font, 'Outfit', system-ui, sans-serif); color: var(--rd-ink, #111); -webkit-font-smoothing: antialiased; }
+.pss[hidden] { display: none; }
+.pss *, .pss *::before, .pss *::after { box-sizing: border-box; }
+.pss button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pss button:focus-visible, .pss [tabindex]:focus-visible { outline: none; box-shadow: var(--rd-focus, 0 0 0 2px #fff, 0 0 0 4px #111); }
+.pss__backdrop { position: absolute; inset: 0; background: var(--rd-scrim, rgba(17, 17, 17, .55));
+  -webkit-backdrop-filter: blur(var(--rd-scrim-blur, 0px)); backdrop-filter: blur(var(--rd-scrim-blur, 0px)); }
+
+.pss__panel {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  background: #fff; height: 100%; height: 100dvh; overflow: hidden;
+}
+@media (min-width: 750px) {
+  .pss__panel {
+    inset: auto; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(56rem, calc(100vw - 4.8rem)); height: auto;
+    max-height: min(82rem, calc(100vh - 6.4rem)); border-radius: 1.8rem;
+    box-shadow: var(--rd-shadow-sheet, 0 30px 80px rgba(0, 0, 0, .35));
+  }
+}
+
+/* Top row: back · title · close */
+.pss__top { flex: none; display: flex; align-items: center; gap: 1rem; padding: 1.4rem 1.6rem 1rem; padding-top: calc(1.4rem + env(safe-area-inset-top, 0px)); }
+@media (min-width: 750px) { .pss__top { padding: 1.8rem 2.2rem 1rem; } }
+.pss__title { flex: 1 1 auto; min-width: 0; margin: 0; font: 700 1.9rem/1.2 var(--rd-font, 'Outfit', sans-serif); color: var(--rd-ink, #111); }
+.pss__x {
+  flex: none; width: 4.4rem; height: 4.4rem; border: 0; border-radius: 50%;
+  background: var(--rd-tile, #f4f3f0); color: var(--rd-muted, #57534e);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.pss__x[hidden] { display: none; }
+.pss__x:hover { color: var(--rd-ink, #111); }
+.pss__x svg { display: block; }
+
+/* By tire size | By vehicle */
+.pss__seg { flex: none; display: flex; gap: .4rem; margin: 0 1.6rem 1.2rem; padding: .4rem; border-radius: 1.2rem; background: var(--rd-tile, #f4f3f0); }
+@media (min-width: 750px) { .pss__seg { margin: 0 2.2rem 1.2rem; } }
+.pss__seg button {
+  flex: 1 1 0; min-height: 4.4rem; border: 0; border-radius: .9rem; background: none;
+  font-size: 1.5rem; font-weight: 600; color: var(--rd-muted, #57534e);
+}
+.pss__seg button.is-on { background: #fff; color: var(--rd-ink, #111); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+
+/* Body scrolls; the red button stays put */
+.pss__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0 1.6rem 1.6rem; }
+@media (min-width: 750px) { .pss__body { padding: 0 2.2rem 2rem; } }
+.pss__body:focus { outline: none; }
+
+.pss__lbl { margin: 1.4rem 0 .8rem; font-size: 1.2rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #78716c; }
+.pss__lbl:first-child { margin-top: .4rem; }
+
+.pss__recent {
+  display: flex; align-items: center; gap: 1.2rem; width: 100%; min-height: 6rem; margin: 0 0 .8rem; padding: 1.2rem 1.4rem;
+  border: 1px solid var(--rd-line, #e7e5e0); border-radius: 1.4rem; background: #fff; text-align: left; color: var(--rd-ink, #111);
+}
+.pss__recent:hover { border-color: var(--rd-line-hover, #cfccc5); }
+.pss__ric { width: 3.6rem; height: 3.6rem; flex: none; border-radius: 1rem; background: var(--rd-tile, #f4f3f0); color: var(--rd-muted, #57534e); display: inline-flex; align-items: center; justify-content: center; }
+.pss__rtext { flex: 1 1 auto; min-width: 0; }
+.pss__rtext b { display: block; font-size: 1.6rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pss__rtext span { display: block; font-size: 1.3rem; color: #78716c; }
+.pss__recent > svg { flex: none; color: var(--rd-muted, #57534e); }
+
+/* Answered step folded into one line */
+.pss__done {
+  display: flex; align-items: center; gap: 1rem; width: 100%; min-height: 4.8rem; margin: 0 0 .8rem; padding: 0 1.4rem;
+  border: 1px solid var(--rd-line, #e7e5e0); border-radius: 1.2rem; background: var(--rd-paper, #faf9f7); text-align: left; color: var(--rd-ink, #111);
+}
+.pss__done-k { font-size: 1.3rem; color: var(--rd-muted, #57534e); }
+.pss__done-v { flex: 1 1 auto; min-width: 0; font-size: 1.5rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pss__done-c { font-size: 1.4rem; font-weight: 600; text-underline-offset: 3px; }
+
+.pss__q { margin: 1.6rem 0 1rem; font: 700 1.7rem/1.3 var(--rd-font, 'Outfit', sans-serif); color: var(--rd-ink, #111); }
+.pss__q:focus { outline: none; }
+.pss__q span { font-weight: 400; font-size: 1.4rem; color: #78716c; }
+
+.pss__chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; }
+.pss__chips--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pss__chips--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 750px) {
+  .pss__chips { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .pss__chips--3 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pss__chips--2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.pss__chip {
+  min-height: 4.6rem; padding: .6rem .4rem; border: 1px solid var(--rd-line-2, #d6d3cc); border-radius: 1.2rem; background: #fff;
+  font-size: 1.6rem; font-weight: 600; line-height: 1.2; color: var(--rd-ink, #111); overflow-wrap: anywhere;
+}
+.pss__chips--2 .pss__chip, .pss__chips--3 .pss__chip { font-size: 1.5rem; }
+.pss__chip:hover { border-color: var(--rd-ink, #111); }
+.pss__chip small { display: block; margin-top: .1rem; font-size: 1.1rem; font-weight: 500; color: #78716c; }
+
+.pss__pills { display: flex; flex-wrap: wrap; gap: .8rem; }
+.pss__pill {
+  min-height: 4.4rem; padding: 0 1.4rem; border: 1px solid var(--rd-line-2, #d6d3cc); border-radius: 999px; background: #fff;
+  font-size: 1.4rem; font-weight: 600; color: var(--rd-ink, #111);
+}
+.pss__pill:hover { border-color: var(--rd-ink, #111); }
+.pss__pill[aria-pressed="true"] { background: var(--rd-ink, #111); border-color: var(--rd-ink, #111); color: #fff; }
+
+.pss__link { display: inline-flex; align-items: center; min-height: 4.4rem; margin-top: .4rem; padding: 0; border: 0; background: none; font-size: 1.4rem; font-weight: 600; color: var(--rd-ink, #111); text-decoration: underline; text-underline-offset: 3px; }
+.pss__ann { margin: .8rem 0 0; padding: .8rem 1rem; border: 1px solid var(--rd-note-line, #fed7aa); border-radius: 1rem; background: var(--rd-note-bg, #fff7ed); color: var(--rd-note-ink, #7c2d12); font-size: 1.3rem; line-height: 1.4; }
+.pss__empty { margin: 1.2rem 0; padding: 1rem 1.2rem; border-radius: 1rem; background: var(--rd-tile, #f4f3f0); font-size: 1.4rem; line-height: 1.45; color: var(--rd-ink-2, #262626); }
+.pss__wait { margin: 2.4rem 0; text-align: center; font-size: 1.4rem; color: var(--rd-muted, #57534e); }
+
+/* Footer: the one red button */
+.pss__foot { flex: none; padding: 1.2rem 1.6rem calc(1.6rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #ecebe7; background: #fff; }
+@media (min-width: 750px) { .pss__foot { padding: 1.4rem 2.2rem 2rem; } }
+.pss__go {
+  width: 100%; min-height: 5.4rem; border: 0; border-radius: 1.4rem;
+  background: var(--rd-red, #dc2626); color: #fff; font-size: 1.7rem; font-weight: 700;
+}
+.pss__go:hover { background: var(--rd-red-dark, #b91c1c); }
+.pss__go.is-off, .pss__go:disabled { background: var(--rd-line, #e7e5e0); color: #78716c; cursor: default; }
+.pss__go[aria-busy="true"] { color: #78716c; }
+.pss__hint { min-height: 1.8rem; margin-top: .8rem; font-size: 1.3rem; text-align: center; color: #78716c; }
+.pss__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .pss:not([hidden]) .pss__panel { animation: pss-up .22s cubic-bezier(.16, 1, .3, 1); }
+  @media (min-width: 750px) { .pss:not([hidden]) .pss__panel { animation: pss-fade .18s ease-out; } }
+}
+@keyframes pss-up { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+@keyframes pss-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Inline copy (PTSizeSheet.inline): the booking popup's "New tires or
+   wheels". Same tabs, questions and red button; the popup around it gives
+   the backdrop, title and close. The body does not scroll on its own (the
+   popup does) and the button sits right under the answers, sticking to the
+   bottom only when the list is longer than the screen. */
+.pss-in { font-family: var(--rd-font, 'Outfit', system-ui, sans-serif); color: var(--rd-ink, #111); }
+.pss-in *, .pss-in *::before, .pss-in *::after { box-sizing: border-box; }
+.pss-in button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pss-in button:focus-visible, .pss-in [tabindex]:focus-visible { outline: none; box-shadow: var(--rd-focus, 0 0 0 2px #fff, 0 0 0 4px #111); }
+.pss-in .pss__seg { margin: 0 0 1.2rem; }
+.pss-in .pss__body { overflow: visible; padding: 0; }
+/* "Type it" and "Off-road size" sit side by side here (the modal is narrow
+   enough that they wrap): keep them apart. */
+.pss-in .pss__link { margin-right: 2.4rem; }
+.pss-in .pss__q:first-child, .pss-in .pss__done:first-child + .pss__q { margin-top: .4rem; }
+.pss-in .pss__foot {
+  position: sticky; bottom: 0; z-index: 1; margin-top: 1.6rem; padding: 1.2rem 0 .4rem;
+  border-top: 0; background: #fff; box-shadow: 0 -1px 0 #ecebe7;
+}
+
+/* Quick search: type the whole size */
+.pss__find { position: relative; display: flex; margin: .4rem 0 0; }
+.pss__input {
+  flex: 1 1 auto; min-width: 0; height: 5.2rem; padding: 0 5.6rem 0 1.6rem;
+  border: 1.5px solid var(--rd-line-2, #d6d3cc); border-radius: 1.4rem; background: #fff;
+  font: 600 1.6rem/1 var(--rd-font, 'Outfit', sans-serif); color: var(--rd-ink, #111); letter-spacing: .02em;
+  -webkit-appearance: none; appearance: none;
+}
+.pss__input::placeholder { font-weight: 400; color: #8a847c; letter-spacing: 0; }
+.pss__input:focus { outline: none; border-color: var(--rd-ink, #111); box-shadow: 0 0 0 3px rgba(17, 17, 17, .08); }
+.pss__input[aria-invalid="true"] { border-color: var(--rd-red, #dc2626); }
+.pss__find-go {
+  position: absolute; right: .5rem; top: .5rem; width: 4.2rem; height: 4.2rem; border: 0; border-radius: 1rem;
+  background: var(--rd-ink, #111); color: #fff; display: inline-flex; align-items: center; justify-content: center;
+}
+.pss__find-go svg { display: block; }
+.pss__err { margin: .6rem 0 0; font-size: 1.3rem; line-height: 1.4; color: var(--rd-red-dark, #b91c1c); }
+.pss__or { display: flex; align-items: center; gap: 1rem; margin: 1.8rem 0 .2rem; font-size: 1.2rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #78716c; }
+.pss__or::before, .pss__or::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--rd-line, #e7e5e0); }
+.pss__or + .pss__q { margin-top: 1rem; }
+
+/* Width as a dropdown */
+.pss__selwrap { position: relative; }
+.pss__select {
+  display: block; width: 100%; height: 5.2rem; padding: 0 4.4rem 0 1.6rem;
+  border: 1.5px solid var(--rd-line-2, #d6d3cc); border-radius: 1.4rem; background: #fff;
+  font: 600 1.6rem/1 var(--rd-font, 'Outfit', sans-serif); color: var(--rd-ink, #111);
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+}
+.pss__select:hover { border-color: var(--rd-ink, #111); }
+.pss__select:focus { outline: none; border-color: var(--rd-ink, #111); box-shadow: 0 0 0 3px rgba(17, 17, 17, .08); }
+.pss__selwrap > svg { position: absolute; right: 1.6rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--rd-muted, #57534e); }
+
+/* ── Size tab, clean layout (owner 2026-11-14 "not clean and organized"):
+   search box · recent chips · three dropdowns in a row · season · one help
+   line. Replaces the stacked label / card / note boxes above. */
+.pss__find { position: relative; display: flex; align-items: center; margin: .4rem 0 0; }
+.pss__find-ic { position: absolute; left: 1.4rem; top: 50%; transform: translateY(-50%); color: #8a847c; pointer-events: none; display: inline-flex; }
+.pss__input { height: 5.2rem; padding: 0 7.2rem 0 4.4rem; border-width: 1px; }
+.pss__find-go {
+  position: absolute; right: .5rem; top: .5rem; width: auto; height: 4.2rem; padding: 0 1.6rem; border: 0; border-radius: 1rem;
+  background: var(--rd-ink, #111); color: #fff; font-size: 1.5rem; font-weight: 700;
+}
+.pss__recents { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-top: 1rem; }
+.pss__rl { font-size: 1.3rem; color: #78716c; margin-right: .2rem; }
+.pss__rchip {
+  display: inline-flex; align-items: center; gap: .6rem; max-width: 100%; min-height: 3.6rem; padding: 0 1.2rem;
+  border: 1px solid var(--rd-line-2, #d6d3cc); border-radius: 999px; background: #fff; color: var(--rd-ink, #111);
+  font-size: 1.4rem; font-weight: 600;
+}
+.pss__rchip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pss__rchip svg { flex: none; color: var(--rd-muted, #57534e); }
+.pss__rchip:hover { border-color: var(--rd-ink, #111); }
+.pss__or { margin: 1.8rem 0 1rem; letter-spacing: .08em; font-size: 1.15rem; }
+.pss__or + .pss__q { margin-top: 1rem; }
+
+.pss__trio { display: flex; align-items: flex-end; gap: .6rem; }
+.pss__f { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: .5rem; }
+.pss__fl { font-size: 1.3rem; font-weight: 600; color: var(--rd-muted, #57534e); }
+.pss__fl span { font-weight: 400; color: #78716c; }
+.pss__sep { flex: none; padding-bottom: 1.4rem; font-size: 1.6rem; font-weight: 700; color: #a8a29e; }
+.pss__trio .pss__select { height: 5rem; padding: 0 3rem 0 1.2rem; border-width: 1px; font-size: 1.6rem; }
+.pss__trio .pss__selwrap > svg { right: 1rem; }
+.pss__select:disabled { background: var(--rd-tile, #f4f3f0); color: #a8a29e; border-color: var(--rd-line, #e7e5e0); cursor: default; }
+.pss__seasons { margin-top: 1.6rem; display: flex; flex-direction: column; gap: .8rem; }
+.pss__help { margin: 1.4rem 0 0; font-size: 1.3rem; line-height: 1.5; color: #78716c; }
+.pss__help b { color: var(--rd-ink-2, #262626); font-weight: 600; }
+.pss__help-link { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--rd-ink, #111); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.pss .pss__help-link, .pss-in .pss__help-link { min-height: 0; }
+.pss__empty { margin-top: 1rem; }
+.pss__hint:empty { display: none; }
+
+/* ── Results bar (desktop results header, owner 2026-11-14, after DT's
+   hub): tabs on top; then the size box, the three dropdowns and the red
+   button on one line. Recent / help / messages wrap underneath. */
+.pss-in.pss-bar {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "seg seg" "body foot";
+  gap: 1.2rem 1.6rem; align-items: end;
+}
+.pss-in.pss-bar .pss__seg { grid-area: seg; justify-self: start; margin: 0; }
+.pss-in.pss-bar .pss__seg button { flex: none; min-height: 3.8rem; padding: 0 1.8rem; font-size: 1.4rem; }
+.pss-in.pss-bar .pss__body { grid-area: body; display: flex; flex-wrap: wrap; align-items: flex-end; gap: .8rem 1.2rem; min-width: 0; }
+.pss-in.pss-bar .pss__body > * { margin: 0; }
+.pss-in.pss-bar .pss__find { flex: 1 1 24rem; max-width: 34rem; }
+.pss-in.pss-bar .pss__input { height: 5rem; }
+.pss-in.pss-bar .pss__find-go { top: .4rem; height: 4.2rem; }
+.pss-in.pss-bar .pss__or { flex: none; align-self: center; margin: 2.2rem 0 0; text-transform: none; letter-spacing: 0; font-size: 1.4rem; font-weight: 500; }
+.pss-in.pss-bar .pss__or::before, .pss-in.pss-bar .pss__or::after { display: none; }
+.pss-in.pss-bar .pss__trio { flex: 0 1 40rem; min-width: 30rem; }
+.pss-in.pss-bar .pss__trio--veh { flex: 1 1 64rem; }
+.pss-in.pss-bar .pss__trio--veh .pss__f { flex: 1 1 0; }
+.pss-in.pss-bar [data-pss-rec], .pss-in.pss-bar [data-pss-after], .pss-in.pss-bar .pss__empty, .pss-in.pss-bar .pss__wait { order: 10; flex: 0 0 100%; }
+.pss-in.pss-bar [data-pss-rec]:empty, .pss-in.pss-bar [data-pss-after]:empty { display: none; }
+.pss-in.pss-bar .pss__recents { margin: 0; }
+.pss-in.pss-bar .pss__help { margin: 0; }
+.pss-in.pss-bar .pss__foot { grid-area: foot; position: static; margin: 0; padding: 0; background: none; box-shadow: none; border: 0; min-width: 19rem; }
+.pss-in.pss-bar .pss__go { min-height: 5rem; padding: 0 2.4rem; white-space: nowrap; }
+.pss-in.pss-bar .pss__hint { display: none; }
+/* The red button lines up with the dropdowns (under their labels), not with
+   the help line below them. */
+.pss-in.pss-bar { align-items: start; }
+.pss-in.pss-bar .pss__foot { margin-top: calc(1.3rem * 1.5 + .5rem); }
+
+/* ── Compact results bar (owner 2026-11-15: "see how clean DT's header is").
+   One row on wide screens: By size / By vehicle switch | size box | or |
+   Width / Aspect / Rim | red button. The help line sits under the fields in
+   small type; nothing else is stacked. Under 1200px the switch keeps its
+   own row (the fields need the width). */
+.rd-rh__bar-in { padding-top: 1.2rem; padding-bottom: 1.2rem; }
+.pss-in.pss-bar { gap: .6rem 1.6rem; }
+.pss-in.pss-bar .pss__seg button { min-height: 3.6rem; }
+.pss-in.pss-bar .pss__input { height: 4.6rem; }
+.pss-in.pss-bar .pss__find-go { height: 3.8rem; }
+.pss-in.pss-bar .pss__select { height: 4.6rem; }
+.pss-in.pss-bar .pss__go { min-height: 4.6rem; }
+.pss-in.pss-bar .pss__help { font-size: 1.2rem; line-height: 1.4; }
+@media (min-width: 1200px) {
+  .pss-in.pss-bar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "seg body foot"; }
+  .pss-in.pss-bar .pss__seg { align-self: start; margin-top: calc(1.3rem * 1.5 + .5rem); }
+  .pss-in.pss-bar .pss__seg button { min-height: 3.8rem; padding: 0 1.4rem; }
+}
+
+/* ── Staggered sets: "+ Add a rear size" and the rear trio (2026-11-15).
+   Sheet / phone: the rear trio sits under the front one, each with a small
+   "Front" / "Rear" heading. Results bar: the link sits at the end of the
+   one-row search; the rear trio takes its own row under it. */
+.pss__rear:empty { display: none; }
+.pss__rear { margin-top: 1.2rem; display: flex; flex-direction: column; align-items: flex-start; gap: .8rem; }
+.pss__addrear, .pss__rmrear { min-height: 4.4rem; font-size: 1.4rem; }
+.pss .pss__addrear, .pss-in .pss__addrear, .pss .pss__rmrear, .pss-in .pss__rmrear { min-height: 4.4rem; }
+.pss__rear .pss__trio { width: 100%; }
+.pss__trio:has(.pss__axle) { flex-wrap: wrap; }
+.pss__axle { flex: 0 0 100%; font-size: 1.3rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--rd-ink, #111); }
+.pss__note { margin: 1rem 0 0; font-size: 1.3rem; line-height: 1.45; color: var(--rd-muted, #57534e); }
+
+.pss-in.pss-bar .pss__rear { flex: none; align-self: flex-end; margin: 0; flex-direction: row; align-items: flex-end; gap: .6rem 1.6rem; }
+.pss-in.pss-bar .pss__rear:has(.pss__trio--rear) { flex: 0 0 100%; flex-wrap: wrap; }
+.pss-in.pss-bar .pss__addrear { min-height: 4.6rem; white-space: nowrap; }
+.pss-in.pss-bar .pss__rmrear { min-height: 4.6rem; white-space: nowrap; }
+.pss-in.pss-bar .pss__rear .pss__trio { width: auto; flex: 0 1 46rem; min-width: 34rem; }
+.pss-in.pss-bar .pss__trio:has(.pss__axle) { flex-wrap: nowrap; }
+.pss-in.pss-bar .pss__trio:has(.pss__axle) { flex: 0 1 46rem; min-width: 34rem; }
+.pss-in.pss-bar .pss__axle { flex: none; width: 4.8rem; padding-bottom: 1.3rem; font-size: 1.2rem; }
+.pss-in.pss-bar .pss__note { order: 10; flex: 0 0 100%; margin: 0; font-size: 1.2rem; }
+/* The size box may give up a little width so "+ Add a rear size" shares the
+   one-row bar instead of adding a row (its input's own width set the floor). */
+.pss-in.pss-bar .pss__find { min-width: 0; }
+.pss-in.pss-bar .pss__input { width: 100%; min-width: 0; }
+/* Too narrow for the link beside the dropdowns (990-1279px): it leads the
+   small help line under them instead of adding a row. */
+@media (max-width: 1279px) {
+  .pss-in.pss-bar .pss__rear:not(:has(.pss__trio--rear)) { order: 10; align-self: center; }
+  .pss-in.pss-bar .pss__rear:not(:has(.pss__trio--rear)) + [data-pss-after] { flex: 1 1 30rem; }
+  .pss-in.pss-bar .pss__rear:not(:has(.pss__trio--rear)) .pss__addrear { min-height: 2.4rem; font-size: 1.3rem; }
+}
+
+/* ── Staggered sizes in the desktop bar: Front and Rear STACKED (owner
+   2026-11-15: "when we have staggered sizes they have to be vertically on
+   top of each other"). Row 1: size box | or | FRONT width / aspect / rim.
+   Row 2: REAR width / aspect / rim directly under the front ones (same
+   column, same widths) | Remove rear size. The Width / Aspect / Rim labels
+   show once, above the front row (the rear ones stay for screen readers). */
+.pss-in.pss-bar .pss__body:has(.pss__trio--rear) {
+  display: grid; align-items: end; column-gap: 1.2rem; row-gap: .8rem;
+  grid-template-columns: minmax(25rem, 34rem) auto minmax(34rem, 46rem) auto;
+  grid-template-areas: "find or front ." ". . rear rm" "rec rec rec rec" "after after after after";
+}
+.pss-in.pss-bar .pss__body:has(.pss__trio--rear) > .pss__find { grid-area: find; max-width: none; }
+.pss-in.pss-bar .pss__body:has(.pss__trio--rear) > .pss__or { grid-area: or; margin: 0 0 1.3rem; align-self: end; }
+.pss-in.pss-bar .pss__body:has(.pss__trio--rear) > .pss__trio { grid-area: front; width: 100%; min-width: 0; flex: none; }
+.pss-in.pss-bar .pss__body:has(.pss__trio--rear) > .pss__rear { display: contents; }
+.pss-in.pss-bar .pss__body:has(.pss__trio--rear) .pss__trio--rear { grid-area: rear; width: 100%; min-width: 0; flex: none; }
+.pss-in.pss-bar .pss__body:has(.pss__trio--rear) .pss__rmrear { grid-area: rm; align-self: center; justify-self: start; white-space: nowrap; }
+.pss-in.pss-bar .pss__body:has(.pss__trio--rear) > [data-pss-rec] { grid-area: rec; }
+.pss-in.pss-bar .pss__body:has(.pss__trio--rear) > [data-pss-after] { grid-area: after; }
+.pss-in.pss-bar .pss__trio--rear .pss__fl {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.pss-in.pss-bar .pss__trio--rear .pss__axle { padding-bottom: 0; align-self: center; }
+
+/* =====================================================================
+   v16 COMPACT view - tire results pages only (FINAL spec section 3).
+   .pss-c        inline compact view (.pss-pop in the desktop popover,
+                 .pss-quiet = the quiet search row on pages with no size)
+   .pss--c       the phone / tablet sheet when it opens on a results page
+   Nothing here touches .pss-in / .pss-bar (booking popup, old bar) or the
+   sheet on other pages: every rule is under .pss-c, .pss--c or .pss-popwrap.
+   Ink button = search; red stays for Request install.
+   ===================================================================== */
+.pss-popwrap {
+  position: absolute; z-index: 2147482900; width: 44rem; max-width: calc(100vw - 3.2rem);
+  padding: 1.6rem; border-radius: 14px; background: #fff; color: #1c1917;
+  box-shadow: 0 0 0 1px rgba(28, 25, 23, .08), 0 18px 48px rgba(28, 25, 23, .18);
+  font-family: var(--rd-font, 'Outfit', system-ui, sans-serif);
+}
+.pss-popwrap[hidden] { display: none; }
+.pss-c, .pss--c { --c-ink: #1c1917; --c-ink2: #44403c; --c-muted: #57534e; --c-subtle: #78716c; --c-line: #e7e5e4; --c-line2: #d6d3d1; --c-tile: #f4f3f1; color: #1c1917; }
+.pss-c button:focus-visible, .pss-c [tabindex]:focus-visible, .pss-c input:focus-visible,
+.pss--c button:focus-visible, .pss--c input:focus-visible { outline: 3px solid #1c1917; outline-offset: 2px; box-shadow: 0 0 0 5px #fff; }
+
+/* Segmented By tire size | By vehicle */
+.pss-c .pss__seg, .pss--c .pss__seg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: 4rem; margin: 0; padding: .4rem; border-radius: 10px; background: var(--c-tile); }
+.pss-c .pss__seg button, .pss--c .pss__seg button { min-height: 0; height: 100%; padding: 0 1rem; border-radius: 6px; font: 600 1.4rem var(--rd-font, 'Outfit', sans-serif); color: var(--c-muted); }
+.pss-c .pss__seg button.is-on, .pss--c .pss__seg button.is-on { background: #fff; color: var(--c-ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.pss-c .pss__body, .pss--c .pss__body { overflow: visible; padding: 0; }
+
+/* Field */
+.pss-c .pss__lab, .pss--c .pss__lab { display: block; margin: 1.6rem 0 .6rem; font: 600 1.3rem var(--rd-font, 'Outfit', sans-serif); color: var(--c-ink); }
+.pss-c .pss__field, .pss--c .pss__field { position: relative; display: flex; align-items: center; min-width: 0; }
+.pss-c .pss__input, .pss--c .pss__input {
+  width: 100%; min-width: 0; height: 4.4rem; padding: 0 4.4rem 0 1.2rem; border: 1px solid var(--c-line2); border-radius: 10px;
+  background: #fff; font: 600 1.6rem/1 var(--rd-font, 'Outfit', sans-serif); letter-spacing: .01em; color: var(--c-ink);
+}
+.pss-c .pss__input:focus, .pss--c .pss__input:focus { outline: none; border-color: var(--c-ink); box-shadow: inset 0 0 0 1px var(--c-ink); }
+.pss-c .pss__input::placeholder, .pss--c .pss__input::placeholder { font-weight: 400; color: var(--c-subtle); }
+.pss-c .pss__input[aria-invalid="true"], .pss--c .pss__input[aria-invalid="true"] { border-color: #b91c1c; box-shadow: inset 0 0 0 1px #b91c1c; }
+.pss-c .pss__clear, .pss--c .pss__clear {
+  position: absolute; right: .6rem; top: 50%; transform: translateY(-50%); width: 3.2rem; height: 3.2rem;
+  display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--c-muted); cursor: pointer;
+}
+.pss-c .pss__clear[hidden], .pss--c .pss__clear[hidden] { display: none; }
+.pss-c .pss__clear:hover, .pss--c .pss__clear:hover { color: var(--c-ink); background: var(--c-tile); }
+.pss-c .pss__err, .pss--c .pss__err { margin: .6rem 0 0; font-size: 1.3rem; color: #b91c1c; }
+.pss-c .pss__rearf, .pss--c .pss__rearf { margin-top: .4rem; }
+.pss-c .pss__rearf .pss__input, .pss--c .pss__rearf .pss__input { padding-right: 14rem; }
+.pss-c .pss__rmr, .pss--c .pss__rmr {
+  position: absolute; right: .4rem; top: 50%; transform: translateY(-50%); min-height: 3.2rem; padding: 0 .8rem;
+  border: 0; background: none; font: 600 1.3rem var(--rd-font, 'Outfit', sans-serif); color: var(--c-ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+
+/* Recent dropdown (listbox) */
+.pss-c .pss__drop, .pss--c .pss__drop { margin-top: .6rem; padding: .6rem 0; border: 1px solid var(--c-line); border-radius: 10px; background: #fff; }
+.pss-c .pss__drop[hidden], .pss--c .pss__drop[hidden] { display: none; }
+.pss-c .pss__droph, .pss--c .pss__droph { margin: 0; padding: .4rem 1.2rem .2rem; font: 600 1.2rem var(--rd-font, 'Outfit', sans-serif); color: var(--c-muted); }
+.pss-c .pss__opt, .pss--c .pss__opt {
+  display: flex; align-items: center; gap: 1rem; height: 4rem; padding: 0 .6rem 0 1.2rem; cursor: pointer;
+  font: 400 1.4rem var(--rd-font, 'Outfit', sans-serif); color: var(--c-ink);
+}
+.pss-c .pss__opt > svg, .pss--c .pss__opt > svg { flex: none; color: var(--c-ink2); }
+.pss-c .pss__opt > span, .pss--c .pss__opt > span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pss-c .pss__opt:hover, .pss-c .pss__opt.is-act, .pss--c .pss__opt:hover, .pss--c .pss__opt.is-act { background: var(--c-tile); }
+.pss-c .pss__optx, .pss--c .pss__optx { flex: none; width: 3.2rem; height: 3.2rem; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--c-subtle); cursor: pointer; }
+.pss-c .pss__optx:hover, .pss--c .pss__optx:hover { color: var(--c-ink); }
+
+/* Links + help */
+.pss-c .pss__lnks, .pss--c .pss__lnks { display: flex; flex-wrap: wrap; gap: 0 1.6rem; margin-top: 1.2rem; }
+.pss-c .pss__lnk, .pss--c .pss__lnk {
+  display: inline-flex; align-items: center; min-height: 3.2rem; padding: 0; border: 0; background: none; cursor: pointer;
+  font: 600 1.3rem var(--rd-font, 'Outfit', sans-serif); color: var(--c-ink); text-decoration: underline; text-underline-offset: 3px;
+}
+.pss-c .pss__helpx, .pss--c .pss__helpx { margin: .6rem 0 0; font-size: 1.3rem; line-height: 1.45; color: var(--c-muted); }
+.pss-c .pss__helpx[hidden], .pss--c .pss__helpx[hidden] { display: none; }
+.pss-c .pss__helpx b, .pss--c .pss__helpx b { color: var(--c-ink); }
+.pss-c [data-pss-after]:empty, .pss--c [data-pss-after]:empty, .pss-c [data-pss-rec]:empty, .pss--c [data-pss-rec]:empty { display: none; }
+.pss-c .pss__note, .pss--c .pss__note { font-size: 1.3rem; color: var(--c-muted); }
+
+/* W / A / R and vehicle selects (compact sizes) */
+.pss-c .pss__trio, .pss--c .pss__trio { margin-top: 1.6rem; }
+.pss-c .pss__select, .pss--c .pss__select { height: 4.4rem; padding: 0 3rem 0 1.2rem; border: 1px solid var(--c-line2); border-radius: 10px; font-size: 1.5rem; }
+.pss-c .pss__trio--veh, .pss--c .pss__trio--veh { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem 1.2rem; }
+.pss-c .pss__rear, .pss--c .pss__rear { margin-top: .8rem; }
+
+/* The ink button */
+.pss-c .pss__foot, .pss--c .pss__foot { position: static; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.pss-c .pss__go, .pss--c .pss__go {
+  width: auto; min-height: 0; height: 4.4rem; padding: 0 1.6rem; border: 0; border-radius: 10px;
+  background: #1c1917; color: #fff; font: 600 1.5rem var(--rd-font, 'Outfit', sans-serif); white-space: nowrap;
+}
+.pss-c .pss__go:hover, .pss--c .pss__go:hover { background: #000; }
+.pss-c .pss__go[aria-busy="true"], .pss--c .pss__go[aria-busy="true"] { color: #fff; }
+.pss-c .pss__go.is-off, .pss-c .pss__go:disabled, .pss--c .pss__go.is-off, .pss--c .pss__go:disabled { background: var(--c-line); color: var(--c-muted); }
+.pss-c .pss__hint, .pss--c .pss__hint { margin: .6rem 0 0; font-size: 1.2rem; text-align: left; color: var(--c-muted); }
+.pss-c .pss__hint:empty, .pss--c .pss__hint:empty { display: none; }
+
+/* Popover layout: field and button on one row. */
+.pss-c.pss-pop { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .8rem; }
+.pss-c.pss-pop > .pss__seg { grid-column: 1 / -1; grid-row: 1; }
+.pss-c.pss-pop > .pss__body, .pss-c.pss-pop > .pss__foot { display: contents; }
+.pss-c.pss-pop .pss__body > * { grid-column: 1 / -1; }
+.pss-c.pss-pop .pss__lab { grid-row: 2; }
+.pss-c.pss-pop .pss__field { grid-row: 3; grid-column: 1; }
+.pss-c.pss-pop .pss__go { grid-row: 3; grid-column: 2; align-self: center; }
+.pss-c.pss-pop .pss__hint { grid-column: 1 / -1; }
+.pss-c.pss-pop .pss__sr { position: absolute; }
+.pss-c.pss-pop.is-veh .pss__go, .pss-c.pss-pop.is-trio .pss__go { grid-row: auto; grid-column: 1 / -1; width: 100%; margin-top: 1.6rem; }
+.pss-c.pss-pop.is-veh .pss__trio--veh { margin-top: 1.6rem; }
+
+/* Quiet row (no size yet, desktop): switch | field | Show tires | Where's my size? */
+.pss-c.pss-quiet { position: relative; display: flex; flex-wrap: wrap; align-items: center; column-gap: 1.2rem; row-gap: .8rem; }
+.pss-c.pss-quiet > .pss__seg { flex: 0 0 23.2rem; height: 4.4rem; margin-right: 2.8rem; order: 0; }
+.pss-c.pss-quiet > .pss__body, .pss-c.pss-quiet > .pss__foot { display: contents; }
+.pss-c.pss-quiet .pss__field { order: 1; flex: 0 1 42rem; }
+.pss-c.pss-quiet .pss__find-ic { position: absolute; left: 1.2rem; top: 50%; transform: translateY(-50%); display: inline-flex; color: var(--c-muted); pointer-events: none; }
+.pss-c.pss-quiet .pss__input { padding-left: 4rem; font-weight: 400; font-size: 1.5rem; }
+.pss-c.pss-quiet .pss__drop { position: absolute; left: 0; right: 0; top: calc(100% + .6rem); z-index: 30; margin: 0; box-shadow: 0 12px 32px rgba(28, 25, 23, .14); }
+.pss-c.pss-quiet .pss__go { order: 2; }
+.pss-c.pss-quiet .pss__lnks { order: 3; position: relative; margin: 0 0 0 .4rem; }
+.pss-c.pss-quiet .pss__helpx {
+  position: absolute; left: 0; top: calc(100% + .4rem); z-index: 30; width: 30rem; margin: 0; padding: 1.2rem 1.4rem;
+  border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px rgba(28, 25, 23, .08), 0 12px 32px rgba(28, 25, 23, .14);
+}
+.pss-c.pss-quiet [data-pss-rec], .pss-c.pss-quiet [data-pss-after], .pss-c.pss-quiet .pss__hint { order: 5; flex: 0 0 100%; padding-left: 27.2rem; margin: 0; }
+.pss-c.pss-quiet .pss__sr { position: absolute; }
+.pss-c.pss-quiet.is-veh { align-items: flex-end; }
+.pss-c.pss-quiet.is-veh .pss__trio--veh { order: 1; flex: 1 1 60rem; display: flex; gap: .8rem; margin: 0; }
+.pss-c.pss-quiet.is-veh .pss__trio--veh .pss__f { flex: 1 1 0; }
+.pss-c.pss-quiet.is-veh > .pss__seg { margin-bottom: 0; }
+.pss-c.pss-quiet .pss__note, .pss-c.pss-quiet .pss__empty, .pss-c.pss-quiet .pss__wait { order: 5; flex: 0 0 100%; margin: 0; padding-left: 27.2rem; }
+@media (max-width: 1199px) {
+  .pss-c.pss-quiet > .pss__seg { margin-right: 0; }
+  .pss-c.pss-quiet [data-pss-rec], .pss-c.pss-quiet [data-pss-after], .pss-c.pss-quiet .pss__hint, .pss-c.pss-quiet .pss__note, .pss-c.pss-quiet .pss__empty, .pss-c.pss-quiet .pss__wait { padding-left: 0; }
+}
+
+/* Phone / tablet sheet on a results page: bottom sheet, sticky ink button. */
+.pss.pss--c .pss__top { padding: 0 .8rem 0 1.6rem; height: 5.6rem; border-bottom: 1px solid var(--c-line); }
+.pss.pss--c .pss__title { font-size: 2rem; }
+.pss.pss--c .pss__x { background: none; color: var(--c-ink); border-radius: 10px; }
+.pss.pss--c .pss__seg { margin: 1.6rem 1.6rem 0; height: 4.4rem; }
+.pss.pss--c .pss__body { padding: 0 1.6rem 1.6rem; overflow-y: auto; }
+.pss.pss--c .pss__input { height: 4.8rem; font-size: 1.7rem; }
+.pss.pss--c .pss__clear, .pss.pss--c .pss__optx { width: 4.4rem; height: 4.4rem; }
+.pss.pss--c .pss__opt { height: 4.8rem; }
+.pss.pss--c .pss__lnks { flex-direction: column; align-items: flex-start; gap: 0; margin-top: .8rem; }
+.pss.pss--c .pss__lnk, .pss.pss--c .pss__rmr { min-height: 4.4rem; font-size: 1.4rem; }
+.pss.pss--c .pss__foot { padding: 1.2rem 1.6rem calc(1.2rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--c-line); background: #fff; }
+.pss.pss--c .pss__go { width: 100%; height: 4.8rem; font-size: 1.6rem; }
+.pss.pss--c .pss__hint { text-align: center; }
+.pss.pss--c .pss__select { height: 4.8rem; font-size: 1.6rem; }
+.pss.pss--c .pss__trio--veh { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 749px) {
+  .pss.pss--c .pss__panel { inset: auto 0 0 0; height: auto; max-height: 92vh; max-height: 92dvh; border-radius: 14px 14px 0 0; }
+}
+
+/* v16 fix1: compact inline links sit after the button in the DOM (Tab
+   order); display: contents keeps the popover / quiet row layout. Phone
+   sheet: the two tabs are 44 tall (touch target). */
+.pss-c > .pss__tail { display: contents; }
+.pss-c.pss-pop .pss__tail > * { grid-column: 1 / -1; }
+.pss.pss--c .pss__seg { height: 5.2rem; }

@@ -1,0 +1,56 @@
+{% doc %}
+  The results-page title as plain text: the tire size when one size is
+  chosen through the size filters (225/65R17, 33X12.5R20), otherwise the
+  collection title. Same rule the old black header used (and that
+  assets/pt-rd-results.js repeats from the URL for data-rd-size-fallback).
+  Tire pages print it as the H1 on the results toolbar line (owner
+  2026-11-15: no black band, DT-style compact header).
+
+  @param {string} kind - 'tires' | 'wheels' | 'items' (snippets/pt-rd-results-kind)
+
+  @example
+    {%- capture t -%}{% render 'pt-rd-results-title', kind: rd_kind %}{%- endcapture -%}
+{% enddoc %}
+{%- liquid
+  assign rt_w = ''
+  assign rt_p = ''
+  assign rt_r = ''
+  assign rt_ts = ''
+  for f in collection.filters
+    case f.param_name
+      when 'filter.p.m.custom.tire_width'
+        if f.active_values.size == 1
+          assign rt_w = f.active_values.first.value
+        endif
+      when 'filter.p.m.custom.tire_profile'
+        if f.active_values.size == 1
+          assign rt_p = f.active_values.first.value
+        endif
+      when 'filter.p.m.custom.rim_diameter'
+        if f.active_values.size == 1
+          assign rt_r = f.active_values.first.value
+        endif
+      when 'filter.p.m.custom.tire_size'
+        if f.active_values.size == 1
+          assign rt_ts = f.active_values.first.value
+        endif
+    endcase
+  endfor
+  assign rt_size = ''
+  if kind == 'tires'
+    if rt_w != '' and rt_p != '' and rt_r != ''
+      assign rt_sep = '/'
+      if rt_p contains '.' or rt_w.size <= 2
+        assign rt_sep = 'X'
+      endif
+      assign rt_size = rt_w | append: rt_sep | append: rt_p | append: 'R' | append: rt_r
+    elsif rt_ts != ''
+      assign rt_size = rt_ts
+    endif
+  endif
+  if rt_size != ''
+    echo rt_size
+  else
+    echo collection.title
+  endif
+-%}

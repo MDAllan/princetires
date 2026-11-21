@@ -52,13 +52,26 @@
   LCP optimization — preload the hero image on the homepage and
   featured product image on product pages for faster Largest Contentful Paint.
 {%- endcomment -%}
+{%- comment -%}
+  Product: the preload must offer the SAME files as the gallery's first
+  <img> in sections/pt-product.liquid (same widths + sizes), or the browser
+  downloads the photo twice (2026-11-21: was a fixed width=800 href).
+{%- endcomment -%}
 {%- if request.page_type == 'product' -%}
-  {%- if product.featured_image -%}
+  {%- assign pt_lcp_img = product.images.first -%}
+  {%- if pt_lcp_img -%}
+    {%- capture pt_lcp_srcset -%}
+      {%- for w in (1..4) -%}
+        {%- assign pt_w = w | times: 200 | plus: 200 -%}
+        {%- if pt_w == 400 or pt_lcp_img.width >= pt_w -%}{%- unless forloop.first -%}, {% endunless -%}{{ pt_lcp_img | image_url: width: pt_w }} {{ pt_w }}w{%- endif -%}
+      {%- endfor -%}
+    {%- endcapture -%}
     <link
       rel="preload"
       as="image"
-      href="{{ product.featured_image | image_url: width: 800 }}"
-      type="image/webp"
+      href="{{ pt_lcp_img | image_url: width: 1000 }}"
+      imagesrcset="{{ pt_lcp_srcset }}"
+      imagesizes="(min-width: 1360px) 450px, (min-width: 990px) 34vw, 82vw"
       fetchpriority="high"
     >
   {%- endif -%}

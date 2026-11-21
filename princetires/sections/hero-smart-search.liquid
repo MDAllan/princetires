@@ -1,5 +1,17 @@
+{%- comment -%}
+  Packages tab gate — the same two conditions as the package CTA in
+  renderWheelFitment: the section setting is on AND the wheel-package page
+  exists. Blank here means today's two tabs, byte for byte (the kill switch).
+{%- endcomment -%}
+{%- liquid
+  assign hss_pkg_tab_url = ''
+  assign hss_pkg_tab_page = pages['wheel-package']
+  if section.settings.show_package_cta and hss_pkg_tab_page != empty
+    assign hss_pkg_tab_url = hss_pkg_tab_page.url
+  endif
+-%}
 <div
-  class="hero-smart-search"
+  class="hero-smart-search{% if hss_pkg_tab_url != blank %} hero-smart-search--packages{% endif %}"
   style="
     --hero-bg: {{ section.settings.background_color }};
     --hero-accent: {{ section.settings.accent_color }};
@@ -89,7 +101,14 @@
             role="tab"
             aria-selected="false"
             data-search-mode="wheels"
-          >Wheels</button>
+          >Wheels</button>{% if hss_pkg_tab_url != blank %}
+          <button
+            type="button"
+            class="hero-smart-search__tab"
+            role="tab"
+            aria-selected="false"
+            data-search-mode="packages"
+          >Packages</button>{% endif %}
         </div>
 
         <div class="hero-smart-search__search" data-smart-search>
@@ -125,12 +144,36 @@
             </button>
           </div>
 
+          {%- comment -%}
+            Staggered sets (2026-11-15): an optional rear size, Tires tab only.
+            Front + a different rear -> PTVehiclePairs.url (pair results).
+            Hidden or empty -> the search works exactly as before.
+          {%- endcomment -%}
+          <div class="hero-smart-search__rear" data-rear>
+            <button type="button" class="hero-smart-search__rear-add" data-rear-add aria-expanded="false" aria-controls="hss-rear-{{ section.id }}">+ Add a rear size</button>
+            <div class="hero-smart-search__rear-box" id="hss-rear-{{ section.id }}" data-rear-box hidden>
+              <div class="hero-smart-search__input-wrapper hero-smart-search__input-wrapper--rear">
+                <input type="text" class="hero-smart-search__input" data-rear-input placeholder="Rear size, e.g. 255/35R19" aria-label="Rear tire size" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search">
+              </div>
+              <button type="button" class="hero-smart-search__rear-remove" data-rear-remove>Remove rear size</button>
+            </div>
+            <p class="hero-smart-search__rear-msg" data-rear-msg role="status" hidden></p>
+          </div>
+
           <div class="hero-smart-search__results" id="smart-search-results" data-smart-search-results hidden>
             <div class="hero-smart-search__loading" data-smart-search-loading hidden>
               <span class="hero-smart-search__spinner"></span>
               <span>{{ 'sections.hero_smart_search.ai_thinking' | t }}</span>
             </div>
             <ul class="hero-smart-search__results-list" role="listbox" data-smart-search-list></ul>
+            {%- comment -%}
+              Quick filters (owner 2026-11-15): season pills + a brand box under
+              ONE complete tire size row (or one front + rear set row), Tires tab
+              only. Filled by JS (_hfAttach); stays empty and hidden otherwise.
+              The icons are rendered here once so JS can copy them.
+            {%- endcomment -%}
+            <div class="hero-smart-search__hf" data-hf role="group" hidden></div>
+            <template data-hf-icons><span data-k="winter">{% render 'pt-icon', name: 'winter', size: 18 %}</span><span data-k="allweather">{% render 'pt-icon', name: 'all-weather', size: 18 %}</span><span data-k="allseason">{% render 'pt-icon', name: 'all-season', size: 18 %}</span><span data-k="summer">{% render 'pt-icon', name: 'summer', size: 18 %}</span></template>
           </div>
 
           {%- comment -%}
@@ -172,7 +215,38 @@
                 <option value="">Submodel</option>
               </select>
             </div>
+            {%- comment -%}
+              Owner 2026-11-14: no "Know your size? Find your size" link here;
+              the search box above already reads a typed size and "Search by
+              vehicle" covers the rest. (Rollback: bkpop/v4/hero-before-findsize.)
+            {%- endcomment -%}
           </div>
+
+          {%- comment -%}
+            WHEELS MODE. A wheel question cannot be answered by the tire text
+            parser or by the OE tire size the picker above resolves, so wheels
+            get their own search: by vehicle (the default — we look the car's
+            bolt pattern up and filter the wheel catalogue by it) or by wheel
+            specs. Same snippet the wheels collection uses, so the bolt-pattern
+            expansion and the facet option lists have exactly one implementation.
+            Shown only when the Wheels tab is active; the tire input and the
+            tire picker are hidden by CSS in that mode.
+          {%- endcomment -%}
+          <div class="hero-smart-search__wheels" data-hero-wheels>
+            {% render 'pt-wheel-search', compact: true %}
+          </div>{% if hss_pkg_tab_url != blank %}
+
+          {%- comment -%}
+            PACKAGES MODE. Wheels + tires + sensors + install priced as one, so
+            all it needs is the car: the same snippet in package mode (no spec
+            tab, no toggle) hands y / mk / md straight to the builder page,
+            which does its own fitment lookup. Hidden like the Wheels panel
+            unless its tab is active.
+          {%- endcomment -%}
+          <div class="hero-smart-search__packages" data-hero-packages>
+            <p class="hero-smart-search__packages-lede">Wheels, tires, sensors and install — one price.</p>
+            {% render 'pt-wheel-search', compact: true, package_url: hss_pkg_tab_url %}
+          </div>{% endif %}
         </div>
       </div>
 
@@ -333,6 +407,9 @@
       }
 
       function push(value, action) {
+        // A vehicle search replaces any typed rear size (staggered sets): the
+        // rear box closes so a picked car's size is never paired with it.
+        try { input.dispatchEvent(new CustomEvent('pt:picker-push')); } catch (e) {}
         input.value = value;
         input.focus();
         try { input.setSelectionRange(value.length, value.length); } catch (e) {}
@@ -405,11 +482,23 @@
     "manifestUrl": {{ 'pt-vehicle-manifest.json' | asset_url | json }},
     "fallbackPhone": {{ settings.smart_search_fallback_phone | default: '403 452 4283' | json }},
     "missingVehicleWebhookUrl": {{ settings.missing_vehicle_webhook_url | json }},
-    "brands": {{ hero_brands | split: '||' | json }}
+    "brands": {{ hero_brands | split: '||' | json }},
+    "stock": {
+      "b1": {{ settings.stock_bucket_1 | default: 40 | json }},
+      "b2": {{ settings.stock_bucket_2 | default: 16 | json }},
+      "b3": {{ settings.stock_bucket_3 | default: 12 | json }},
+      "low": {{ settings.stock_low_max | default: 8 | json }},
+      "tag": {{ 'products.stock.size_available' | t | json }},
+      "bucket": {{ 'products.stock.bucket' | t: count: '__N__' | json }},
+      "lowLabel": {{ 'products.stock.size_low' | t | json }},
+      "hint": {{ 'products.stock.size_hint' | t | json }}
+    }
   }
 </script>
 {% render 'pt-vehicle-manifest-loader' %}
 {% render 'pt-search-tracking' %}
+{%- comment -%} window.PTVehiclePairs: a picked trim with 2+ sizes asks which go front and rear (selectResult). {%- endcomment -%}
+<script src="{{ 'pt-vehicle-pairs.js' | asset_url }}" defer></script>
 
 {%- if section.settings.hero_3d_scene_url != blank -%}
   <script
@@ -832,6 +921,161 @@
 
   .hero-smart-search__submit:hover {
     opacity: 0.85;
+  }
+
+  /* ── Mode switch: tires vs wheels ──────────────────────────────────
+     The Wheels tab swaps the whole control, it does not just re-point the
+     same one: the free-text parser and the Y/M/M picker above both resolve a
+     TIRE size, which cannot answer "what wheels fit my car". */
+  .hero-smart-search__wheels { display: none; }
+  .hero-smart-search[data-search-mode="wheels"] .hero-smart-search__wheels { display: block; margin-top: 0.4rem; }
+  .hero-smart-search[data-search-mode="wheels"] .hero-smart-search__input-wrapper,
+  .hero-smart-search[data-search-mode="wheels"] .hero-smart-search__picker,
+  .hero-smart-search[data-search-mode="wheels"] .hero-smart-search__results { display: none; }
+  /* Rear size (staggered sets): Tires tab only. */
+  .hero-smart-search[data-search-mode="wheels"] .hero-smart-search__rear,
+  .hero-smart-search[data-search-mode="packages"] .hero-smart-search__rear { display: none; }
+  .hero-smart-search__rear { margin-top: 0.5rem; text-align: left; }
+  .hero-smart-search__rear-add,
+  .hero-smart-search__rear-remove {
+    all: unset; box-sizing: border-box; cursor: pointer; display: inline-block; padding: 0.5rem 0.2rem;
+    font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 500; color: rgba(255, 255, 255, 0.88);
+    text-decoration: underline; text-underline-offset: 3px; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  }
+  .hero-smart-search__rear-add:hover,
+  .hero-smart-search__rear-remove:hover { color: #fff; }
+  .hero-smart-search__rear-add:focus-visible,
+  .hero-smart-search__rear-remove:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: 2px; border-radius: 3px; }
+  .hero-smart-search__rear-add[hidden],
+  .hero-smart-search__rear-box[hidden],
+  .hero-smart-search__rear-msg[hidden] { display: none !important; }
+  .hero-smart-search__rear-box { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; margin-top: 0.2rem; }
+  .hero-smart-search__rear-box .hero-smart-search__input-wrapper { width: 100%; box-sizing: border-box; }
+  .hero-smart-search__rear-msg {
+    margin: 0.4rem 0 0; font-family: 'Outfit', sans-serif; font-size: 1.3rem; line-height: 1.4;
+    color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  }
+  .hero-smart-search__rear-msg a { color: #fff; text-decoration: underline; }
+  /* Front + rear row: size pair on one line, "Front + rear set" under it. */
+  .hero-smart-search__result-item--set .hero-smart-search__result-title,
+  .hero-smart-search__result-item--set .hero-smart-search__result-meta { display: block; }
+  /* Every result row (2026-11-15): title on its own line, meta under it,
+     left-aligned. Before, a size row read "205/55R16Filter collection". */
+  .hero-smart-search__result-item .hero-smart-search__result-info { text-align: left; }
+  .hero-smart-search__result-item .hero-smart-search__result-title,
+  .hero-smart-search__result-item .hero-smart-search__result-meta { display: block; }
+
+  /* ── Quick filters under one complete size (Tires tab) ───────────────
+     Season pills (coloured icons) + brand box. On the dark dropdown the
+     storefront winter blue #2563eb is only 2.5:1, so its icon uses one step
+     lighter (#3b82f6, 3.4:1); the other three keep their colours (>= 3.9:1).
+     Text is white on dark (> 10:1). No numbers anywhere. */
+  .hero-smart-search__hf { padding: 0.2rem 2rem 1.4rem; text-align: left; font-family: 'Outfit', sans-serif; color: #fff; }
+  .hero-smart-search__hf[hidden] { display: none; }
+  /* Owner 2026-11-15: the season pills always sit side by side in ONE row
+     (never stacked). If they don't all fit, the row slides sideways
+     (swipe on phone, trackpad/shift-wheel on desktop); the page never scrolls. */
+  .hero-smart-search__hf-seasons {
+    display: flex; flex-wrap: nowrap; gap: 0.6rem;
+    overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity; scrollbar-width: none; padding: 4px; margin: -4px;
+  }
+  .hero-smart-search__hf-seasons::-webkit-scrollbar { display: none; }
+  .hero-smart-search__hf-seasons > .hero-smart-search__hf-pill { flex: none; scroll-snap-align: start; }
+  .hero-smart-search__hf-seasons { scroll-padding-inline: 4px; }
+  /* Desktop: all four fit side by side without sliding. */
+  @media screen and (min-width: 750px) {
+    .hero-smart-search__hf-seasons { gap: 0.5rem; }
+    .hero-smart-search__hf-seasons > .hero-smart-search__hf-pill { padding: 0.4rem 1rem 0.4rem 0.8rem; gap: 0.5rem; }
+    .hero-smart-search__hf-seasons > .hero-smart-search__hf-pill[aria-pressed="true"] { padding: 0.3rem 0.9rem 0.3rem 0.7rem; }
+  }
+  .hero-smart-search__hf-seasons[hidden] { display: none; }
+  .hero-smart-search__hf-pill {
+    all: unset; box-sizing: border-box; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    min-height: 3.6rem; padding: 0.4rem 1.2rem 0.4rem 1rem;
+    border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.24);
+    background: rgba(255, 255, 255, 0.06); color: #fff;
+    font-family: 'Outfit', sans-serif; font-size: 1.35rem; font-weight: 600; line-height: 1.2; white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    --hf-c: #fff; --hf-bg: rgba(255, 255, 255, 0.14);
+  }
+  .hero-smart-search__hf-pill[hidden] { display: none; }
+  .hero-smart-search__hf-pill--winter { --hf-c: #3b82f6; --hf-bg: rgba(59, 130, 246, 0.24); }
+  .hero-smart-search__hf-pill--allweather { --hf-c: var(--rd-all-weather, #F5820B); --hf-bg: rgba(245, 130, 11, 0.22); }
+  .hero-smart-search__hf-pill--allseason { --hf-c: var(--rd-all-season, #16a34a); --hf-bg: rgba(22, 163, 74, 0.24); }
+  .hero-smart-search__hf-pill--summer { --hf-c: var(--rd-summer, #ca8a04); --hf-bg: rgba(202, 138, 4, 0.24); }
+  .hero-smart-search__hf-pill .rd-ico,
+  .hero-smart-search__hf-pill svg { color: var(--hf-c); flex: none; }
+  .hero-smart-search__hf-ico { display: inline-flex; line-height: 0; }
+  .hero-smart-search__hf-pill:hover { border-color: rgba(255, 255, 255, 0.55); }
+  .hero-smart-search__hf-pill:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .hero-smart-search__hf-pill[aria-pressed="true"] { background: var(--hf-bg); border: 2px solid var(--hf-c); padding: 0.3rem 1.1rem 0.3rem 0.9rem; }
+  /* The tick is decoration (aria-pressed already says "pressed"): the "/ ''"
+     alt text keeps it out of the button's name where supported. */
+  .hero-smart-search__hf-pill[aria-pressed="true"]::after { content: '\2713'; content: '\2713' / ''; font-size: 1.2rem; margin-left: 0.1rem; }
+  .hero-smart-search__hf-pill[aria-disabled="true"] { opacity: 0.38; cursor: not-allowed; }
+  .hero-smart-search__hf-pill[aria-disabled="true"]:hover { border-color: rgba(255, 255, 255, 0.24); }
+  .hero-smart-search__hf-row { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.8rem; }
+  .hero-smart-search__hf-row[hidden] { display: none; }
+  .hero-smart-search__hf-brand { display: flex; align-items: center; gap: 0.8rem; flex: 1 1 auto; min-width: 0; margin: 0; }
+  .hero-smart-search__hf-brand[hidden] { display: none; }
+  .hero-smart-search__hf-brand-label { font-size: 1.3rem; font-weight: 600; color: rgba(255, 255, 255, 0.88); }
+  .hero-smart-search__hf-select {
+    -webkit-appearance: none; appearance: none; box-sizing: border-box;
+    min-height: 3.6rem; min-width: 0; width: 100%; max-width: 24rem; margin: 0;
+    padding: 0 3.2rem 0 1.2rem; border-radius: 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.24); color: #fff;
+    background: #1c1c1c url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 1rem center / 14px;
+    font-family: 'Outfit', sans-serif; font-size: 1.4rem; font-weight: 500; cursor: pointer;
+  }
+  .hero-smart-search__hf-select:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .hero-smart-search__hf-select option { color: #111; background: #fff; }
+  .hero-smart-search__hf-select option:disabled { color: #9ca3af; }
+  .hero-smart-search__hf-go { display: none; }
+  @media screen and (max-width: 749px) {
+    .hero-smart-search__hf { padding: 0.2rem 1.8rem 1.2rem; }
+    .hero-smart-search__hf-pill { min-height: 4.4rem; font-size: 1.4rem; }
+    .hero-smart-search__hf-pill[aria-pressed="true"] { padding: 0.3rem 1.1rem 0.3rem 0.9rem; }
+    .hero-smart-search__hf-brand-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+    .hero-smart-search__hf-select { min-height: 4.4rem; max-width: none; font-size: 1.6rem; }
+    /* Phone: a big red "Show tires" next to the brand box — the arrow button
+       is up by the input, the thumb is down here after picking a pill. */
+    .hero-smart-search__hf-go {
+      all: unset; box-sizing: border-box; cursor: pointer; flex: none;
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 4.4rem; padding: 0 1.6rem; border-radius: 0.8rem;
+      background: #dc2626; color: #fff;
+      font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; white-space: nowrap;
+    }
+    .hero-smart-search__hf-go:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    .hero-smart-search__results:has(.hero-smart-search__hf:not([hidden])) { max-height: 34rem; }
+  }
+  /* The hero fades as the page scrolls (pt-motion.js --pt-o). While the
+     search is in use (phone keyboard scrolls the page) hold it at full
+     strength, or every pill looks like a greyed-out one. */
+  html.pt-motion .hero-smart-search__container:focus-within,
+  html.pt-motion .hero-smart-search__container:has(.hero-smart-search__results:not([hidden])) { opacity: 1 !important; }
+  /* Packages (only rendered while the package builder is switched on): same
+     swap as Wheels — no text search, just the car. */
+  .hero-smart-search__packages { display: none; }
+  .hero-smart-search[data-search-mode="packages"] .hero-smart-search__packages { display: block; margin-top: 0.4rem; }
+  .hero-smart-search[data-search-mode="packages"] .hero-smart-search__input-wrapper,
+  .hero-smart-search[data-search-mode="packages"] .hero-smart-search__picker,
+  .hero-smart-search[data-search-mode="packages"] .hero-smart-search__results { display: none; }
+  .hero-smart-search__packages-lede {
+    margin: 0 0 0.8rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.85);
+  }
+  /* The hero centres its content, so a taller mode panel lifts the tab row
+     the shopper just tapped. On phones the Packages panel is the tallest, so
+     every mode reserves its height and the tabs stay put. Nothing sits below
+     the search, so the reserved space is just more of the hero photo. */
+  @media screen and (max-width: 768px) {
+    .hero-smart-search--packages [data-smart-search] { min-height: 19rem; }
   }
 
   .hero-smart-search__picker {
@@ -1328,6 +1572,17 @@
   .hsf-wf__cta--primary:hover {
     background: linear-gradient(135deg, #b91c1c, #991b1b);
     box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
+  }
+  /* Package builder CTA: same weight as the primary, lighter so the two read apart */
+  .hsf-wf__cta--package {
+    background: #fff;
+    color: #b91c1c;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+  .hsf-wf__cta--package:hover {
+    background: #fef2f2;
+    color: #991b1b;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   }
 
   /* ── Empty state: Recent + Popular searches ── */
@@ -1982,12 +2237,22 @@ document.addEventListener('DOMContentLoaded', function() {
       } catch (e) { /* no-op */ }
     }
     setMode(newMode) {
-      if (newMode !== 'tires' && newMode !== 'wheels') return;
+      // 'packages' is only a mode while its tab is rendered (the section's gate).
+      var known = newMode === 'tires' || newMode === 'wheels'
+        || (newMode === 'packages' && this.tabs.some((t) => t.getAttribute('data-search-mode') === 'packages'));
+      if (!known) return;
       if (newMode === this.mode) return;
       this.mode = newMode;
       this.saveSearchMode(newMode);
       this.applyMode();
       window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_mode: newMode, search_type: 'mode_toggle', search_outcome: 'click' });
+      // Packages has no text search (the input is hidden): drop any pending
+      // keystroke search instead of re-running the query.
+      if (newMode === 'packages') {
+        clearTimeout(this.debounceTimer);
+        this.hideResults();
+        return;
+      }
       // If there's a query, re-run it so the results reflect the new mode.
       var q = this.input.value.trim();
       if (q.length >= 2) this.search(q);
@@ -2239,7 +2504,10 @@ document.addEventListener('DOMContentLoaded', function() {
          Strip any P / LT / ST prefix before filtering. */
       if (params.tireSize) {
         var sizeStr = String(params.tireSize).replace(/^[Pp]?(?:[Ll][Tt]|[Ss][Tt])?/, '');
-        var pm = sizeStr.match(/(\d{3})\/?(\d{2,3})[Rr](\d{2}(?:\.\d)?)/);
+        /* ZR / VR / HR (speed letter before the R) and RF read the same as R:
+           "245/35ZR19" must filter by its size, never fall through to the
+           unfiltered /collections/tires (every tire). */
+        var pm = sizeStr.match(/(\d{3})\s*\/?\s*(\d{2,3})\s*[A-Za-z]?[Rr]\s*[Ff]?\s*(\d{2}(?:\.\d)?)/);
         if (pm) {
           if (!isWheels) {
             urlParams.set('filter.p.m.custom.tire_width', pm[1]);
@@ -2260,11 +2528,19 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!isWheels && params.season)      urlParams.set('filter.p.m.custom.seasonality',  params.season);
       if (!isWheels && params.serviceType) urlParams.set('filter.p.m.custom.service_type', params.serviceType);
 
+      // Owner 2026-11-17: a tire size search lands cheapest first.
+      if (!isWheels && urlParams.has('filter.p.m.custom.rim_diameter') && !urlParams.has('sort_by')) {
+        urlParams.set('sort_by', 'price-ascending');
+      }
       const qs = urlParams.toString();
-      return qs ? base + '?' + qs : base;
+      const built = qs ? base + '?' + qs : base;
+      // One rim size → that rim's own collection (filters work there); see pt-rim-route.
+      return window.PTRim ? window.PTRim.route(built) : built;
     }
 
     bindEvents() {
+      this._ptBindRear();
+      this._hfInit();
       this.input.addEventListener('input', () => this.onInput());
       this.input.addEventListener('keydown', (e) => this.onKeydown(e));
       this.submit.addEventListener('click', () => this.onSubmit());
@@ -2288,7 +2564,21 @@ document.addEventListener('DOMContentLoaded', function() {
       this.tabs.forEach((tab) => {
         tab.addEventListener('click', () => this.setMode(tab.getAttribute('data-search-mode')));
       });
+      // Packages tab: pt-wheel-search does the navigation; log the click here
+      // with the hero's other package CTA (wheel_fitment_package).
+      var pkgPanel = this.container.querySelector('[data-hero-packages]');
+      if (pkgPanel) {
+        pkgPanel.addEventListener('click', (e) => {
+          if (!e.target.closest('[data-pt-ws-submit-vehicle]')) return;
+          var vLabel = ['year', 'make', 'model', 'trim'].map((k) => {
+            var el = pkgPanel.querySelector('[data-pt-ws-' + k + ']');
+            return el ? el.value : '';
+          }).filter(Boolean).join(' ');
+          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: vLabel, search_type: 'package_tab', search_outcome: 'click' });
+        });
+      }
       this.input.addEventListener('focus', () => {
+        if (this._hfSkipFocus) { this._hfSkipFocus = false; return; }
         const v = this.input.value.trim();
         if (v.length >= 2) {
           this.search(v);
@@ -2378,6 +2668,663 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 300);
     }
 
+    /* ── Staggered sets: rear size box + typed pairs (2026-11-15) ──────
+       "+ Add a rear size" reveals a second box. A front size plus a
+       DIFFERENT rear (or two full sizes typed in the one box, e.g.
+       "225/40R19 255/35R19" / "& " / " / ") -> PTVehiclePairs.url, the
+       pair results page. Rear hidden or empty and one size -> nothing here
+       changes: _ptPairFromBoxes returns null and the old path runs. */
+    _ptBindRear() {
+      const c = this.container;
+      this.rearBox = c.querySelector('[data-rear-box]');
+      this.rearInput = c.querySelector('[data-rear-input]');
+      this.rearAdd = c.querySelector('[data-rear-add]');
+      this.rearMsg = c.querySelector('[data-rear-msg]');
+      const rm = c.querySelector('[data-rear-remove]');
+      if (!this.rearBox || !this.rearInput || !this.rearAdd) return;
+      /* pt-search-focus pins the dropdown right under the main box. On the
+         Tires tab, push it below the whole rear block (the "+ Add a rear size"
+         link, or the open rear box) so it never covers either. Re-measured
+         whenever something in the search shows/hides or the tab changes. */
+      const gap = () => this._ptGap();
+      window.addEventListener('resize', gap);
+      try {
+        new MutationObserver(gap).observe(c, { attributes: true, subtree: true, attributeFilter: ['hidden', 'data-search-mode'] });
+      } catch (e) {}
+      this.input.addEventListener('input', gap);
+      gap();
+      this.rearAdd.addEventListener('click', () => {
+        this.rearBox.hidden = false;
+        this.rearAdd.hidden = true;
+        this.rearAdd.setAttribute('aria-expanded', 'true');
+        this._ptRearMsg('');
+        gap();
+        this.rearInput.focus();
+      });
+      if (rm) rm.addEventListener('click', () => {
+        this._ptCloseRear();
+        this.hideResults();
+        gap();
+        this.rearAdd.focus();
+      });
+      // The vehicle picker / "Find your tires" popup pushed a car's search.
+      this.input.addEventListener('pt:picker-push', () => this._ptCloseRear());
+      let t = null;
+      this.rearInput.addEventListener('input', () => {
+        this._ptRearMsg('');
+        clearTimeout(t);
+        t = setTimeout(() => {
+          const q = this.input.value.trim();
+          if (q && this.normalizeTireSize(q)) this.search(q); else this.hideResults();
+        }, 300);
+      });
+      this.rearInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); clearTimeout(t); this.onSubmit(); }
+        else if (e.key === 'Escape') this.hideResults();
+      });
+      this.input.addEventListener('input', () => this._ptRearMsg(''));
+    }
+
+    _ptNoPairMsg() {
+      const ph = (this.config && this.config.fallbackPhone) || '403 452 4283';
+      this._ptRearMsg('We can\u2019t search that pair online \u2014 call us at <a href="tel:' + this.escapeAttr(ph.replace(/\D/g, '')) + '">' + this.escapeHtml(ph) + '</a>.');
+    }
+
+    _ptRearMsg(html) {
+      if (!this.rearMsg) return;
+      this.rearMsg.innerHTML = html || '';
+      this.rearMsg.hidden = !html;
+    }
+
+    /* Dropdown offset: bottom of the rear block minus bottom of the main
+       box, Tires tab only (0 on Wheels / Packages, where it is hidden). */
+    _ptGap() {
+      if (!this.results) return;
+      const main = this.input.closest('.hero-smart-search__input-wrapper');
+      const blk = this.container.querySelector('[data-rear]');
+      let px = 0;
+      if (this.mode === 'tires' && main && blk && blk.getClientRects().length) {
+        px = Math.max(0, Math.round(blk.getBoundingClientRect().bottom - main.getBoundingClientRect().bottom));
+      }
+      const v = px ? px + 'px' : '';
+      if (this.results.style.marginTop !== v) this.results.style.marginTop = v;
+    }
+
+    /* Close + empty the rear box (no focus change). */
+    _ptCloseRear() {
+      if (!this.rearBox) return;
+      if (this.rearInput) this.rearInput.value = '';
+      this.rearBox.hidden = true;
+      if (this.rearAdd) { this.rearAdd.hidden = false; this.rearAdd.setAttribute('aria-expanded', 'false'); }
+      this._ptRearMsg('');
+    }
+
+    /* The typed rear size ('' when the box is closed, empty or not Tires). */
+    _ptRearVal() {
+      return this.mode === 'tires' && this.rearBox && !this.rearBox.hidden && this.rearInput ? this.rearInput.value.trim() : '';
+    }
+
+    /* Full tire sizes in a string, canonical, in typed order, no repeats. */
+    _ptSizesIn(text) {
+      const re = /(?:P|LT)?\d{3}\s*\/\s*\d{2}\s*Z?R\s*F?\s*\d{2}(?![\d.])|\d{2}\s*[xX]\s*\d{1,2}(?:\.\d{1,2})?\s*Z?R\s*\d{2}(?![\d.])/gi;
+      const out = [];
+      (String(text || '').match(re) || []).forEach((m) => {
+        const n = this.normalizeTireSize(m);
+        if (n && n.rim && out.indexOf(n.size) === -1) out.push(n.size);
+      });
+      return out;
+    }
+
+    /* null = no pair asked for (the old path runs); { msg } = the rear box
+       is filled but a size is not readable; { front, rear, url } = a pair
+       (url null when PTVehiclePairs cannot open it online). */
+    _ptPairFromBoxes(query, intentQuery) {
+      if (this.mode !== 'tires') return null;
+      const rearVal = this.rearBox && !this.rearBox.hidden && this.rearInput ? this.rearInput.value.trim() : '';
+      let front, rear;
+      if (rearVal) {
+        const f = this.normalizeTireSize(query || '');
+        const r = this.normalizeTireSize(rearVal);
+        if (!f || !f.rim) return { msg: 'Type the front size in the first box, e.g. 225/40R19.' };
+        if (!r || !r.rim) return { msg: 'Type the rear size like 255/35R19.' };
+        if (f.size === r.size) return null;
+        front = f.size; rear = r.size;
+      } else {
+        const two = this._ptSizesIn(query);
+        if (two.length !== 2) return null;
+        front = two[0]; rear = two[1];
+      }
+      const intent = this.parseSearchIntent((intentQuery != null ? intentQuery : query) || '');
+      // Quick filters: the season / brand chosen under this same pair's row
+      // (typed words still count; see _hfChoice). No row yet = typed intent.
+      const ch = this._hfChoice('p|' + front + '>' + rear, intent);
+      const VP = window.PTVehiclePairs;
+      const url = VP && typeof VP.url === 'function'
+        ? VP.url({ front: front, rear: rear, seasons: ch.season ? [ch.season] : [], brand: ch.brand || null })
+        : null;
+      return { front: front, rear: rear, url: url, tSeason: ch.tSeason, tBrand: ch.brand };
+    }
+
+    /* Submit a pair: go, or say why not (never a single-size search). */
+    _ptSubmitPair(pr, query) {
+      if (pr.msg || !pr.url) {
+        // A search still waiting on the debounce would reopen the dropdown over the message.
+        clearTimeout(this.debounceTimer);
+        this.hideResults();
+        if (pr.msg) this._ptRearMsg(this.escapeHtml(pr.msg));
+        else this._ptNoPairMsg();
+        return;
+      }
+      this.awaitingTrim = false;
+      this.awaitingSelection = false;
+      this.addRecentSearch(pr.front + ' ' + pr.rear);
+      this._ptEmit('text', 'sizes', { size: pr.front, sizes_count: 2, query_len: String(query || '').length, season: pr.tSeason, brand: pr.tBrand });
+      this._ptGo(pr.url);
+    }
+
+    /* ── Quick filters under one complete tire size (owner 2026-11-15) ──
+       Tires tab only. When the dropdown shows ONE complete size row (or ONE
+       front + rear set row), season pills (coloured icons) and a brand box
+       appear under it. The row stays the main action: its meta reads the
+       choice ("Winter · Michelin") and its data-url carries it, so a click,
+       Enter or the arrow all open the size WITH the choice.
+
+       What exists for the size: /collections/tires-NN-inch?<size>
+       &filter.v.availability=1&view=facets (templates/collection.facets.liquid,
+       ~10 KB), the same rim collection + in-stock filter the results page
+       lands on, fetched once per size (cached), 2.5 s timeout, aborted when
+       the size changes. Only seasons / brands with results are offered; the
+       counts are never shown. Seasons use the facet's own value ("All
+       Season" is a filter group whose value is a gid: only that checks the
+       box and shows the chip on the results page). After a pick, one more
+       fetch with the choice tells which other options still have results;
+       the rest are greyed out (Shopify counts ignore a filter's own group).
+       Fetch failed / slow: all four seasons, no brand box (never a brand that
+       may have nothing). No rim collection for the size: no strip at all.
+       Front + rear: both sizes must have it.
+
+       The strip lives OUTSIDE the listbox and is built once per size, so the
+       re-render on every keystroke never rebuilds it (focus is not lost) and
+       the choice survives until the size changes. */
+    static get HF_DEFS() {
+      return [
+        { k: 'winter', label: 'Winter', t: 'Winter', re: /^winter$/ },
+        { k: 'allweather', label: 'All-weather', t: 'All-Weather', re: /^allweather$/ },
+        { k: 'allseason', label: 'All-season', t: 'All-Season', re: /^allseason$/ },
+        { k: 'summer', label: 'Summer', t: 'Summer', re: /^summer$/ }
+      ];
+    }
+    _hfDef(k) { return SmartTireSearch.HF_DEFS.filter(d => d.k === k)[0] || null; }
+    _hfKindOf(engineSeason) {
+      const d = SmartTireSearch.HF_DEFS.filter(x => x.t === engineSeason)[0];
+      return d ? d.k : null;
+    }
+
+    _hfInit() {
+      this.hfEl = this.container.querySelector('[data-hf]');
+      this._hf = null;
+      this._hfCache = {};
+      this.hfIcons = {};
+      const tpl = this.container.querySelector('template[data-hf-icons]');
+      if (tpl && tpl.content) {
+        Array.prototype.forEach.call(tpl.content.querySelectorAll('[data-k]'), (n) => { this.hfIcons[n.getAttribute('data-k')] = n.innerHTML; });
+      }
+      if (!this.hfEl || !this.list) return;
+      // The size row was replaced by anything else (vehicle rows, suggestions,
+      // loading...): hide the strip. A re-render of the same size re-attaches
+      // it right after renderResults, before this callback runs.
+      try {
+        new MutationObserver(() => {
+          const st = this._hf;
+          if (st && st.row && !this.list.contains(st.row)) { st.row = null; this.hfEl.hidden = true; }
+        }).observe(this.list, { childList: true });
+      } catch (e) {}
+      this.hfEl.addEventListener('click', (e) => {
+        const st = this._hf;
+        if (!st) return;
+        const pill = e.target.closest && e.target.closest('[data-hf-season]');
+        if (pill && this.hfEl.contains(pill)) {
+          e.preventDefault();
+          const k = pill.getAttribute('data-hf-season');
+          st.note = null; st.clash = null;
+          // A greyed-out pill: this season has none in the chosen brand.
+          // The tap is the latest pick: take the season, clear the brand,
+          // and say so where the customer can see it (row meta).
+          if (pill.getAttribute('aria-disabled') === 'true' && st.brand && st.season !== k) {
+            const msg = 'No ' + this._hfDef(k).label + ' ' + this._hfBrandLabel(st, st.brand) + ' tires in this size';
+            st.brand = null; st.brandSrc = null; st.missBrand = null;
+            st.note = msg;
+            this._hfSay(msg + '. Brand cleared.');
+          }
+          st.season = st.season === k ? null : k;
+          st.seasonSrc = st.season ? 'user' : null;
+          st.missSeason = null;
+          st.last = 'season';
+          this._hfChanged(st);
+          return;
+        }
+        const go = e.target.closest && e.target.closest('[data-hf-go]');
+        if (go && st.row && this.list.contains(st.row)) { e.preventDefault(); this.selectResult(st.row); }
+      });
+      this.hfEl.addEventListener('change', (e) => {
+        const st = this._hf;
+        if (!st || !e.target.matches || !e.target.matches('[data-hf-brand]')) return;
+        st.brand = e.target.value || null;
+        st.brandSrc = st.brand ? 'user' : null;
+        st.missBrand = null;
+        st.note = null; st.clash = null;
+        st.last = 'brand';
+        this._hfChanged(st);
+      });
+      this.hfEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          this._clearGhost();
+          this.hideResults();
+          this._hfSkipFocus = true;
+          this.input.focus();
+          setTimeout(() => { this._hfSkipFocus = false; }, 0);
+          return;
+        }
+        const pill = e.target.closest && e.target.closest('[data-hf-season]');
+        if (pill && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+          const all = Array.prototype.filter.call(this.hfEl.querySelectorAll('[data-hf-season]'), (b) => !b.hidden);
+          const i = all.indexOf(pill);
+          const n = all[i + (e.key === 'ArrowRight' ? 1 : -1)];
+          if (n) { e.preventDefault(); n.focus(); }
+        }
+      });
+    }
+
+    /* The choice for a size key, for Enter / the arrow / a pair URL. Typed
+       words still count (_hfSync). No strip for this key: the typed intent,
+       exactly as before. season = the value for the URL; tSeason = the plain
+       name for analytics. */
+    _hfChoice(key, intent) {
+      intent = intent || {};
+      const st = this._hf;
+      if (this.mode !== 'tires' || !st || st.key !== key) {
+        return { season: intent.season || null, tSeason: intent.season || null, brand: intent.brand || null };
+      }
+      this._hfSync(st, intent);
+      this._hfApply(st);
+      return { season: this._hfSeasonVal(st), tSeason: st.season ? this._hfDef(st.season).t : null, brand: st.brand || null };
+    }
+
+    _hfSeasonVal(st) {
+      if (!st.season) return null;
+      const exact = st.base && st.base.seasons[st.season];
+      return exact || this._hfDef(st.season).t;
+    }
+
+    /* Called right after renderResults drew the one size / set row. */
+    _hfAttach(ctx, intent) {
+      if (!this.hfEl || !this.items || this.items.length !== 1) return;
+      let st = this._hf;
+      if (!st || st.key !== ctx.key) {
+        if (st) this._hfAbort(st);
+        st = this._hf = {
+          key: ctx.key, ctx: ctx, row: null, season: null, seasonSrc: null, brand: null, brandSrc: null,
+          iSeason: null, iBrand: null, missSeason: null, missBrand: null, note: null, clash: null, last: null,
+          status: 'loading', base: null, combo: null, comboKey: '', comboTok: 0, ctls: [], shown: false, built: false
+        };
+        this._hfBuild(st);
+        this._hfLoadBase(st);
+      }
+      st.row = this.items[0];
+      this._hfSync(st, intent || {});
+      this._hfApply(st);
+    }
+
+    /* Typed words ("205/55R16 winter", "michelin 205/55R16") pick a pill /
+       brand when they CHANGE; a tap or a brand pick stays until the customer
+       changes it or types a different word. Removing the word clears a
+       choice that only the word made. */
+    _hfSync(st, intent) {
+      const ik = this._hfKindOf(intent.season) || null;
+      const ibNow = String(intent.brand || '').toLowerCase();
+      // Typed words changed: an old "cleared" note no longer applies, and a
+      // typed word a clash cleared gets another chance (deleting "winter"
+      // from "bfgoodrich 265/70R17 winter" brings BFGoodrich back).
+      if (ik !== st.iSeason || ibNow !== String(st.iBrand || '').toLowerCase()) {
+        st.note = null;
+        if (st.clash === 'brand') st.iBrand = '\u0000';
+        else if (st.clash === 'season') st.iSeason = '\u0000';
+        st.clash = null;
+      }
+      if (ik !== st.iSeason) {
+        st.iSeason = ik;
+        st.missSeason = null;
+        if (ik) {
+          if (st.status === 'ok' && !st.base.seasons[ik]) {
+            st.missSeason = ik;
+            if (st.seasonSrc === 'intent') { st.season = null; st.seasonSrc = null; }
+          } else { st.season = ik; st.seasonSrc = 'intent'; st.last = 'season'; }
+        } else if (st.seasonSrc === 'intent') { st.season = null; st.seasonSrc = null; }
+      }
+      const ib = intent.brand || null;
+      if (String(ib || '').toLowerCase() !== String(st.iBrand || '').toLowerCase()) {
+        st.iBrand = ib;
+        st.missBrand = null;
+        if (ib) {
+          const c = st.status === 'ok' ? this._hfCanonBrand(st, ib) : ib;
+          if (c) { st.brand = c; st.brandSrc = 'intent'; st.last = 'brand'; }
+          else {
+            st.missBrand = ib;
+            if (st.brandSrc === 'intent') { st.brand = null; st.brandSrc = null; }
+          }
+        } else if (st.brandSrc === 'intent') { st.brand = null; st.brandSrc = null; }
+      }
+      this._hfLoadCombo(st);
+    }
+
+    _hfCanonBrand(st, b) {
+      const l = String(b || '').trim().toLowerCase();
+      const hit = (st.base ? st.base.brands : []).filter(x => x.v.toLowerCase() === l || x.label.toLowerCase() === l)[0];
+      return hit ? hit.v : null;
+    }
+
+    _hfChanged(st) {
+      this._hfLoadCombo(st);
+      this._hfApply(st);
+    }
+
+    _hfAbort(st) {
+      // Forget each aborted request's cache entry NOW: the next state may ask
+      // for the same URL in this same tick (single size -> front + rear set)
+      // and must not be handed the promise that is about to resolve null.
+      (st.ctls || []).forEach((c) => { if (c.settled) return; try { c.ctl.abort(); } catch (e) {} c.forget(); });
+      st.ctls = [];
+      clearTimeout(st.showTimer);
+    }
+
+    /* The facet URL(s) for a size key plus an optional choice: one for a
+       single size, [front, rear] for a set. null = cannot ask (no rim
+       collection for a size: /collections/tires has no filters). */
+    _hfFacetUrls(st, seasonVal, brand) {
+      const VP = window.PTVehiclePairs;
+      const c = st.ctx;
+      const make = (u) => {
+        if (!u) return null;
+        let x;
+        try { x = new URL(u, window.location.origin); } catch (e) { return null; }
+        if (!/^\/collections\/tires-\d{2}-inch$/.test(x.pathname)) return null;
+        x.searchParams.delete('filter.p.m.custom.seasonality');
+        x.searchParams.delete('filter.p.vendor');
+        if (seasonVal) x.searchParams.append('filter.p.m.custom.seasonality', seasonVal);
+        if (brand) x.searchParams.append('filter.p.vendor', brand);
+        if (x.searchParams.getAll('filter.v.availability').indexOf('1') === -1) x.searchParams.append('filter.v.availability', '1');
+        x.searchParams.set('view', 'facets');
+        return x.pathname + '?' + x.searchParams.toString();
+      };
+      if (c.kind === 'single') {
+        const u = make(this.buildCollectionUrl({ width: c.width, aspect: c.aspect, rim: c.rim }));
+        return u ? [u] : null;
+      }
+      if (!VP || typeof VP.url !== 'function') return null;
+      const f = make(VP.url({ front: c.front }));
+      const r = make(VP.url({ front: c.rear }));
+      return f && r ? [f, r] : null;
+    }
+
+    /* One facets JSON -> { seasons: { winter: value, ... }, brands: [{ v, label }] }
+       (only values with results), or null. Cached per URL; a failure or an
+       abort is forgotten so the next time asks again. */
+    _hfFetch(st, url) {
+      if (this._hfCache[url]) return this._hfCache[url];
+      const ctl = window.AbortController ? new AbortController() : null;
+      let p = null;
+      // settled: an answer (or failure) came; _hfAbort then leaves the cache
+      // alone, so a good answer stays cached for the page view.
+      const entry = { ctl: ctl, settled: false, forget: () => { if (p && this._hfCache[url] === p) delete this._hfCache[url]; } };
+      p = new Promise((resolve) => {
+        let done = false;
+        const finish = (v) => { if (done) return; done = true; entry.settled = true; clearTimeout(timer); if (!v) entry.forget(); resolve(v); };
+        const timer = setTimeout(() => { if (ctl) { try { ctl.abort(); } catch (e) {} } finish(null); }, 2500);
+        if (!window.fetch) { finish(null); return; }
+        window.fetch(url, ctl ? { signal: ctl.signal, credentials: 'same-origin' } : { credentials: 'same-origin' })
+          .then((r) => (r && r.ok ? r.json() : null))
+          .then((j) => finish(this._hfParse(j)), () => finish(null));
+      });
+      this._hfCache[url] = p;
+      if (ctl) st.ctls.push(entry);
+      p.then((v) => { if (!v) entry.forget(); });
+      return p;
+    }
+
+    _hfParse(j) {
+      if (!j || !Array.isArray(j.filters)) return null;
+      const vend = j.filters.filter(f => f && f.param === 'filter.p.vendor')[0];
+      const sea = j.filters.filter(f => f && f.param === 'filter.p.m.custom.seasonality')[0];
+      if (!vend || !Array.isArray(vend.values)) return null;
+      const out = { seasons: {}, brands: [] };
+      (sea && Array.isArray(sea.values) ? sea.values : []).forEach((v) => {
+        if (!v || !(v.n > 0) || typeof v.v !== 'string') return;
+        const norm = v.v.toLowerCase().replace(/[^a-z]/g, '');
+        const d = SmartTireSearch.HF_DEFS.filter(x => x.re.test(norm))[0];
+        if (d && !out.seasons[d.k]) out.seasons[d.k] = typeof v.val === 'string' && v.val ? v.val : v.v;
+      });
+      vend.values.forEach((v) => {
+        if (!v || !(v.n > 0) || typeof v.v !== 'string' || !v.v.trim()) return;
+        out.brands.push({ v: typeof v.val === 'string' && v.val ? v.val : v.v, label: v.v });
+      });
+      out.brands.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+      return out;
+    }
+
+    /* Front + rear: only what both sizes have. */
+    _hfBoth(list) {
+      if (!list.length || list.some(x => !x)) return null;
+      if (list.length === 1) return list[0];
+      const a = list[0], b = list[1];
+      const out = { seasons: {}, brands: [] };
+      Object.keys(a.seasons).forEach((k) => { if (b.seasons[k]) out.seasons[k] = a.seasons[k]; });
+      const bv = {};
+      b.brands.forEach((x) => { bv[x.v.toLowerCase()] = 1; });
+      out.brands = a.brands.filter(x => bv[x.v.toLowerCase()]);
+      return out;
+    }
+
+    _hfLoadBase(st) {
+      const urls = this._hfFacetUrls(st, null, null);
+      // Show the strip at once when the answer is cached; otherwise when it
+      // comes, or after 600 ms with all four seasons (slow network).
+      st.showTimer = setTimeout(() => { st.shown = true; this._hfApply(st); }, 600);
+      // No tires-NN-inch collection for this size: the size opens
+      // /collections/tires, which ignores every filter, so offer none.
+      if (!urls) { st.status = 'none'; st.shown = true; clearTimeout(st.showTimer); return; }
+      Promise.all(urls.map(u => this._hfFetch(st, u))).then((list) => {
+        if (this._hf !== st) return;
+        const base = this._hfBoth(list);
+        clearTimeout(st.showTimer);
+        st.shown = true;
+        if (!base) { st.status = 'fail'; this._hfApply(st); return; }
+        st.base = base;
+        st.status = 'ok';
+        // What was picked while it loaded must exist for this size.
+        if (st.season && !base.seasons[st.season]) {
+          if (st.seasonSrc === 'intent') st.missSeason = st.season;
+          else {
+            // Tapped while the answer was slow: shown in the row meta too.
+            st.note = 'No ' + this._hfDef(st.season).label + ' tires available in this size';
+            this._hfSay(st.note + '.');
+          }
+          st.season = null; st.seasonSrc = null;
+        }
+        if (st.brand) {
+          const c = this._hfCanonBrand(st, st.brand);
+          if (c) st.brand = c;
+          else {
+            if (st.brandSrc === 'intent') st.missBrand = st.brand;
+            st.brand = null; st.brandSrc = null;
+          }
+        }
+        this._hfFillBrands(st);
+        st.comboKey = '';
+        this._hfLoadCombo(st);
+        this._hfApply(st);
+      });
+    }
+
+    /* With a choice: which other options still have results. */
+    _hfLoadCombo(st) {
+      if (st.status !== 'ok') return;
+      const sv = this._hfSeasonVal(st);
+      const key = (sv || '') + '|' + (st.brand || '');
+      if (key === st.comboKey) return;
+      st.comboKey = key;
+      st.combo = null;
+      if (!sv && !st.brand) return;
+      const urls = this._hfFacetUrls(st, sv, st.brand);
+      if (!urls) return;
+      const tok = ++st.comboTok;
+      Promise.all(urls.map(u => this._hfFetch(st, u))).then((list) => {
+        if (this._hf !== st || tok !== st.comboTok) return;
+        const c = this._hfBoth(list);
+        if (!c) return; // unknown: leave everything open
+        st.combo = { seasons: c.seasons, brands: {} };
+        c.brands.forEach((x) => { st.combo.brands[x.v.toLowerCase()] = 1; });
+        // Both picked but nothing has both (picked before the check came
+        // back, or typed together): keep the latest pick, clear the other
+        // one, and say so in the row meta (seen) and the live region (heard).
+        // Both typed ("bfgoodrich 265/70R17 winter"): keep the season — it
+        // is the need (winter / summer); the brand is a preference.
+        if (st.season && st.brand && (!c.seasons[st.season] || !st.combo.brands[st.brand.toLowerCase()])) {
+          const sl = this._hfDef(st.season).label;
+          const bl = this._hfBrandLabel(st, st.brand);
+          const msg = 'No ' + sl + ' ' + bl + ' tires in this size';
+          const bothTyped = st.seasonSrc === 'intent' && st.brandSrc === 'intent';
+          if (st.last === 'brand' && !bothTyped) { st.clash = st.seasonSrc === 'intent' ? 'season' : null; st.season = null; st.seasonSrc = null; this._hfSay(msg + '. Season cleared.'); }
+          else { st.clash = st.brandSrc === 'intent' ? 'brand' : null; st.brand = null; st.brandSrc = null; this._hfSay(msg + '. Brand cleared.'); }
+          st.note = msg;
+          this._hfLoadCombo(st);
+        }
+        this._hfApply(st);
+      });
+    }
+
+    _hfBrandLabel(st, v) {
+      const l = String(v || '').toLowerCase();
+      const hit = (st.base ? st.base.brands : []).filter(x => x.v.toLowerCase() === l)[0];
+      return hit ? hit.label : String(v || '');
+    }
+
+    _hfSay(msg) {
+      const el = this.hfEl && this.hfEl.querySelector('[data-hf-say]');
+      if (!el) return;
+      el.textContent = '';
+      setTimeout(() => { el.textContent = msg; }, 30);
+    }
+
+    /* Built once per size (pills, brand box, phone button, live region). */
+    _hfBuild(st) {
+      const el = this.hfEl;
+      const pills = SmartTireSearch.HF_DEFS.map(d =>
+        '<button type="button" class="hero-smart-search__hf-pill hero-smart-search__hf-pill--' + d.k + '" data-hf-season="' + d.k + '" aria-pressed="false">' +
+          '<span class="hero-smart-search__hf-ico" aria-hidden="true">' + (this.hfIcons[d.k] || '') + '</span>' +
+          '<span>' + this.escapeHtml(d.label) + '</span>' +
+        '</button>').join('');
+      const sid = 'hss-hf-brand-' + Math.random().toString(36).slice(2, 8);
+      el.innerHTML =
+        '<div class="hero-smart-search__hf-seasons" role="group" aria-label="Season" data-hf-seasons>' + pills + '</div>' +
+        '<div class="hero-smart-search__hf-row" data-hf-row>' +
+          '<label class="hero-smart-search__hf-brand" for="' + sid + '" data-hf-brandwrap hidden>' +
+            '<span class="hero-smart-search__hf-brand-label">Brand</span>' +
+            '<select class="hero-smart-search__hf-select" id="' + sid + '" data-hf-brand><option value="">Any brand</option></select>' +
+          '</label>' +
+          '<button type="button" class="hero-smart-search__hf-go" data-hf-go>Show tires</button>' +
+        '</div>' +
+        '<p class="visually-hidden" data-hf-say aria-live="polite"></p>';
+      el.setAttribute('aria-label', 'Narrow ' + st.ctx.title + ' by season and brand');
+      el.hidden = true;
+      st.built = true;
+    }
+
+    _hfFillBrands(st) {
+      const sel = this.hfEl.querySelector('[data-hf-brand]');
+      if (!sel || !st.base) return;
+      sel.innerHTML = '<option value="">Any brand</option>' + st.base.brands.map(b =>
+        '<option value="' + this.escapeAttr(b.v) + '">' + this.escapeHtml(b.label) + '</option>').join('');
+    }
+
+    /* State -> DOM. Never rebuilds: toggles attributes, so focus stays put. */
+    _hfApply(st) {
+      if (this._hf !== st || !this.hfEl) return;
+      const el = this.hfEl;
+      const ok = st.status === 'ok';
+      let anyPill = false;
+      Array.prototype.forEach.call(el.querySelectorAll('[data-hf-season]'), (b) => {
+        const k = b.getAttribute('data-hf-season');
+        const on = st.season === k;
+        const show = on || !ok || !!st.base.seasons[k];
+        b.hidden = !show;
+        if (show) anyPill = true;
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        const off = !on && ok && st.combo && !st.combo.seasons[k];
+        if (off) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled');
+      });
+      const seasonsEl = el.querySelector('[data-hf-seasons]');
+      if (seasonsEl) seasonsEl.hidden = !anyPill;
+      /* The pills are one sliding row: bring a picked one (e.g. typed
+         "winter") into view by moving the row only, never the page. */
+      const onPill = seasonsEl && seasonsEl.querySelector('[aria-pressed="true"]');
+      if (onPill && seasonsEl.scrollWidth > seasonsEl.clientWidth) {
+        const r = seasonsEl.getBoundingClientRect(), p = onPill.getBoundingClientRect();
+        if (p.left < r.left) seasonsEl.scrollLeft -= (r.left - p.left) + 8;
+        else if (p.right > r.right) seasonsEl.scrollLeft += (p.right - r.right) + 8;
+      }
+      const wrap = el.querySelector('[data-hf-brandwrap]');
+      const sel = el.querySelector('[data-hf-brand]');
+      const brandOk = ok && st.base.brands.length > 0;
+      if (wrap) wrap.hidden = !brandOk;
+      if (sel && brandOk) {
+        const want = st.brand || '';
+        if (sel.value !== want) sel.value = want;
+        Array.prototype.forEach.call(sel.options, (o) => {
+          o.disabled = !!(o.value && o.value !== want && st.combo && !st.combo.brands[o.value.toLowerCase()]);
+        });
+      }
+      // Row: title, meta, URL.
+      const row = st.row;
+      if (row && this.list.contains(row)) {
+        const t = row.querySelector('.hero-smart-search__result-title');
+        const m = row.querySelector('.hero-smart-search__result-meta');
+        const parts = [];
+        if (st.season) parts.push(this._hfDef(st.season).label);
+        if (st.brand) parts.push(this._hfBrandLabel(st, st.brand));
+        // Notes: a typed word that has nothing in this size (shown even when a
+        // tapped choice is still on, so the row never contradicts the box),
+        // and the last "cleared" message.
+        const notes = [];
+        if (st.note) notes.push(st.note);
+        if (st.missSeason && st.missSeason !== st.season) notes.push('No ' + this._hfDef(st.missSeason).label + ' tires available in this size');
+        if (st.missBrand && String(st.missBrand).toLowerCase() !== String(st.brand || '').toLowerCase()) notes.push('No ' + st.missBrand + ' available in this size');
+        const meta = st.ctx.kind === 'pair'
+          ? ['Front + rear set'].concat(parts, notes).join(' · ')
+          : notes.concat(parts.length ? parts : ['See tires']).join(' · ');
+        if (t && t.textContent !== st.ctx.title) t.textContent = st.ctx.title;
+        if (m && m.textContent !== meta) m.textContent = meta;
+        const url = this._hfRowUrl(st);
+        if (url) row.setAttribute('data-url', url);
+      }
+      // Show: with the row, once the answer came (or after the slow timer);
+      // never when the size has nothing to narrow.
+      const visible = !!(row && this.list.contains(row) && st.shown && st.status !== 'none' && (anyPill || brandOk));
+      el.hidden = !visible;
+    }
+
+    _hfRowUrl(st) {
+      const c = st.ctx;
+      const sv = this._hfSeasonVal(st);
+      if (c.kind === 'single') {
+        return this.buildCollectionUrl({ width: c.width, aspect: c.aspect, rim: c.rim, brand: st.brand || null, season: sv });
+      }
+      const VP = window.PTVehiclePairs;
+      return VP && typeof VP.url === 'function'
+        ? VP.url({ front: c.front, rear: c.rear, seasons: sv ? [sv] : [], brand: st.brand || null })
+        : null;
+    }
+
     normalizeTireSize(query) {
       var p = window.PTTireParse && window.PTTireParse.parseSize(query);
       if (!p) return null;
@@ -2421,7 +3368,8 @@ document.addEventListener('DOMContentLoaded', function() {
       window.PTTrack.once('hero-s|' + key, 'pt_search_submit', {
         surface: 'hero', method: m,
         year: d.year, make: d.make, model: d.model, trim: d.trim,
-        size: d.size, query_len: d.query_len
+        size: d.size, query_len: d.query_len,
+        season: d.season, brand: d.brand
       });
       window.PTTrack.once('hero-r|' + key, 'pt_search_result', {
         surface: 'hero', method: m, outcome: outcome, sizes_count: d.sizes_count || 0,
@@ -2477,6 +3425,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async search(query) {
+      this._pairTok = (this._pairTok || 0) + 1; // a pair check still in flight is now stale
+      if (this.mode === 'packages') return;
       if (this.abortController) this.abortController.abort();
       this.abortController = new AbortController();
 
@@ -2504,6 +3454,35 @@ document.addEventListener('DOMContentLoaded', function() {
             meta: 'View service details',
             url: service.url,
           }]);
+          return;
+        }
+      }
+
+      var ptPair = this._ptPairFromBoxes(query);
+      if (ptPair && !ptPair.msg && !ptPair.url) {
+        // Two sizes we can't open as a pair online: say so, never a single-size row.
+        this.hideResults();
+        this._ptNoPairMsg();
+        return;
+      }
+      if (ptPair && ptPair.url) {
+        this.renderResults([{ type: 'size', ptSet: true, title: ptPair.front + ' + ' + ptPair.rear, meta: 'Front + rear set', url: ptPair.url }]);
+        this._hfAttach({ kind: 'pair', key: 'p|' + ptPair.front + '>' + ptPair.rear, title: ptPair.front + ' + ' + ptPair.rear, front: ptPair.front, rear: ptPair.rear }, this.parseSearchIntent(query));
+        this._ptPend('text', 'sizes', { size: ptPair.front, sizes_count: 2, query_len: String(query || '').length });
+        return;
+      }
+      if (ptPair && ptPair.msg) {
+        /* The rear box has text but this is not a front + rear pair yet. A
+           single-size row here would silently drop the rear, so: a complete
+           front (rear still being typed) shows nothing; a partial front gets
+           the usual suggestions, which route as a pair when picked (see
+           handleTireSizeMatch / renderTireSizeSuggestions); anything else
+           (a vehicle, a word) gets the short message. */
+        const nf = this.normalizeTireSize(query);
+        if (nf && nf.rim) { this.hideResults(); return; }
+        if (!nf && !this.detectPartialTireSize(query)) {
+          this.hideResults();
+          this._ptRearMsg(this.escapeHtml(ptPair.msg));
           return;
         }
       }
@@ -2691,7 +3670,7 @@ document.addEventListener('DOMContentLoaded', function() {
           : 'No matches yet — keep typing the full size (e.g. 225/65R17).';
         this.list.innerHTML =
           '<li class="hero-smart-search__suggest-header" role="presentation">' +
-            '<span class="hero-smart-search__suggest-header-label">No in-stock matches for <strong>' + this.escapeHtml(query) + '</strong></span>' +
+            '<span class="hero-smart-search__suggest-header-label">No matches available for <strong>' + this.escapeHtml(query) + '</strong></span>' +
             '<span class="hero-smart-search__suggest-header-sub">' + hint + '</span>' +
           '</li>';
         this.items = [];
@@ -2702,15 +3681,24 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       var self = this;
+      // Rear box filled: a picked completion is the FRONT of a pair.
+      var ptRear = this._ptRearVal() ? this.normalizeTireSize(this._ptRearVal()) : null;
+      var ptRearHint = ptRear && ptRear.rim ? 'Front, with ' + ptRear.size + ' rear' : '';
       var inner = suggestions.map(function(s, i) {
-        var stockLabel = typeof s.stock === 'number' ? (s.stock + ' in stock') : 'Tap to search';
+        // Nov 13, 2026 (owner): customers see lead time only - never a count,
+        // a bucket ("40+ available") or "Low stock". A size row mixes many
+        // tires with different lead times, so it names no lead time at all;
+        // the results page shows each tire's own. s.stock is still used
+        // above to drop sizes we don't carry and to order the rows.
+        var sc = (self.config && self.config.stock) || {};
+        var stockLabel = (ptRearHint && s.size !== ptRear.size && ptRearHint) || sc.hint || 'See tires in this size';
         return '<li class="hero-smart-search__suggest-row" role="option" data-index="' + i + '" data-suggest-size="' + self.escapeAttr(s.size) + '">' +
           '<span class="hero-smart-search__suggest-icon" aria-hidden="true">📐</span>' +
           '<span class="hero-smart-search__suggest-text">' +
             '<span class="hero-smart-search__suggest-size">' + self.escapeHtml(s.size) + '</span>' +
             '<span class="hero-smart-search__suggest-hint">' + self.escapeHtml(stockLabel) + '</span>' +
           '</span>' +
-          '<span class="hero-smart-search__result-tag">In stock</span>' +
+          '<span class="hero-smart-search__result-tag">' + self.escapeHtml(sc.tag || 'Available') + '</span>' +
         '</li>';
       }).join('');
 
@@ -2728,6 +3716,12 @@ document.addEventListener('DOMContentLoaded', function() {
           var size = item.getAttribute('data-suggest-size');
           window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: query, search_type: 'size_suggestion', search_outcome: 'click', completion: size });
           self.input.value = size;
+          // Rear box filled: this completion is the front of a pair — go to
+          // the pair page (or say why not), never the single size alone.
+          if (self._ptRearVal()) {
+            var ptPick = self._ptPairFromBoxes(size);
+            if (ptPick) { self._ptSubmitPair(ptPick, size); return; }
+          }
           self.addRecentSearch(size);
           // Navigate straight to the filtered collection — re-running
           // search() would just render another single-row dropdown that
@@ -2790,7 +3784,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
 
+      /* Rear box filled (search() only gets here with a front that has no
+         rim yet, e.g. "225/40"): every row is a front + rear pair, so picking
+         one never drops the rear. Rows that can't be a pair are left out. */
+      if (this._ptRearVal()) {
+        const ptRows = [];
+        results.forEach(row => {
+          const full = row.title.split(' ')[0];
+          const n = this.normalizeTireSize(full);
+          if (!n || !n.rim) return;
+          const pr = this._ptPairFromBoxes(full, query);
+          if (pr === null) ptRows.push(row); // same size as the rear: one size, as typed
+          else if (pr.url) ptRows.push({ type: 'size', ptSet: true, title: pr.front + ' + ' + pr.rear, meta: 'Front + rear set', url: pr.url });
+        });
+        if (!ptRows.length) { this.hideResults(); return; }
+        this.renderResults(ptRows.slice(0, 6));
+        this._ptPend('text', 'sizes', { size: sizeStr, sizes_count: 2, query_len: String(query || '').length });
+        return;
+      }
+
       this.renderResults(results.slice(0, 6));
+      // One complete size: quick filters (season pills + brand) under it.
+      if (results.length === 1 && rim && this.mode === 'tires') {
+        this._hfAttach({ kind: 'single', key: 's|' + sizeStr, title: sizeStr, width: width, aspect: aspect, rim: rim }, intent);
+      }
       /* Live suggestion, not a search yet — reported if they pick a row or
          press Enter, dropped if they keep typing. */
       this._ptPend('text', 'sizes', { size: sizeStr, sizes_count: 1, query_len: String(query || '').length });
@@ -2913,7 +3930,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const fitment = await this.fetchWheelFitment(vehicle);
           const gotFitment = !!(fitment && fitment.vehicle);
           if (gotFitment) {
-            this.renderWheelFitment(fitment, vLabelClean);
+            this.renderWheelFitment(fitment, vLabelClean, vehicle);
           } else {
             this.showNoWheelFitment(vLabelClean, query);
           }
@@ -2946,18 +3963,23 @@ document.addEventListener('DOMContentLoaded', function() {
           /* User specified a trim and we found it — go straight to collection */
           const trimLabel = trimsLabel + ' ' + trims[0].trim;
           const url = this.buildCollectionUrl({ tireSize: trims[0].size, brand: intent.brand, season: intent.season });
+          /* Every size the trim lists, never only the first (picking the row
+             asks the front / rear check, which lists them). */
+          const all = Array.isArray(trims[0].allSizes) && trims[0].allSizes.length > 1 ? trims[0].allSizes : null;
+          const sizeMeta = all ? all.slice(0, 2).join(' / ') + (all.length > 2 ? ' +' + (all.length - 2) : '') : trims[0].size;
           this.renderResults([{
             type: 'vehicle',
             title: trimLabel,
-            meta: trims[0].size + (intent.season ? ' · ' + intent.season : '') + (intent.brand ? ' · ' + intent.brand : ''),
+            meta: sizeMeta + (intent.season ? ' · ' + intent.season : '') + (intent.brand ? ' · ' + intent.brand : ''),
             url: url,
+            pair: this._pairQuery(vehicle, trims[0], intent, trimLabel),
           }]);
           ptVeh.size = trims[0].size;
           ptVeh.sizes_count = 1;
           ptVeh.trims_count = 1;
           this._ptPend(this._ptMethodFor(query), 'sizes', ptVeh);
         } else if (trims && trims.length > 0) {
-          this.renderTrimResults(trimsLabel, trims, intent);
+          this.renderTrimResults(trimsLabel, trims, intent, vehicle);
           /* sizes_count counts SIZES, not trims — six trims that share one OEM
              size are one size. trims_count carries the list length. */
           ptVeh.sizes_count = this._ptDistinctSizes(trims);
@@ -3280,6 +4302,20 @@ document.addEventListener('DOMContentLoaded', function() {
       var searchIn = makeData ? [[foundMake, makeData]] : Object.entries(data.models);
       var modelData = null;
 
+      /* The typed trim words can finish a LONGER model name: "C63" + "AMG S
+         Coupe" is the C63 AMG S, not the C63 AMG (a different car with other
+         front / rear sizes). The longest model that the model + trim text
+         starts with wins; only when it is longer than the model text. */
+      var fullClean = vehicle.trim ? (modelLower + ' ' + String(vehicle.trim).toLowerCase()).replace(/[-\s]/g, '') : '';
+      if (fullClean && makeData) {
+        var longest = null;
+        for (var [mn, md] of Object.entries(makeData)) {
+          var mnc = mn.toLowerCase().replace(/[-\s]/g, '');
+          if (mnc.length > modelClean.length && mnc.indexOf(modelClean) === 0 && fullClean.indexOf(mnc) === 0 && (!longest || mnc.length > longest.len)) longest = { mn: mn, md: md, len: mnc.length };
+        }
+        if (longest) return { makeKey: foundMake, modelKey: longest.mn, modelData: longest.md };
+      }
+
       for (var [mk, models] of searchIn) {
         for (var [mn, md] of Object.entries(models)) {
           if (mn.toLowerCase() === modelLower) { modelData = md; foundMake = mk; foundModel = mn; break; }
@@ -3352,7 +4388,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return trims;
     }
 
-    renderTrimResults(vehicleLabel, trims, intent) {
+    renderTrimResults(vehicleLabel, trims, intent, vehicle) {
       this.loading.hidden = true;
       intent = intent || {};
 
@@ -3378,7 +4414,9 @@ document.addEventListener('DOMContentLoaded', function() {
       this.list.innerHTML = html;
 
       this.items = this.list.querySelectorAll('.hero-smart-search__trim-row');
-      this.items.forEach(item => {
+      this.items.forEach((item, i) => {
+        var pq = vehicle ? this._pairQuery(vehicle, trims[i], intent, vehicleLabel + ' ' + trims[i].trim) : null;
+        if (pq) { item._ptPair = pq; item.setAttribute('data-pairs', '1'); }
         item.addEventListener('click', () => this.selectResult(item));
       });
 
@@ -3416,7 +4454,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
 
-    renderWheelFitment(fitment, vLabel) {
+    renderWheelFitment(fitment, vLabel, vehicle) {
       this.loading.hidden = true;
       this.awaitingTrim = false;
       this.awaitingSelection = false;
@@ -3435,41 +4473,50 @@ document.addEventListener('DOMContentLoaded', function() {
       // PRIMARY CTA — "Wheels that fit your car" combines the OEM bolt
       // pattern + all OEM diameters + a center-bore constraint (wheel bore
       // must be ≥ OEM hub bore; smaller wouldn't physically seat on the hub).
-      // Larger bores can be made hub-centric with a ring, so we include every
-      // catalog bore ≥ the OEM value as repeated filter params.
+      // A vehicle's bolt pattern is ONE pattern ("6x139.7"), but a wheel drilled
+      // for two is stored as one string ("6x135/6x139.7"), and Shopify facets
+      // match the whole string. Filtering on the bare pattern found 20 of the
+      // 219 wheels that actually fit a Tacoma; 5x139.7 found 0 of 276.
+      // So hand the raw pattern to /collections/wheels as pt_bolt and let
+      // pt-wheel-search expand it there — that snippet reads the live facet, so
+      // the catalogue list can never go stale the way a copy here would.
       //
-      // The bore set is hardcoded from a catalog scan (2026-05-22 audit).
-      // If new wheel SKUs introduce new bores, update this list — or move
-      // it to assets/pt-wheel-bores.json the same way pt-tire-sizes.json
-      // is built.
-      var CATALOG_BORES = [54.1, 57.1, 60.1, 63.4, 64.1, 66.6, 67.1, 71.5, 73.1, 84, 87.1, 106.1, 108, 110.1, 131];
+      // Centre bore is deliberately NOT filtered. It used to be, against a list
+      // hardcoded from a 2026-05-22 catalog scan; the catalogue has moved on and
+      // that list now misses the four commonest bores (74.1, 125.1, 78.1,
+      // 108.1), hiding ~1,100 of ~1,400 active wheels. A larger bore is made
+      // hub-centric with a centring ring, so it is a fitting detail, not a
+      // filter — the wheel's own page states its bore.
       var fitsButton = '';
       if (fitment.bolt_pattern && diameters.length) {
         var fitsUrl = '/collections/wheels'
-          + '?filter.p.m.custom.bolt_pattern=' + encodeURIComponent(fitment.bolt_pattern);
+          + '?pt_bolt=' + encodeURIComponent(fitment.bolt_pattern);
         diameters.forEach(function(d){
           fitsUrl += '&filter.p.m.custom.rim_diameter=' + encodeURIComponent(d);
         });
-        // Center-bore constraint: wheel bore must be ≥ OEM hub bore.
-        // Pre-2010 / non-NHTSA-listed vehicles may not have a bore value —
-        // in that case we skip the constraint rather than over-filter.
-        var oemBore = parseFloat(fitment.center_bore);
-        if (isFinite(oemBore) && oemBore > 0) {
-          CATALOG_BORES.filter(function(b) { return b >= oemBore; }).forEach(function(b) {
-            // Catalog stores bores as the string form ("64.1" not "64.10");
-            // emit each candidate as the same string Shopify indexed.
-            var s = (b % 1 === 0) ? String(b) : b.toString();
-            fitsUrl += '&filter.p.m.custom.center_bore=' + encodeURIComponent(s);
-          });
-        }
         fitsButton = '<a class="hsf-wf__cta hsf-wf__cta--primary" href="' + fitsUrl + '" data-wf-fits="true">' +
           '⚙️ Wheels that fit your ' + self.escapeHtml(vLabel.split(' ').slice(1).join(' ')) +
           ' →</a>';
       }
 
+      // PACKAGE CTA — the wheel + tire package builder for this exact vehicle.
+      // Gated: the section setting must be on AND the wheel-package page must
+      // exist, so a theme push never links to a 404 or to a builder that's off.
+      var packageButton = '';
+      var pkgPageUrl = {%- assign hss_pkg_page = pages['wheel-package'] -%}{%- if section.settings.show_package_cta and hss_pkg_page != empty -%}{{ hss_pkg_page.url | json }}{%- else -%}null{%- endif -%};
+      if (pkgPageUrl && vehicle && vehicle.year && vehicle.make && vehicle.model) {
+        var pkgUrl = pkgPageUrl + '?y=' + encodeURIComponent(vehicle.year)
+          + '&mk=' + encodeURIComponent(vehicle.make)
+          + '&md=' + encodeURIComponent(vehicle.model)
+          + (vehicle.trim ? '&tr=' + encodeURIComponent(vehicle.trim) : '');
+        packageButton = '<a class="hsf-wf__cta hsf-wf__cta--primary hsf-wf__cta--package" href="' + self.escapeAttr(pkgUrl) + '" data-wf-package="true">' +
+          'Build a wheel &amp; tire package →</a>';
+      }
+
       // Secondary diameter-only buttons (kept for browsing)
       var diameterButtons = diameters.map(function(d){
         var url = '/collections/wheels?filter.p.m.custom.rim_diameter=' + encodeURIComponent(d);
+        if (window.PTRim) url = window.PTRim.route(url);
         return '<a class="hsf-wf__cta hsf-wf__cta--secondary" href="' + url + '" data-wf-diameter="' + d + '">' + d + '" wheels →</a>';
       }).join('');
 
@@ -3479,7 +4526,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var url = '/collections/tires'
           + '?filter.p.m.custom.tire_width=' + encodeURIComponent(parsed.width)
           + '&filter.p.m.custom.tire_profile=' + encodeURIComponent(parsed.profile)
-          + '&filter.p.m.custom.rim_diameter=' + encodeURIComponent(parsed.rim);
+          + '&filter.p.m.custom.rim_diameter=' + encodeURIComponent(parsed.rim)
+          + '&sort_by=price-ascending';
+        if (window.PTRim) url = window.PTRim.route(url);
         return '<a class="hsf-wf__cta hsf-wf__cta--secondary" href="' + url + '" data-wf-tire="' + self.escapeAttr(parsed.canonical) + '">Buy OEM tires (' + self.escapeHtml(parsed.canonical) + ') →</a>';
       }).filter(Boolean).join('');
 
@@ -3502,7 +4551,7 @@ document.addEventListener('DOMContentLoaded', function() {
           (specsRow.length ? '<div class="hsf-wf__specs">' + specsRow.join('') + '</div>' : '') +
           (sizesLine ? '<div class="hsf-wf__row"><span class="hsf-wf__row-label">OEM wheel sizes</span><span class="hsf-wf__row-chips">' + sizesLine + '</span></div>' : '') +
           (tiresLine ? '<div class="hsf-wf__row"><span class="hsf-wf__row-label">OEM tire sizes</span><span class="hsf-wf__row-chips">' + tiresLine + '</span></div>' : '') +
-          '<div class="hsf-wf__ctas">' + fitsButton + diameterButtons + tireLinks + '</div>' +
+          '<div class="hsf-wf__ctas">' + packageButton + fitsButton + diameterButtons + tireLinks + '</div>' +
         '</li>';
 
       this.list.innerHTML = html;
@@ -3511,6 +4560,13 @@ document.addEventListener('DOMContentLoaded', function() {
       this.results.hidden = false;
       this.input.setAttribute('aria-expanded', 'true');
 
+      // Track the package builder CTA
+      this.list.querySelectorAll('[data-wf-package]').forEach(function(a) {
+        a.addEventListener('click', function() {
+          window.PTTireParse && window.PTTireParse.track({ surface: 'homepage', search_query: vLabel, search_type: 'wheel_fitment_package', search_outcome: 'click' });
+          self.addRecentSearch(vLabel);
+        });
+      });
       // Track "Wheels that fit your car" primary CTA — the headline action
       this.list.querySelectorAll('[data-wf-fits]').forEach(function(a) {
         a.addEventListener('click', function() {
@@ -3650,12 +4706,13 @@ document.addEventListener('DOMContentLoaded', function() {
         else icon = this.searchIcon();
 
         var tag;
-        if (r.type === 'size') tag = 'Size';
+        if (r.ptSet) tag = 'Set';
+        else if (r.type === 'size') tag = 'Size';
         else if (r.type === 'vehicle') tag = 'Vehicle';
         else if (r.type === 'service') tag = 'Service';
         else tag = 'Search';
 
-        return '<li class="hero-smart-search__result-item" role="option" data-index="' + i + '" data-url="' + this.escapeAttr(r.url) + '">' +
+        return '<li class="hero-smart-search__result-item' + (r.ptSet ? ' hero-smart-search__result-item--set' : '') + '" role="option" data-index="' + i + '" data-url="' + this.escapeAttr(r.url) + '">' +
           '<span class="hero-smart-search__result-icon">' + icon + '</span>' +
           '<span class="hero-smart-search__result-info">' +
             '<span class="hero-smart-search__result-title">' + this.escapeHtml(r.title) + '</span>' +
@@ -3666,7 +4723,8 @@ document.addEventListener('DOMContentLoaded', function() {
       }).join('');
 
       this.items = this.list.querySelectorAll('.hero-smart-search__result-item');
-      this.items.forEach(item => {
+      this.items.forEach((item, i) => {
+        if (results[i] && results[i].pair) { item._ptPair = results[i].pair; item.setAttribute('data-pairs', '1'); }
         item.addEventListener('click', () => this.selectResult(item));
       });
 
@@ -3874,7 +4932,116 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
 
+    /* Staggered sets: a trim row whose trim lists 2+ sizes carries what
+       PTVehiclePairs.lookup needs (assets/pt-vehicle-pairs.js). null for a
+       one-size trim: the row works exactly as before. */
+    _pairQuery(vehicle, t, intent, label) {
+      if (this.mode === 'wheels' || !vehicle || !t || !Array.isArray(t.allSizes) || t.allSizes.length < 2) return null;
+      intent = intent || {};
+      return { year: vehicle.year, make: vehicle.make, model: vehicle.model, trim: t.trim, sizes: t.allSizes.slice(), brand: intent.brand || null, season: intent.season || null, label: label };
+    }
+
+    /* Picking a multi-size trim: ask which sizes go front and rear. One sure
+       factory set -> straight to the pair results; several sets, or no set
+       but 2+ different sizes -> a short list (sets, same-size-on-all-4 sizes,
+       single sizes; "front or rear only?" when the server can't place one);
+       no answer at all (endpoint down, timeout) for 2+ different sizes -> the
+       same list with "front and rear may differ". Only a trim whose sizes are
+       really one size goes to the row's own URL. Never a silent sizes[0]. */
+    async _selectPair(item) {
+      if (item._ptPairBusy) return;
+      item._ptPairBusy = true;
+      const tok = this._pairTok = (this._pairTok || 0) + 1;
+      const q = item._ptPair;
+      const VP = window.PTVehiclePairs;
+      const sizeEl = item.querySelector('.hero-smart-search__trim-size, .hero-smart-search__result-meta');
+      const before = sizeEl ? sizeEl.textContent : null;
+      item.setAttribute('aria-busy', 'true');
+      if (sizeEl) sizeEl.textContent = 'Checking front and rear sizes…';
+      let ans = null;
+      try { ans = await VP.lookup({ year: q.year, make: q.make, model: q.model, trim: q.trim, sizes: q.sizes }); } catch (e) { ans = null; }
+      item._ptPairBusy = false;
+      item.removeAttribute('aria-busy');
+      if (sizeEl && before != null) sizeEl.textContent = before;
+      // A new search (or a redrawn list) since the click: this answer is stale.
+      if (tok !== this._pairTok || !this.list.contains(item)) return;
+      const one = ans && VP.only(ans);
+      const oneUrl = one && VP.url({ front: one.front, rear: one.rear, seasons: q.season ? [q.season] : [], brand: q.brand });
+      if (oneUrl) {
+        this.awaitingTrim = false;
+        this.awaitingSelection = false;
+        this.addRecentSearch(this.input.value);
+        this._ptFlushPending();
+        this._ptGo(oneUrl);
+        return;
+      }
+      if (ans && ans.staggered) { this.renderPairChoices(q, ans); return; }
+      if (ans && this._ptSizeKeys(ans.others.concat(ans.sameSize)).length > 1) { this.renderPairChoices(q, ans); return; }
+      if (!ans) {
+        const dist = this._ptSizeKeys(q.sizes || []);
+        if (dist.length > 1) {
+          this.renderPairChoices(q, { staggered: false, confident: false, mayDiffer: true, failed: true, pairs: [], sameSize: [], others: dist.map(d => d.size) });
+          return;
+        }
+      }
+      item._ptPairDone = true;
+      this.selectResult(item);
+    }
+
+    /* One entry per real size (245/40R20 = 245/40ZR20 = P245/40R20), first
+       spelling kept: [{ key, size }]. */
+    _ptSizeKeys(list) {
+      const seen = {}, out = [];
+      (list || []).forEach(s => {
+        const k = String(s || '').toUpperCase().replace(/\s+/g, '').replace(/^(?:P|LT|ST|T)(?=\d)/, '').replace(/[A-Z]?R(?=\d)/, 'R');
+        if (!k || seen[k]) return;
+        seen[k] = 1; out.push({ key: k, size: String(s).trim() });
+      });
+      return out;
+    }
+
+    renderPairChoices(q, ans) {
+      const VP = window.PTVehiclePairs;
+      this.loading.hidden = true;
+      const seasonBadge = q.season ? ' <span class="hero-smart-search__intent-badge">' + this.escapeHtml(q.season) + '</span>' : '';
+      const brandBadge = q.brand ? ' <span class="hero-smart-search__intent-badge">' + this.escapeHtml(q.brand) + '</span>' : '';
+      const rows = [];
+      ans.pairs.forEach(x => {
+        const u = VP.url({ front: x.front, rear: x.rear, seasons: q.season ? [q.season] : [], brand: q.brand });
+        if (u) rows.push({ t: x.front + ' front + ' + x.rear + ' rear', m: 'Front + rear set', u: u });
+      });
+      ans.sameSize.forEach(sz => rows.push({ t: sz, m: 'Same size on all four', u: this.buildCollectionUrl({ tireSize: sz, brand: q.brand, season: q.season }) }));
+      // A size the server could not place (or any size when the check failed)
+      // may be only the front or only the rear one: never "your size".
+      ans.others.forEach(sz => rows.push({ t: sz, m: ans.mayDiffer ? 'One size · front or rear only?' : 'One size', u: this.buildCollectionUrl({ tireSize: sz, brand: q.brand, season: q.season }) }));
+      const say = ans.staggered ? VP.sentence(ans, q.label) + ' ' + VP.note
+        : (ans.mayDiffer ? (ans.failed ? 'We couldn\u2019t check front and rear sizes. ' : '') + 'Front and rear may differ on this car \u2014 check the sticker in the driver\u2019s door.' : '');
+      let html = '<li class="hero-smart-search__trim-header">' +
+        '<span class="hero-smart-search__trim-vehicle">' + this.escapeHtml(q.label || '') + seasonBadge + brandBadge + '</span>' +
+        '<span class="hero-smart-search__trim-label">Choose your tires</span>' +
+        (say ? '<span class="hero-smart-search__trim-cue" data-pair-say>' + this.escapeHtml(say) + '</span>' : '') +
+      '</li>';
+      html += rows.map((r, i) =>
+        '<li class="hero-smart-search__trim-row" role="option" data-index="' + i + '" data-url="' + this.escapeAttr(r.u) + '">' +
+          '<span class="hero-smart-search__trim-name">' + this.escapeHtml(r.t) + '</span>' +
+          '<span class="hero-smart-search__trim-size">' + this.escapeHtml(r.m) + '</span>' +
+        '</li>').join('');
+      this.list.innerHTML = html;
+      this.items = this.list.querySelectorAll('.hero-smart-search__trim-row');
+      this.items.forEach(item => {
+        item.addEventListener('click', () => this.selectResult(item));
+      });
+      this.awaitingTrim = true;
+      this.selectedIndex = -1;
+      this.results.hidden = false;
+      this.input.setAttribute('aria-expanded', 'true');
+    }
+
     selectResult(item) {
+      if (item._ptPair && !item._ptPairDone && window.PTVehiclePairs && typeof window.PTVehiclePairs.lookup === 'function') {
+        this._selectPair(item);
+        return;
+      }
       this.awaitingTrim = false;
       this.awaitingSelection = false;
       const url = item.dataset.url;
@@ -3882,6 +5049,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Persist this search in the recent-searches history so the customer
         // sees it on their next visit (or on the next empty focus).
         this.addRecentSearch(this.input.value);
+        // The size / set row under the quick filters: report what it opens.
+        const hf = this._hf;
+        if (hf && hf.row === item && this._ptPending && this._ptPending.info) {
+          this._ptPending.info.season = hf.season ? this._hfDef(hf.season).t : null;
+          this._ptPending.info.brand = hf.brand || null;
+        }
         // Picking a row is the commit for everything the live-suggest path
         // rendered — sizes, trims, brand filters, wheel fitment.
         this._ptFlushPending();
@@ -3992,6 +5165,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     onSubmit() {
+      const ptPair = this._ptPairFromBoxes(this.input.value.trim());
+      if (ptPair) { this._ptSubmitPair(ptPair, this.input.value.trim()); return; }
+
       if (this.awaitingTrim) {
         this.showPrompt('Pick one to continue');
         return;
@@ -4049,15 +5225,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (parsed) {
         this.addRecentSearch(query);
+        // Quick filters chosen under this same size (typed words still count).
+        const ch = this._hfChoice('s|' + parsed.size, intent);
         /* Committed: Enter / the arrow. Emitted now, which also cancels the
            pending copy the live-suggest path left behind for this same query. */
-        this._ptEmit('text', 'sizes', { size: parsed.size, sizes_count: 1, query_len: query.length });
+        this._ptEmit('text', 'sizes', { size: parsed.size, sizes_count: 1, query_len: query.length, season: ch.tSeason, brand: ch.brand });
         this._ptGo(this.buildCollectionUrl({
           width: parsed.width,
           aspect: parsed.aspect,
           rim: parsed.rim,
-          brand: intent.brand,
-          season: intent.season,
+          brand: ch.brand,
+          season: ch.season,
           serviceType: intent.serviceType,
         }));
       } else if (intent.brand || intent.season || intent.serviceType || intent.rim) {
@@ -4846,6 +6024,13 @@ document.addEventListener('DOMContentLoaded', function() {
   "tag": "section",
   "class": "section-hero-smart-search",
   "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_package_cta",
+      "default": false,
+      "label": "Show 'Build a wheel & tire package' on wheel results",
+      "info": "Turn on only after the 'wheel-package' page exists and the builder is enabled in the app. It also stays hidden while that page is missing."
+    },
     {
       "type": "header",
       "content": "Hero background slideshow"

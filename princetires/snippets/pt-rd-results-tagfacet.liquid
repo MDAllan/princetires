@@ -1,0 +1,179 @@
+{% doc %}
+  One filter group built from PRODUCT TAGS, filtered through Shopify's
+  collection tag URL (/collections/<handle>/<tag-handle>[+<tag-handle>]).
+  Fallback for the wheel Finish / Wheel type / Winter approved filters while
+  Search & Discovery has no Tag filter (filter.p.tag). As soon as a Tag
+  filter exists, pt-collection-sidebar uses pt-rd-results-facet instead and
+  this snippet is not rendered.
+
+  How it combines with the other filters: the tag is part of the PATH and
+  every other filter stays in the query string, so
+    /collections/wheels/gloss-black?filter.p.m.custom.bolt_pattern=5x114.3
+  means Gloss Black AND 5x114.3 (checked live 2026-11-14: 335 gloss black,
+  438 in 5x114.3, 135 both). Several tags in the path are ANDed by Shopify,
+  so options in the same group replace each other (`exclusive`), except the
+  handles listed in `free` (Winter approved can be added to Alloy).
+  Clear all goes back to the plain collection URL (no tags).
+
+  Same markup as pt-rd-results-facet (role="checkbox" links), so the same
+  accordion, summary, search, "Show more" and drawer batching apply
+  (assets/pt-rd-results.js reads data-tag / data-tag-x). Tag data has no
+  counts, so these options are never greyed out; the drawer button still
+  shows the real count for the pending choice. No counts are shown (owner
+  rule).
+
+  @param {string} tags - Tag names in display order, joined with '|'
+  @param {string} title - Group heading
+  @param {string} id - Unique slug (ids, data-rd-group, data-tag-x)
+  @param {string} cur - Applied tag handles as '|h1|h2|' (from current_tags)
+  @param {string} base - collection.url
+  @param {string} [q] - Query string to keep (filters + sort), no leading '?'
+  @param {boolean} [exclusive] - One tag of this group at a time
+  @param {string} [free] - Handles exempt from `exclusive`, as '|h|h|'
+  @param {string} [labels] - 'Raw=>Label;;Raw2=>Label2'
+  @param {string} [note] - Short paragraph at the top of the group
+  @param {number} [limit] - Show this many, the rest behind "Show more"
+  @param {string} [more_noun] - Word for the more button
+  @param {string} [search] - Placeholder; adds a search box when 10+ options
+  @param {number} [min_values] - Fewest options to render (default 2)
+  @param {boolean} [open] - Start expanded
+
+  @example
+    {% render 'pt-rd-results-tagfacet', tags: fin_tags, title: 'Finish', id: 'finish', cur: sb_cur_tags, base: collection.url, q: sb_tag_q, exclusive: true, limit: 6, more_noun: 'finishes', search: 'Find a finish' %}
+{% enddoc %}
+{%- liquid
+  assign tf_list = tags | default: '' | split: '|'
+  assign tf_pairs = labels | default: '' | split: ';;'
+  assign tf_min = min_values | default: 2
+  assign tf_free = free | default: '||'
+  assign tf_cur = cur | default: '||'
+  assign tf_cur_list = tf_cur | split: '|'
+  assign tf_q = q | default: ''
+
+  assign tf_group = '|'
+  for t in tf_list
+    if t != blank
+      assign th = t | handleize
+      assign tf_group = tf_group | append: th | append: '|'
+    endif
+  endfor
+
+  assign tf_live = 0
+  assign tf_active = 0
+  assign tf_sum = ''
+  # Handles already printed: tags with different names can share a handle
+  # ("Satin Black + Milled Holes" / "Satin Black Milled Holes"), and the
+  # tag URL only knows the handle, so the first name wins and the rest are
+  # skipped (one row per data-tag).
+  assign tf_seen = '|'
+-%}
+{%- capture tf_opts -%}
+  {%- for t in tf_list -%}
+    {%- if t == blank -%}{%- continue -%}{%- endif -%}
+    {%- liquid
+      assign th = t | handleize
+      assign th_tok = '|' | append: th | append: '|'
+      assign t_dupe = false
+      if tf_seen contains th_tok
+        assign t_dupe = true
+      else
+        assign tf_seen = tf_seen | append: th | append: '|'
+      endif
+    -%}
+    {%- if t_dupe -%}{%- continue -%}{%- endif -%}
+    {%- liquid
+      assign t_on = false
+      if tf_cur contains th_tok
+        assign t_on = true
+      endif
+      assign t_excl = false
+      if exclusive
+        unless tf_free contains th_tok
+          assign t_excl = true
+        endunless
+      endif
+
+      # The tag set this link applies (no-JS / ctrl-click; the JS does the same).
+      assign t_new = ''
+      for c in tf_cur_list
+        if c == blank or c == th
+          continue
+        endif
+        assign c_tok = '|' | append: c | append: '|'
+        if t_excl and t_on == false
+          if tf_group contains c_tok
+            unless tf_free contains c_tok
+              continue
+            endunless
+          endif
+        endif
+        if t_new != ''
+          assign t_new = t_new | append: '+'
+        endif
+        assign t_new = t_new | append: c
+      endfor
+      unless t_on
+        if t_new != ''
+          assign t_new = t_new | append: '+'
+        endif
+        assign t_new = t_new | append: th
+      endunless
+      assign t_href = base
+      if t_new != ''
+        assign t_href = t_href | append: '/' | append: t_new
+      endif
+      if tf_q != ''
+        assign t_href = t_href | append: '?' | append: tf_q
+      endif
+
+      assign tl = t
+      for pair in tf_pairs
+        assign kv = pair | split: '=>'
+        if kv[0] == t
+          assign tl = kv[1]
+          break
+        endif
+      endfor
+
+      assign tf_live = tf_live | plus: 1
+      if t_on
+        assign tf_active = tf_active | plus: 1
+        if tf_sum != ''
+          assign tf_sum = tf_sum | append: ', '
+        endif
+        assign tf_sum = tf_sum | append: tl
+      endif
+    -%}
+    <a class="rd-fopt" href="{{ t_href | escape }}" rel="nofollow" role="checkbox" aria-checked="{{ t_on }}" data-tag="{{ th }}"{% if t_excl %} data-tag-x="{{ id }}"{% endif %} data-ord="{{ forloop.index }}" data-label="{{ tl | escape }}">
+      <span class="rd-fbox" aria-hidden="true">{% render 'pt-icon', name: 'check', size: 14 %}</span>
+      <span class="rd-opt__text">{{ tl | escape }}</span>
+    </a>
+  {%- endfor -%}
+{%- endcapture -%}
+{%- if tf_live >= tf_min or tf_active > 0 -%}
+  {%- liquid
+    assign tf_open = false
+    if open or tf_active > 0
+      assign tf_open = true
+    endif
+  -%}
+<div class="rd-acc rd-fgroup" data-rd-group="{{ id }}" data-rd-taggroup>
+  <button class="rd-acc__head" type="button" id="rdf-{{ id }}-h" aria-expanded="{{ tf_open }}" aria-controls="rdf-{{ id }}">
+    <span class="rd-fgroup__title">{{ title }}</span>
+    <span class="rd-acc__sum" data-rd-sum data-any="Any">{% if tf_sum != '' %}{{ tf_sum | escape }}{% else %}Any{% endif %}</span>
+    {%- render 'pt-icon', name: 'chevron-down', size: 18, class: 'rd-acc__chev' -%}
+  </button>
+  <div class="rd-acc__body" id="rdf-{{ id }}" role="group" aria-labelledby="rdf-{{ id }}-h">
+    {%- if note != blank -%}<p class="rd-fnote">{{ note }}</p>{%- endif -%}
+    {%- if search != blank and tf_live >= 10 -%}
+      <input type="search" class="rd-input rd-fsearch" placeholder="{{ search | escape }}" aria-label="{{ search | escape }}" data-rd-fsearch autocomplete="off">
+    {%- endif -%}
+    <div class="rd-fopts" data-rd-opts{% if limit %} data-rd-limit="{{ limit }}"{% endif %}>
+      {{- tf_opts -}}
+    </div>
+    {%- if limit -%}
+      <button type="button" class="rd-btn rd-btn--text rd-fmore" data-rd-more data-noun="{{ more_noun | default: 'options' }}" data-kind="more" aria-expanded="false" hidden>Show more</button>
+    {%- endif -%}
+  </div>
+</div>
+{%- endif -%}

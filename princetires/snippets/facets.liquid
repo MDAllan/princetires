@@ -7,6 +7,13 @@
   - enable_sorting: {Boolean} Show sorting when true
   - filter_type: {String} Type of filter
   - paginate: {Object}
+  - pt_mode: {String} optional, search page only: 'tires' or 'wheels'. When set,
+    filters are ordered for that mode, filters that can't narrow anything are
+    hidden, and the product type filter is replaced by the Tires/Wheels toggle.
+    Blank (every other caller) = unchanged Dawn behaviour.
+  - pt_show_type: {Boolean} optional, with pt_mode 'tires' on a tires-only search:
+    keep the Product type filter (Passenger, Light Truck, ...), since there is no
+    Tires/Wheels toggle to replace it.
 
   Usage:
   {% render 'facets', results: collection, enable_filtering: true, enable_sorting: true, filter_type: 'vertical', paginate: paginate %}
@@ -24,9 +31,89 @@
     assign results_url = results.url
   else
     assign terms = results.terms | escape
-    assign results_url = '?q=' | append: terms | append: '&options%5Bprefix%5D=last&sort_by=' | append: sort_by
+    # results.terms is already HTML-escaped: decode, then URL-encode, so "Clear all"
+    # keeps queries with & " ' intact. type=product keeps pages/articles out.
+    assign pt_terms_enc = results.terms | replace: '&quot;', '"' | replace: '&#39;', "'" | replace: '&#x27;', "'" | replace: '&lt;', '<' | replace: '&gt;', '>' | replace: '&amp;', '&' | url_encode
+    assign results_url = '?q=' | append: pt_terms_enc | append: '&type=product&options%5Bprefix%5D=last&sort_by=' | append: sort_by
+  endif
+  assign pt_hide_type = false
+  if pt_mode != blank and pt_show_type != true
+    assign pt_hide_type = true
+  endif
+
+  # ── Prince Tires: per-mode filter list (search page only) ──
+  # pt_filters is what the desktop list and the phone drawer loop over.
+  if pt_mode != blank
+    case pt_mode
+      when 'wheels'
+        # Owner order 2026-10-31: Diameter, Bolt pattern, Width, Offset, Brand, Price, Availability, Center bore last
+        assign pt_order = 'filter.p.m.custom.rim_diameter,filter.p.m.custom.bolt_pattern,filter.p.m.custom.rim_width,filter.p.m.custom.rim_offset,filter.p.vendor,filter.v.price,filter.v.availability,filter.p.m.custom.center_bore' | split: ','
+      else
+        assign pt_order = 'filter.p.m.custom.tire_width,filter.p.m.custom.tire_profile,filter.p.m.custom.rim_diameter,filter.p.m.custom.seasonality,filter.p.vendor,filter.p.product_type,filter.p.m.custom.service_type,filter.p.m.custom.performance_category,filter.p.m.custom.ply_rating,filter.p.m.custom.stud_option,filter.p.m.custom.run_flat,filter.p.m.custom.tire_model,filter.v.price,filter.v.availability' | split: ','
+    endcase
+    assign pt_filters = '' | split: ','
+    assign pt_shown = ','
+    for pt_p in pt_order
+      for f in results.filters
+        if f.param_name != pt_p
+          continue
+        endif
+        if pt_p == 'filter.p.product_type' and pt_hide_type
+          continue
+        endif
+        assign pt_keep = true
+        if f.type == 'price_range'
+          if f.range_max == 0 or f.range_max == blank
+            assign pt_keep = false
+          endif
+        elsif f.active_values.size == 0
+          # Hide a filter with fewer than two usable values: it can't narrow anything
+          assign pt_live = 0
+          for v in f.values
+            if v.count > 0
+              assign pt_live = pt_live | plus: 1
+            endif
+          endfor
+          if pt_live < 2
+            assign pt_keep = false
+          endif
+        endif
+        if pt_keep
+          assign pt_one = results.filters | where: 'param_name', pt_p
+          assign pt_filters = pt_filters | concat: pt_one
+          assign pt_shown = pt_shown | append: pt_p | append: ','
+        endif
+      endfor
+    endfor
+    # Any other filter the shopper already applied stays visible so it can be unticked
+    for f in results.filters
+      assign pt_key = ',' | append: f.param_name | append: ','
+      if f.param_name == 'filter.p.product_type' or pt_shown contains pt_key
+        continue
+      endif
+      if f.active_values.size > 0
+        assign pt_one = results.filters | where: 'param_name', f.param_name
+        assign pt_filters = pt_filters | concat: pt_one
+        assign pt_shown = pt_shown | append: f.param_name | append: ','
+      endif
+    endfor
+  else
+    assign pt_filters = results.filters
   endif
 -%}
+{%- capture pt_hidden_inputs -%}
+  {%- if pt_mode != blank -%}
+    {%- comment -%} Active values of filters not shown (the Tires/Wheels product type) ride along as hidden inputs so ticking another filter keeps them. {%- endcomment -%}
+    {%- for f in results.filters -%}
+      {%- assign pt_key = ',' | append: f.param_name | append: ',' -%}
+      {%- if pt_shown contains pt_key -%}{%- continue -%}{%- endif -%}
+      {%- for v in f.active_values -%}
+        <input type="hidden" name="{{ v.param_name | escape }}" value="{{ v.value | escape }}">
+      {%- endfor -%}
+    {%- endfor -%}
+    <input type="hidden" name="type" value="product">
+  {%- endif -%}
+{%- endcapture -%}
 
 <div class="facets-container{% if filter_type == 'drawer' %} facets-container-drawer{% endif %}{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--fade-in{% endif %}">
   {%- if filter_type == 'vertical' or filter_type == 'horizontal' -%}
@@ -39,6 +126,7 @@
           <input type="hidden" name="q" value="{{ results.terms | escape }}">
           <input name="options[prefix]" type="hidden" value="last">
         {%- endif -%}
+        {{ pt_hidden_inputs }}
 
         {% if enable_filtering %}
           {% comment %} Heading is the first tabbable element on filter type horizontal {% endcomment %}
@@ -73,6 +161,7 @@
                   </facet-remove>
                 </div>
                 {%- for filter in results.filters -%}
+                  {%- if pt_hide_type and filter.param_name == 'filter.p.product_type' -%}{%- continue -%}{%- endif -%}
                   {%- for value in filter.active_values -%}
                     <facet-remove>
                       <a href="{{ value.url_to_remove }}" class="active-facets__button active-facets__button--light">
@@ -109,6 +198,7 @@
 
             <script src="{{ 'show-more.js' | asset_url }}" defer="defer"></script>
 
+            {%- unless pt_mode == 'wheels' -%}
             {%- comment -%} ── Tire Width & Ratio custom filters ── {%- endcomment -%}
             {%- assign pt_width_param  = 'filter.p.m.custom.tire_width' -%}
             {%- assign pt_profile_param = 'filter.p.m.custom.tire_profile' -%}
@@ -280,9 +370,10 @@
                 });
               })();
             </script>
+            {%- endunless -%}
 
             {% comment %} Filters for both horizontal and vertical filter {% endcomment %}
-            {%- for filter in results.filters -%}
+            {%- for filter in pt_filters -%}
               {% liquid
                 assign total_active_values = total_active_values | plus: filter.active_values.size
                 assign presentation = filter.presentation | default: default_presentation
@@ -512,6 +603,7 @@
           {%- if filter_type == 'horizontal' -%}
             <div class="active-facets active-facets-desktop">
               {%- for filter in results.filters -%}
+                {%- if pt_hide_type and filter.param_name == 'filter.p.product_type' -%}{%- continue -%}{%- endif -%}
                 {%- for value in filter.active_values -%}
                   <facet-remove>
                     <a href="{{ value.url_to_remove }}" class="active-facets__button active-facets__button--light">
@@ -681,7 +773,7 @@
               class="mobile-facets__main has-submenu gradient"
             >
               {%- if enable_filtering -%}
-                {%- for filter in results.filters -%}
+                {%- for filter in pt_filters -%}
                   {% liquid
                     assign presentation = filter.presentation | default: default_presentation
                     if presentation == 'image'
@@ -949,6 +1041,7 @@
               <input type="hidden" name="q" value="{{ results.terms | escape }}">
               <input name="options[prefix]" type="hidden" value="last">
             {%- endif -%}
+            {{ pt_hidden_inputs }}
           </div>
         </form>
       </facet-filters-form>
@@ -957,6 +1050,7 @@
 
   <div class="active-facets active-facets-mobile medium-hide large-up-hide">
     {%- for filter in results.filters -%}
+      {%- if pt_hide_type and filter.param_name == 'filter.p.product_type' -%}{%- continue -%}{%- endif -%}
       {%- for value in filter.active_values -%}
         <facet-remove>
           <a href="{{ value.url_to_remove }}" class="active-facets__button active-facets__button--light">
@@ -1066,6 +1160,7 @@
       <form id="FacetFiltersPillsForm" class="facets__form">
         <div class="active-facets active-facets-desktop">
           {%- for filter in results.filters -%}
+            {%- if pt_hide_type and filter.param_name == 'filter.p.product_type' -%}{%- continue -%}{%- endif -%}
             {%- for value in filter.active_values -%}
               <facet-remove>
                 <a href="{{ value.url_to_remove }}" class="active-facets__button active-facets__button--light">

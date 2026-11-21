@@ -213,14 +213,35 @@
     { label: 'Book appointment', send: "I'd like to book an appointment" }
   ];
 
+  // The visitor's chat id is the only key to their conversation, so it must be
+  // unguessable: crypto.randomUUID(), else 16 bytes from crypto.getRandomValues.
+  // An id already stored keeps working; one the server would refuse (it wants
+  // 16+ characters of A-Z a-z 0-9 _ -) is replaced.
+  function newSessionId() {
+    var c = window.crypto || window.msCrypto;
+    try { if (c && typeof c.randomUUID === 'function') return 'w-' + c.randomUUID(); } catch (e) {}
+    try {
+      if (c && typeof c.getRandomValues === 'function') {
+        var b = new Uint8Array(16); c.getRandomValues(b);
+        var hex = '';
+        for (var i = 0; i < b.length; i++) hex += (b[i] < 16 ? '0' : '') + b[i].toString(16);
+        return 'w-' + hex;
+      }
+    } catch (e) {}
+    // Very old browsers only.
+    return 'w-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12);
+  }
+  var memSid = '';
   function sessionId() {
     var k = 'pt_chat_sid';
     var v = '';
     try { v = localStorage.getItem(k) || ''; } catch (e) {}
-    if (!v) {
-      v = 'w-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    if (!v) v = memSid;
+    if (!/^[A-Za-z0-9_-]{16,64}$/.test(v)) {
+      v = newSessionId();
       try { localStorage.setItem(k, v); } catch (e) {}
     }
+    memSid = v;
     return v;
   }
 
@@ -390,11 +411,11 @@
     bookingFormEl.className = 'pt-chat__bform';
     var when = (b.label || 'your appointment') + (b.time ? ' at ' + b.time : '');
     bookingFormEl.innerHTML =
-      '<div class="pt-chat__bform-title">Your details to lock in ' + esc(when) + '</div>' +
+      '<div class="pt-chat__bform-title">Your details to request ' + esc(when) + ' — we\'ll confirm by email, usually within the day.</div>' +
       '<input class="pt-chat__bform-in" data-bf-name type="text" placeholder="Full name" autocomplete="name" />' +
       '<input class="pt-chat__bform-in" data-bf-phone type="tel" placeholder="Phone number" autocomplete="tel" />' +
       '<input class="pt-chat__bform-in" data-bf-email type="email" placeholder="Email" autocomplete="email" />' +
-      '<button class="pt-chat__bform-btn" type="button">Confirm booking</button>' +
+      '<button class="pt-chat__bform-btn" type="button">Send request</button>' +
       '<div class="pt-chat__bform-err"></div>';
     msgs.appendChild(bookingFormEl);
     msgs.scrollTop = msgs.scrollHeight;

@@ -1,0 +1,88 @@
+{% doc %}
+  Customer lead time for one product - the ONLY stock wording customers see
+  (owner rule 2026-11-13: never counts, "N+ available", "Low stock",
+  "Only N left", warehouse, shelf or supplier names).
+
+  The decision itself lives in snippets/pt-stock-state.liquid (4th field):
+    today  "Ready today"                 own stock AND pt-supplier-tier = A
+                                         (same rule as the same-day booking floor)
+    1-2    "Ready in 1–2 business days"  own Tier B, supplier stock, untracked
+    order  "Order in"                    available, tracked, nothing on hand
+                                         (never on wheels - they say 1-2)
+    out    "Sold out"                    not available
+  This snippet only renders it, so every page says the same thing.
+
+  @param {product} product - The product
+  @param {variant} [variant] - Defaults to product.selected_or_first_available_variant
+  @param {string} [format] - 'line' (icon + text, default), 'label' (text in a
+    span), 'text' (plain translated text), 'value' (today|1-2|order|out only)
+  @param {boolean} [is_wheel] - The page's own wheel test, if it has one
+  @param {boolean} [hint] - 'line'/'label': add " · ask us for timing" on Order in
+    and " · call us for options" on Sold out
+  @param {boolean} [short] - Phone cards: "Ready in 1–2 days" instead of
+    "Ready in 1–2 business days"
+  @param {number} [icon_size] - Icon size in px for 'line' (default 19)
+  @param {string} [class] - Extra class on the outer span
+
+  Every rendered span carries data-pt-lead="today|1-2|order|out" and the
+  classes rd-lead / rd-lead--today|days|order|out (styles in assets/pt-rd.css).
+
+  @example
+    {% render 'pt-lead-time', product: product, format: 'line' %}
+    {%- capture lead -%}{% render 'pt-lead-time', product: product, format: 'value' %}{%- endcapture -%}
+{% enddoc %}
+{%- liquid
+  capture lt_raw
+    render 'pt-stock-state', product: product, variant: variant, is_wheel: is_wheel
+  endcapture
+  assign lt_parts = lt_raw | strip | split: '|'
+  assign lt_lead = lt_parts[3] | default: 'out'
+  assign lt_text = lt_parts[2] | default: ''
+
+  case lt_lead
+    when 'today'
+      assign lt_mod = 'today'
+      assign lt_icon = 'ready-today'
+    when '1-2'
+      assign lt_mod = 'days'
+      assign lt_icon = 'ready-days'
+      if short
+        assign lt_text = 'products.stock.lead_days_short' | t
+      endif
+    when 'order'
+      assign lt_mod = 'order'
+      assign lt_icon = 'order-in'
+    else
+      assign lt_lead = 'out'
+      assign lt_mod = 'out'
+      assign lt_icon = ''
+  endcase
+  if lt_text == blank
+    assign lt_text = 'products.stock.lead_out' | t
+  endif
+
+  assign lt_hint = ''
+  if hint
+    if lt_lead == 'order'
+      assign lt_hint = 'products.stock.lead_order_hint' | t
+    elsif lt_lead == 'out'
+      assign lt_hint = 'products.stock.lead_out_hint' | t
+    endif
+  endif
+
+  assign lt_format = format | default: 'line'
+  assign lt_size = icon_size | default: 19
+-%}
+{%- case lt_format -%}
+  {%- when 'value' -%}
+    {{- lt_lead -}}
+  {%- when 'text' -%}
+    {{- lt_text -}}
+  {%- when 'label' -%}
+    <span class="rd-lead rd-lead--{{ lt_mod }}{% if class != blank %} {{ class }}{% endif %}" data-pt-lead="{{ lt_lead }}">{{ lt_text }}{% if lt_hint != blank %}<span class="rd-lead__hint"> · {{ lt_hint }}</span>{% endif %}</span>
+  {%- else -%}
+    <span class="rd-lead rd-lead-line rd-lead--{{ lt_mod }}{% if class != blank %} {{ class }}{% endif %}" data-pt-lead="{{ lt_lead }}">
+      {%- if lt_icon != blank -%}{% render 'pt-icon', name: lt_icon, size: lt_size %}{%- endif -%}
+      <span class="rd-lead__text">{{ lt_text }}{% if lt_hint != blank %}<span class="rd-lead__hint"> · {{ lt_hint }}</span>{% endif %}</span>
+    </span>
+{%- endcase -%}

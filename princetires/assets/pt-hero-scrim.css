@@ -1,0 +1,88 @@
+/* ==========================================================================
+   Prince Tires - Hero cinematic scrim + sheen (pt-hero-scrim)
+   Loaded after pt-motion.css. Everything is gated behind html.pt-motion, so
+   with JS off or reduced-motion on, the hero renders exactly as before.
+
+   Why this exists: sections/hero-smart-search.liquid paints ONE flat
+   rgba(0,0,0,.75) sheet over the slideshow. A uniform sheet is what makes a
+   good photo bed read as a dark box. This replaces it with a directional
+   scrim - heavy where the headline and search card sit, open where the photo
+   should breathe - plus a vignette so the frame has edges. The section's own
+   --hero-overlay-opacity still scales the whole thing, so the theme-editor
+   opacity slider keeps working.
+   ========================================================================== */
+
+html.pt-motion .hero-smart-search__slideshow-overlay {
+  --s: var(--hero-overlay-opacity, 0.6);
+  background:
+    /* vignette - corners fall off so the image has a frame */
+    radial-gradient(125% 115% at 62% 42%,
+      transparent 32%,
+      rgba(3, 3, 4, calc(var(--s) * 0.55)) 78%,
+      rgba(3, 3, 4, calc(var(--s) * 0.85)) 100%),
+    /* floor - anchors the search card */
+    linear-gradient(to top,
+      rgba(3, 3, 4, calc(var(--s) * 1.05)) 0%,
+      rgba(3, 3, 4, calc(var(--s) * 0.62)) 26%,
+      transparent 62%),
+    /* text side - copy stays legible without flattening the whole frame */
+    linear-gradient(100deg,
+      rgba(3, 3, 4, calc(var(--s) * 0.98)) 0%,
+      rgba(3, 3, 4, calc(var(--s) * 0.72)) 34%,
+      rgba(3, 3, 4, calc(var(--s) * 0.28)) 66%,
+      rgba(3, 3, 4, calc(var(--s) * 0.16)) 100%),
+    /* header shade - keeps the nav readable over a bright slide */
+    linear-gradient(to bottom,
+      rgba(3, 3, 4, calc(var(--s) * 0.68)) 0%,
+      transparent 22%);
+}
+
+/* Mobile letterboxes the slide (the section switches to object-fit: contain),
+   so a side gradient has nothing to sit on - go mostly vertical there. */
+@media (max-width: 768px) {
+  html.pt-motion .hero-smart-search__slideshow-overlay {
+    background:
+      linear-gradient(to top,
+        rgba(3, 3, 4, calc(var(--s) * 1.08)) 0%,
+        rgba(3, 3, 4, calc(var(--s) * 0.78)) 34%,
+        rgba(3, 3, 4, calc(var(--s) * 0.42)) 68%,
+        rgba(3, 3, 4, calc(var(--s) * 0.62)) 100%);
+  }
+}
+
+/* One slow sheen across the frame after the hero settles - the detail that
+   reads as "lit set" rather than "photo with text on it". Lives inside
+   .hero-smart-search__atmo (overflow: hidden, z-index 0) so it is clipped to
+   the hero and sits under the content. Runs once, not on a loop. */
+html.pt-motion .hero-smart-search__atmo::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  width: 42%;
+  left: -55%;
+  background: linear-gradient(100deg,
+    transparent,
+    rgba(255, 240, 225, 0.05) 42%,
+    rgba(255, 240, 225, 0.09) 52%,
+    transparent);
+  transform: skewX(-12deg);
+  opacity: 0;
+  pointer-events: none;
+}
+html.pt-motion .hero-smart-search.is-loaded .hero-smart-search__atmo::after {
+  animation: pt-hero-sheen 4.6s cubic-bezier(0.22, 0.61, 0.36, 1) 1.1s both;
+}
+@keyframes pt-hero-sheen {
+  0%   { opacity: 0;   left: -55%; }
+  18%  { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { opacity: 0;   left: 118%; }
+}
+@media (max-width: 768px) {
+  html.pt-motion .hero-smart-search__atmo::after { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.pt-motion .hero-smart-search__atmo::after { animation: none !important; opacity: 0 !important; }
+}

@@ -12,13 +12,26 @@
   price on a customer-facing page.
 
   @param {string} field - Which price to output. One of:
-      install_per_tire | flat_repair | balancing_per_wheel | balancing_set |
-      rotation | rotation_hd | changeover |
+      install_per_tire | install_own_per_tire | flat_repair | balancing_per_wheel | balancing_set |
+      rotation | rotation_hd | rotation_per_tire | rotation_truck_per_tire | changeover |
+      changeover_per_tire | changeover_truck_per_tire | changeover_trailer |
       winter_from | winter_premium_from | winter_premium_to
+
+  The seasonal swap is priced PER TIRE since 2026-11-02 (the app's db/088):
+  changeover_per_tire ($15 car / SUV / van / EV / dually) and
+  changeover_truck_per_tire ($20 truck / large truck); a trailer stays
+  changeover_trailer ($100 flat). `changeover` keeps its meaning — a car's set
+  of four ($60) — for copy that quotes the usual job. The three new fields are
+  not on the metaobject yet, so they render their fallbacks until an admin adds
+  them there; the booking forms price from the app's catalogue either way.
 
   @example
   {% render 'pt-prices', field: 'flat_repair' %}            {# "$50" #}
   {%- capture p %}{% render 'pt-prices', field: 'rotation' %}{% endcapture -%}
+  Rotation is priced PER TIRE since 2026-11-13: rotation_per_tire ($15 car /
+  SUV / van / EV) and rotation_truck_per_tire ($20 pickup / heavy truck /
+  dually), always the whole set. `rotation` stays a car's set of four ($60);
+  `rotation_hd` is no longer quoted anywhere.
 {% enddoc %}
 
 {%- liquid
@@ -26,7 +39,11 @@
 
   case field
     when 'install_per_tire'     
-      assign fallback = '$25'
+      assign fallback = '$30'
+    when 'install_own_per_tire'
+      assign fallback = '$30'
+    when 'install_own_per_tire'
+      assign fallback = '$30'
     when 'flat_repair'          
       assign fallback = '$50'
     when 'balancing_per_wheel'  
@@ -37,8 +54,18 @@
       assign fallback = '$60'
     when 'rotation_hd'          
       assign fallback = '$100'
+    when 'rotation_per_tire'
+      assign fallback = '$15'
+    when 'rotation_truck_per_tire'
+      assign fallback = '$20'
     when 'changeover'           
       assign fallback = '$60'
+    when 'changeover_per_tire'
+      assign fallback = '$15'
+    when 'changeover_truck_per_tire'
+      assign fallback = '$20'
+    when 'changeover_trailer'
+      assign fallback = '$100'
     when 'winter_from'          
       assign fallback = '$130'
     when 'winter_premium_from'  

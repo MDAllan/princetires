@@ -88,7 +88,8 @@
           vendor: vendorEl ? vendorEl.textContent.trim() : '',
           url: window.location.pathname,
           image: imgEl ? imgEl.src : '',
-          price: priceEl ? priceEl.textContent.trim() : ''
+          price: priceEl ? priceEl.textContent.trim() : '',
+          unit: (function () { var c = document.querySelector('.ptp__pricing-card'); var u = c && c.getAttribute('data-pt-unit'); return u === 'wheel' ? 'wheel' : 'tire'; })()
         };
         items.unshift(productData);
         if (items.length > MAX_ITEMS) items = items.slice(0, MAX_ITEMS);
@@ -111,7 +112,7 @@
       html += '<div class="pt-rv__body">';
       if (item.vendor) html += '<span class="pt-rv__vendor">' + item.vendor + '</span>';
       html += '<h3 class="pt-rv__title">' + (item.title || '') + '</h3>';
-      if (item.price) html += '<div class="pt-rv__price">' + item.price + '<span class="pt-rv__price-per">/tire</span></div>';
+      if (item.price) html += '<div class="pt-rv__price">' + item.price + '<span class="pt-rv__price-per">/' + (item.unit === 'wheel' ? 'wheel' : 'tire') + '</span></div>';
       html += '</div></a>';
     });
 

@@ -1,0 +1,90 @@
+{% doc %}
+  Results-page kind for the current collection (redesign 2026-11-13):
+  outputs exactly one word, `tires`, `wheels` or `items`.
+
+    1. A known wheel handle (wheels, alloy-wheels, steel-wheels, the three
+       Armed brand collections, wheels-NN-inch) = wheels.
+    2. Otherwise the COLLECTION's filters decide (the same on every page and
+       inside or outside {% paginate %}): products with a tire size / season
+       vs products with a bolt pattern, by the filter value counts. More
+       tires = tires, more wheels = wheels.
+    3. Only when those filters find nothing (no such facet, a 5,000+
+       product collection, or an accessories collection): a sample of the products,
+       tires if any has a tire size, wheels if any is a wheel, else items.
+       Default (empty page) = tires, which keeps the old behaviour.
+
+  One place, so the header (pt-collection-header, outside paginate), the
+  grid and the filter sidebar (inside paginate) can never disagree about
+  what they are listing, even on page 3 of a mixed clearance collection.
+
+  @param {collection} collection - The collection (defaults to the global one)
+
+  @example
+    {%- capture rd_kind -%}{% render 'pt-rd-results-kind', collection: collection %}{%- endcapture -%}
+    {%- assign rd_kind = rd_kind | strip -%}
+{% enddoc %}
+{%- liquid
+  assign rk_handles = 'wheels,alloy-wheels,steel-wheels,armed-off-road,armed-street,armed-syndicate' | split: ','
+  assign rk = 'tires'
+  if rk_handles contains collection.handle
+    assign rk = 'wheels'
+  elsif collection.handle contains 'wheels-' and collection.handle contains '-inch'
+    assign rk = 'wheels'
+  else
+    assign rk_ft = 0
+    assign rk_fw = 0
+    for f in collection.filters
+      case f.param_name
+        when 'filter.p.m.custom.tire_size'
+          assign rk_tsum = 0
+          for v in f.values
+            assign rk_tsum = rk_tsum | plus: v.count
+          endfor
+          if rk_tsum > rk_ft
+            assign rk_ft = rk_tsum
+          endif
+        when 'filter.p.m.custom.seasonality'
+          assign rk_tsum = 0
+          for v in f.values
+            assign rk_tsum = rk_tsum | plus: v.count
+          endfor
+          if rk_tsum > rk_ft
+            assign rk_ft = rk_tsum
+          endif
+        when 'filter.p.m.custom.bolt_pattern'
+          for v in f.values
+            assign rk_fw = rk_fw | plus: v.count
+          endfor
+      endcase
+    endfor
+  endif
+  if rk == 'wheels'
+    # decided by the handle
+  elsif rk_ft > 0 or rk_fw > 0
+    if rk_fw > rk_ft
+      assign rk = 'wheels'
+    endif
+  elsif collection.products.size > 0
+    assign rk_w = 0
+    assign rk_t = 0
+    for p in collection.products limit: 24
+      if p.metafields.custom.tire_size != blank
+        assign rk_t = rk_t | plus: 1
+      else
+        assign rk_type = p.type | downcase
+        unless rk_type contains 'accessor' or rk_type contains 'tire'
+          if p.metafields.custom.bolt_pattern != blank or rk_type contains 'rims' or rk_type contains 'wheel' or rk_type contains 'alloy' or p.tags contains 'Wheels'
+            assign rk_w = rk_w | plus: 1
+          endif
+        endunless
+      endif
+    endfor
+    if rk_t == 0
+      if rk_w > 0
+        assign rk = 'wheels'
+      else
+        assign rk = 'items'
+      endif
+    endif
+  endif
+-%}{{- rk -}}

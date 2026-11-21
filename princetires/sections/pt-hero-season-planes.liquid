@@ -1,0 +1,788 @@
+{% comment %}
+  Prince Tires — Seasonal Planes Hero (pt-hero-season-planes)
+
+  One hero. The layered artwork of pt-cinema-planes driven by the five-state
+  date logic of pt-hero-seasonal, so the scene itself changes with Calgary's
+  calendar rather than just the words on top of it.
+
+  Layer order (back -> front):
+     0  backdrop plate(s)      slow crossfade if more than one is set
+     1  far road plate         summer or winter surface, picked by season
+     2  snow — far plane       winter states only, pure CSS
+     3  tire cut-outs          4 planes, own scale/brightness/depth
+     4  snow — near plane      falls in FRONT of the far tires
+     5  front road plate       the tires sit *in* the scene, not on it
+     6  directional scrim      legibility on the copy side only
+     7  season glow            red in winter, orange in spring/summer
+     8  content                eyebrow, H1, subhead, search, CTAs
+     9  vignette
+
+  Everything that decides the state runs in Liquid, so only the active season's
+  images are ever requested and a crawler reads the live message as real text.
+  assets/pt-weather.js is optional on top: it fills in the live Calgary
+  temperature and boosts the snow when it is genuinely snowing. The hero is
+  complete and correct without it.
+
+  Windows (auto mode, by MMDD) — same as pt-hero-seasonal so the two agree:
+    preseason    Sep 1  - Oct 10
+    changeover   Oct 11 - Nov 30
+    deep_winter  Dec 1  - Mar 10
+    spring       Mar 11 - Apr 30
+    summer       May 1  - Aug 31
+
+  The search is snippets/pt-smart-search - the same single-input search the
+  old hero-smart-search section shipped, extracted so it can live in any hero.
+
+  Every image setting is optional: left blank, the layer resolves the matching
+  pt-cine-*.png from Settings -> Files via the file_url filter, so the section
+  renders the full scene the moment it is added. The pickers are overrides.
+
+  Never write alignment, tire storage, or mobile service into any state —
+  Prince Tires does not offer them. Never suggest a size other than the
+  vehicle's stock size.
+{% endcomment %}
+
+{%- liquid
+  assign mmdd = 'now' | date: '%m%d' | times: 1
+  assign mode = section.settings.season_mode | default: 'auto'
+
+  if mode == 'auto'
+    assign active_key = 'summer'
+    if mmdd >= 901 and mmdd <= 1010
+      assign active_key = 'preseason'
+    elsif mmdd >= 1011 and mmdd <= 1130
+      assign active_key = 'changeover'
+    elsif mmdd >= 1201 and mmdd <= 1231
+      assign active_key = 'deep_winter'
+    elsif mmdd >= 101 and mmdd <= 310
+      assign active_key = 'deep_winter'
+    elsif mmdd >= 311 and mmdd <= 430
+      assign active_key = 'spring'
+    endif
+  else
+    assign active_key = mode
+  endif
+
+  assign active = null
+  for block in section.blocks
+    if block.settings.season_key == active_key
+      assign active = block
+      break
+    endif
+  endfor
+  unless active
+    assign active = section.blocks.first
+  endunless
+  if active
+    assign active_key = active.settings.season_key | default: active_key
+  endif
+
+  comment
+    Season -> scene. Which road surface, which tire leads, whether it snows,
+    and which brand colour lights the scene.
+  endcomment
+  assign road_season = 'summer'
+  assign lead_tire = 'allterrain'
+  assign snowy = false
+  assign warm = true
+
+  case active_key
+    when 'preseason'
+      assign road_season = 'summer'
+      assign lead_tire = 'winter'
+      assign snowy = true
+      assign warm = false
+    when 'changeover'
+      assign road_season = 'winter'
+      assign lead_tire = 'winter'
+      assign snowy = true
+      assign warm = false
+    when 'deep_winter'
+      assign road_season = 'winter'
+      assign lead_tire = 'winter'
+      assign snowy = true
+      assign warm = false
+    when 'spring'
+      assign road_season = 'summer'
+      assign lead_tire = 'allseason'
+      assign snowy = false
+      assign warm = true
+    when 'summer'
+      assign road_season = 'summer'
+      assign lead_tire = 'allterrain'
+      assign snowy = false
+      assign warm = true
+  endcase
+
+  unless section.settings.enable_snow
+    assign snowy = false
+  endunless
+
+  if road_season == 'winter' and section.settings.road_winter_image != blank
+    assign road = section.settings.road_winter_image
+  elsif road_season != 'winter' and section.settings.road_summer_image != blank
+    assign road = section.settings.road_summer_image
+  endif
+  if road != blank
+    assign road_url = road | image_url: width: 2400
+  elsif road_season == 'winter'
+    assign road_url = 'pt-cine-road-winter.png' | file_url
+  else
+    assign road_url = 'pt-cine-road-summer.png' | file_url
+  endif
+
+  comment
+    Tire order: the season's tire takes the front-centre plane, the rest fill in
+    behind it. Cut-outs the merchant has not supplied are skipped, so the scene
+    never renders a broken image.
+  endcomment
+  assign order = 'winter,allweather,allseason,allterrain'
+  case lead_tire
+    when 'winter'
+      assign order = 'winter,allweather,allseason,allterrain'
+    when 'allseason'
+      assign order = 'allseason,allweather,allterrain,winter'
+    when 'allterrain'
+      assign order = 'allterrain,allseason,allweather,winter'
+  endcase
+  assign order = order | split: ','
+
+  assign tire_urls = ''
+  for k in order
+    assign pick = ''
+    assign fb = ''
+    if k == 'winter'
+      assign pick = section.settings.tire_winter
+      assign fb = 'pt-cine-tire-winter.png'
+    elsif k == 'allweather'
+      assign pick = section.settings.tire_allweather
+      assign fb = 'pt-cine-tire-allweather.png'
+    elsif k == 'allseason'
+      assign pick = section.settings.tire_allseason
+      assign fb = 'pt-cine-tire-allseason.png'
+    elsif k == 'allterrain'
+      assign pick = section.settings.tire_allterrain
+      assign fb = 'pt-cine-tire-allterrain.png'
+    endif
+    if pick != blank
+      assign u = pick | image_url: width: 1000
+    else
+      assign u = fb | file_url
+    endif
+    if u != blank
+      assign tire_urls = tire_urls | append: u | append: '||'
+    endif
+  endfor
+  assign tire_urls = tire_urls | split: '||'
+  assign tire_max = section.settings.tire_count | default: 4
+  if tire_urls.size < tire_max
+    assign tire_max = tire_urls.size
+  endif
+
+  comment
+    Backdrop plates — one is a still, two or three slowly crossfade.
+  endcomment
+  assign skies = ''
+  if section.settings.sky_image != blank
+    assign s1 = section.settings.sky_image | image_url: width: 2400
+  else
+    assign s1 = 'pt-cine-sky.png' | file_url
+  endif
+  if s1 != blank
+    assign skies = skies | append: s1 | append: '||'
+  endif
+  if section.settings.sky_image_2 != blank
+    assign s2 = section.settings.sky_image_2 | image_url: width: 2400
+    assign skies = skies | append: s2 | append: '||'
+  endif
+  if section.settings.sky_image_3 != blank
+    assign s3 = section.settings.sky_image_3 | image_url: width: 2400
+    assign skies = skies | append: s3 | append: '||'
+  endif
+  assign skies = skies | split: '||'
+-%}
+
+{%- if active -%}
+<section
+  class="psp psp--{{ active_key }}{% if snowy %} psp--snowy{% endif %}{% if warm %} psp--warm{% endif %}{% if skies.size > 1 %} psp--rotating{% endif %}"
+  data-pt-season="{{ active_key }}"
+  style="
+    --psp-tire-size: {{ section.settings.tire_front_size | default: 44 }}vh;
+    --psp-tire-x: {{ section.settings.tire_spread | default: 34 }}%;
+    --psp-lean: {{ section.settings.tire_lean | default: -7 }}deg;
+    --psp-dim: {{ section.settings.dim | default: 55 | divided_by: 100.0 }};
+    --psp-sky-dur: {{ section.settings.sky_interval | default: 9 | times: skies.size | at_least: 9 }}s;
+  "
+  {{ active.shopify_attributes }}
+>
+  {%- comment -%} 0 — backdrop plate(s) {%- endcomment -%}
+  {%- if skies.size > 0 -%}
+    <div class="psp__sky" aria-hidden="true">
+      {%- for s in skies -%}
+        <img
+          class="psp__sky-img"
+          style="--i: {{ forloop.index0 }};"
+          src="{{ s }}"
+          alt=""
+          width="2688" height="1152"
+          loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+          {% if forloop.first %}fetchpriority="high"{% endif %}
+          decoding="async"
+        >
+      {%- endfor -%}
+    </div>
+  {%- endif -%}
+
+  {%- comment -%} 1 — far road plate {%- endcomment -%}
+  {%- if road_url != blank -%}
+    <div class="psp__road psp__road--far" aria-hidden="true">
+      <img src="{{ road_url }}" alt="" width="2688" height="1152" loading="eager" decoding="async">
+    </div>
+  {%- endif -%}
+
+  {%- comment -%} 2 — snow, far plane {%- endcomment -%}
+  {%- if snowy -%}
+    <div class="psp__snow psp__snow--far" aria-hidden="true"></div>
+  {%- endif -%}
+
+  {%- comment -%} 3 — tire cut-out planes {%- endcomment -%}
+  {%- if tire_max > 0 -%}
+    <div class="psp__tires" aria-hidden="true">
+      {%- for i in (1..tire_max) -%}
+        <div class="psp__tire psp__tire--{{ i }}">
+          <img src="{{ tire_urls[forloop.index0] }}" alt="" width="1000" height="1000" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}" decoding="async">
+        </div>
+      {%- endfor -%}
+    </div>
+  {%- endif -%}
+
+  {%- comment -%} 4 — snow, near plane (in front of the tires) {%- endcomment -%}
+  {%- if snowy -%}
+    <div class="psp__snow psp__snow--near" aria-hidden="true"></div>
+  {%- endif -%}
+
+  {%- comment -%} 5 — front road plate: puts the tires inside the scene {%- endcomment -%}
+  {%- if road_url != blank -%}
+    <div class="psp__road psp__road--near" aria-hidden="true">
+      <img src="{{ road_url }}" alt="" width="2688" height="1152" loading="lazy" decoding="async">
+    </div>
+  {%- endif -%}
+
+  {%- comment -%} 6/7/9 — scrim, glow, vignette {%- endcomment -%}
+  <div class="psp__scrim" aria-hidden="true"></div>
+  <div class="psp__glow" aria-hidden="true"></div>
+  <div class="psp__vignette" aria-hidden="true"></div>
+
+  {%- comment -%} 8 — content {%- endcomment -%}
+  <div class="psp__inner">
+    <div class="psp__meta">
+      {%- if active.settings.eyebrow != blank -%}
+        <p class="psp__eyebrow">
+          <span class="psp__pulse" aria-hidden="true"></span>
+          {{ active.settings.eyebrow | escape }}
+        </p>
+      {%- endif -%}
+
+      {%- comment -%}
+        Live conditions. Hidden until pt-weather.js has a real reading, so the
+        page never shows a placeholder temperature or a stale one.
+      {%- endcomment -%}
+      {%- if section.settings.enable_live_weather -%}
+        <p class="psp__wx" data-pt-weather hidden>
+          <span class="psp__wx-dot" aria-hidden="true"></span>
+          <span data-pt-temp></span>
+          <span class="psp__wx-sep" aria-hidden="true"></span>
+          <span class="psp__wx-note" data-pt-condition hidden></span>
+        </p>
+      {%- endif -%}
+    </div>
+
+    <h1 class="psp__headline">{{ active.settings.headline | escape }}</h1>
+
+    {%- if active.settings.subhead != blank -%}
+      <p class="psp__subhead">{{ active.settings.subhead | escape }}</p>
+    {%- endif -%}
+
+    {%- if section.settings.show_search -%}
+      <div class="psp__search">
+        {% render 'pt-smart-search', accent: '#dc2626' %}
+      </div>
+    {%- endif -%}
+
+    <div class="psp__actions">
+      {%- if active.settings.cta_label != blank -%}
+        <a class="psp__cta psp__cta--primary" href="{{ active.settings.cta_url | default: '/collections/tires' }}">
+          {{ active.settings.cta_label | escape }}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      {%- endif -%}
+      {%- if active.settings.cta2_label != blank -%}
+        <a class="psp__cta psp__cta--ghost" href="{{ active.settings.cta2_url | default: '/pages/booking' }}">
+          {{ active.settings.cta2_label | escape }}
+        </a>
+      {%- endif -%}
+    </div>
+
+  </div>
+</section>
+
+{%- if section.settings.enable_live_weather -%}
+  <script src="{{ 'pt-weather.js' | asset_url }}" defer="defer"></script>
+{%- endif -%}
+{%- endif -%}
+
+{% stylesheet %}
+.psp {
+  --psp-red:    #DC2626;
+  --psp-orange: #F5820B;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: clamp(580px, 86vh, 860px);
+  display: flex;
+  align-items: center;
+  background: #050608;
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
+}
+.psp * { box-sizing: border-box; }
+
+/* 0. Backdrop plate(s) — one image is a still; two or three crossfade on a long
+   cycle: the motion the slideshow had, without swapping the message. */
+.psp__sky { position: absolute; inset: -4% 0 0 0; z-index: 0; }
+.psp__sky-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 42%;
+  display: block;
+  transform: scale(1.04);
+}
+.psp--rotating .psp__sky-img {
+  opacity: 0;
+  animation: psp-sky var(--psp-sky-dur, 27s) ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * (var(--psp-sky-dur, 27s) / 3));
+}
+.psp--rotating .psp__sky-img:first-child { opacity: 1; }
+@keyframes psp-sky {
+  0%, 26%   { opacity: 1; transform: scale(1.04); }
+  33%, 93%  { opacity: 0; }
+  100%      { opacity: 1; transform: scale(1.09); }
+}
+
+/* 1 / 5. Road plates — the same plate drawn twice: once behind the tires, once
+   cropped in front, so the tires sit IN the surface rather than on it. */
+.psp__road { position: absolute; left: 0; right: 0; pointer-events: none; }
+.psp__road img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.psp__road--far  { bottom: 0; height: 62%; z-index: 1; opacity: 0.96; }
+.psp__road--near {
+  bottom: -2px;
+  height: 17%;
+  z-index: 5;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 58%);
+          mask-image: linear-gradient(to bottom, transparent, #000 58%);
+}
+.psp__road--near img { object-position: center bottom; }
+
+/* 3. Tire cut-out planes — each has its own x, y, scale, brightness and depth.
+   All share one --psp-lean so the set reads as a row, not four stickers. */
+.psp__tires { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.psp__tire {
+  position: absolute;
+  left: var(--tx, 50%);
+  top: var(--ty, 86%);
+  width: var(--ts, 44vh);
+  height: var(--ts, 44vh);
+  transform: translate(-50%, -50%) rotate(var(--psp-lean, -7deg));
+  filter: brightness(var(--tbright, 1)) drop-shadow(0 26px 30px rgba(0, 0, 0, 0.55));
+  opacity: 0;
+  animation: psp-tire-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) var(--tdelay, 0.4s) forwards;
+}
+.psp__tire img { width: 100%; height: 100%; object-fit: contain; display: block; }
+@keyframes psp-tire-in {
+  from { opacity: 0; transform: translate(-50%, -38%) rotate(var(--psp-lean, -7deg)) scale(0.94); }
+  to   { opacity: 1; transform: translate(-50%, -50%) rotate(var(--psp-lean, -7deg)) scale(1); }
+}
+
+/* Plane 1 leads: largest, brightest, furthest forward. 3 and 4 sit deeper and
+   dimmer so the eye reads distance. */
+.psp__tire--1 { --tx: calc(50% + var(--psp-tire-x, 34%) * 0.62); --ty: 82%; --ts: var(--psp-tire-size, 44vh);              --tbright: 1;    --tdelay: 0.35s; z-index: 4; }
+.psp__tire--2 { --tx: calc(50% + var(--psp-tire-x, 34%) * 1.28); --ty: 86%; --ts: calc(var(--psp-tire-size, 44vh) * 0.88); --tbright: 0.9;  --tdelay: 0.5s;  z-index: 3; }
+.psp__tire--3 { --tx: calc(50% + var(--psp-tire-x, 34%) * 0.14); --ty: 90%; --ts: calc(var(--psp-tire-size, 44vh) * 0.72); --tbright: 0.72; --tdelay: 0.65s; z-index: 2; }
+.psp__tire--4 { --tx: calc(50% + var(--psp-tire-x, 34%) * 1.74); --ty: 92%; --ts: calc(var(--psp-tire-size, 44vh) * 0.64); --tbright: 0.6;  --tdelay: 0.8s;  z-index: 1; }
+
+/* 2 / 4. Snow — two planes, pure CSS, no images and no requests. The far plane
+   sits behind the tires and the near plane in front, so snow falls THROUGH the
+   scene. Both intensify when pt-weather.js reports real snowfall. */
+.psp__snow {
+  position: absolute;
+  inset: -25% 0 0 0;
+  pointer-events: none;
+  background-repeat: repeat;
+  will-change: transform;
+}
+.psp__snow--far {
+  z-index: 2;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 10%, rgba(255,255,255,0.55) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 62% 34%, rgba(255,255,255,0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px   at 84% 12%, rgba(255,255,255,0.40) 50%, transparent 51%),
+    radial-gradient(1px 1px   at 37% 68%, rgba(255,255,255,0.40) 50%, transparent 51%);
+  background-size: 340px 340px;
+  animation: psp-fall 22s linear infinite;
+  opacity: 0.5;
+}
+.psp__snow--near {
+  z-index: 4;
+  background-image:
+    radial-gradient(3px 3px     at 18% 44%, rgba(255,255,255,0.85) 50%, transparent 51%),
+    radial-gradient(2.5px 2.5px at 88% 24%, rgba(255,255,255,0.75) 50%, transparent 51%),
+    radial-gradient(2px 2px     at 52% 74%, rgba(255,255,255,0.70) 50%, transparent 51%);
+  background-size: 420px 420px;
+  animation: psp-fall 9s linear infinite;
+  opacity: 0.45;
+  filter: blur(0.4px);
+}
+@keyframes psp-fall {
+  from { transform: translate3d(0, -25%, 0); }
+  to   { transform: translate3d(-46px, 25%, 0); }
+}
+.psp.is-snowing .psp__snow--far  { animation-duration: 14s; opacity: 0.72; }
+.psp.is-snowing .psp__snow--near { animation-duration: 6s;  opacity: 0.68; }
+
+/* 6. Scrim — directional, so the artwork keeps its depth. */
+.psp__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  background:
+    linear-gradient(100deg,
+      rgba(5,6,8,calc(0.96 * var(--psp-dim, 0.55) / 0.55)) 0%,
+      rgba(5,6,8,calc(0.74 * var(--psp-dim, 0.55) / 0.55)) 32%,
+      rgba(5,6,8,calc(0.26 * var(--psp-dim, 0.55) / 0.55)) 62%,
+      rgba(5,6,8,0.10) 100%),
+    linear-gradient(to bottom, rgba(5,6,8,0.60) 0%, transparent 20%);
+}
+
+/* 7. Season glow. */
+.psp__glow {
+  position: absolute;
+  z-index: 6;
+  left: -12%;
+  top: 14%;
+  width: 62%;
+  height: 72%;
+  pointer-events: none;
+  filter: blur(18px);
+  background: radial-gradient(ellipse at center, rgba(220,38,38,0.22) 0%, rgba(220,38,38,0.07) 42%, transparent 70%);
+  animation: psp-glow 11s ease-in-out infinite alternate;
+}
+.psp--warm .psp__glow {
+  background: radial-gradient(ellipse at center, rgba(245,130,11,0.22) 0%, rgba(245,130,11,0.07) 42%, transparent 70%);
+}
+@keyframes psp-glow {
+  from { opacity: 0.85; transform: scale(0.97); }
+  to   { opacity: 1;    transform: scale(1.05); }
+}
+
+/* 9. Vignette. */
+.psp__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  box-shadow: inset 0 0 170px 44px rgba(0, 0, 0, 0.55);
+}
+
+/* 8. Content. */
+.psp__inner {
+  position: relative;
+  z-index: 8;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 6rem 2.4rem;
+}
+.psp__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; margin-bottom: 1.1rem; }
+.psp__eyebrow,
+.psp__wx {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.5rem 1.05rem 0.5rem 0.85rem;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 999px;
+  font-size: 1.18rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.94);
+}
+.psp__pulse {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: var(--psp-red);
+  animation: psp-pulse 2.2s ease-out infinite;
+}
+@keyframes psp-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.65); }
+  70%  { box-shadow: 0 0 0 9px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+/* The live pill reads cooler than the season pill so the two don't compete. */
+.psp__wx { letter-spacing: 0.05em; font-weight: 500; color: rgba(255,255,255,0.86); }
+.psp__wx-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: #7dd3fc;
+  box-shadow: 0 0 10px rgba(125,211,252,0.8);
+}
+.psp.is-freezing .psp__wx-dot { background: #bae6fd; }
+.psp__wx-sep { width: 1px; height: 11px; background: rgba(255,255,255,0.28); }
+.psp__wx-note { color: #bae6fd; }
+.psp__wx-note[hidden] { display: none; }
+/* No condition worth naming -> drop the separator too */
+.psp__wx-sep:has(+ [hidden]) { display: none; }
+
+.psp__headline {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(3.4rem, 6.4vw, 6.6rem);
+  font-weight: 700;
+  line-height: 0.98;
+  margin: 0 0 1.2rem;
+  max-width: 19ch;
+  text-shadow: 0 2px 28px rgba(0,0,0,0.45);
+}
+.psp__subhead {
+  font-size: clamp(1.45rem, 1.9vw, 1.85rem);
+  font-weight: 300;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.86);
+  margin: 0 0 2.2rem;
+  max-width: 52ch;
+  text-shadow: 0 1px 14px rgba(0,0,0,0.4);
+}
+.psp__search { max-width: 680px; margin: 0 0 2rem; }
+.psp__actions { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-bottom: 2.6rem; }
+.psp__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 52px;
+  padding: 0 1.9rem;
+  border-radius: 8px;
+  font-size: 1.32rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #fff;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.psp__cta--primary {
+  background: var(--psp-red);
+  box-shadow: 0 10px 30px -10px rgba(220,38,38,0.75);
+}
+.psp__cta--primary:hover { background: #b91c1c; transform: translateY(-2px); }
+.psp__cta--primary svg { transition: transform 0.18s ease; }
+.psp__cta--primary:hover svg { transform: translateX(3px); }
+.psp__cta--ghost {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.26);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.psp__cta--ghost:hover { background: rgba(255,255,255,0.16); transform: translateY(-2px); }
+.psp__cta:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* Responsive. */
+@media (max-width: 989px) {
+  .psp { min-height: clamp(560px, 80svh, 760px); }
+  .psp__inner { padding: 4.5rem 2rem; }
+  .psp__headline { max-width: 15ch; }
+  .psp__scrim {
+    background: linear-gradient(to top, rgba(5,6,8,0.94) 0%, rgba(5,6,8,0.68) 46%, rgba(5,6,8,0.34) 100%);
+  }
+  /* Tires drop to a shallower row along the bottom so the copy keeps the top */
+  .psp__tire--1 { --tx: 74%; --ty: 90%; --ts: calc(var(--psp-tire-size, 44vh) * 0.68); }
+  .psp__tire--2 { --tx: 96%; --ty: 93%; --ts: calc(var(--psp-tire-size, 44vh) * 0.58); }
+  .psp__tire--3 { --tx: 52%; --ty: 95%; --ts: calc(var(--psp-tire-size, 44vh) * 0.48); }
+  .psp__tire--4 { display: none; }
+  .psp__road--far { height: 46%; }
+}
+
+@media (max-width: 600px) {
+  .psp { min-height: auto; }
+  .psp__inner { padding: 3.6rem 1.6rem 3rem; }
+  .psp__headline { font-size: clamp(2.9rem, 10.5vw, 4rem); max-width: 13ch; margin-bottom: 1rem; }
+  .psp__subhead { font-size: 1.35rem; margin-bottom: 1.8rem; max-width: 40ch; }
+  .psp__eyebrow, .psp__wx { font-size: 1.02rem; padding: 0.42rem 0.9rem 0.42rem 0.75rem; }
+  .psp__actions { gap: 0.7rem; margin-bottom: 2rem; }
+  .psp__cta { height: 48px; font-size: 1.22rem; flex: 1 1 100%; justify-content: center; }
+  .psp__tire--1 { --tx: 78%; --ty: 94%; --ts: calc(var(--psp-tire-size, 44vh) * 0.56); }
+  .psp__tire--2 { --tx: 100%; --ty: 97%; --ts: calc(var(--psp-tire-size, 44vh) * 0.46); }
+  .psp__tire--3 { display: none; }
+  .psp__vignette { box-shadow: inset 0 0 100px 26px rgba(0,0,0,0.5); }
+  .psp__snow--far { opacity: 0.4; }
+}
+
+/* Motion sensitivity. */
+@media (prefers-reduced-motion: reduce) {
+  .psp__sky-img,
+  .psp__snow,
+  .psp__glow,
+  .psp__pulse { animation: none !important; }
+  .psp--rotating .psp__sky-img { opacity: 0; }
+  .psp--rotating .psp__sky-img:first-child { opacity: 1; }
+  .psp__tire { animation: none; opacity: 1; }
+  .psp__snow { opacity: 0.25; }
+  .psp__cta { transition: none; }
+}
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Seasonal planes hero",
+  "tag": "section",
+  "class": "section section--psp",
+  "settings": [
+    {
+      "type": "select",
+      "id": "season_mode",
+      "label": "Season",
+      "default": "auto",
+      "info": "Auto switches by date. Override it the morning Calgary gets its first real snow - don't wait for the calendar.",
+      "options": [
+        { "value": "auto",        "label": "Auto (by date)" },
+        { "value": "preseason",   "label": "Force: Pre-season (beat the rush)" },
+        { "value": "changeover",  "label": "Force: Winter changeover rush" },
+        { "value": "deep_winter", "label": "Force: Deep winter (repair/replace)" },
+        { "value": "spring",      "label": "Force: Spring swap-back" },
+        { "value": "summer",      "label": "Force: Summer / truck / trailer" }
+      ]
+    },
+    { "type": "header", "content": "Scene artwork" },
+    {
+      "type": "paragraph",
+      "content": "Separate layers. Leave any blank to use the pt-cine artwork already in Files. Only the active season loads."
+    },
+    { "type": "image_picker", "id": "sky_image",   "label": "Backdrop 1" },
+    { "type": "image_picker", "id": "sky_image_2", "label": "Backdrop 2 (optional, crossfades)" },
+    { "type": "image_picker", "id": "sky_image_3", "label": "Backdrop 3 (optional, crossfades)" },
+    {
+      "type": "range",
+      "id": "sky_interval",
+      "label": "Seconds per backdrop",
+      "min": 5, "max": 20, "step": 1, "default": 9, "unit": "s"
+    },
+    { "type": "image_picker", "id": "road_summer_image", "label": "Road surface - dry" },
+    { "type": "image_picker", "id": "road_winter_image", "label": "Road surface - snow" },
+    { "type": "header", "content": "Tire cut-outs" },
+    {
+      "type": "paragraph",
+      "content": "Transparent PNGs, optional. The season decides which leads: winter in changeover, all-terrain in summer."
+    },
+    { "type": "image_picker", "id": "tire_winter",     "label": "Winter tire" },
+    { "type": "image_picker", "id": "tire_allweather", "label": "All-weather tire" },
+    { "type": "image_picker", "id": "tire_allseason",  "label": "All-season tire" },
+    { "type": "image_picker", "id": "tire_allterrain", "label": "All-terrain tire" },
+    {
+      "type": "range",
+      "id": "tire_count",
+      "label": "Tires in the scene",
+      "min": 1, "max": 4, "step": 1, "default": 4
+    },
+    {
+      "type": "range",
+      "id": "tire_front_size",
+      "label": "Front tire size",
+      "min": 24, "max": 70, "step": 2, "default": 44, "unit": "vh"
+    },
+    {
+      "type": "range",
+      "id": "tire_spread",
+      "label": "Spread across the frame",
+      "min": 14, "max": 50, "step": 2, "default": 34, "unit": "%"
+    },
+    {
+      "type": "range",
+      "id": "tire_lean",
+      "label": "Lean (all tires share it)",
+      "min": -20, "max": 20, "step": 1, "default": -7, "unit": "deg"
+    },
+    { "type": "header", "content": "Weather" },
+    {
+      "type": "checkbox",
+      "id": "enable_snow",
+      "label": "Falling snow on winter states",
+      "default": true,
+      "info": "Two parallax planes, pure CSS - no images and no extra requests. Off in spring and summer."
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_live_weather",
+      "label": "Show live Calgary conditions",
+      "default": true,
+      "info": "Open-Meteo, free and no API key. Adds the current temperature and speeds the snow up when it is really snowing. The hero is correct without it."
+    },
+    { "type": "header", "content": "Legibility" },
+    {
+      "type": "range",
+      "id": "dim",
+      "label": "Darken behind the copy",
+      "min": 25, "max": 90, "step": 5, "default": 55, "unit": "%"
+    },
+    { "type": "header", "content": "Search" },
+    { "type": "checkbox", "id": "show_search", "label": "Show tire search", "default": true }
+  ],
+  "blocks": [
+    {
+      "type": "season",
+      "name": "Season state",
+      "limit": 5,
+      "settings": [
+        {
+          "type": "select",
+          "id": "season_key",
+          "label": "Which season",
+          "default": "changeover",
+          "options": [
+            { "value": "preseason",   "label": "Pre-season (Sep 1 - Oct 10)" },
+            { "value": "changeover",  "label": "Winter changeover (Oct 11 - Nov 30)" },
+            { "value": "deep_winter", "label": "Deep winter (Dec 1 - Mar 10)" },
+            { "value": "spring",      "label": "Spring swap-back (Mar 11 - Apr 30)" },
+            { "value": "summer",      "label": "Summer (May 1 - Aug 31)" }
+          ]
+        },
+        { "type": "text", "id": "eyebrow", "label": "Eyebrow" },
+        {
+          "type": "text",
+          "id": "headline",
+          "label": "Headline (H1)",
+          "info": "Keep 'Tires' and 'Calgary' in every version. The season changes; the category and the city must not."
+        },
+        { "type": "textarea", "id": "subhead", "label": "Subhead" },
+        { "type": "text", "id": "cta_label",  "label": "Primary button" },
+        { "type": "url",  "id": "cta_url",    "label": "Primary button link" },
+        { "type": "text", "id": "cta2_label", "label": "Secondary button" },
+        { "type": "url",  "id": "cta2_url",   "label": "Secondary button link" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Seasonal planes hero",
+      "blocks": [
+        { "type": "season", "settings": { "season_key": "preseason",   "eyebrow": "Winter tire season is coming", "headline": "Get Your Winter Tires Before Calgary Freezes", "subhead": "Book your changeover now and skip the October lineup. Winter tires from $130 a tire, installed at either shop.", "cta_label": "Book your changeover", "cta_url": "/pages/booking", "cta2_label": "Shop winter tires", "cta2_url": "/collections/winter-tires" } },
+        { "type": "season", "settings": { "season_key": "changeover",  "eyebrow": "Winter tire season is here", "headline": "Winter Tires in Calgary, Installed Today", "subhead": "Winter tires in stock at both shops, most sets fitted same day. Tell us your size and we'll pull them before you arrive.", "cta_label": "Check my size", "cta_url": "/collections/winter-tires", "cta2_label": "Book a bay", "cta2_url": "/pages/booking" } },
+        { "type": "season", "settings": { "season_key": "deep_winter", "eyebrow": "Winter tire trouble?", "headline": "Flat Tire in Calgary? We'll Sort It Today", "subhead": "Puncture repair, TPMS sensors, and replacement winter tires in stock. Walk in or book a bay at either shop.", "cta_label": "Book a repair", "cta_url": "/pages/booking", "cta2_label": "Shop winter tires", "cta2_url": "/collections/winter-tires" } },
+        { "type": "season", "settings": { "season_key": "spring",      "eyebrow": "Time to swap back", "headline": "Spring Tire Changeover in Calgary", "subhead": "Winters off, all-seasons on. Book before the rush, and let us check your tread and pressures while it's on the hoist.", "cta_label": "Book your changeover", "cta_url": "/pages/booking", "cta2_label": "Shop all-season tires", "cta2_url": "/pages/all-season-tires-calgary" } },
+        { "type": "season", "settings": { "season_key": "summer",      "eyebrow": "Summer, truck & trailer", "headline": "Summer, All-Terrain & Trailer Tires in Calgary", "subhead": "Performance, all-season, light truck, all-terrain and pre-mounted trailer sets, in stock now. Installed from $30 a tire.", "cta_label": "Shop tires", "cta_url": "/collections/tires", "cta2_label": "Trailer assemblies", "cta2_url": "/collections/trailer-tire-assemblies" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

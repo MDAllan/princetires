@@ -158,12 +158,21 @@
             {%- endif -%}
 
             {%- if has_tires and first_tire != nil -%}
+              {%- comment -%} Install promotion on the first tire (snippets/pt-install-promo.liquid). {%- endcomment -%}
+              {%- capture cart_ip_raw -%}{% render 'pt-install-promo', product: first_tire.product, is_wheel: false %}{%- endcapture -%}
+              {%- assign cart_ip = cart_ip_raw | strip | split: '|' -%}
               <div class="ptc__install-nudge">
                 <div class="ptc__install-nudge-left">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                   <div>
                     <strong>Include installation?</strong>
-                    <p>Book your tire swap at Prince Tires Calgary.</p>
+                    <p>Request installation at 42 Ave SW or Edmonton Trail NE.</p>
+                    {%- comment -%} "plain" (owner 2026-11-14): no promo line — the promo price is just the install price. {%- endcomment -%}
+                    {%- if cart_ip.size >= 5 and cart_ip[3] != 'plain' -%}
+                      {%- assign cart_ip_now = cart_ip[0] | times: 4 -%}
+                      {%- assign cart_ip_was = cart_ip[1] | times: 4 -%}
+                      <p class="ptc__install-promo" data-install-promo-id="{{ cart_ip[4] }}" style="color:#c2410c;font-weight:700">{{ cart_ip[2] | escape }}:{% if cart_ip[3] == 'strike' %} <s style="color:#9ca3af;font-weight:500">${{ cart_ip_was }}</s>{% endif %} ${{ cart_ip_now }} for 4 on a {{ cart_ip[5] | default: 'car or SUV' | escape }}</p>
+                    {%- endif -%}
                   </div>
                 </div>
                 <button class="ptc__install-btn"
@@ -173,10 +182,22 @@
                   data-vendor="{{ first_tire.product.vendor | escape }}"
                   data-tire-size="{{ first_tire.product.metafields.custom.tire_size | default: '' | escape }}"
                   data-tire-price="{{ first_tire.price }}"
-                  data-install-price="{{ first_tire.product.metafields.custom.install_price.value | default: 30 }}"
+                  data-install-price="{% if cart_ip.size >= 5 %}{{ cart_ip[0] }}{% else %}{{ first_tire.product.metafields.custom.install_price.value | default: 30 }}{% endif %}"
+                  {%- if cart_ip.size >= 5 %} data-install-was="{{ cart_ip[1] }}" data-install-promo-id="{{ cart_ip[4] }}" {% if cart_ip[3] != 'plain' %} data-install-promo-label="{{ cart_ip[2] | escape }}"{% endif %} data-install-promo-style="{{ cart_ip[3] }}"{% endif %}
                   data-levy-in-price="{% render 'pt-levy-in-price', product: first_tire.product %}"
+                  {%- comment -%}
+                    The real product + variant, so /api/book can check it is a
+                    tire (drop-off is offered for tire purchases only, and the
+                    server refuses a drop-off it cannot verify) and answer this
+                    tire's earliest day.
+                  {%- endcomment %}
+                  data-product-handle="{{ first_tire.product.handle }}"
+                  data-variant-id="{{ first_tire.variant_id }}"
+                  data-from-cart="1"
+                  data-qty="{{ first_tire.quantity }}"
+                  data-image="{% if first_tire.image %}{{ first_tire.image | image_url: width: 128 }}{% endif %}"
                   data-vehicle-type="">
-                  Book install
+                  Request installation
                 </button>
               </div>
             {%- endif -%}
@@ -502,7 +523,8 @@ body.pt-trade-visible .ptc__summary-trade-total { display: flex; }
 
       if (actualItem && actualQty !== qty) {
         inputEl.value = actualQty;
-        showItemError(variantId, 'Only ' + actualQty + ' available — quantity adjusted.');
+        /* 2026-11-13 owner rule: never show a stock count ("Only N available"). */
+        showItemError(variantId, 'Quantity adjusted to what we can sell online. Call us if you need more.');
       }
 
       applyCartState(cart);

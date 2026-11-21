@@ -330,6 +330,13 @@
         var def = parseFloat(addonDefaults[slug] || "0") || 0;
         if (input) { input.value = def ? def.toFixed(2) : ""; input.disabled = true; }
         if (check) check.checked = false;
+        // The Alberta levy: hidden when the tire's price already includes it
+        // (Trail Tire / DT / NCT, or a wheel); ticked by default otherwise.
+        if (slug === "levy") {
+          var included = d.addonLevyIncluded === "true";
+          row.hidden = included;
+          if (!included && check && def) { check.checked = true; if (input) input.disabled = false; }
+        }
       });
       var customWrap = $("ptq-custom-addons");
       if (customWrap) customWrap.innerHTML = "";

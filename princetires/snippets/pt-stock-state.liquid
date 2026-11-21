@@ -1,0 +1,258 @@
+{% doc %}
+  ONE place that decides what the storefront says about stock. Every surface
+  (product page, collection card, search results) captures this snippet and
+  splits the result, so the wording can never drift between pages again.
+
+  Output (one line, '|' separated, nothing else):
+    kind|state|text|lead
+      kind  = own | supplier | out
+      state = exact | bucket | low | call | plain | out   (internal: staff,
+              cart and call-to-book logic read it; customers never see it)
+      text  = the customer-facing LEAD TIME, already translated:
+              "Ready today" / "Ready in 1–2 business days" / "Order in" /
+              "Sold out"
+      lead  = today | 1-2 | order | out   (machine value of text)
+
+  Owner rule, 2026-11-13 (redesign): customers see the LEAD TIME ONLY.
+  Never a count, a bucket ("40+ available"), "Low stock", "Only N left",
+  "In stock", a warehouse, a shelf or a supplier name.
+    today = our own stock (kind own) AND snippets/pt-supplier-tier.liquid
+            returns 'A' - the same rule as the same-day booking floor.
+    1-2   = own stock that is Tier B, or any supplier stock, or untracked.
+    order = available but tracked with nothing on hand (continue-selling).
+            Wheels never say "Order in" (owner default 2026-11-13: sold-out
+            wheels say "Sold out" + call); a wheel in this state says 1-2.
+    out   = not available.
+  The bucket / low / call thresholds below still decide the internal state
+  (call = the page swaps book / add-to-cart for a call link), but no longer
+  change what the customer reads. Rendering for pages: snippets/pt-lead-time.liquid.
+
+  Owner rules, 2026-11-10 (state logic; the WORDING part is replaced by the
+  2026-11-13 lead-time rule above):
+  - Only OUR physical stock may say "In stock": 42 Ave (109466288403),
+    Edmonton Trail (113250304275) and Warehouse Inventory (75571462419).
+    Supplier stock (Trail Tire, ATW, R. Thibert, NCT, DT) says
+    "Available to order" — never "In stock".
+  - Quantity is shown as a bucket, never an exact number:
+      >= 40 "40+ available", >= 16 "16+", >= 12 "12+", 9-11 "8+",
+      <= 8 "Low stock — call to book" (no number; the page swaps the
+      book / add-to-cart buttons for a call link).
+    Every threshold is a theme setting (Theme settings > Stock wording).
+    "Low stock" (bookable, no number) only appears if the owner sets the
+    call-to-book threshold BELOW the low-stock threshold (e.g. 3 vs 8).
+  - Own stock counted in the last 30 days (product tag, default Counted30)
+    shows the exact number ONLY when it is small (at or below the low-stock
+    threshold, default 8): "4 in stock", and call-to-book does not apply,
+    because the count is known to be right. Above that it gets the same
+    bucket as everything else ("In stock · 40+ available"). Owner
+    2026-11-15: a counted tire showed "191 in stock" - big counts are never
+    shown exactly.
+
+  How "own stock" is detected (first match wins, all per variant):
+   1. App metafield variant.metafields.pt.own_qty (number_integer) = units
+      on hand at 42 Ave + Edmonton Trail + Warehouse Inventory. When it is
+      present it is the count we show for own stock. NOT written by the app
+      yet. Contract: owner = princetires-app own-stock sync (the same tick
+      that pushes 42 Ave / Edmonton Trail / Warehouse levels to Shopify);
+      metafieldsSet on the VARIANT, namespace "pt", key "own_qty", type
+      number_integer, value = sum of "available" at those three locations,
+      write an explicit 0 when it runs out (never delete — deleting falls
+      back to rules 2 and 3). Missing metafield = rules 2 and 3 only.
+   2. Shopify local pickup: a pickup-enabled location (only the two shops)
+      has the variant available, AND the variant is tracked, sells only
+      what it has (inventory_policy 'deny'), has quantity > 0, and the
+      product is not a supplier listing (tags 'Supplier Stock' or
+      'Trail Tire Supply'). StoreAvailability.available alone is NOT proof
+      of shelf stock: Shopify also sets it for untracked or continue-selling
+      variants and for stock that can be transferred in (warehouse-only
+      items come back true at both shops). Real time, no app writes.
+      Limit (until pt.own_qty exists): the count for a rule-2 product is
+      the variant total over ALL locations. Supplier listings are excluded
+      above because DT/NCT stock may be added to Trail Tire / ATW listings;
+      if supplier stock were ever put on an untagged own product, its
+      bucket would include that supplier stock.
+   3. Own-product tag 'Prince Stock' (or legacy 'Prince Tires') and NOT
+      'Supplier Stock', tracked and quantity > 0. Covers Warehouse
+      Inventory today: measured 2026-11-10, all 108 active variants with
+      warehouse-only stock carry 'Prince Stock', and 0 of 384 Prince Stock
+      products hold any supplier-location stock (owner rule: supplier
+      stock is never added to own products).
+   Anything else that is available = supplier stock. Unknown never becomes
+   "In stock", and nothing with no on-hand count (untracked, or quantity
+   <= 0 while continue-selling) ever says "In stock": it says "Available
+   to order" with kind = supplier.
+
+  @param {product} product - The product
+  @param {variant} [variant] - Defaults to product.selected_or_first_available_variant.
+    store_availabilities is only filled in for that variant, so pass another
+    variant only when it is the selected one.
+  @param {boolean} [is_wheel] - Pass the page's own wheel test when it has one.
+    Omitted = the shared wheel test (no tire size AND bolt pattern, or a
+    wheel / rims / alloy type, or tag Wheels, or a blank type whose title
+    names a wheel / rim). Only used to keep wheels off "Order in".
+
+  @example
+    {%- capture pt_stock -%}{% render 'pt-stock-state', product: product %}{%- endcapture -%}
+    {%- assign pt_stock = pt_stock | strip | split: '|' -%}
+    kind = pt_stock[0], state = pt_stock[1], text = pt_stock[2], lead = pt_stock[3]
+{% enddoc %}
+{%- liquid
+  assign v = variant | default: product.selected_or_first_available_variant
+
+  # stock_bucket_1..3 (the old "N+ available" buckets) are no longer read:
+  # customers see lead time only (2026-11-13). The settings stay in the
+  # schema so nothing else breaks.
+  assign low_max = settings.stock_low_max | default: 8 | plus: 0
+  assign call_max = settings.stock_call_max | default: 8 | plus: 0
+  assign counted_tag = settings.stock_counted_tag | default: 'Counted30' | strip
+
+  assign kind = 'out'
+  assign state = 'out'
+  assign lead = 'out'
+  assign label = 'products.stock.lead_out' | t
+
+  if v != blank and v.available
+    assign tracked = false
+    if v.inventory_management == 'shopify'
+      assign tracked = true
+    endif
+    assign qty = v.inventory_quantity | default: 0 | plus: 0
+
+    assign is_supplier_tag = false
+    if product.tags contains 'Supplier Stock'
+      assign is_supplier_tag = true
+    endif
+
+    assign is_own = false
+    assign own_qty = -1
+
+    # Rule 1: app metafield (authoritative count when present).
+    assign own_mf = v.metafields.pt.own_qty.value
+    assign has_mf = false
+    if own_mf != blank
+      assign has_mf = true
+      assign own_mf = own_mf | plus: 0
+      if own_mf > 0
+        assign is_own = true
+        assign own_qty = own_mf
+      endif
+    endif
+
+    # Rule 2: real-time local pickup at one of our two shops. Only counts
+    # with a real on-hand count (tracked, deny, qty > 0) on a listing that
+    # is not a supplier listing - see the header for why.
+    assign is_supplier_listing = is_supplier_tag
+    if product.tags contains 'Trail Tire Supply'
+      assign is_supplier_listing = true
+    endif
+    if has_mf == false and is_supplier_listing == false and tracked and v.inventory_policy == 'deny' and qty > 0
+      assign pickup_now = v.store_availabilities | where: 'pick_up_enabled', true | where: 'available', true
+      if pickup_now.size > 0
+        assign is_own = true
+        assign own_qty = qty
+      endif
+    endif
+
+    # Rule 3: own-product tag (covers Warehouse Inventory today).
+    if has_mf == false and is_supplier_tag == false and tracked and qty > 0
+      if product.tags contains 'Prince Stock' or product.tags contains 'Prince Tires'
+        assign is_own = true
+        assign own_qty = qty
+      endif
+    endif
+
+    assign kind = 'supplier'
+    if is_own
+      assign kind = 'own'
+    endif
+
+    assign is_counted = false
+    if is_own and own_qty > 0 and counted_tag != blank and product.tags contains counted_tag
+      assign is_counted = true
+    endif
+
+    assign n = qty
+    if is_own and own_qty > 0
+      assign n = own_qty
+    endif
+
+    # Internal state only (see header). The thresholds no longer reach the
+    # customer: they only decide call-to-book and what staff tooling reads.
+    # Live 2026-11-15: a big counted number is never treated as exact.
+    if is_counted and own_qty <= low_max
+      assign state = 'exact'
+    elsif tracked == false or qty <= 0
+      # Untracked or continue-selling with nothing on hand: nothing proves
+      # it is on our shelf, so it is never own stock.
+      assign kind = 'supplier'
+      assign state = 'plain'
+    elsif n <= call_max
+      assign state = 'call'
+    elsif n <= low_max
+      assign state = 'low'
+    else
+      assign state = 'bucket'
+    endif
+
+    # Lead time - the only thing the customer reads.
+    if kind == 'own'
+      capture lt_tier
+        render 'pt-supplier-tier', product: product
+      endcapture
+      assign lt_tier = lt_tier | strip
+      if lt_tier == 'A'
+        assign lead = 'today'
+      else
+        assign lead = '1-2'
+      endif
+    elsif tracked and qty <= 0
+      assign lead = 'order'
+    else
+      assign lead = '1-2'
+    endif
+
+    if lead == 'order'
+      # Wheels never say "Order in" (owner default, 2026-11-13).
+      assign lt_wheel = is_wheel
+      if lt_wheel == nil
+        assign lt_wheel = false
+        assign lt_ts = product.metafields.custom.tire_size | default: ''
+        if lt_ts == blank
+          if product.metafields.custom.bolt_pattern != blank
+            assign lt_wheel = true
+          endif
+          assign lt_type = product.type | downcase
+          if lt_type contains 'accessor'
+            assign lt_type = 'tire'
+          endif
+          unless lt_type contains 'tire'
+            if lt_type contains 'wheel' or lt_type contains 'rims' or lt_type contains 'alloy' or product.tags contains 'Wheels'
+              assign lt_wheel = true
+            elsif lt_type == blank
+              assign lt_title = product.title | downcase
+              unless lt_title contains 'tire'
+                if lt_title contains 'wheel' or lt_title contains ' rim'
+                  assign lt_wheel = true
+                endif
+              endunless
+            endif
+          endunless
+        endif
+      endif
+      if lt_wheel == true or lt_wheel == 'true'
+        assign lead = '1-2'
+      endif
+    endif
+
+    case lead
+      when 'today'
+        assign label = 'products.stock.lead_today' | t
+      when 'order'
+        assign label = 'products.stock.lead_order' | t
+      else
+        assign label = 'products.stock.lead_days' | t
+    endcase
+  endif
+
+  echo kind | append: '|' | append: state | append: '|' | append: label | append: '|' | append: lead
+-%}

@@ -1,0 +1,41 @@
+{% doc %}
+  Renders JSON-LD AggregateRating structured data for products.
+
+  Pulls review data from product metafields. Set up metafields in
+  Shopify admin under namespace "reviews" with keys:
+  - rating_value (number_decimal) — average rating (e.g., 4.5)
+  - rating_count (number_integer) — total number of reviews
+
+  If no metafields are set, no schema is output.
+
+  @example
+  {% render 'schema-review' %}
+{% enddoc %}
+
+{%- if request.page_type == 'product' -%}
+  {%- liquid
+    assign rating_value = product.metafields.reviews.rating_value
+    assign rating_count = product.metafields.reviews.rating_count
+  -%}
+
+  {%- if rating_value != blank and rating_count != blank -%}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": {{ product.title | json }},
+      "url": {{ request.origin | append: product.url | json }},
+      {%- if product.featured_image -%}
+        "image": {{ product.featured_image | image_url: width: 1200 | prepend: 'https:' | json }},
+      {%- endif -%}
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": {{ rating_value | json }},
+        "reviewCount": {{ rating_count | json }},
+        "bestRating": "5",
+        "worstRating": "1"
+      }
+    }
+    </script>
+  {%- endif -%}
+{%- endif -%}

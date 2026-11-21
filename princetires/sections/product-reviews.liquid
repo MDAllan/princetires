@@ -10,13 +10,20 @@
       <div class="product-reviews__summary" aria-label="{{ 'sections.product_reviews.rating_summary' | t }}">
         {%- assign total_rating = 0 -%}
         {%- assign review_count = 0 -%}
+        {%- comment -%}
+          Average and count over EVERY real review (2026-11-13: hiding the
+          under-4-star ones inflated the rating - no fabricated ratings).
+        {%- endcomment -%}
         {%- for block in section.blocks -%}
-          {%- if block.settings.rating >= 4 -%}
+          {%- if block.settings.rating > 0 -%}
             {%- assign total_rating = total_rating | plus: block.settings.rating -%}
             {%- assign review_count = review_count | plus: 1 -%}
           {%- endif -%}
         {%- endfor -%}
-        {%- assign avg_rating = total_rating | times: 10 | divided_by: review_count | times: 1.0 | divided_by: 10 -%}
+        {%- assign avg_rating = 0 -%}
+        {%- if review_count > 0 -%}
+        {%- assign avg_rating = total_rating | times: 10.0 | divided_by: review_count | round | divided_by: 10.0 -%}
+        {%- endif -%}
 
         <div class="product-reviews__stars" aria-hidden="true">
           {%- for i in (1..5) -%}
@@ -37,7 +44,7 @@
     <div class="product-reviews__list" data-pr-list>
       {%- assign shown_count = 0 -%}
       {%- for block in section.blocks -%}
-        {%- if block.settings.rating < 4 -%}{%- continue -%}{%- endif -%}
+        {%- unless block.settings.rating > 0 -%}{%- continue -%}{%- endunless -%}
         {%- assign shown_count = shown_count | plus: 1 -%}
         <div class="product-reviews__item{% if shown_count > 3 %} product-reviews__item--hidden{% endif %}" {{ block.shopify_attributes }}>
           <div class="product-reviews__item-header">
@@ -471,43 +478,6 @@
           "id": "date",
           "label": "t:sections.product_reviews.blocks.review.settings.date.label",
           "default": "2025-01-15"
-        }
-      ]
-    }
-  ],
-  "presets": [
-    {
-      "name": "t:sections.product_reviews.name",
-      "blocks": [
-        {
-          "type": "review",
-          "settings": {
-            "rating": 5,
-            "author": "Ahmed M.",
-            "title": "Best tire shop in town",
-            "content": "<p>Quick service, great prices, and the staff really knows their stuff. Highly recommend!</p>",
-            "date": "2025-03-10"
-          }
-        },
-        {
-          "type": "review",
-          "settings": {
-            "rating": 5,
-            "author": "Sarah K.",
-            "title": "Excellent service",
-            "content": "<p>Got all four tires changed in under an hour. Very professional and fair pricing.</p>",
-            "date": "2025-02-22"
-          }
-        },
-        {
-          "type": "review",
-          "settings": {
-            "rating": 4,
-            "author": "Mike R.",
-            "title": "Good selection",
-            "content": "<p>They had exactly what I needed in stock. Will definitely come back.</p>",
-            "date": "2025-01-15"
-          }
         }
       ]
     }

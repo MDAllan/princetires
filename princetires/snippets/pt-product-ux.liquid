@@ -1,0 +1,26 @@
+{%- comment -%}
+  Product page helper (rendered from snippets/meta-tags.liquid on product pages).
+
+  Nov 9, 2026 this snippet rearranged the old product page with JavaScript:
+  installed-price hero, chips under the title, a black floating
+  "Request installation" bar on phones. The 2026-11-13 redesign renders that
+  layout directly in sections/pt-product.liquid (one phone sticky bar only),
+  so all of that is gone. What stays: the visit counter that keeps the
+  "Install Prince Tires" banner (snippets/pt-pwa-install.liquid) away until
+  a shopper's 2nd visit. On phones (<750px) assets/pt-rd-pdp.css hides the
+  banner on product pages altogether, so it never covers the sticky buy bar.
+{%- endcomment -%}
+<style>
+  html:not(.pt-visit2) .pt-pwa-install { display: none !important; }
+</style>
+<script>
+(function () {
+  if (window.__ptpx) return;
+  window.__ptpx = true;
+  try {
+    var n = +(localStorage.getItem('pt_visits') || 0);
+    if (!sessionStorage.getItem('pt_visit_counted')) { n++; localStorage.setItem('pt_visits', n); sessionStorage.setItem('pt_visit_counted', '1'); }
+    if (n >= 2) document.documentElement.classList.add('pt-visit2');
+  } catch (e) { document.documentElement.classList.add('pt-visit2'); }
+})();
+</script>

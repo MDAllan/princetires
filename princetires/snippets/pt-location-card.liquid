@@ -1,0 +1,528 @@
+{% doc %}
+  One Prince Tires shop as a card: name, address, phone, the week's hours and
+  a "today" line, then directions / booking / shop-page links. Every NAP value
+  and every opening time comes from pt-nap (which reads the store_hours
+  metaobject), so nothing here can drift from the footer or the schema.
+
+  The "today" line is filled in by the small script below, in Calgary time
+  (America/Edmonton). Its two lines of space are reserved but invisible until
+  the script runs, so the card never jumps (no layout shift) and a cached page
+  or a browser without JavaScript still shows the full week and never a wrong
+  "open now".
+
+  Holidays: the weekly hours don't know about stat holidays. On any date in
+  holiday_dates (Calgary date, YYYY-MM-DD) the script makes no open/closed
+  claim: it shows "Holiday today" and asks people to call ahead.
+
+  No JSON-LD here: the sitewide schema-local-business graph already carries
+  both shops (#business, #business-ne).
+
+  @param {string} location - Which shop: 'sw' or 'ne'.
+  @param {string} [heading_tag] - Tag for the shop name: 'h2' or 'h3' (default 'h2').
+  @param {string} [variant] - 'dark' (default) or 'light'.
+  @param {string} [book_url] - Main booking link. Should carry ?service= and &location=.
+  @param {string} [book_label] - Text for the main booking button.
+  @param {string} [alt_book_url] - Secondary "other services" booking link.
+  @param {string} [alt_book_label] - Text for that link.
+  @param {string} [page_url] - Link to the shop's own page (or contact page).
+  @param {string} [page_label] - Text for that link.
+  @param {string} [note] - Rich text shown under the hours (already token-expanded).
+  @param {boolean} [show_call] - Show a "Call" button (default true).
+  @param {boolean} [show_map] - Show a lazy Google Maps embed (default false).
+  @param {string} [map_embed_url] - Embed URL override; blank = embed by the pt-nap address.
+  @param {string} [event_location] - data-pt-location value for tracking (default 'location_card').
+  @param {string} [holiday_dates] - Comma-separated YYYY-MM-DD dates (Calgary) with no open/closed claim.
+
+  @example
+  {% render 'pt-location-card', location: 'ne', book_url: '/pages/booking?service=installation_on&location=ne', book_label: 'Book a tire changeover' %}
+{% enddoc %}
+
+{%- liquid
+  assign ptl_loc = location | default: 'sw' | downcase
+  assign ptl_h = heading_tag | default: 'h2'
+  if ptl_h != 'h3'
+    assign ptl_h = 'h2'
+  endif
+  assign ptl_variant = variant | default: 'dark'
+  assign ptl_event = event_location | default: 'location_card'
+  assign ptl_show_call = true
+  if show_call == false
+    assign ptl_show_call = false
+  endif
+-%}
+
+{%- capture ptl_name %}{% render 'pt-nap', location: ptl_loc, field: 'public_name' %}{% endcapture -%}
+{%- capture ptl_street %}{% render 'pt-nap', location: ptl_loc, field: 'street' %}{% endcapture -%}
+{%- capture ptl_city %}{% render 'pt-nap', location: ptl_loc, field: 'city' %}{% endcapture -%}
+{%- capture ptl_region %}{% render 'pt-nap', location: ptl_loc, field: 'region' %}{% endcapture -%}
+{%- capture ptl_postal %}{% render 'pt-nap', location: ptl_loc, field: 'postal' %}{% endcapture -%}
+{%- capture ptl_address_full %}{% render 'pt-nap', location: ptl_loc, field: 'address_full' %}{% endcapture -%}
+{%- capture ptl_phone %}{% render 'pt-nap', location: ptl_loc, field: 'phone' %}{% endcapture -%}
+{%- capture ptl_phone_href %}{% render 'pt-nap', location: ptl_loc, field: 'phone_href' %}{% endcapture -%}
+{%- capture ptl_maps %}{% render 'pt-nap', location: ptl_loc, field: 'maps_url' %}{% endcapture -%}
+{%- capture ptl_label %}{% render 'pt-nap', location: ptl_loc, field: 'hours_weekday_label' %}{% endcapture -%}
+{%- capture ptl_ms %}{% render 'pt-nap', location: ptl_loc, field: 'hours_mon_sat_display' %}{% endcapture -%}
+{%- capture ptl_fri %}{% render 'pt-nap', location: ptl_loc, field: 'hours_fri_display' %}{% endcapture -%}
+{%- capture ptl_sun %}{% render 'pt-nap', location: ptl_loc, field: 'hours_sun_display' %}{% endcapture -%}
+{%- capture ptl_ms_o %}{% render 'pt-nap', location: ptl_loc, field: 'hours_mon_sat_open' %}{% endcapture -%}
+{%- capture ptl_ms_c %}{% render 'pt-nap', location: ptl_loc, field: 'hours_mon_sat_close' %}{% endcapture -%}
+{%- capture ptl_fr_o %}{% render 'pt-nap', location: ptl_loc, field: 'hours_fri_open' %}{% endcapture -%}
+{%- capture ptl_fr_c %}{% render 'pt-nap', location: ptl_loc, field: 'hours_fri_close' %}{% endcapture -%}
+{%- capture ptl_fr_r %}{% render 'pt-nap', location: ptl_loc, field: 'hours_fri_reopen' %}{% endcapture -%}
+{%- capture ptl_fr_f %}{% render 'pt-nap', location: ptl_loc, field: 'hours_fri_final_close' %}{% endcapture -%}
+{%- capture ptl_su_o %}{% render 'pt-nap', location: ptl_loc, field: 'hours_sun_open' %}{% endcapture -%}
+{%- capture ptl_su_c %}{% render 'pt-nap', location: ptl_loc, field: 'hours_sun_close' %}{% endcapture -%}
+
+{%- liquid
+  assign ptl_name = ptl_name | strip
+  assign ptl_street = ptl_street | strip
+  assign ptl_city = ptl_city | strip
+  assign ptl_region = ptl_region | strip
+  assign ptl_postal = ptl_postal | strip
+  assign ptl_address_full = ptl_address_full | strip
+  assign ptl_phone = ptl_phone | strip
+  assign ptl_phone_href = ptl_phone_href | strip
+  assign ptl_maps = ptl_maps | strip
+
+  assign ptl_ms_o = ptl_ms_o | strip
+  assign ptl_ms_c = ptl_ms_c | strip
+  assign ptl_fr_o = ptl_fr_o | strip
+  assign ptl_fr_c = ptl_fr_c | strip
+  assign ptl_fr_r = ptl_fr_r | strip
+  assign ptl_fr_f = ptl_fr_f | strip
+  assign ptl_su_o = ptl_su_o | strip
+  assign ptl_su_c = ptl_su_c | strip
+  assign ptl_holidays = holiday_dates | default: '' | strip_newlines | replace: ' ', ''
+  assign ptl_hours_json = '{"ms":["' | append: ptl_ms_o | append: '","' | append: ptl_ms_c | append: '"],"fri":["' | append: ptl_fr_o | append: '","' | append: ptl_fr_c | append: '","' | append: ptl_fr_r | append: '","' | append: ptl_fr_f | append: '"],"sun":["' | append: ptl_su_o | append: '","' | append: ptl_su_c | append: '"]}'
+
+  if map_embed_url != blank
+    assign ptl_map_src = map_embed_url
+  else
+    assign ptl_map_q = ptl_address_full | url_encode
+    assign ptl_map_src = 'https://www.google.com/maps?q=' | append: ptl_map_q | append: '&z=15&output=embed'
+  endif
+-%}
+
+<article
+  class="ptl-card ptl-card--{{ ptl_variant }}"
+  data-location="{{ ptl_loc }}"
+  data-ptl-hours="{{ ptl_hours_json | strip | escape }}"
+  {%- if ptl_holidays != blank %} data-ptl-holidays="{{ ptl_holidays | escape }}"{% endif %}
+>
+  <{{ ptl_h }} class="ptl-card__name">{{ ptl_name }}</{{ ptl_h }}>
+
+  <address class="ptl-card__addr">
+    {{ ptl_street }}<br>
+    {{ ptl_city }}, {{ ptl_region }} {{ ptl_postal }}
+  </address>
+
+  <p class="ptl-card__phone">
+    <a href="tel:{{ ptl_phone_href }}" data-pt-event="phone_click" data-pt-location="{{ ptl_event }}" data-pt-label="{{ ptl_loc }}">{{ ptl_phone }}</a>
+  </p>
+
+  <p class="ptl-card__today" data-ptl-today></p>
+
+  <dl class="ptl-card__hours">
+    <div class="ptl-card__hours-row" data-ptl-days="1,2,3,4,6">
+      <dt>{{ ptl_label | strip }}</dt>
+      <dd>{{ ptl_ms | strip }}</dd>
+    </div>
+    <div class="ptl-card__hours-row" data-ptl-days="5">
+      <dt>Fri</dt>
+      <dd>{{ ptl_fri | strip | replace: ', ', ' and ' }}</dd>
+    </div>
+    <div class="ptl-card__hours-row" data-ptl-days="0">
+      <dt>Sun</dt>
+      <dd>{{ ptl_sun | strip }}</dd>
+    </div>
+  </dl>
+  <p class="ptl-card__holiday">Hours are Calgary time. Holiday hours can differ, so call ahead on a holiday.</p>
+
+  {%- if note != blank -%}
+    <div class="ptl-card__note rte">{{ note }}</div>
+  {%- endif -%}
+
+  <div class="ptl-card__ctas">
+    {%- if book_url != blank -%}
+      <a
+        href="{{ book_url }}"
+        class="ptl-btn ptl-btn--primary"
+        data-pt-event="book_cta"
+        data-pt-location="{{ ptl_event }}"
+        data-pt-label="{{ book_label | default: 'Request a time' | escape }}"
+      >{{ book_label | default: 'Request a time' }}</a>
+    {%- endif -%}
+    {%- if ptl_show_call -%}
+      <a
+        href="tel:{{ ptl_phone_href }}"
+        class="ptl-btn ptl-btn--ghost"
+        data-pt-event="phone_click"
+        data-pt-location="{{ ptl_event }}"
+        data-pt-label="call {{ ptl_loc }}"
+      >Call {{ ptl_phone }}</a>
+    {%- endif -%}
+    <a
+      href="{{ ptl_maps }}"
+      class="ptl-btn ptl-btn--ghost"
+      target="_blank"
+      rel="noopener"
+      data-pt-event="directions_click"
+      data-pt-location="{{ ptl_event }}"
+      data-pt-label="{{ ptl_loc }}"
+    >Get directions</a>
+  </div>
+
+  {%- if alt_book_url != blank or page_url != blank -%}
+    <ul class="ptl-card__links">
+      {%- if alt_book_url != blank -%}
+        <li><a href="{{ alt_book_url }}" data-pt-event="book_cta" data-pt-location="{{ ptl_event }}" data-pt-label="other services {{ ptl_loc }}">{{ alt_book_label | default: 'Book another service here' }}</a></li>
+      {%- endif -%}
+      {%- if page_url != blank -%}
+        <li><a href="{{ page_url }}">{{ page_label | default: 'Shop page' }}</a></li>
+      {%- endif -%}
+    </ul>
+  {%- endif -%}
+
+  {%- if show_map -%}
+    <div class="ptl-card__map">
+      <iframe
+        src="{{ ptl_map_src }}"
+        title="Map: {{ ptl_name | escape }}, {{ ptl_address_full | escape }}"
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+        allowfullscreen
+      ></iframe>
+    </div>
+  {%- endif -%}
+</article>
+
+{% stylesheet %}
+  .ptl-card {
+    --ptl-red: #E8251D;
+    --ptl-red-dark: #c41a14;
+    --ptl-orange: #F5820B;
+    --ptl-black: #111;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    min-width: 0;
+    padding: 2.4rem 2rem;
+    border-radius: 0.6rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.6rem;
+    line-height: 1.6;
+  }
+  .ptl-card--dark {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+  }
+  .ptl-card--light {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-top: 4px solid var(--ptl-red);
+    color: #1a1a1a;
+  }
+  .ptl-card__name {
+    margin: 0;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+  .ptl-card--dark .ptl-card__name { color: #fff; }
+  .ptl-card--light .ptl-card__name { color: var(--ptl-black); }
+  .ptl-card__addr {
+    font-style: normal;
+    font-size: 1.6rem;
+  }
+  .ptl-card--dark .ptl-card__addr { color: rgba(255, 255, 255, 0.85); }
+  .ptl-card--light .ptl-card__addr { color: #333; }
+  .ptl-card__phone { margin: 0; font-size: 1.8rem; font-weight: 600; }
+  .ptl-card__phone a { text-decoration: underline; text-underline-offset: 0.3rem; }
+  .ptl-card--dark .ptl-card__phone a { color: #fff; }
+  .ptl-card--light .ptl-card__phone a { color: var(--ptl-black); }
+  .ptl-card__today {
+    display: flex;
+    flex-direction: column;
+    min-height: 4.8rem;
+    margin: 0;
+    font-size: 1.5rem;
+    line-height: 1.6;
+    visibility: hidden;
+  }
+  .ptl-card__today.is-ready { visibility: visible; }
+  @media screen and (max-width: 359px) {
+    .ptl-card__today { min-height: 7.2rem; }
+  }
+  .ptl-card__today-status {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-weight: 600;
+  }
+  .ptl-card__dot {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: #9ca3af;
+  }
+  .ptl-card__dot.is-open { background: #22c55e; }
+  .ptl-card__dot.is-closed { background: var(--ptl-orange); }
+  .ptl-card__today-hours { font-weight: 400; }
+  .ptl-card--dark .ptl-card__today-hours { color: rgba(255, 255, 255, 0.8); }
+  .ptl-card--light .ptl-card__today-hours { color: #555; }
+  .ptl-card__hours {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    font-size: 1.5rem;
+  }
+  .ptl-card__hours-row {
+    display: grid;
+    grid-template-columns: minmax(9rem, max-content) 1fr;
+    gap: 1.2rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.4rem;
+  }
+  .ptl-card__hours dt { font-weight: 600; }
+  .ptl-card__hours dd { margin: 0; }
+  .ptl-card--dark .ptl-card__hours { color: rgba(255, 255, 255, 0.85); }
+  .ptl-card--light .ptl-card__hours { color: #333; }
+  .ptl-card__hours-row.is-today { outline: 1px solid var(--ptl-orange); }
+  .ptl-card--dark .ptl-card__hours-row.is-today { background: rgba(245, 130, 11, 0.12); }
+  .ptl-card--light .ptl-card__hours-row.is-today { background: #fff7ed; }
+  .ptl-card__holiday { margin: 0; font-size: 1.4rem; }
+  .ptl-card--dark .ptl-card__holiday { color: rgba(255, 255, 255, 0.65); }
+  .ptl-card--light .ptl-card__holiday { color: #666; }
+  .ptl-card__note { font-size: 1.5rem; line-height: 1.6; }
+  .ptl-card__note p { margin: 0 0 0.8rem; }
+  .ptl-card__note p:last-child { margin-bottom: 0; }
+  .ptl-card--dark .ptl-card__note { color: rgba(255, 255, 255, 0.85); }
+  .ptl-card--dark .ptl-card__note strong { color: #fcd34d; }
+  .ptl-card--light .ptl-card__note { color: #444; }
+  .ptl-card--light .ptl-card__note strong { color: var(--ptl-black); }
+  .ptl-card__note a { text-decoration: underline; }
+  .ptl-card__ctas {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 0.4rem;
+  }
+  .ptl-card__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 1.5rem;
+  }
+  .ptl-card__links a {
+    text-decoration: underline;
+    text-underline-offset: 0.3rem;
+    font-weight: 600;
+  }
+  .ptl-card--dark .ptl-card__links a { color: #fff; }
+  .ptl-card--light .ptl-card__links a { color: var(--ptl-red); }
+  .ptl-card__map {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 0.4rem;
+    overflow: hidden;
+    background: #1a1a1a;
+  }
+  .ptl-card__map iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  .ptl-btn {
+    --ptl-red: #E8251D;
+    --ptl-red-dark: #c41a14;
+    --ptl-orange: #F5820B;
+    --ptl-black: #111;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 4.8rem;
+    padding: 1.2rem 2.4rem;
+    border-radius: 0.4rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-align: center;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: normal;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+  }
+  .ptl-btn--primary { background: var(--ptl-red); color: #fff; border: 2px solid var(--ptl-red); }
+  .ptl-btn--primary:hover { background: var(--ptl-red-dark); border-color: var(--ptl-red-dark); }
+  .ptl-card--dark .ptl-btn--ghost { background: transparent; color: #fff; border: 2px solid rgba(255, 255, 255, 0.5); }
+  .ptl-card--dark .ptl-btn--ghost:hover { border-color: #fff; }
+  .ptl-card--light .ptl-btn--ghost { background: #fff; color: var(--ptl-black); border: 2px solid #d4d4d4; }
+  .ptl-card--light .ptl-btn--ghost:hover { border-color: var(--ptl-black); }
+  .ptl-btn:focus-visible { outline: 3px solid var(--ptl-orange); outline-offset: 2px; }
+  @media screen and (min-width: 750px) {
+    .ptl-card { padding: 2.8rem; }
+    .ptl-card__ctas { flex-direction: row; flex-wrap: wrap; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function () {
+    var DAY = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+    function toMin(t) {
+      if (!t || t.indexOf(':') < 0) return null;
+      var p = t.split(':');
+      var h = parseInt(p[0], 10);
+      var m = parseInt(p[1], 10);
+      if (isNaN(h) || isNaN(m)) return null;
+      return h * 60 + m;
+    }
+
+    function fmt(t) {
+      var mins = toMin(t);
+      if (mins === null) return t;
+      var h = Math.floor(mins / 60);
+      var m = mins % 60;
+      var ap = h >= 12 ? 'PM' : 'AM';
+      var h12 = h % 12 === 0 ? 12 : h % 12;
+      return h12 + (m ? ':' + (m < 10 ? '0' + m : m) : '') + ' ' + ap;
+    }
+
+    function intervals(hours, day) {
+      var list = [];
+      if (day === 0) list = [hours.sun];
+      else if (day === 5) list = [[hours.fri[0], hours.fri[1]], [hours.fri[2], hours.fri[3]]];
+      else list = [hours.ms];
+      return list.filter(function (pair) {
+        return pair && toMin(pair[0]) !== null && toMin(pair[1]) !== null && toMin(pair[1]) > toMin(pair[0]);
+      });
+    }
+
+    function calgaryDate(f, when) {
+      var parts = {};
+      f.formatToParts(when).forEach(function (p) { parts[p.type] = p.value; });
+      return parts.year + '-' + parts.month + '-' + parts.day;
+    }
+
+    function calgaryNow() {
+      var f = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Edmonton',
+        weekday: 'short',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+      });
+      var parts = {};
+      f.formatToParts(new Date()).forEach(function (p) { parts[p.type] = p.value; });
+      var day = DAY[parts.weekday];
+      var hour = parseInt(parts.hour, 10) % 24;
+      var minute = parseInt(parts.minute, 10);
+      if (day === undefined || isNaN(hour) || isNaN(minute)) return null;
+      return {
+        day: day,
+        minutes: hour * 60 + minute,
+        date: parts.year + '-' + parts.month + '-' + parts.day,
+        tomorrow: calgaryDate(f, new Date(Date.now() + 864e5))
+      };
+    }
+
+    function render(card, now) {
+      var hours;
+      try { hours = JSON.parse(card.getAttribute('data-ptl-hours')); } catch (e) { return; }
+      if (!hours || !hours.ms || !hours.fri || !hours.sun) return;
+      var out = card.querySelector('[data-ptl-today]');
+      if (!out) return;
+
+      var holidays = (card.getAttribute('data-ptl-holidays') || '').split(',');
+      if (holidays.indexOf(now.date) > -1) {
+        show(out, 'is-holiday', 'Holiday today', 'Hours can differ. Please call ahead.');
+        return;
+      }
+
+      var today = intervals(hours, now.day);
+      var status = '';
+      var open = false;
+      for (var i = 0; i < today.length; i++) {
+        var s = toMin(today[i][0]);
+        var e = toMin(today[i][1]);
+        if (now.minutes >= s && now.minutes < e) {
+          open = true;
+          status = 'Open now until ' + fmt(today[i][1]);
+          if (today[i + 1]) status += ', back at ' + fmt(today[i + 1][0]);
+          break;
+        }
+        if (now.minutes < s) {
+          status = (i > 0 ? 'Closed now, reopens at ' : 'Closed now, opens at ') + fmt(today[i][0]);
+          break;
+        }
+      }
+      if (!open && !status) {
+        var next = intervals(hours, (now.day + 1) % 7);
+        if (holidays.indexOf(now.tomorrow) > -1) status = 'Closed now, holiday tomorrow';
+        else status = next.length ? 'Closed now, opens tomorrow at ' + fmt(next[0][0]) : 'Closed now';
+      }
+      var todayText = today.length
+        ? 'Today ' + today.map(function (p) { return fmt(p[0]) + ' – ' + fmt(p[1]); }).join(', ')
+        : 'Closed today';
+
+      show(out, open ? 'is-open' : 'is-closed', status, todayText);
+
+      card.querySelectorAll('[data-ptl-days]').forEach(function (row) {
+        var days = row.getAttribute('data-ptl-days').split(',');
+        row.classList.toggle('is-today', days.indexOf(String(now.day)) > -1);
+      });
+    }
+
+    // Two fixed lines (status, then today's hours) in the space the CSS
+    // already reserves, so filling them in never moves the page.
+    function show(out, dotClass, status, detail) {
+      out.textContent = '';
+      var line = document.createElement('span');
+      line.className = 'ptl-card__today-status';
+      var dot = document.createElement('span');
+      dot.className = 'ptl-card__dot ' + dotClass;
+      dot.setAttribute('aria-hidden', 'true');
+      var st = document.createElement('span');
+      st.textContent = status + '.';
+      line.appendChild(dot);
+      line.appendChild(st);
+      var th = document.createElement('span');
+      th.className = 'ptl-card__today-hours';
+      th.textContent = detail;
+      out.appendChild(line);
+      out.appendChild(th);
+      out.classList.add('is-ready');
+    }
+
+    function run() {
+      var cards = document.querySelectorAll('[data-ptl-hours]');
+      if (!cards.length) return;
+      var now;
+      try { now = calgaryNow(); } catch (e) { return; }
+      if (!now) return;
+      cards.forEach(function (card) { render(card, now); });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', run);
+    } else {
+      run();
+    }
+    document.addEventListener('shopify:section:load', run);
+  })();
+{% endjavascript %}

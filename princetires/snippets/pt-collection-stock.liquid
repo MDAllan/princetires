@@ -1,0 +1,150 @@
+{%- comment -%} /collections/all is the Shop by size hub (no grid): skip the in-stock reload there. {%- endcomment -%}
+{%- if request.page_type == 'collection' and collection.handle != 'all' -%}
+<style>
+  .ptcs { display: inline-flex; align-items: center; gap: 8px; margin-right: 14px; }
+  .ptcs label { font-size: 13px; color: #6b7280; }
+  @media (min-width: 990px) {
+    .ptg__layout { grid-template-columns: 280px minmax(0, 1fr) !important; column-gap: 28px !important; }
+    .ptg__sidebar { width: auto !important; min-width: 0 !important; }
+    .ptg__sidebar-title { font-size: 22px !important; letter-spacing: .04em; }
+    .ptg__active-filters { background: #fef2f2; border: 1px solid #fecaca; border-radius: 14px; padding: 12px !important; margin-bottom: 12px !important; }
+    .ptg__active-tag { font-size: 13px !important; padding: 6px 10px !important; border-radius: 999px !important; background: #fff !important; }
+    .ptg__filter { background: #fff; border: 1px solid #e8e9ec; border-radius: 14px; padding: 4px 16px !important; margin: 0 0 10px !important; box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: box-shadow .2s, border-color .2s; }
+    .ptg__filter[open] { border-color: #d1d5db; box-shadow: 0 6px 18px -8px rgba(0,0,0,.18); }
+    .ptg__filter-label { font-size: 16px !important; font-weight: 700 !important; padding: 12px 0 !important; position: relative; padding-left: 14px !important; }
+    .ptg__filter-label::before { content: ''; position: absolute; left: 0; top: 50%; width: 4px; height: 18px; margin-top: -9px; border-radius: 2px; background: #dc2626; opacity: .25; }
+    .ptg__filter[open] .ptg__filter-label::before { opacity: 1; }
+    .ptg__filter-options { padding-bottom: 12px !important; }
+    .ptg__filter-pill { font-size: 14px !important; padding: 8px 12px !important; border-radius: 999px !important; border: 1px solid #e5e7eb !important; transition: all .15s; }
+    .ptg__filter-pill:hover { border-color: #dc2626 !important; color: #dc2626 !important; }
+    .ptg__filter-pill.is-active, .ptg__filter-pill[aria-current], .ptg__filter-pill--active { background: #dc2626 !important; color: #fff !important; border-color: #dc2626 !important; }
+    .ptg__filter-link { font-size: 15px !important; padding: 7px 8px !important; border-radius: 8px; }
+    .ptg__filter-link:hover { background: #f5f5f6; }
+  }
+  @media (min-width: 990px) {
+    .ptcs-ws .ptvs-trigger { display: none !important; }
+    .ptcs-ws .pt-ws__body { padding: 14px 18px !important; }
+    .ptcs-ws .pt-ws__panel.is-active { display: flex !important; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+    .ptcs-ws .pt-ws__panel > .pt-ws__hint { flex-basis: 100%; margin: 0 0 4px; }
+    .ptcs-ws .pt-ws__row { display: flex !important; gap: 10px; flex: 1 1 auto; margin: 0 !important; }
+    .ptcs-ws .pt-ws__field { flex: 1 1 0; margin: 0 !important; }
+    .ptcs-ws .pt-ws__select { height: 44px !important; border-radius: 10px !important; border: 1px solid #e5e7eb !important; background-color: #fff !important; font-size: 15px !important; }
+    .ptcs-ws .pt-ws__select:focus { border-color: #dc2626 !important; outline: none; box-shadow: 0 0 0 3px rgba(220,38,38,.12); }
+    .ptcs-ws .pt-ws__actions { display: flex !important; align-items: center; gap: 10px; margin: 0 !important; }
+    .ptcs-ws .pt-ws__submit { height: 44px !important; border-radius: 10px !important; padding: 0 22px !important; white-space: nowrap; }
+  }
+  /* Desktop: one search (the By tire size / By vehicle box), no intro text, less empty space */
+  @media (min-width: 990px) {
+    .ptc__desc { display: none !important; }
+    .ptc__top, .ptc__header { padding-bottom: 0 !important; margin-bottom: 8px !important; }
+    .ptg__search, .ptfx-sizebox { display: none !important; }
+    .ptg__toolbar { justify-content: flex-end !important; gap: 16px; margin-bottom: 12px !important; }
+    .ptg__sort select, .ptg__sort-select { height: 36px !important; font-size: 14px !important; }
+    .pt-rs { border-radius: 16px !important; margin-bottom: 16px !important; }
+    .pt-rs__body { padding: 14px 18px 16px !important; }
+    .pt-rs__tabs { margin-bottom: 12px !important; }
+    .pt-rs__tab { font-size: 16px !important; font-weight: 600 !important; padding: 8px 14px !important; }
+    .pt-rs__label { font-size: 12px !important; font-weight: 700 !important; letter-spacing: .06em; }
+    .pt-rs__panel--active { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 12px; align-items: end; }
+    .pt-rs__saved, .pt-rs__sizemode, .pt-rs__status { grid-column: 1 / -1; justify-self: start; margin: 0 !important; }
+    .pt-rs__vehicle-row, .pt-rs__size-row { grid-column: 1; width: 100%; margin: 0 !important; gap: 10px !important; }
+    .pt-rs__field select, .pt-rs__field input { height: 46px !important; font-size: 16px !important; border-radius: 10px !important; }
+    .pt-rs__actions { grid-column: 2; margin: 0 !important; }
+    .pt-rs__actions button { height: 46px !important; font-size: 15px !important; border-radius: 10px !important; padding: 0 26px !important; min-width: 150px; white-space: nowrap; }
+    .pt-rs__saved button, .pt-rs__saved a { font-size: 13px !important; }
+    .pt-rs__sizemode-btn { font-size: 15px !important; font-weight: 600 !important; padding: 8px 16px !important; border-radius: 999px !important; }
+  }
+  /* icons before the search tabs: tire for "By tire size", car for "By vehicle" (all screens) */
+  .pt-rs__tab, .pt-ws__tab { display: inline-flex !important; align-items: center; gap: 8px; }
+  .pt-rs__tab::before, .pt-ws__tab::before { content: ''; width: 18px; height: 18px; flex: 0 0 18px; background: currentColor;
+    -webkit-mask: var(--pti) center / contain no-repeat; mask: var(--pti) center / contain no-repeat; }
+  .pt-rs__tab, .pt-ws__tab { --pti: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 3v3M12 18v3M3 12h3M18 12h3'/%3E%3C/svg%3E"); }
+  .pt-rs__tab.ptcs-car, .pt-ws__tab.ptcs-car { --pti: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 17H4a1 1 0 0 1-1-1v-4l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 7l2 5v4a1 1 0 0 1-1 1h-1'/%3E%3Ccircle cx='7.5' cy='17' r='2'/%3E%3Ccircle cx='16.5' cy='17' r='2'/%3E%3Cpath d='M9.5 17h5M3 12h18'/%3E%3C/svg%3E"); }
+  .ptcs select { height: 36px; padding: 0 30px 0 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; font: inherit; font-size: 14px; cursor: pointer; }
+</style>
+<script>
+/* Out-of-stock hidden by default: add Shopify's in-stock filter unless the shopper chose "All items" (?stock=all). Shoppers only. */
+(function () {
+  if (/bot|crawl|spider|slurp|Google-InspectionTool|Lighthouse|Mediapartners/i.test(navigator.userAgent || '')) return;
+  var u = new URL(location.href);
+  if (u.searchParams.get('stock') === 'all') return;
+  if (u.searchParams.getAll('filter.v.availability').indexOf('1') > -1) return;
+  u.searchParams.delete('filter.v.availability');
+  u.searchParams.append('filter.v.availability', '1');
+  location.replace(u.toString());
+})();
+</script>
+<script>
+(function () {
+  function run() {
+    // Redesigned results pages (sections/pt-collection-grid, [data-rd-results])
+    // have their own "Hide sold out" filter, accordions, search panel and
+    // words-only tabs: only the sold-out-last order and, on desktop, the
+    // plain Year / Make / Model selects in the wheel search apply there.
+    var rd = document.querySelector('[data-rd-results]');
+    var sort = document.querySelector('.ptg__sort');
+    if (rd) { plainWs(); orderAll(); return; }
+    if (!sort || document.querySelector('.ptcs')) return;
+
+    var url = new URL(location.href);
+    var on = url.searchParams.getAll('filter.v.availability').indexOf('1') > -1;
+    var w = document.createElement('div');
+    w.className = 'ptcs';
+    w.innerHTML = '<label for="ptcs-sel">Show</label><select id="ptcs-sel"><option value="in">{{ 'products.stock.available_only' | t | escape }}</option><option value="all">All items</option></select>';
+    sort.parentNode.insertBefore(w, sort);
+    var sel = w.querySelector('select');
+    sel.value = on ? 'in' : 'all';
+    sel.addEventListener('change', function () {
+      var u = new URL(location.href);
+      u.searchParams.delete('filter.v.availability');
+      u.searchParams.delete('stock');
+      u.searchParams.delete('page');
+      if (sel.value === 'in') u.searchParams.append('filter.v.availability', '1');
+      else u.searchParams.set('stock', 'all');
+      location.href = u.toString();
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('.ptg__active-tag'), function (t) { if (/in stock|^\s*available\b/i.test(t.textContent)) t.style.display = 'none'; /* chip says "Available" since Nov 10 */ });
+    Array.prototype.forEach.call(document.querySelectorAll('.ptg__filter'), function (d) { var s = d.querySelector('summary'); if (s && /availability/i.test(s.textContent)) d.style.display = 'none'; });
+    var af = document.querySelector('.ptg__active-filters');
+    if (af && !Array.prototype.some.call(af.querySelectorAll('.ptg__active-tag'), function (t) { return t.style.display !== 'none'; })) af.style.display = 'none';
+
+    if (window.matchMedia('(min-width: 990px)').matches) {
+      var openTop = function () { Array.prototype.slice.call(document.querySelectorAll('.ptg__sidebar .ptg__filter'), 0, 2).forEach(function (d) { if (!d.__ptcsUser) d.open = true; if (!d.__ptcsBound) { d.__ptcsBound = 1; d.addEventListener('click', function () { d.__ptcsUser = 1; }); } }); };
+      openTop(); setTimeout(openTop, 700); setTimeout(openTop, 1800);
+      plainWs();
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.pt-rs__tab, .pt-ws__tab'), function (t) { if (/vehicle|car/i.test(t.textContent)) t.classList.add('ptcs-car'); });
+    orderAll();
+  }
+  // Desktop: the wheel search shows its plain selects (not the vehicle sheet).
+  function plainWs() {
+    if (!window.matchMedia('(min-width: 990px)').matches) return;
+    var plain = function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.pt-ws'), function (ws) {
+        ws.classList.add('ptcs-ws');
+        Array.prototype.forEach.call(ws.querySelectorAll('.ptvs-hide'), function (e) { e.classList.remove('ptvs-hide'); });
+      });
+    };
+    plain(); setTimeout(plain, 400); setTimeout(plain, 1500);
+  }
+  // Sold-out cards last (also after the phone "Show more" appends a page).
+  function orderAll() {
+    function order() {
+      Array.prototype.forEach.call(document.querySelectorAll('.ptg__grid'), function (g) {
+        var cards = Array.prototype.filter.call(g.children, function (c) { return c.matches('.ptg__card, .ptg__card-wrap, li, div'); });
+        var out = cards.filter(function (c) { return c.matches('.ptg__card--unavailable') || c.querySelector('.ptg__card--unavailable'); });
+        if (!out.length || out.length === cards.length) return;
+        var lastIn = cards.filter(function (c) { return out.indexOf(c) === -1; }).pop();
+        if (cards.indexOf(lastIn) < cards.indexOf(out[0])) return;
+        out.forEach(function (c) { g.appendChild(c); });
+      });
+    }
+    order();
+    try { new MutationObserver(function () { clearTimeout(order.t); order.t = setTimeout(order, 80); }).observe(document.querySelector('.ptg__grid').parentNode, { childList: true, subtree: true }); } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+})();
+</script>
+{%- endif -%}

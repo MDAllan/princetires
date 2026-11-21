@@ -1,0 +1,122 @@
+{%- comment -%} Ice reveal from the Oct 12 Scroll Reveal theme: freezes the hero scene under the cursor/finger. Home page only. Smaller, soft edge, no ring (Nov 9). {%- endcomment -%}
+{%- if request.page_type == 'index' -%}
+{%- assign r = 130 -%}
+<style>
+  .pt-ice-twin {
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(circle var(--r, 0px) at var(--mx, -999px) var(--my, -999px), #000 0%, rgba(0,0,0,.85) 35%, rgba(0,0,0,.35) 70%, transparent 100%);
+            mask-image: radial-gradient(circle var(--r, 0px) at var(--mx, -999px) var(--my, -999px), #000 0%, rgba(0,0,0,.85) 35%, rgba(0,0,0,.35) 70%, transparent 100%);
+  }
+  .pt-scene__sky.pt-ice-twin { background-image: url('{{ 'pt-ice-sky.png' | asset_url }}') !important; }
+  .pt-scene__road.pt-ice-twin { background-image: url('{{ 'pt-ice-road.png' | asset_url }}') !important; }
+  .pt-ice-twin .pt-scene__tire--winter     { background-image: url('{{ 'pt-ice-tire-winter.png' | asset_url }}') !important; }
+  .pt-ice-twin .pt-scene__tire--allweather { background-image: url('{{ 'pt-ice-tire-allweather.png' | asset_url }}') !important; }
+  .pt-ice-twin .pt-scene__tire--allseason  { background-image: url('{{ 'pt-ice-tire-allseason.png' | asset_url }}') !important; }
+  .pt-ice-twin .pt-scene__tire--allterrain { background-image: url('{{ 'pt-ice-tire-allterrain.png' | asset_url }}') !important; }
+  .pt-scene__road--far.pt-ice-twin {
+    -webkit-mask-image:
+      radial-gradient(circle var(--r, 0px) at var(--mx, -999px) var(--my, -999px), #000 0%, rgba(0,0,0,.85) 35%, rgba(0,0,0,.35) 70%, transparent 100%),
+      linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 9%, #000 24%);
+    -webkit-mask-composite: source-in;
+            mask-image:
+      radial-gradient(circle var(--r, 0px) at var(--mx, -999px) var(--my, -999px), #000 0%, rgba(0,0,0,.85) 35%, rgba(0,0,0,.35) 70%, transparent 100%),
+      linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 9%, #000 24%);
+            mask-composite: intersect;
+  }
+  .pt-scene__road--near.pt-ice-twin {
+    -webkit-mask-image:
+      radial-gradient(circle var(--r, 0px) at var(--mx, -999px) var(--my, -999px), #000 0%, rgba(0,0,0,.85) 35%, rgba(0,0,0,.35) 70%, transparent 100%),
+      linear-gradient(to bottom, transparent, #000 58%);
+    -webkit-mask-composite: source-in;
+            mask-image:
+      radial-gradient(circle var(--r, 0px) at var(--mx, -999px) var(--my, -999px), #000 0%, rgba(0,0,0,.85) 35%, rgba(0,0,0,.35) 70%, transparent 100%),
+      linear-gradient(to bottom, transparent, #000 58%);
+            mask-composite: intersect;
+  }
+  .pt-ice-twin .pt-scene__tire { animation: none !important; opacity: 1 !important; transform: translate(-50%, -50%) rotate(var(--sc-lean)) !important; }
+</style>
+<script>
+  (function () {
+    if (window.__ptIce) return; window.__ptIce = true;
+    var R = {{ r }};
+    var LAYERS = ['.pt-scene__sky', '.pt-scene__road--far', '.pt-scene__tires', '.pt-scene__road--near'];
+    function setup(hero) {
+      if (hero.querySelector('.pt-ice-twin')) return;
+      var twins = [];
+      LAYERS.forEach(function (sel) {
+        var orig = hero.querySelector(sel + ':not(.pt-ice-twin)');
+        if (!orig) return;
+        var twin = orig.cloneNode(true);
+        twin.classList.add('pt-ice-twin');
+        twin.setAttribute('aria-hidden', 'true');
+        orig.parentNode.insertBefore(twin, orig.nextSibling);
+        twins.push(twin);
+      });
+      if (!twins.length) return;
+      var tx = -9999, ty = -9999, x = -9999, y = -9999, tr = 0, cr = 0, raf = 0;
+      function paint() {
+        var hb = hero.getBoundingClientRect();
+        var ax = hb.left + x, ay = hb.top + y;
+        for (var i = 0; i < twins.length; i++) {
+          var b = twins[i].getBoundingClientRect();
+          twins[i].style.setProperty('--mx', (ax - b.left).toFixed(1) + 'px');
+          twins[i].style.setProperty('--my', (ay - b.top).toFixed(1) + 'px');
+          twins[i].style.setProperty('--r', cr.toFixed(1) + 'px');
+        }
+      }
+      function tick() {
+        x += (tx - x) * 0.18; y += (ty - y) * 0.18; cr += (tr - cr) * 0.12;
+        paint();
+        var moving = Math.abs(tx - x) > .5 || Math.abs(ty - y) > .5 || Math.abs(tr - cr) > .5;
+        raf = moving ? requestAnimationFrame(tick) : 0;
+      }
+      function kick() { if (!raf) raf = requestAnimationFrame(tick); }
+      function at(cx, cy, jump) {
+        var b = hero.getBoundingClientRect();
+        tx = cx - b.left; ty = cy - b.top;
+        if (jump) { x = tx; y = ty; }
+        kick();
+      }
+      function size() { return window.innerWidth < 600 ? R * 0.75 : R; }
+      var sweeping = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      hero.addEventListener('pointerenter', function (e) { if (e.pointerType !== 'mouse') return; sweeping = false; at(e.clientX, e.clientY, true); tr = size(); });
+      hero.addEventListener('pointermove', function (e) { if (e.pointerType !== 'mouse') return; sweeping = false; at(e.clientX, e.clientY); tr = size(); });
+      hero.addEventListener('pointerleave', function (e) { if (e.pointerType !== 'mouse') return; tr = 0; kick(); });
+      hero.addEventListener('touchstart', function (e) { var t = e.touches[0]; sweeping = false; at(t.clientX, t.clientY, true); tr = size(); }, { passive: true });
+      hero.addEventListener('touchmove', function (e) { var t = e.touches[0]; at(t.clientX, t.clientY); }, { passive: true });
+      hero.addEventListener('touchend', function () { tr = 0; kick(); }, { passive: true });
+      window.addEventListener('scroll', function () { if (cr > .5) kick(); }, { passive: true });
+      if (sweeping) {
+        setTimeout(function () {
+          if (!sweeping) return;
+          var lead = hero.querySelector('.pt-scene__tires:not(.pt-ice-twin) .pt-scene__tire--1');
+          var hb = hero.getBoundingClientRect();
+          var lb = lead ? lead.getBoundingClientRect() : null;
+          var cx = lb ? lb.left - hb.left + lb.width / 2 : hb.width * 0.75;
+          var y0 = lb ? lb.bottom - hb.top : hb.height * 0.95;
+          var y1 = lb ? lb.top - hb.top : hb.height * 0.5;
+          var t0 = performance.now(), D = 1800;
+          tx = x = cx; ty = y = y0; tr = size(); kick();
+          (function step(now) {
+            if (!sweeping) return;
+            var p = Math.min((now - t0) / D, 1);
+            var e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+            ty = y0 + (y1 - y0) * e; kick();
+            if (p < 1) requestAnimationFrame(step);
+            else setTimeout(function () { if (sweeping) { tr = 0; kick(); sweeping = false; } }, 350);
+          })(t0);
+        }, 1600);
+      }
+    }
+    function boot() {
+      var hero = document.querySelector('.hero-smart-search');
+      if (!hero) return;
+      if (hero.querySelector('.pt-scene__tires')) return setup(hero);
+      var mo = new MutationObserver(function () { if (hero.querySelector('.pt-scene__tires')) { mo.disconnect(); setup(hero); } });
+      mo.observe(hero, { childList: true });
+      setTimeout(function () { mo.disconnect(); }, 10000);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  })();
+</script>
+{%- endif -%}

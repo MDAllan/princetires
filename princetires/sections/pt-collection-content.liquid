@@ -1,3 +1,5 @@
+{%- comment -%} /collections/all is the Shop by size hub (pt-shop-by-size), not a 20,000-product grid without filters. {%- endcomment -%}
+{%- unless collection.handle == 'all' -%}
 {%- comment -%}
   Renders a collection's long-form SEO / editorial content (brand overview, buying guide,
   Calgary-specific notes) BELOW the product grid.
@@ -5,6 +7,11 @@
   Source: the collection's native description (rich text / HTML), shown only when the
   collection is flagged with the boolean metafield custom.show_guide = true. Ordinary
   collections (no flag) render nothing, so this section is inert until a collection opts in.
+
+  Every other collection with a description (redesign 2026-11-13): the same
+  description in a collapsed "About ..." block, so the text is still in the
+  page HTML (the old header printed it; the slim results header does not).
+  Setting "Show the description on other collections" turns it off.
 
   Used by templates/collection.json. Content for brand & category collections is migrated
   here from the legacy /pages/brand-* and /pages/<type> pages during the SEO de-duplication
@@ -19,7 +26,23 @@
       </div>
     </div>
   </section>
+{%- elsif collection.description != blank and section.settings.show_about -%}
+  {{ 'pt-rd-results.css' | asset_url | stylesheet_tag }}
+  <section class="rd rd-about" aria-label="About {{ collection.title | escape }}">
+    <div class="rd-about__in">
+      <details class="rd-about__box">
+        <summary class="rd-about__sum">
+          <span>About {{ collection.title | escape }}</span>
+          {%- render 'pt-icon', name: 'chevron-down', size: 18, class: 'rd-acc__chev' -%}
+        </summary>
+        <div class="rd-about__body rte">
+          {{ collection.description }}
+        </div>
+      </details>
+    </div>
+  </section>
 {%- endif -%}
+{%- endunless -%}
 
 {% stylesheet %}
   .ptcc {
@@ -78,6 +101,14 @@
   "name": "Collection content",
   "tag": "section",
   "class": "section",
-  "settings": []
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_about",
+      "label": "Show the description on other collections",
+      "default": true,
+      "info": "Collections without the show_guide metafield get their description in a collapsed \"About\" block under the products (keeps the text on the page for search engines)."
+    }
+  ]
 }
 {% endschema %}

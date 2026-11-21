@@ -7,13 +7,23 @@
 
   Submit behavior: keeps vendor + seasonality from the current URL, swaps the
   size dimensions. The vehicle tab redirects to the collection page with the
-  OEM size as filters.
+  OEM size as filters. A trim with 2+ sizes first asks
+  window.PTVehiclePairs.lookup (assets/pt-vehicle-pairs.js): when it gives ONE
+  sure factory front + rear set (PTVehiclePairs.only), the same URL gets the
+  front size plus rear=REAR (a pair search). Any other answer for 2+ different
+  sizes (several sets, a set plus other sizes, sizes that may be only the front
+  or only the rear one, or no answer at all) shows a short list under the
+  button (sets, same-size-on-all-4, single sizes, with the "may differ" line):
+  the strip never silently searches the first size of such a trim.
 
   Mobile: collapsed behind a "Change search ▾" toggle.
 
   @example
   {% render 'pt-collection-research-strip' %}
 {% enddoc %}
+
+{%- comment -%} window.PTVehiclePairs (pair lookup); harmless if the grid section loads it too. {%- endcomment -%}
+<script src="{{ 'pt-vehicle-pairs.js' | asset_url }}" defer></script>
 
 {%- liquid
   assign min_year = settings.smart_search_min_year | default: 2001
@@ -117,6 +127,7 @@
         <button type="button" class="pt-rs__clear" data-pt-rs-clear-vehicle hidden>Clear</button>
       </div>
       <p class="pt-rs__status" data-pt-rs-status hidden></p>
+      <div class="pt-rs__choices" data-pt-rs-choices hidden></div>
     </div>
   </div>
 </div>
@@ -329,6 +340,21 @@
     background: #b91c1c;
   }
 
+  .pt-rs__choices { flex-basis: 100%; margin: 0.6rem 0 0; font-family: 'Outfit', sans-serif; }
+  .pt-rs__choices-q { margin: 0 0 0.35rem; font-size: 0.85rem; font-weight: 600; color: #111827; }
+  .pt-rs__choices-say {
+    margin: 0 0 0.5rem; padding: 0.45rem 0.7rem; border-radius: 6px;
+    background: #fef3c7; color: #92400e; font-size: 0.82rem; line-height: 1.35;
+  }
+  .pt-rs__choices-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.4rem; }
+  .pt-rs__choice {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem;
+    min-width: 0; padding: 0.5rem 0.75rem; text-align: left; cursor: pointer;
+    background: #fff; color: #111827; border: 1px solid #d1d5db; border-radius: 8px;
+    font-family: inherit; font-size: 0.88rem; font-weight: 600;
+  }
+  .pt-rs__choice:hover, .pt-rs__choice:focus-visible { border-color: #dc2626; outline: none; }
+  .pt-rs__choice small { font-size: 0.75rem; font-weight: 500; color: #6b7280; }
   .pt-rs__status {
     flex-basis: 100%;
     margin: 0.5rem 0 0;
@@ -378,6 +404,7 @@
     var elTrim = root.querySelector('[data-pt-rs-trim]');
     var elSubmitVeh = root.querySelector('[data-pt-rs-submit-vehicle]');
     var elStatus = root.querySelector('[data-pt-rs-status]');
+    var elChoices = root.querySelector('[data-pt-rs-choices]');
     var elClearSize = root.querySelector('[data-pt-rs-clear-size]');
     var elClearVeh = root.querySelector('[data-pt-rs-clear-vehicle]');
     var elSaved = root.querySelector('[data-pt-rs-saved]');
@@ -410,6 +437,16 @@
 
     /* Navigate without dropping the event we just queued — see PTTrack.go. */
     function ptGo(url) {
+      // Owner 2026-11-17: a tire size search lands cheapest first.
+      try {
+        var su = new URL(url, window.location.origin);
+        if (su.searchParams.get('filter.p.m.custom.rim_diameter') && !su.searchParams.get('sort_by')) {
+          su.searchParams.set('sort_by', 'price-ascending');
+          url = su.pathname + su.search + su.hash;
+        }
+      } catch (e) {}
+      // A size search lands in that rim's own collection when it exists (pt-rim-route).
+      if (window.PTRim) url = window.PTRim.route(url);
       if (window.PTTrack && typeof window.PTTrack.go === 'function') window.PTTrack.go(url);
       else window.location.href = url;
     }
@@ -715,6 +752,8 @@
       elClearVeh.hidden = !(elYear.value || elMake.value || elModel.value || elTrim.value);
     }
     [elYear, elMake, elModel, elTrim].forEach(function (s) { s.addEventListener('change', updateVehicleClear); });
+    // A new vehicle pick hides the last trim's size list.
+    [elYear, elMake, elModel, elTrim].forEach(function (s) { s.addEventListener('change', hideChoices); });
     if (elClearVeh) elClearVeh.addEventListener('click', function () {
       yearData = null;
       elYear.value = '';
@@ -725,11 +764,12 @@
       updateVehicleClear();
     });
 
+    var pairBusy = false;
     elSubmitVeh.addEventListener('click', function () {
       var make = elMake.value;
       var model = elModel.value;
       var trim = elTrim.value;
-      if (!yearData || !trim) return;
+      if (!yearData || !trim || pairBusy) return;
       var sizes = ((yearData.models || {})[make] || {})[model][trim];
       var ptV = { year: elYear.value, make: make, model: model, trim: trim };
       if (!sizes || !sizes.length) {
@@ -738,8 +778,90 @@
         ptSearch('dropdown', 'no_sizes', ptV);
         return;
       }
-      // Use the first size (staggered front, typically). Persist the vehicle.
-      var firstSize = sizes[0];
+      var VP = window.PTVehiclePairs;
+      hideChoices();
+      if (distinctSizes(sizes).length < 2) { submitVehicle(sizes, ptV, null); return; }
+      // 2+ sizes but no pair helper on the page: list them, never sizes[0].
+      if (!VP || typeof VP.lookup !== 'function') { showChoices(sizes, ptV, null); return; }
+      // Which sizes go front and rear (the trim's own sizes decide).
+      var picked = [elYear.value, make, model, trim].join('|');
+      pairBusy = true;
+      elSubmitVeh.disabled = true;
+      if (elStatus) { elStatus.textContent = 'Checking front and rear sizes…'; elStatus.hidden = false; }
+      var settle = function (ans) {
+        pairBusy = false;
+        if (elStatus) elStatus.hidden = true;
+        if ([elYear.value, elMake.value, elModel.value, elTrim.value].join('|') !== picked) { elSubmitVeh.disabled = !elTrim.value; return; } // changed meanwhile
+        elSubmitVeh.disabled = false;
+        var one = ans ? VP.only(ans) : null;
+        if (one) submitVehicle(sizes, ptV, one);
+        else showChoices(sizes, ptV, ans);
+      };
+      var pr;
+      try { pr = VP.lookup({ year: elYear.value, make: make, model: model, trim: trim, sizes: sizes }); } catch (e) { pr = null; }
+      if (!pr || typeof pr.then !== 'function') { settle(null); return; }
+      pr.then(settle, function () { settle(null); });
+    });
+    // One entry per real size (245/40R20 = 245/40ZR20), first spelling kept.
+    function distinctSizes(list) {
+      var seen = {}, out = [];
+      (list || []).forEach(function (z) {
+        var p = parseSize(z), k = p ? p.w + '/' + p.a + 'R' + p.r : String(z || '').trim().toUpperCase();
+        if (!k || seen[k]) return;
+        seen[k] = 1; out.push(String(z).trim());
+      });
+      return out;
+    }
+    function hideChoices() { if (elChoices) { elChoices.hidden = true; elChoices.innerHTML = ''; } }
+    function escHtml(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    /* 2+ different sizes and no ONE sure set: the customer picks. Sets first
+       (front + rear search), then sizes on all four, then sizes the server
+       could not place ("front or rear only?" when they may differ). ans null
+       = the check failed or isn't on the page: every size, with the hedge. */
+    function showChoices(sizes, ptV, ans) {
+      var VP = window.PTVehiclePairs;
+      if (!elChoices) { submitVehicle(sizes, ptV, null); return; }
+      var rows = [];
+      var car = [ptV.year, ptV.make, ptV.model].join(' ').replace(/\s+/g, ' ').trim();
+      var say = '';
+      if (ans) {
+        (ans.pairs || []).forEach(function (x) { rows.push({ t: x.front + ' front + ' + x.rear + ' rear', m: x.oe === 'option' ? 'Front + rear set · factory option' : 'Front + rear set', pair: x }); });
+        (ans.sameSize || []).forEach(function (z) { rows.push({ t: z, m: 'Same size on all four', size: z }); });
+        (ans.others || []).forEach(function (z) { rows.push({ t: z, m: ans.mayDiffer ? 'Front or rear only?' : 'One size', size: z }); });
+        say = ans.staggered ? VP.sentence(ans, car) + ' ' + VP.note : (ans.mayDiffer ? VP.sentence(ans, car) : '');
+      } else {
+        distinctSizes(sizes).forEach(function (z) { rows.push({ t: z, m: 'Front or rear only?', size: z }); });
+        say = 'We couldn\u2019t check front and rear sizes. Front and rear may differ on this car \u2014 check the sticker in the driver\u2019s door.';
+      }
+      if (!rows.length) { submitVehicle(sizes, ptV, null); return; }
+      elChoices.innerHTML = '<p class="pt-rs__choices-q">Which tires are on your ' + escHtml(car || 'car') + '?</p>' +
+        (say ? '<p class="pt-rs__choices-say" role="status">' + escHtml(say) + '</p>' : '') +
+        '<div class="pt-rs__choices-list" role="group" aria-label="Tire sizes for this trim">' +
+        rows.map(function (r, i) { return '<button type="button" class="pt-rs__choice" data-pt-rs-choice="' + i + '">' + escHtml(r.t) + '<small>' + escHtml(r.m) + '</small></button>'; }).join('') +
+        '</div>';
+      elChoices.hidden = false;
+      Array.prototype.forEach.call(elChoices.querySelectorAll('[data-pt-rs-choice]'), function (b) {
+        b.addEventListener('click', function () {
+          var r = rows[+b.getAttribute('data-pt-rs-choice')];
+          if (!r) return;
+          if (r.pair) submitVehicle(sizes, ptV, r.pair);
+          else submitVehicle(sizes, ptV, null, r.size);
+        });
+      });
+    }
+    // pair: a factory set (PTVehiclePairs.only, or one the customer picked);
+    // size: the single size the customer picked; neither = the trim's only size.
+    function submitVehicle(sizes, ptV, pair, size) {
+      var make = ptV.make, model = ptV.model, trim = ptV.trim;
+      var rear = '';
+      if (pair) {
+        // The rear exactly as THE pair builder writes it (no P / LT prefix).
+        var pu = window.PTVehiclePairs.url({ front: pair.front, rear: pair.rear });
+        if (pu) rear = new URLSearchParams(pu.split('?')[1] || '').get('rear') || '';
+      }
+      // Use the first size (staggered front, typically) unless a sure set
+      // says which is the front. Persist the vehicle.
+      var firstSize = rear ? pair.front : (size || sizes[0]);
       var parsed = parseSize(firstSize);
       if (!parsed) {
         flashStatus("Couldn't parse size '" + firstSize + "'. Try another trim.");
@@ -751,10 +873,12 @@
       ptV.sizes_count = sizes.length;
       ptSearch('dropdown', 'sizes', ptV);
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        var saved = {
           year: elYear.value, make: make, model: model, trim: trim,
           sizes: sizes, savedAt: new Date().toISOString()
-        }));
+        };
+        if (rear) saved.pair = { front: pair.front, rear: pair.rear }; // additive
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
       } catch (e) {}
       var newParams = new URLSearchParams();
       // Keep vendor + seasonality + service_type from the current URL
@@ -768,8 +892,9 @@
       newParams.set('filter.p.m.custom.tire_width', parsed.w);
       newParams.set('filter.p.m.custom.tire_profile', parsed.a);
       newParams.set('filter.p.m.custom.rim_diameter', parsed.r);
+      if (rear) newParams.set('rear', rear); // PTRim.route keeps it
       ptGo(window.location.pathname + '?' + newParams.toString());
-    });
+    }
 
     // ─── Helpers ─────────────────────────────────────────────────────
     function parseSize(s) {

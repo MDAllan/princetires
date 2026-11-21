@@ -395,13 +395,18 @@
         <li><a href="/collections/all-season-tires">All-season tires →</a></li>
         <li><a href="/pages/services">All services (install, balance, repair) →</a></li>
         <li><a href="/pages/booking">Book an appointment →</a></li>
-        <li><a href="/pages/brands">All 26 brands we stock →</a></li>
+        <li><a href="/pages/brands">All 60+ tire brands we stock →</a></li>
       </ul>
     </div>
 
     {%- comment -%} Byline + NAP — E-E-A-T signal {%- endcomment -%}
     <footer class="ptbd__byline">
-      <p class="ptbd__byline-author">Posted by the Prince Tires team — Calgary's family-owned tire shop since 2021. 4.9★ from {{ section.settings.review_count | default: '562' }}+ Google reviews.</p>
+      {%- comment -%} Fallback count from snippets/pt-reviews.liquid (single source of truth). {%- endcomment -%}
+      {%- capture ptbd_rev_default %}{% render 'pt-reviews', field: 'count' %}{% endcapture -%}
+      {%- assign ptbd_rev_default = ptbd_rev_default | strip -%}
+      {%- capture ptbd_rev_rating %}{% render 'pt-reviews', field: 'rating' %}{% endcapture -%}
+      {%- assign ptbd_rev_rating = ptbd_rev_rating | strip -%}
+      <p class="ptbd__byline-author">Posted by the Prince Tires team — Calgary's family-owned tire shop since 2022. {{ section.settings.aggregate_rating | default: ptbd_rev_rating }}★ from {{ section.settings.review_count | default: ptbd_rev_default }}+ Google reviews.</p>
       <p class="ptbd__byline-nap"><strong>Prince Tires</strong> · 111 42 Ave SW, Calgary, AB T2G 0A4 · Mon–Thu &amp; Sat {% render 'pt-nap', field: 'hours_mon_sat_display' %} · Fri {% render 'pt-nap', field: 'hours_fri_display' %} · Sun {% render 'pt-nap', field: 'hours_sun_display' %} · <a href="tel:+14034524283">(403) 452-4283</a></p>
       {%- if section.settings.last_updated != blank -%}
         <p class="ptbd__byline-updated">Last updated: {{ section.settings.last_updated | escape }}</p>
@@ -491,35 +496,7 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "AutoPartsStore",
-        "@id": "{{ shop.url }}/#business",
-        "name": "Prince Tires",
-        "url": "{{ shop.url }}",
-        "telephone": "+1-403-452-4283",
-        "priceRange": "$$",
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": "111 42 Ave SW",
-          "addressLocality": "Calgary",
-          "addressRegion": "AB",
-          "postalCode": "T2G 0A4",
-          "addressCountry": "CA"
-        },
-        "openingHoursSpecification": [
-          { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Saturday"], "opens": "{% render 'pt-nap', field: 'hours_mon_sat_open' %}", "closes": "{% render 'pt-nap', field: 'hours_mon_sat_close' %}" },
-          { "@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "{% render 'pt-nap', field: 'hours_fri_open' %}", "closes": "{% render 'pt-nap', field: 'hours_fri_close' %}" },
-          { "@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "{% render 'pt-nap', field: 'hours_fri_reopen' %}", "closes": "{% render 'pt-nap', field: 'hours_fri_final_close' %}" },
-          { "@type": "OpeningHoursSpecification", "dayOfWeek": "Sunday", "opens": "{% render 'pt-nap', field: 'hours_sun_open' %}", "closes": "{% render 'pt-nap', field: 'hours_sun_close' %}" }
-        ],
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "{{ section.settings.aggregate_rating | default: '4.9' }}",
-          "reviewCount": "{{ section.settings.review_count | default: '562' }}",
-          "bestRating": "5",
-          "worstRating": "1"
-        }
-      },
+      {%- comment -%} The #business node is emitted site-wide by schema-local-business (no self-serving rating). {%- endcomment -%}
       {
         "@type": "BreadcrumbList",
         "itemListElement": [
@@ -1687,7 +1664,7 @@
       "content": "Schema / trust signals"
     },
     { "type": "text", "id": "aggregate_rating", "label": "Aggregate rating",  "default": "4.9" },
-    { "type": "text", "id": "review_count",     "label": "Review count",     "default": "562" },
+    { "type": "text", "id": "review_count",     "label": "Review count",     "default": "750" },
     { "type": "text", "id": "last_updated",     "label": "Last updated (e.g. '2026-05-11')" }
   ],
   "blocks": [

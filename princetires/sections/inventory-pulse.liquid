@@ -3,6 +3,10 @@
     total_inventory  — sum of every variant's inventory_quantity (>0)
     total_products   — count of products in the catalogue
     vendors_count    — number of unique product.vendor values (brands)
+  Nov 8, 2026: the third stat is labelled "Tire sizes available" but showed total products,
+  which the stats API caps at 10,000 (real: ~11k products). Distinct tire sizes counted from
+  product titles on Nov 8 = ~440, so it now shows a conservative "400+" and the API no longer
+  overwrites it. Update data-count-to below if the size range grows a lot.
 {%- endcomment -%}
 {%- assign total_inventory = 0 -%}
 {%- assign total_products  = 0 -%}
@@ -48,7 +52,7 @@
     <div class="inv-pulse__divider"></div>
 
     <div class="inv-pulse__stat">
-      <div class="inv-pulse__number" data-count-to="{{ total_products }}" data-pt-inv="products">0</div>
+      <div class="inv-pulse__number" data-count-to="400" data-suffix="+">0</div>
       <div class="inv-pulse__label">{{ section.settings.size_label }}</div>
     </div>
 
@@ -181,13 +185,19 @@
 
   @media (max-width: 480px) {
     .inv-pulse {
-      padding: 1.5rem 1rem;
+      padding: 0.9rem 1rem;
     }
+    /* Four stats abreast on a 390px phone gives each ~90px, and pt-type.css
+       floors label text at 14px for readability — so every label wrapped to
+       two or three lines and the band grew to ~127px of mostly whitespace.
+       A 2x2 grid gives each stat ~half the width, which fits the labels on
+       one or two lines without fighting the type floor. */
     .inv-pulse__container {
-      display: flex;
-      flex-wrap: nowrap;
-      justify-content: space-between;
-      gap: 0.6rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      justify-content: initial;
+      align-items: start;
+      gap: 0.55rem 0.8rem;
       padding: 0;
     }
     .inv-pulse__stat {
@@ -197,11 +207,11 @@
       display: none;
     }
     .inv-pulse__number {
-      font-size: 1.4rem;
+      font-size: 1.9rem;
+      line-height: 1.05;
     }
     .inv-pulse__label {
-      font-size: 0.65rem;
-      line-height: 1.2;
+      line-height: 1.25;
     }
     .inv-pulse__label-bold {
       font-size: 0.7rem;
@@ -263,15 +273,16 @@
           if (!entry.isIntersecting) return;
           var el = entry.target;
           var target = parseInt(el.dataset.countTo);
+          var suffix = el.dataset.suffix || '';
           if (!target) { el.textContent = '0'; return; }
           var startTime = null;
           function step(timestamp) {
             if (!startTime) startTime = timestamp;
             var progress = Math.min((timestamp - startTime) / 2000, 1);
             var eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.floor(eased * target).toLocaleString();
+            el.textContent = Math.floor(eased * target).toLocaleString() + suffix;
             if (progress < 1) requestAnimationFrame(step);
-            else el.textContent = target.toLocaleString();
+            else el.textContent = target.toLocaleString() + suffix;
           }
           requestAnimationFrame(step);
           observer.unobserve(el);
@@ -292,7 +303,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (data) {
-          var map = { tires: data.totalInventory, vendors: data.vendorsCount, products: data.totalProducts };
+          var map = { tires: data.totalInventory, vendors: data.vendorsCount };
           Object.keys(map).forEach(function (k) {
             var el = document.querySelector('[data-pt-inv="' + k + '"]');
             if (!el || typeof map[k] !== 'number') return;
@@ -324,7 +335,7 @@
     {
       "type": "text",
       "id": "tire_count",
-      "label": "Tires in stock (auto-computed)",
+      "label": "Tires available (auto-computed)",
       "info": "No longer used — the live number is summed from variant inventory automatically.",
       "default": "0"
     },
@@ -332,7 +343,7 @@
       "type": "text",
       "id": "tire_label",
       "label": "Tires label",
-      "default": "Tires in stock right now"
+      "default": "Tires available right now"
     },
     {
       "type": "text",

@@ -251,8 +251,37 @@
   {%- endif -%}
 </article>
 
+{%- comment -%}
+  Hand-built BlogPosting (2026-11-15). Shopify's structured_data filter emitted
+  http:// context, a relative @id, the shop typed as a Person and a stale dateModified.
+{%- endcomment -%}
+{%- assign pt_art_url = request.origin | append: article.url -%}
 <script type="application/ld+json">
-  {{ article | structured_data }}
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "@id": {{ pt_art_url | append: '#article' | json }},
+    "mainEntityOfPage": {{ pt_art_url | json }},
+    "url": {{ pt_art_url | json }},
+    "headline": {{ article.title | strip_html | truncate: 110 | json }},
+    "description": {{ article.excerpt_or_content | strip_html | strip_newlines | truncatewords: 40 | json }},
+    {%- if article.image -%}
+    "image": {{ article.image | image_url: width: 1920 | prepend: 'https:' | json }},
+    {%- endif -%}
+    "datePublished": {{ article.published_at | date: '%Y-%m-%dT%H:%M:%S%z' | json }},
+    "dateModified": {{ article.updated_at | date: '%Y-%m-%dT%H:%M:%S%z' | json }},
+    "author": { "@type": "Organization", "@id": {{ request.origin | append: '/#org' | json }}, "name": {{ shop.name | json }}, "url": {{ request.origin | json }} },
+    "publisher": {
+      "@type": "Organization",
+      "@id": {{ request.origin | append: '/#org' | json }},
+      "name": {{ shop.name | json }}
+      {%- if shop.brand.logo -%},
+      "logo": { "@type": "ImageObject", "url": {{ shop.brand.logo | image_url: width: 600 | prepend: 'https:' | json }} }
+      {%- endif %}
+    },
+    "articleSection": {{ blog.title | json }},
+    "inLanguage": "en-CA"
+  }
 </script>
 
 {% stylesheet %}
