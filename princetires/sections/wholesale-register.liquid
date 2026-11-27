@@ -1,12 +1,10 @@
 {%- comment -%}
   Prince Tires — Wholesale Registration
   Two flows:
-    A) Guest → {% form 'create_customer' %} with wholesale data in customer[note]
-               Redirects to /pages/wholesale on success (shows pending state there)
-    B) Logged-in → {% form 'contact' %} notifies admin for manual review + tagging
-
-  Customer note format (for admin to identify applicants in Shopify):
-    "WHOLESALE: Business=X | Type=Y | GST=Z | Phone=P | Volume=V"
+    A) Guest → plain form; JS posts to app.princetires.ca/api/wholesale/register, waits
+               for the answer and shows success or the error in place. No Shopify account
+               (the store uses new customer accounts; create_customer does not work there).
+    B) Logged-in → {% form 'contact' %} (copy to the shop inbox) + the same app post.
 {%- endcomment -%}
 
 {%- liquid
@@ -225,6 +223,7 @@
 }
 
 /* ── Step progress indicator ── */
+#WhrGuestForm[hidden], #WhrGuestSuccess[hidden], #WhrGuestError[hidden], .whr-steps-indicator[hidden], .whr-already-applied[hidden] { display: none !important; }
 .whr-steps-indicator {
   display: flex;
   align-items: center;
@@ -338,6 +337,20 @@
   gap: 1.2rem;
 }
 .whr-row .whr-field { flex: 1; }
+/* Fleet details — shown only when Business type = Fleet operator */
+.whr-fleet { border: 1.5px solid #fecaca; background: #fff7f7; border-radius: 12px; padding: 1.4rem 1.4rem 0.4rem; margin: 0 0 1.4rem; }
+.whr-fleet[hidden] { display: none !important; }
+.whr-fleet__title { margin: 0 0 0.4rem; font-size: 1.35rem; font-weight: 600; color: #111; }
+.whr-fleet__intro { margin: 0 0 1.2rem; font-size: 1.2rem; color: #6b7280; }
+.whr-fleet fieldset { border: 0; margin: 0 0 1.4rem; padding: 0; min-width: 0; }
+.whr-fleet legend { padding: 0; }
+.whr-chips { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.whr-chip { position: relative; display: inline-flex; }
+.whr-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.whr-chip span { display: inline-flex; align-items: center; min-height: 40px; padding: 0 1.2rem; border: 1.5px solid #e5e7eb; border-radius: 999px; background: #fff; font-size: 1.25rem; color: #374151; cursor: pointer; transition: border-color .15s, background-color .15s, color .15s; }
+.whr-chip input:checked + span { border-color: #dc2626; background: #fef2f2; color: #b91c1c; font-weight: 600; }
+.whr-chip input:focus-visible + span { outline: 2px solid #dc2626; outline-offset: 2px; }
+.whr-input.whr-input--plain { padding-left: 1.4rem; }
 .whr-field { margin-bottom: 1.4rem; }
 .whr-label {
   display: block;
@@ -706,8 +719,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             Wholesale Partner Program
           </div>
-          <h2 class="whr-perks-title">Trade pricing.<br>Built for the pros.</h2>
-          <p class="whr-perks-sub">Join hundreds of Alberta auto businesses already saving with Prince Tires.</p>
+          <h2 class="whr-perks-title">Apply for a<br>wholesale account.</h2>
+          <p class="whr-perks-sub">For auto shops, tire shops, dealerships and fleets. When you are approved, we send you an invite to the Prince Tires dealer portal.</p>
         </div>
         <ul class="whr-perks-list">
           <li class="whr-perk">
@@ -715,8 +728,8 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             </div>
             <div class="whr-perk-body">
-              <strong>Up to 35% below retail</strong>
-              <span>Volume discounts on all major brands — Michelin, Goodyear, Continental, and more</span>
+              <strong>Your trade price on our own brands</strong>
+              <span>The tire and wheel brands we import ourselves, in stock at our Calgary warehouse</span>
             </div>
           </li>
           <li class="whr-perk">
@@ -724,8 +737,8 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </div>
             <div class="whr-perk-body">
-              <strong>Approved in 24 hours</strong>
-              <span>Quick review — most applications approved the same business day</span>
+              <strong>We review, then send your invite</strong>
+              <span>The invite link sets up your dealer portal login</span>
             </div>
           </li>
           <li class="whr-perk">
@@ -733,8 +746,17 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
             <div class="whr-perk-body">
-              <strong>Dedicated account manager</strong>
-              <span>Direct phone &amp; email — no hold times, no ticket queues</span>
+              <strong>Order online, pick up at our Edmonton Trail shop</strong>
+              <span>Unit 101, 3928 Edmonton Trail NE, Calgary.</span>
+            </div>
+          </li>
+          <li class="whr-perk">
+            <div class="whr-perk-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+            </div>
+            <div class="whr-perk-body">
+              <strong>Fleets: we fit your vehicles too</strong>
+              <span>Call or text either shop to book your vehicles in at 42 Ave SW or Edmonton Trail NE</span>
             </div>
           </li>
         </ul>
@@ -743,16 +765,16 @@
       <div class="whr-brand-bottom">
         <div class="whr-trust-bar">
           <div class="whr-trust-item">
-            <span class="whr-trust-val">500+</span>
-            <span class="whr-trust-label">Partners</span>
+            <span class="whr-trust-val">Online</span>
+            <span class="whr-trust-label">Ordering</span>
           </div>
           <div class="whr-trust-item" style="padding-left:1.4rem;border-left:1px solid rgba(255,255,255,0.08)">
-            <span class="whr-trust-val">24hr</span>
-            <span class="whr-trust-label">Approval</span>
+            <span class="whr-trust-val">Pickup</span>
+            <span class="whr-trust-label">Edmonton Trail NE</span>
           </div>
           <div class="whr-trust-item" style="padding-left:1.4rem;border-left:1px solid rgba(255,255,255,0.08)">
-            <span class="whr-trust-val">35%</span>
-            <span class="whr-trust-label">Max savings</span>
+            <span class="whr-trust-val">Pay</span>
+            <span class="whr-trust-label">When you pick up</span>
           </div>
         </div>
       </div>
@@ -775,16 +797,31 @@
 
         {%- comment -%} ─ Already applied notice ─ {%- endcomment -%}
         {%- if customer -%}
-          {%- if customer.tags contains 'wholesale' -%}
-            <div class="whr-already-applied">
+          {%- if customer -%}
+            <div class="whr-already-applied" id="whr-account-notice" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              <div>Your account already has wholesale access active. <a href="/pages/wholesale" style="color:#92400e;font-weight:600">Go to your wholesale portal →</a></div>
+              <div>You already have a wholesale account with us. Ordering is now in the dealer portal. <a href="https://wholesale.princetires.ca/dealer/login" style="color:#92400e;font-weight:600" rel="noopener">Dealer login</a>. No invite yet? Call (403) 452-4283.
+              </div>
             </div>
-          {%- elsif customer.note contains 'WHOLESALE:' -%}
-            <div class="whr-already-applied">
+            {%- comment -%} Pending status comes from the app (Phase 4 — docs/phase-4-wholesale-portal.md). Liquid can't see it reliably; reveal via the API. {%- endcomment -%}
+            <div class="whr-already-applied" id="whr-pending-notice" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <div>You've already submitted an application — it's under review. <a href="/pages/wholesale" style="color:#92400e;font-weight:600">Check your status →</a></div>
+              <div>You have already applied and we are reviewing it. When you are approved, we send you an invite to the dealer portal.</div>
             </div>
+            <script>
+              (function () {
+                var n = document.getElementById('whr-pending-notice');
+                if (!n) return;
+                fetch('/apps/api/wholesale/me', { credentials: 'same-origin' })
+                  .then(function (r) { return r.ok ? r.json() : null; })
+                  .then(function (d) {
+                    if (!d || !d.wholesale) return;
+                    if (d.wholesale.isWholesale) { var a = document.getElementById('whr-account-notice'); if (a) a.hidden = false; }
+                    else if (d.wholesale.status === 'pending') n.hidden = false;
+                  })
+                  .catch(function () {});
+              })();
+            </script>
           {%- endif -%}
         {%- endif -%}
 
@@ -793,12 +830,12 @@
           <div class="whr-steps-indicator">
             <div class="whr-step-ind">
               <div class="whr-step-ind__num whr-step-ind__num--active">1</div>
-              <span class="whr-step-ind__label whr-step-ind__label--active">Shop info</span>
+              <span class="whr-step-ind__label whr-step-ind__label--active">Business info</span>
             </div>
             <div class="whr-step-ind__connector"></div>
             <div class="whr-step-ind">
               <div class="whr-step-ind__num whr-step-ind__num--pending">2</div>
-              <span class="whr-step-ind__label">Account</span>
+              <span class="whr-step-ind__label">Contact</span>
             </div>
             <div class="whr-step-ind__connector"></div>
             <div class="whr-step-ind">
@@ -815,38 +852,32 @@
             Wholesale Application
           </div>
           <h1 class="whr-title">
-            {%- if show_upgrade_form -%}Upgrade to wholesale{%- else -%}Apply for wholesale access{%- endif -%}
+            Apply for a wholesale account
           </h1>
-          <p class="whr-subtitle">Takes under 3 minutes &middot; Approved within 24 hours &middot; No fees</p>
+          <p class="whr-subtitle">For auto shops, tire shops, dealerships and fleets. The form takes a few minutes. We review each application.</p>
+          <p class="whr-subtitle" data-dealer-portal-note style="margin-top:6px">When you are approved, we send you an invite to the Prince Tires dealer portal. That is where you see your trade price on the tire and wheel brands we import ourselves, and order.</p>
+          <p class="whr-subtitle" data-fleet-note style="margin-top:6px"><strong>Fleets:</strong> choose <em>Fleet operator</em> below and tell us about your vehicles. To book installs, call 42 Ave SW at <a href="tel:4034524283" style="color:#DC2626;font-weight:600">(403) 452-4283</a> or Edmonton Trail NE at <a href="tel:8253954024" style="color:#DC2626;font-weight:600">(825) 395-4024</a>.</p>
+          <p class="whr-subtitle" data-dealer-login-note style="margin-top:6px">Already have an account? <a href="https://wholesale.princetires.ca/dealer/login" rel="noopener" style="color:#DC2626;font-weight:600;text-decoration:underline">Dealer login</a></p>
         </div>
 
         {%- comment -%} ════════════════════════════════════════════════
-            FLOW A: GUEST — create_customer form
-            Creates Shopify account + stores wholesale data in customer note
-            On success: redirects to /pages/wholesale (shows pending state)
+            FLOW A: GUEST — sends the application to the app and waits for its answer.
+            No Shopify customer account: the store uses NEW customer accounts, where the
+            classic create_customer form does not work. Approval in the app creates or finds
+            the customer. Success and errors are shown in place (no redirect).
         ════════════════════════════════════════════════ {%- endcomment -%}
 
         {%- if show_account_form -%}
-          {%- form 'create_customer' -%}
-            <input type="hidden" name="return_to" value="/pages/wholesale?submitted=1">
+          <form id="WhrGuestForm" class="whr-guest-form" autocomplete="on">
             {%- comment -%} Honeypot — bots fill this; JS blocks submit if non-empty {%- endcomment -%}
             <div class="whr-hp-trap" aria-hidden="true">
               <input type="text" data-whr-hp tabindex="-1" autocomplete="off">
             </div>
 
-            {%- if form.errors -%}
-              <div class="whr-error-banner" role="alert">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <div>
-                  <strong>Please fix the following:</strong>
-                  <ul>
-                    {%- for field in form.errors -%}
-                      <li>{{ form.errors.translated_fields[field] | capitalize }} {{ form.errors.messages[field] }}</li>
-                    {%- endfor -%}
-                  </ul>
-                </div>
-              </div>
-            {%- endif -%}
+            <div class="whr-error-banner" role="alert" id="WhrGuestError" hidden>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div id="WhrGuestErrorText"></div>
+            </div>
 
             {%- comment -%} ─── SECTION 1: Business info ─── {%- endcomment -%}
             <div class="whr-divider"><span>Business information</span></div>
@@ -887,7 +918,7 @@
                 </div>
               </div>
               <div class="whr-field">
-                <label class="whr-label" for="WhrVolume">Monthly volume <span class="whr-optional">(optional)</span></label>
+                <label class="whr-label" for="WhrVolume">Tires per month, roughly <span class="whr-optional">(optional)</span></label>
                 <div class="whr-input-wrap">
                   <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                   <select class="whr-input whr-input--select" id="WhrVolume" data-whr-field="volume">
@@ -901,6 +932,48 @@
               </div>
             </div>
 
+            <div class="whr-fleet" id="WhrFleet" hidden>
+              <p class="whr-fleet__title">About your fleet</p>
+              <p class="whr-fleet__intro">So we can get your vehicles in and out quickly.</p>
+              <div class="whr-row">
+                <div class="whr-field">
+                  <label class="whr-label" for="WhrFleetCount">How many vehicles? <span class="whr-required">*</span></label>
+                  <input class="whr-input whr-input--plain" type="number" id="WhrFleetCount" min="1" max="5000" inputmode="numeric" placeholder="e.g. 12">
+                </div>
+                <div class="whr-field">
+                  <label class="whr-label" for="WhrFleetSizes">Tire sizes you run <span class="whr-optional">(optional)</span></label>
+                  <input class="whr-input whr-input--plain" type="text" id="WhrFleetSizes" maxlength="200" placeholder="e.g. 245/75R16, 265/70R17">
+                </div>
+              </div>
+              <fieldset>
+                <legend class="whr-label">What kind of vehicles?</legend>
+                <div class="whr-chips" data-fleet-group="Vehicles">
+                  <label class="whr-chip"><input type="checkbox" value="Cars / SUVs"><span>Cars / SUVs</span></label>
+                  <label class="whr-chip"><input type="checkbox" value="Pickups"><span>Pickups</span></label>
+                  <label class="whr-chip"><input type="checkbox" value="Cargo vans"><span>Cargo vans</span></label>
+                  <label class="whr-chip"><input type="checkbox" value="Trailers"><span>Trailers</span></label>
+                  <label class="whr-chip"><input type="checkbox" value="Other"><span>Other</span></label>
+                </div>
+              </fieldset>
+              <fieldset>
+                <legend class="whr-label">What do you need?</legend>
+                <div class="whr-chips" data-fleet-group="Needs">
+                  <label class="whr-chip"><input type="checkbox" value="New tires installed"><span>New tires installed</span></label>
+                  <label class="whr-chip"><input type="checkbox" value="Seasonal tire swaps"><span>Seasonal tire swaps</span></label>
+                  <label class="whr-chip"><input type="checkbox" value="Flat repairs"><span>Flat repairs</span></label>
+                  <label class="whr-chip"><input type="checkbox" value="Tires only (pickup)"><span>Tires only (pickup)</span></label>
+                </div>
+              </fieldset>
+              <fieldset>
+                <legend class="whr-label">Which shop suits you?</legend>
+                <div class="whr-chips" data-fleet-group="Shop">
+                  <label class="whr-chip"><input type="radio" name="whr_fleet_shop" value="42 Ave SW"><span>42 Ave SW</span></label>
+                  <label class="whr-chip"><input type="radio" name="whr_fleet_shop" value="Edmonton Trail NE"><span>Edmonton Trail NE</span></label>
+                  <label class="whr-chip"><input type="radio" name="whr_fleet_shop" value="Either"><span>Either</span></label>
+                </div>
+              </fieldset>
+            </div>
+
             <div class="whr-field">
               <label class="whr-label" for="WhrGST">GST / Business registration number <span class="whr-optional">(optional — speeds up approval)</span></label>
               <div class="whr-input-wrap">
@@ -909,8 +982,13 @@
               </div>
             </div>
 
+            <div class="whr-field">
+              <label class="whr-label" for="WhrNotesGuest">Tell us about your business <span class="whr-optional">(optional)</span></label>
+              <textarea class="whr-textarea" id="WhrNotesGuest" rows="3" maxlength="1900" placeholder="Anything else we should know" data-whr-field="notes"></textarea>
+            </div>
+
             {%- comment -%} ─── SECTION 2: Account creation ─── {%- endcomment -%}
-            <div class="whr-divider"><span>Create your account</span></div>
+            <div class="whr-divider"><span>Your contact details</span></div>
 
             <div class="whr-row">
               <div class="whr-field">
@@ -947,50 +1025,44 @@
               </div>
             </div>
 
-            <div class="whr-field">
-              <label class="whr-label" for="WhrPassword">Password <span class="whr-required">*</span></label>
-              <div class="whr-input-wrap">
-                <svg class="whr-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input
-                  class="whr-input whr-input--pw"
-                  type="password"
-                  name="customer[password]"
-                  id="WhrPassword"
-                  required
-                  placeholder="Minimum 8 characters"
-                  data-whr-pw
-                >
-                <button type="button" class="whr-toggle-pw" aria-label="Toggle password visibility" data-whr-toggle-pw>
-                  <svg class="whr-eye-open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  <svg class="whr-eye-closed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                </button>
-              </div>
-              <div class="whr-pw-strength" id="WhrPwStrength" style="display:none">
-                <div class="whr-pw-bar" id="WhrPwBar1"></div>
-                <div class="whr-pw-bar" id="WhrPwBar2"></div>
-                <div class="whr-pw-bar" id="WhrPwBar3"></div>
-                <div class="whr-pw-bar" id="WhrPwBar4"></div>
-              </div>
-              <p class="whr-pw-hint" id="WhrPwHint"></p>
-            </div>
 
-            {%- comment -%} Wholesale data goes into customer note — assembled by JS on submit {%- endcomment -%}
-            <input type="hidden" name="customer[note]" id="WhrCustomerNote">
 
             <button type="submit" class="whr-submit" id="WhrSubmitGuest">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <span>Create account &amp; apply</span>
+              <span>Send my application</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
+            <noscript><p class="whr-terms">This form needs JavaScript. You can also call us at (403) 452-4283 to apply.</p></noscript>
+          </form>
 
-          {%- endform -%}
+          <div class="whr-success-banner" id="WhrGuestSuccess" hidden tabindex="-1">
+            <div class="whr-success-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <h2 class="whr-success-title">Thanks. We got your application.</h2>
+            <p class="whr-success-text">We also sent a copy to your email.</p>
+            <div class="whr-success-next">
+              <div class="whr-success-step">
+                <span class="whr-success-step-num">1</span>
+                <span>We review your application and contact you</span>
+              </div>
+              <div class="whr-success-step">
+                <span class="whr-success-step-num">2</span>
+                <span>When you are approved, we email you an invite to the dealer portal</span>
+              </div>
+              <div class="whr-success-step">
+                <span class="whr-success-step-num">3</span>
+                <span>Fleets: call or text us any time to book your vehicles in</span>
+              </div>
+            </div>
+          </div>
 
           <p class="whr-terms">
-            By applying you agree to our <a href="/pages/terms-of-use" target="_blank" rel="noopener">Terms of Use</a> and <a href="/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. Wholesale pricing is subject to approval.
+            By applying you agree to our <a href="/pages/terms-of-use" target="_blank" rel="noopener">Terms of Use</a> and <a href="/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. Wholesale accounts are subject to approval.
           </p>
           <div class="whr-switch">
-            Already have an account?
-            <a href="{{ routes.account_login_url }}">Sign in instead</a>
+            Already have a dealer account?
+            <a href="https://wholesale.princetires.ca/dealer/login" rel="noopener">Dealer login</a>
           </div>
 
         {%- comment -%} ════════════════════════════════════════════════
@@ -1012,24 +1084,24 @@
                 </div>
                 <h2 class="whr-success-title">Application submitted!</h2>
                 <p class="whr-success-text">
-                  We've received your wholesale application for <strong>{{ customer.first_name }}'s</strong> account and will review it within 24 hours.
+                  We got your wholesale application and will review it.
                 </p>
                 <div class="whr-success-next">
                   <div class="whr-success-step">
                     <span class="whr-success-step-num">1</span>
-                    <span>Our team reviews your application — usually same business day</span>
+                    <span>We review your application</span>
                   </div>
                   <div class="whr-success-step">
                     <span class="whr-success-step-num">2</span>
-                    <span>You receive a confirmation at <strong>{{ customer.email }}</strong> once approved</span>
+                    <span>When you are approved, we send you an invite to the dealer portal</span>
                   </div>
                   <div class="whr-success-step">
                     <span class="whr-success-step-num">3</span>
-                    <span>Log in to see wholesale pricing applied across the full catalog</span>
+                    <span>You set your dealer login from the invite, then order online and pick up at our Edmonton Trail shop</span>
                   </div>
                 </div>
                 <a href="/pages/wholesale" style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 22px;background:#dc2626;color:#fff;border-radius:9px;text-decoration:none;font-size:13.5px;font-weight:600;">
-                  View your wholesale portal
+                  How wholesale works
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </a>
               </div>
@@ -1145,11 +1217,11 @@
           {%- endform -%}
 
           <p class="whr-terms">
-            By applying you agree to our <a href="/pages/terms-of-use" target="_blank" rel="noopener">Terms of Use</a> and <a href="/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. Wholesale access is subject to approval.
+            By applying you agree to our <a href="/pages/terms-of-use" target="_blank" rel="noopener">Terms of Use</a> and <a href="/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. Wholesale accounts are subject to approval.
           </p>
           <div class="whr-switch">
-            Want to check your application status?
-            <a href="/pages/wholesale">Go to wholesale portal</a>
+            Already have a dealer account?
+            <a href="https://wholesale.princetires.ca/dealer/login" rel="noopener">Dealer login</a>
           </div>
 
         {%- endif -%}
@@ -1318,7 +1390,7 @@
   setStep(1);
 
   // Advance to step 2 when user first focuses an account field
-  ['WhrFirstName', 'WhrLastName', 'WhrAcctEmail', 'WhrPassword'].forEach(function(id) {
+  ['WhrFirstName', 'WhrLastName', 'WhrAcctEmail'].forEach(function(id) {
     var el = $id(id);
     if (el) {
       el.addEventListener('focus', function() { setStep(2); }, { once: true });
@@ -1328,7 +1400,7 @@
   // ── localStorage persistence ──
   var LS_KEY = 'whr_form_v1';
   var LS_FIELDS = ['WhrBusiness', 'WhrPhone', 'WhrFirstName', 'WhrLastName',
-                   'WhrAcctEmail', 'WhrType', 'WhrVolume', 'WhrGST'];
+                   'WhrAcctEmail', 'WhrType', 'WhrVolume', 'WhrGST', 'WhrNotesGuest', 'WhrFleetCount', 'WhrFleetSizes'];
 
   function saveForm() {
     var data = {};
@@ -1362,57 +1434,111 @@
     return hp && hp.value.length > 0;
   }
 
-  // ── FLOW A: Guest form — build customer[note] from collected fields ──
-  var guestForm = document.querySelector('form[action*="/account"]');
-  if (guestForm) {
-    guestForm.addEventListener('submit', function(e) {
-      if (isHoneypotFilled(this)) { e.preventDefault(); return; }
+  // ── Fleet details: show when Business type = Fleet operator ──
+  var fleetBox = $id('WhrFleet');
+  var fleetCount = $id('WhrFleetCount');
+  var typeSel = $id('WhrType');
+  function syncFleet() {
+    if (!fleetBox || !typeSel) return;
+    var isFleet = typeSel.value === 'Fleet operator';
+    fleetBox.hidden = !isFleet;
+    if (fleetCount) fleetCount.required = isFleet;
+  }
+  if (typeSel) { typeSel.addEventListener('change', syncFleet); syncFleet(); }
+  function fleetSummary() {
+    if (!fleetBox || fleetBox.hidden) return '';
+    var lines = ['FLEET: ' + ((fleetCount && fleetCount.value) || '?') + ' vehicles'];
+    $all('#WhrFleet [data-fleet-group]').forEach(function(g) {
+      var picked = [].slice.call(g.querySelectorAll('input:checked')).map(function(i) { return i.value; });
+      if (picked.length) lines.push(g.getAttribute('data-fleet-group') + ': ' + picked.join(', '));
+    });
+    var sizes = (($id('WhrFleetSizes') || {}).value || '').trim();
+    if (sizes) lines.push('Tire sizes: ' + sizes);
+    return lines.join('\n');
+  }
 
+  // ── FLOW A: Guest form — send to the app, wait for the answer, show it in place ──
+  var guestForm = $id('WhrGuestForm');
+  if (guestForm) {
+    var guestBusy = false;
+    var guestErr = $id('WhrGuestError');
+    var guestErrText = $id('WhrGuestErrorText');
+    var guestBtn = $id('WhrSubmitGuest');
+    var guestBtnLabel = guestBtn ? guestBtn.querySelector('span').textContent : '';
+    var CALL_US = ' You can also call us at <a href="tel:4034524283">(403) 452-4283</a> or email <a href="mailto:info@princetires.ca">info@princetires.ca</a>.';
+
+    function guestDone(ok, msgHtml) {
+      guestBusy = false;
+      if (guestBtn) {
+        guestBtn.classList.remove('whr-submit--loading');
+        guestBtn.disabled = false;
+        guestBtn.querySelector('span').textContent = guestBtnLabel;
+      }
+      if (ok) {
+        try { localStorage.removeItem(LS_KEY); } catch(e) {}
+        guestForm.hidden = true;
+        $all('.whr-steps-indicator').forEach(function(el) { el.hidden = true; });
+        var okBox = $id('WhrGuestSuccess');
+        if (okBox) { okBox.hidden = false; okBox.focus(); okBox.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        return;
+      }
+      setStep(2);
+      if (guestErr && guestErrText) {
+        guestErrText.innerHTML = msgHtml;
+        guestErr.hidden = false;
+        guestErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    guestForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (guestBusy) return;
+      if (isHoneypotFilled(this)) return;
+      if (typeof this.reportValidity === 'function' && !this.reportValidity()) return;
+      guestBusy = true;
+      if (guestErr) guestErr.hidden = true;
       setStep(3);
 
       var f = {};
       this.querySelectorAll('[data-whr-field]').forEach(function(el) {
         f[el.dataset.whrField] = el.value.trim();
       });
+      var first = (($id('WhrFirstName') || {}).value || '').trim();
+      var last  = (($id('WhrLastName')  || {}).value || '').trim();
 
-      var noteField = $id('WhrCustomerNote');
-      if (noteField) {
-        noteField.value = 'WHOLESALE: Business=' + (f.business || '') +
-          ' | Type=' + (f.type || '') +
-          ' | GST=' + (f.gst || '') +
-          ' | Phone=' + (f.phone || '') +
-          ' | Volume=' + (f.volume || '');
+      if (guestBtn) {
+        guestBtn.classList.add('whr-submit--loading');
+        guestBtn.disabled = true;
+        guestBtn.querySelector('span').textContent = 'Sending your application\u2026';
       }
 
-      // Notify admin platform (fire-and-forget; never blocks Shopify account creation)
-      try {
-        var first = (($id('WhrFirstName') || {}).value || '').trim();
-        var last  = (($id('WhrLastName')  || {}).value || '').trim();
-        var contactName = (first + ' ' + last).trim();
-        fetch('https://app.princetires.ca/api/wholesale/register', {
-          method: 'POST',
-          mode: 'cors',
-          keepalive: true,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: (($id('WhrAcctEmail') || {}).value || '').trim(),
-            businessName: f.business || '',
-            contactName: contactName,
-            phone: f.phone || '',
-            taxNumber: f.gst || '',
-            businessType: f.type || '',
-            monthlyVolume: f.volume || ''
-          })
-        }).catch(function() {});
-      } catch (err) {}
-
-      try { localStorage.removeItem(LS_KEY); } catch(e) {}
-
-      var btn = $id('WhrSubmitGuest');
-      if (btn) {
-        btn.classList.add('whr-submit--loading');
-        btn.querySelector('span').textContent = 'Creating your account\u2026';
-      }
+      var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function() { ctrl.abort(); }, 20000) : null;
+      fetch('https://app.princetires.ca/api/wholesale/register', {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        signal: ctrl ? ctrl.signal : undefined,
+        body: JSON.stringify({
+          email: (($id('WhrAcctEmail') || {}).value || '').trim(),
+          businessName: f.business || '',
+          contactName: (first + ' ' + last).trim(),
+          phone: f.phone || '',
+          taxNumber: f.gst || '',
+          businessType: f.type || '',
+          monthlyVolume: f.volume || ((fleetBox && !fleetBox.hidden && fleetCount && fleetCount.value) ? 'Fleet: ' + fleetCount.value + ' vehicles' : ''),
+          notes: [fleetSummary(), f.notes || ''].filter(Boolean).join('\n\n').slice(0, 2000)
+        })
+      }).then(function(res) {
+        if (timer) clearTimeout(timer);
+        if (res.status === 201 || res.status === 200) return guestDone(true);
+        if (res.status === 429) return guestDone(false, '<strong>Please wait a minute and try again.</strong> We had a lot of applications from your network just now.' + CALL_US);
+        if (res.status === 400) return guestDone(false, '<strong>Please check your email address and business name, then try again.</strong>' + CALL_US);
+        guestDone(false, '<strong>We could not send your application.</strong> Your answers are saved on this page, so you can try again.' + CALL_US);
+      }).catch(function() {
+        if (timer) clearTimeout(timer);
+        guestDone(false, '<strong>We could not send your application.</strong> Check your internet connection and try again. Your answers are saved on this page.' + CALL_US);
+      });
     });
   }
 
@@ -1452,14 +1578,22 @@
           keepalive: true,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: upgradeForm.dataset.customerEmail || '',
+            email: (function() {
+              var typed = (($id('WhrEmail2') || {}).value || '').trim();
+              return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed) ? typed : (upgradeForm.dataset.customerEmail || '');
+            })(),
             businessName: f.business || '',
             contactName: (($id('WhrContactName') || {}).value || '').trim(),
             phone: f.phone || '',
             taxNumber: f.gst || '',
             businessType: f.type || '',
             monthlyVolume: f.volume || '',
-            notes: f.notes || ''
+            notes: (function() {
+              var acct = (upgradeForm.dataset.customerEmail || '').trim();
+              var typed = (($id('WhrEmail2') || {}).value || '').trim();
+              var extra = (acct && typed && typed.toLowerCase() !== acct.toLowerCase()) ? '\nSigned in as ' + acct : '';
+              return ((f.notes || '') + extra).slice(0, 2000);
+            })()
           })
         }).catch(function() {});
       } catch (err) {}
